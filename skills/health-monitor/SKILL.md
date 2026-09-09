@@ -1,7 +1,7 @@
 ---
 name: health-monitor
 version: "1.29.0"
-description: "v1.29.0 — At most 10 stamps per source."
+description: "v1.29.0 — One named Splunk or ThousandEyes health visit. Write that plane’s stamp and metadata. Use when the invoke names Splunk or ThousandEyes. Do not collect the other source."
 ---
 
 # Health Monitor skill

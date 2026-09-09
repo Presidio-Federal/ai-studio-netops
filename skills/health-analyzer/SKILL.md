@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
 version: "2.2.3"
-description: "v2.2.3 — Series window 10."
+description: "v2.2.3 — Roll up health visit stamps into state/health.json. Use when analyzing, assessing, charting, or trending production network health. Observation only — no telemetry collect."
 ---
 
 # Health Analyzer skill

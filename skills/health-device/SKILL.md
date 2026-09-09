@@ -1,7 +1,7 @@
 ---
 name: health-device
 version: "1.6.1"
-description: "v1.6.1 — At most 10 iosxe stamps."
+description: "v1.6.1 — IOS-XE device health visit. GET-only RESTCONF. Write health/iosxe/<stamp>.json. Use when the invoke names the network device or IOS-XE health check."
 ---
 
 # Health Device skill

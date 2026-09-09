@@ -1,6 +1,6 @@
 ---
 name: workspace-handoff
-description: "v1.32.1 — Health: at most 10 stamps per source."
+description: "v1.32.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
 version: "1.32.1"
 ---
 

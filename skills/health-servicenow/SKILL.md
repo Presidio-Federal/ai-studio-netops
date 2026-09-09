@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
 version: "1.5.2"
-description: "v1.5.2 — At most 10 servicenow stamps."
+description: "v1.5.2 — Read-only ServiceNow health visit for this lab’s tickets. Write the stamp and metadata. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill
