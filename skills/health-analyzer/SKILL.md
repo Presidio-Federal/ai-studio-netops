@@ -1,18 +1,24 @@
 ---
 name: health-analyzer
-version: "2.2.3"
-description: "v2.2.3 — Roll up health visit stamps into state/health.json. Use when analyzing, assessing, charting, or trending production network health. Observation only — no telemetry collect."
+version: "3.0.0"
+description: "v3.0.0 — Analyze and trend production network health from visit stamps already on disk. Write assessment plus trend into state/health.json. Reasoner — not a collector, not a merger."
 ---
 
 # Health Analyzer skill
 
-You turn **observations already on disk** into one rollup chart.
-You do not collect telemetry. You read
-`health/<source>/<stamp>.json` and (Splunk / TE / ServiceNow)
-metadata. You write `state/health.json` only.
+You are the **health analysis and trend** skill. You do not
+collect telemetry. You read `health/<source>/<stamp>.json` and
+Splunk / ThousandEyes / ServiceNow metadata. You write
+`state/health.json` only.
 
-Output is observation. Quiet vitals are not a pass and are not
-ranked improvements. You do not attribute cause.
+Collectors already measured. Your job is **assessment plus
+trend**: what is unhealthy, what is not, what changed over the
+series window, what contradicts what. Findings, not plans. Do
+not recommend SKUs. Do not write a work queue.
+
+`headline`, `assessment`, `trend_analysis`, and each
+`consult.impression` are **your** verdict. Do not paste visit
+headlines. Do not invent an unobserved root cause.
 
 An analyze / assess / chart / trend invoke is authorization
 (`assess-now`). A refresh / wait / then-assess invoke is
@@ -35,7 +41,7 @@ with `write_file` on the catalog path.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `state/health.json` | state | Five-field. Replace in full. `source_agent` `health-analyzer`. |
+| `state/health.json` | state | Five-field. Replace in full. `source_agent` `health-analyzer`. Required `assessment` and `trend_analysis`. |
 
 Use exactly: `references/analyze.md`,
 `references/workspace-contract.md`,
@@ -56,15 +62,15 @@ prior `consults.iosxe.source_ref` if present; do not list
 ## State machine
 
 READ_METADATA → READ_LATEST_STAMPS → READ_PRIOR_CHART → FOLD_SERIES
-→ DISPATCH_STALE (mode, via workspace-handoff) → WRITE_CHART →
-READ_BACK → STOP
+→ DISPATCH_STALE (mode, via workspace-handoff) → SYNTHESIZE →
+WRITE_CHART → READ_BACK → STOP
 
 Missing all latest stamps: status `unknown`, empty series points,
-follow workspace-handoff for stale/missing rows, still write the
-chart.
+follow workspace-handoff for stale/missing rows, still write
+`assessment` / `trend_analysis` (unknown, no window).
 
 ## Reference routing
 
-- Freshness, modes, series fold: `references/analyze.md`
+- Freshness, modes, series fold, synthesis: `references/analyze.md`
 - Writers / invoke: `workspace-handoff`
 - Produce: `references/workspace-contract.md`

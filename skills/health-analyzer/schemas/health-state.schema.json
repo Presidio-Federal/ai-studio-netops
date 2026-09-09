@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-state/v3",
+  "$id": "health-state/v4",
   "title": "state/health.json",
-  "description": "Health Analyzer rollup (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). consults derived from the latest stamp. series points copied from visit metrics. Headline regenerated from series each invoke.",
+  "description": "Health Analyzer assessment and trend (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). series points copied from visit metrics. assessment and trend_analysis are this agent's verdict — not pasted visit headlines.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -18,11 +18,13 @@
     "freshness",
     "consults",
     "series",
+    "assessment",
+    "trend_analysis",
     "dispatched",
     "read"
   ],
   "properties": {
-    "schema": { "type": "string", "const": "health-state/v3" },
+    "schema": { "type": "string", "const": "health-state/v4" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-analyzer" },
     "status": {
@@ -33,9 +35,13 @@
     "headline": {
       "type": "string",
       "minLength": 1,
-      "description": "Regenerated from series this invoke. Observation only."
+      "description": "One line of assessment.opinion. Analyzer verdict, not a visit headline or metrics dump."
     },
-    "next_action": { "type": "string", "minLength": 1 },
+    "next_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Inspect pointer to a stamp path, or none. Not a SKU, ticket, or work queue."
+    },
     "mode": {
       "type": "string",
       "enum": ["assess-now", "refresh-then-assess"]
@@ -74,6 +80,8 @@
         "servicenow": { "$ref": "#/$defs/series_plane" }
       }
     },
+    "assessment": { "$ref": "#/$defs/assessment" },
+    "trend_analysis": { "$ref": "#/$defs/trend_analysis" },
     "dispatched": {
       "type": "array",
       "maxItems": 8,
@@ -148,6 +156,48 @@
         }
       }
     },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unhealthy", "healthy", "contradictions", "opinion"],
+      "description": "This agent's verdict from all four planes and the series. Not pasted visit headlines.",
+      "properties": {
+        "unhealthy": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "healthy": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "contradictions": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "opinion": {
+          "type": "string",
+          "minLength": 1,
+          "description": "One verdict. Do not invent an unobserved root cause."
+        }
+      }
+    },
+    "trend_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["narrative", "flips"],
+      "description": "What changed over the series window. Analyzer writing, not a metrics dump.",
+      "properties": {
+        "narrative": { "type": "string", "minLength": 1 },
+        "flips": {
+          "type": "array",
+          "maxItems": 6,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "consult": {
       "type": ["object", "null"],
       "additionalProperties": false,
@@ -156,6 +206,7 @@
         "observed_at",
         "status",
         "trend",
+        "trend_note",
         "impression",
         "evidence_for",
         "evidence_against",
@@ -173,7 +224,16 @@
           "type": "string",
           "enum": ["first", "unchanged", "worse", "better"]
         },
-        "impression": { "type": "string", "minLength": 1 },
+        "trend_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "This agent's read of this plane's series over the window."
+        },
+        "impression": {
+          "type": "string",
+          "minLength": 1,
+          "description": "This agent's verdict for this plane. Not the visit headline."
+        },
         "evidence_for": {
           "type": "array",
           "maxItems": 5,
@@ -196,6 +256,7 @@
         "observed_at",
         "status",
         "trend",
+        "trend_note",
         "impression",
         "evidence_for",
         "evidence_against",
@@ -215,7 +276,16 @@
           "type": "string",
           "enum": ["first", "unchanged", "worse", "better"]
         },
-        "impression": { "type": "string", "minLength": 1 },
+        "trend_note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "This agent's read of this plane's series over the window."
+        },
+        "impression": {
+          "type": "string",
+          "minLength": 1,
+          "description": "This agent's verdict for this plane. Not the visit headline."
+        },
         "evidence_for": {
           "type": "array",
           "maxItems": 5,

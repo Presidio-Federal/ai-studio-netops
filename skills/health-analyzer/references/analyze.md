@@ -3,8 +3,10 @@
 No telemetry MCP. Scope is the **four health planes** via fixed
 paths.
 
-Primary outcome: **observation rollup**. A current, quiet chart is
-still a chart with numbers. Do not write recommendations.
+Primary outcome: **assessment plus trend**. A current, quiet chart
+still needs a verdict (what is not unhealthy, and that the window
+is quiet). Do not write recommendations. Do not paste visit
+headlines into `headline`, `assessment`, or `consult.impression`.
 
 ## Read order (fixed paths)
 
@@ -15,9 +17,10 @@ still a chart with numbers. Do not write recommendations.
 3. `health/metadata-servicenow.json` if present — if
    `servicenow.last_visit_id` is set, `health/servicenow/<id>.json`
 4. Prior `state/health.json` if present — `series` watermarks, prior
-   `headline` (flip notice only), and `consults.iosxe.source_ref`
-   for the iosxe stamp. Never use the prior headline as the basis
-   for the new one. Do not list `health/iosxe/`.
+   `assessment.opinion` (flip notice only), and
+   `consults.iosxe.source_ref` for the iosxe stamp. Never use the
+   prior headline or opinion as the basis for the new one. Do not
+   list `health/iosxe/`.
 5. If `consults.iosxe.source_ref` names a stamp, `read_file` that
    path (strip a leading `workspace/` or `/workspace/`).
 
@@ -88,7 +91,7 @@ waited on.
 
 ## Series fold (mechanical)
 
-Keep numbers as memory. Do not edit the prior narrative.
+Keep numbers as memory. Do not edit prior `points`.
 
 For each plane (`thousandeyes`, `splunk`, `iosxe`, `servicenow`):
 
@@ -103,29 +106,65 @@ For each plane (`thousandeyes`, `splunk`, `iosxe`, `servicenow`):
 - Missing latest stamp: keep prior series for that plane, or empty
   `points` and `watermark` null.
 
-## Consults (derived)
+Fold first. Then synthesize from the folded `points` plus the
+latest stamps. Do not skip synthesis because the fold was a no-op.
+
+## Consults (ids from the visit; judgment from you)
 
 Visit files do not include `consult` objects. Build
-`consults.<plane>` from the **latest observation** of that plane:
+`consults.<plane>` from the **latest observation** of that plane
+plus **your** read of that plane’s series:
 
 - `watch_id` — observation `watch_id`
 - `observed_at` — `checked_at`
-- `status` — observation `status`
-- `impression` — `headline`
-- `source_ref` — `health/<source>/<watch_id>.json`
-- `inspect_when` — `coverage.detail` if present, else `Open the observation for samples.`
-- `evidence_for` — `summary` as one item if present, else `headline`
-- `evidence_against` — empty array
+- `status` — observation `status` (the collector’s plane status)
+- `impression` — **your** verdict for this plane against its
+  series. Not the visit `headline`.
 - `trend` — `first` if no prior `consults.<plane>` on the chart;
   else `worse` / `better` / `unchanged` from prior consult `status`
   (`degraded` > `unknown` > `ok`)
+- `trend_note` — **your** sentence: what this plane’s series did
+  over the window. `first` window → say so.
+- `source_ref` — `health/<source>/<watch_id>.json`
+- `inspect_when` — when a reader should open the stamp
+- `evidence_for` / `evidence_against` — **your** lists from this
+  visit and series, including facts that weaken the impression
 - ServiceNow also: `collection_status` from `coverage.state`
-  (`complete` / `partial` / `unavailable`); `ticket_history.summary`
-  from `headline`; `pattern` from `summary` or `headline`;
-  `related_records` from `incidents[]` / `changes[]` / `recent[]`
-  `number` (cap 10); `prior_resolution` null
+  (`complete` / `partial` / `unavailable`); `ticket_history` is
+  **your** read of in-scope tickets (pattern / summary), not a
+  paste of the visit headline; `related_records` from
+  `incidents[]` / `changes[]` / `recent[]` `number` (cap 10);
+  `prior_resolution` if the stamps say so, else null
 
 Null if there is no latest stamp. Do not invent measurements.
+
+## Assessment and trend (required)
+
+Fill `assessment` and `trend_analysis` every invoke. Empty arrays
+only when that bucket is truly empty (say why in `opinion` /
+`narrative`).
+
+`assessment`:
+
+- `unhealthy` — what is actually wrong, citing plane + evidence
+- `healthy` — what is not wrong (quiet is a finding)
+- `contradictions` — planes or series that disagree (path down,
+  boxes quiet; tickets open, vitals ok)
+- `opinion` — one verdict from **all four planes and the series**
+
+`trend_analysis`:
+
+- `narrative` — what changed over the window (10 visits per plane).
+  One point is `first`; say there is no baseline.
+- `flips` — conclusions that reversed vs the prior chart’s
+  `assessment.opinion` (e.g. `was path-degraded, now stable`).
+  Empty array if none. Do not reuse the old sentence as input.
+
+`headline` is one line of `assessment.opinion`. Not a metrics dump.
+
+Do not invent a root cause no stamp measured. Correlation across
+planes is allowed as contradiction or agreement — not as a hidden
+fault you did not see.
 
 ## Rollup
 
@@ -146,14 +185,8 @@ Envelope `status`:
 `coverage.<plane>` from that observation’s `coverage.state`, or
 `not_requested` if missing.
 
-`headline`: regenerate from `series` every invoke. Observation
-only. Example: `p95 latency path-a down 40% over 14 days.`
-No causality, no attribution, no recommendations. If the prior
-headline’s conclusion flipped, you may note that in one clause
-(“was degrading, now stable”) — still from the numbers, not from
-the old sentence as input.
-
-`next_action` is usually `none`.
+`next_action` is an inspect pointer to a stamp or `none`. Not a
+SKU. Not a ticket. Not a work queue.
 
 ## Write
 
