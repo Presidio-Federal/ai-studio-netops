@@ -1,0 +1,2420 @@
+{
+  "oscal_release": "v1.5.0",
+  "catalog_version": "5.2.0",
+  "catalog_title": "Electronic (OSCAL) Version of NIST SP 800-53 Rev 5.2.0 Controls and SP 800-53A Rev 5.2.0 Assessment Procedures",
+  "source": "usnistgov/oscal-content",
+  "catalog_path": "nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog-min.json",
+  "note": "Network-relevant families only (AC AU CM IA SC SI). Identifiers and titles only.",
+  "controls": [
+    {
+      "id": "AC-1",
+      "title": "Policy and Procedures",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "IA-1",
+        "PM-9",
+        "PM-24",
+        "PS-8",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "AC-2",
+      "title": "Account Management",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AC-5",
+        "AC-6",
+        "AC-17",
+        "AC-18",
+        "AC-20",
+        "AC-24",
+        "AU-2",
+        "AU-12",
+        "CM-5",
+        "IA-2",
+        "IA-4",
+        "IA-5",
+        "IA-8",
+        "MA-3",
+        "MA-5",
+        "PE-2",
+        "PL-4",
+        "PS-2",
+        "PS-4",
+        "PS-5",
+        "PS-7",
+        "PT-2",
+        "PT-3",
+        "SC-7",
+        "SC-12",
+        "SC-13",
+        "SC-37"
+      ]
+    },
+    {
+      "id": "AC-3",
+      "title": "Access Enforcement",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-4",
+        "AC-5",
+        "AC-6",
+        "AC-16",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AC-20",
+        "AC-21",
+        "AC-22",
+        "AC-24",
+        "AC-25",
+        "AT-2",
+        "AT-3",
+        "AU-9",
+        "CA-9",
+        "CM-5",
+        "CM-11",
+        "IA-2",
+        "IA-5",
+        "IA-6",
+        "IA-7",
+        "IA-11",
+        "IA-13",
+        "MA-3",
+        "MA-4",
+        "MA-5",
+        "MP-4",
+        "PM-2",
+        "PS-3",
+        "PT-2",
+        "PT-3",
+        "SA-17",
+        "SC-2",
+        "SC-3",
+        "SC-4",
+        "SC-12",
+        "SC-13",
+        "SC-28",
+        "SC-31",
+        "SC-34",
+        "SI-4",
+        "SI-8"
+      ]
+    },
+    {
+      "id": "AC-4",
+      "title": "Information Flow Enforcement",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AC-6",
+        "AC-16",
+        "AC-17",
+        "AC-19",
+        "AC-21",
+        "AU-10",
+        "CA-3",
+        "CA-9",
+        "CM-7",
+        "PL-9",
+        "PM-24",
+        "SA-17",
+        "SC-4",
+        "SC-7",
+        "SC-16",
+        "SC-31"
+      ]
+    },
+    {
+      "id": "AC-5",
+      "title": "Separation of Duties",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-6",
+        "AU-9",
+        "CM-5",
+        "CM-11",
+        "CP-9",
+        "IA-2",
+        "IA-4",
+        "IA-5",
+        "IA-12",
+        "MA-3",
+        "MA-5",
+        "PS-2",
+        "SA-8",
+        "SA-17"
+      ]
+    },
+    {
+      "id": "AC-6",
+      "title": "Least Privilege",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-5",
+        "AC-16",
+        "CM-5",
+        "CM-11",
+        "PL-2",
+        "PM-12",
+        "SA-8",
+        "SA-15",
+        "SA-17",
+        "SC-38"
+      ]
+    },
+    {
+      "id": "AC-6(10)",
+      "title": "Prohibit Non-privileged Users from Executing Privileged Functions",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": []
+    },
+    {
+      "id": "AC-7",
+      "title": "Unsuccessful Logon Attempts",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-9",
+        "AU-2",
+        "AU-6",
+        "IA-5"
+      ]
+    },
+    {
+      "id": "AC-8",
+      "title": "System Use Notification",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-14",
+        "PL-4",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AC-9",
+      "title": "Previous Logon Notification",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-7",
+        "PL-4"
+      ]
+    },
+    {
+      "id": "AC-10",
+      "title": "Concurrent Session Control",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "SC-23"
+      ]
+    },
+    {
+      "id": "AC-11",
+      "title": "Device Lock",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-7",
+        "IA-11",
+        "PL-4"
+      ]
+    },
+    {
+      "id": "AC-12",
+      "title": "Session Termination",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "MA-4",
+        "SC-10",
+        "SC-23"
+      ]
+    },
+    {
+      "id": "AC-13",
+      "title": "Supervision and Review \u2014 Access Control",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": []
+    },
+    {
+      "id": "AC-14",
+      "title": "Permitted Actions Without Identification or Authentication",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-8",
+        "IA-2",
+        "PL-2"
+      ]
+    },
+    {
+      "id": "AC-15",
+      "title": "Automated Marking",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": []
+    },
+    {
+      "id": "AC-16",
+      "title": "Security and Privacy Attributes",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "AC-21",
+        "AC-25",
+        "AU-2",
+        "AU-10",
+        "MP-3",
+        "PE-22",
+        "PT-2",
+        "PT-3",
+        "PT-4",
+        "SC-11",
+        "SC-16",
+        "SI-12",
+        "SI-18"
+      ]
+    },
+    {
+      "id": "AC-17",
+      "title": "Remote Access",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-18",
+        "AC-19",
+        "AC-20",
+        "CA-3",
+        "CM-10",
+        "IA-2",
+        "IA-3",
+        "IA-8",
+        "MA-4",
+        "PE-17",
+        "PL-2",
+        "PL-4",
+        "SC-10",
+        "SC-12",
+        "SC-13",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AC-17(1)",
+      "title": "Monitoring and Control",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AU-2",
+        "AU-6",
+        "AU-12",
+        "AU-14"
+      ]
+    },
+    {
+      "id": "AC-17(2)",
+      "title": "Protection of Confidentiality and Integrity Using Encryption",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "SC-8",
+        "SC-12",
+        "SC-13"
+      ]
+    },
+    {
+      "id": "AC-18",
+      "title": "Wireless Access",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-17",
+        "AC-19",
+        "CA-9",
+        "CM-7",
+        "IA-2",
+        "IA-3",
+        "IA-8",
+        "PL-4",
+        "SC-40",
+        "SC-43",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AC-19",
+      "title": "Access Control for Mobile Devices",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "AC-7",
+        "AC-11",
+        "AC-17",
+        "AC-18",
+        "AC-20",
+        "CA-9",
+        "CM-2",
+        "CM-6",
+        "IA-2",
+        "IA-3",
+        "MP-2",
+        "MP-4",
+        "MP-5",
+        "MP-7",
+        "PL-4",
+        "SC-7",
+        "SC-34",
+        "SC-43",
+        "SI-3",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AC-20",
+      "title": "Use of External Systems",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-17",
+        "AC-19",
+        "CA-3",
+        "PL-2",
+        "PL-4",
+        "SA-9",
+        "SC-7"
+      ]
+    },
+    {
+      "id": "AC-21",
+      "title": "Information Sharing",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "AC-16",
+        "PT-2",
+        "PT-7",
+        "RA-3",
+        "SC-15"
+      ]
+    },
+    {
+      "id": "AC-22",
+      "title": "Publicly Accessible Content",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AT-2",
+        "AT-3",
+        "AU-13"
+      ]
+    },
+    {
+      "id": "AC-23",
+      "title": "Data Mining Protection",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "PM-12",
+        "PT-2"
+      ]
+    },
+    {
+      "id": "AC-24",
+      "title": "Access Control Decisions",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-2",
+        "AC-3"
+      ]
+    },
+    {
+      "id": "AC-25",
+      "title": "Reference Monitor",
+      "family": "Access Control",
+      "family_id": "AC",
+      "related": [
+        "AC-3",
+        "AC-16",
+        "SA-8",
+        "SA-17",
+        "SC-3",
+        "SC-11",
+        "SC-39",
+        "SI-13"
+      ]
+    },
+    {
+      "id": "AU-1",
+      "title": "Policy and Procedures",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "PM-9",
+        "PS-8",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "AU-2",
+      "title": "Event Logging",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-6",
+        "AC-7",
+        "AC-8",
+        "AC-16",
+        "AC-17",
+        "AU-3",
+        "AU-4",
+        "AU-5",
+        "AU-6",
+        "AU-7",
+        "AU-11",
+        "AU-12",
+        "CM-3",
+        "CM-5",
+        "CM-6",
+        "CM-13",
+        "IA-3",
+        "MA-4",
+        "MP-4",
+        "PE-3",
+        "PM-21",
+        "PT-2",
+        "PT-7",
+        "RA-8",
+        "SA-8",
+        "SC-7",
+        "SC-18",
+        "SI-3",
+        "SI-4",
+        "SI-7",
+        "SI-10",
+        "SI-11"
+      ]
+    },
+    {
+      "id": "AU-3",
+      "title": "Content of Audit Records",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-2",
+        "AU-8",
+        "AU-12",
+        "AU-14",
+        "MA-4",
+        "PL-9",
+        "SA-8",
+        "SI-7",
+        "SI-11"
+      ]
+    },
+    {
+      "id": "AU-4",
+      "title": "Audit Log Storage Capacity",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-2",
+        "AU-5",
+        "AU-6",
+        "AU-7",
+        "AU-9",
+        "AU-11",
+        "AU-12",
+        "AU-14",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AU-5",
+      "title": "Response to Audit Logging Process Failures",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-2",
+        "AU-4",
+        "AU-7",
+        "AU-9",
+        "AU-11",
+        "AU-12",
+        "AU-14",
+        "SI-4",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "AU-6",
+      "title": "Audit Record Review, Analysis, and Reporting",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-5",
+        "AC-6",
+        "AC-7",
+        "AC-17",
+        "AU-7",
+        "AU-16",
+        "CA-2",
+        "CA-7",
+        "CM-2",
+        "CM-5",
+        "CM-6",
+        "CM-10",
+        "CM-11",
+        "IA-2",
+        "IA-3",
+        "IA-5",
+        "IA-8",
+        "IR-5",
+        "MA-4",
+        "MP-4",
+        "PE-3",
+        "PE-6",
+        "RA-5",
+        "SA-8",
+        "SC-7",
+        "SI-3",
+        "SI-4",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "AU-7",
+      "title": "Audit Record Reduction and Report Generation",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-2",
+        "AU-2",
+        "AU-3",
+        "AU-4",
+        "AU-5",
+        "AU-6",
+        "AU-12",
+        "AU-16",
+        "CM-5",
+        "IA-5",
+        "IR-4",
+        "PM-12",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AU-8",
+      "title": "Time Stamps",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-3",
+        "AU-12",
+        "AU-14",
+        "SC-45"
+      ]
+    },
+    {
+      "id": "AU-9",
+      "title": "Protection of Audit Information",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-3",
+        "AC-6",
+        "AU-6",
+        "AU-11",
+        "AU-14",
+        "AU-15",
+        "MP-2",
+        "MP-4",
+        "PE-2",
+        "PE-3",
+        "PE-6",
+        "SA-8",
+        "SC-8",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "AU-10",
+      "title": "Non-repudiation",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-9",
+        "PM-12",
+        "SA-8",
+        "SC-8",
+        "SC-12",
+        "SC-13",
+        "SC-16",
+        "SC-17",
+        "SC-23"
+      ]
+    },
+    {
+      "id": "AU-11",
+      "title": "Audit Record Retention",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-2",
+        "AU-4",
+        "AU-5",
+        "AU-6",
+        "AU-9",
+        "AU-14",
+        "MP-6",
+        "RA-5",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "AU-12",
+      "title": "Audit Record Generation",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-6",
+        "AC-17",
+        "AU-2",
+        "AU-3",
+        "AU-4",
+        "AU-5",
+        "AU-6",
+        "AU-7",
+        "AU-14",
+        "CM-5",
+        "MA-4",
+        "MP-4",
+        "PM-12",
+        "SA-8",
+        "SC-18",
+        "SI-3",
+        "SI-4",
+        "SI-7",
+        "SI-10"
+      ]
+    },
+    {
+      "id": "AU-13",
+      "title": "Monitoring for Information Disclosure",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-22",
+        "PE-3",
+        "PM-12",
+        "RA-5",
+        "SC-7",
+        "SI-20"
+      ]
+    },
+    {
+      "id": "AU-14",
+      "title": "Session Audit",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AC-3",
+        "AC-8",
+        "AU-2",
+        "AU-3",
+        "AU-4",
+        "AU-5",
+        "AU-8",
+        "AU-9",
+        "AU-11",
+        "AU-12"
+      ]
+    },
+    {
+      "id": "AU-15",
+      "title": "Alternate Audit Logging Capability",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": []
+    },
+    {
+      "id": "AU-16",
+      "title": "Cross-organizational Audit Logging",
+      "family": "Audit and Accountability",
+      "family_id": "AU",
+      "related": [
+        "AU-3",
+        "AU-6",
+        "AU-7",
+        "CA-3",
+        "PT-7"
+      ]
+    },
+    {
+      "id": "CM-1",
+      "title": "Policy and Procedures",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "PM-9",
+        "PS-8",
+        "SA-8",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "CM-2",
+      "title": "Baseline Configuration",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-19",
+        "AU-6",
+        "CA-9",
+        "CM-1",
+        "CM-3",
+        "CM-5",
+        "CM-6",
+        "CM-8",
+        "CM-9",
+        "CP-9",
+        "CP-10",
+        "CP-12",
+        "MA-2",
+        "PL-8",
+        "PM-5",
+        "SA-8",
+        "SA-10",
+        "SA-15",
+        "SC-18"
+      ]
+    },
+    {
+      "id": "CM-3",
+      "title": "Configuration Change Control",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "CA-7",
+        "CM-2",
+        "CM-4",
+        "CM-5",
+        "CM-6",
+        "CM-9",
+        "CM-11",
+        "IA-3",
+        "MA-2",
+        "PE-16",
+        "PT-6",
+        "RA-8",
+        "SA-8",
+        "SA-10",
+        "SC-28",
+        "SC-34",
+        "SC-37",
+        "SI-2",
+        "SI-3",
+        "SI-4",
+        "SI-7",
+        "SI-10",
+        "SR-11"
+      ]
+    },
+    {
+      "id": "CM-4",
+      "title": "Impact Analyses",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "CA-7",
+        "CM-3",
+        "CM-8",
+        "CM-9",
+        "MA-2",
+        "RA-3",
+        "RA-5",
+        "RA-8",
+        "SA-5",
+        "SA-8",
+        "SA-10",
+        "SI-2"
+      ]
+    },
+    {
+      "id": "CM-5",
+      "title": "Access Restrictions for Change",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-3",
+        "AC-5",
+        "AC-6",
+        "CM-9",
+        "PE-3",
+        "SC-28",
+        "SC-34",
+        "SC-37",
+        "SI-2",
+        "SI-10"
+      ]
+    },
+    {
+      "id": "CM-6",
+      "title": "Configuration Settings",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-3",
+        "AC-19",
+        "AU-2",
+        "AU-6",
+        "CA-9",
+        "CM-2",
+        "CM-3",
+        "CM-5",
+        "CM-7",
+        "CM-11",
+        "CP-7",
+        "CP-9",
+        "CP-10",
+        "IA-3",
+        "IA-5",
+        "PL-8",
+        "PL-9",
+        "RA-5",
+        "SA-4",
+        "SA-5",
+        "SA-8",
+        "SA-9",
+        "SC-18",
+        "SC-28",
+        "SC-43",
+        "SI-2",
+        "SI-4",
+        "SI-6"
+      ]
+    },
+    {
+      "id": "CM-7",
+      "title": "Least Functionality",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "CM-2",
+        "CM-5",
+        "CM-6",
+        "CM-11",
+        "RA-5",
+        "SA-4",
+        "SA-5",
+        "SA-8",
+        "SA-9",
+        "SA-15",
+        "SC-2",
+        "SC-3",
+        "SC-7",
+        "SC-37",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "CM-8",
+      "title": "System Component Inventory",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "CM-2",
+        "CM-7",
+        "CM-9",
+        "CM-10",
+        "CM-11",
+        "CM-13",
+        "CP-2",
+        "CP-9",
+        "MA-2",
+        "MA-6",
+        "PE-20",
+        "PL-9",
+        "PM-5",
+        "SA-4",
+        "SA-5",
+        "SI-2",
+        "SR-4"
+      ]
+    },
+    {
+      "id": "CM-9",
+      "title": "Configuration Management Plan",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "CM-2",
+        "CM-3",
+        "CM-4",
+        "CM-5",
+        "CM-8",
+        "PL-2",
+        "RA-8",
+        "SA-10",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "CM-10",
+      "title": "Software Usage Restrictions",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-17",
+        "AU-6",
+        "CM-7",
+        "CM-8",
+        "PM-30",
+        "SC-7"
+      ]
+    },
+    {
+      "id": "CM-11",
+      "title": "User-installed Software",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-3",
+        "AU-6",
+        "CM-2",
+        "CM-3",
+        "CM-5",
+        "CM-6",
+        "CM-7",
+        "CM-8",
+        "PL-4",
+        "SI-4",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "CM-12",
+      "title": "Information Location",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "AC-23",
+        "CM-8",
+        "PM-5",
+        "RA-2",
+        "SA-4",
+        "SA-8",
+        "SA-17",
+        "SC-4",
+        "SC-16",
+        "SC-28",
+        "SI-4",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "CM-13",
+      "title": "Data Action Mapping",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "AC-3",
+        "CM-4",
+        "CM-12",
+        "PM-5",
+        "PM-27",
+        "PT-2",
+        "PT-3",
+        "RA-3",
+        "RA-8"
+      ]
+    },
+    {
+      "id": "CM-14",
+      "title": "Signed Components",
+      "family": "Configuration Management",
+      "family_id": "CM",
+      "related": [
+        "CM-7",
+        "SC-12",
+        "SC-13",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "IA-1",
+      "title": "Policy and Procedures",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-1",
+        "PM-9",
+        "PS-8",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "IA-2",
+      "title": "Identification and Authentication (Organizational Users)",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-14",
+        "AC-17",
+        "AC-18",
+        "AU-1",
+        "AU-6",
+        "IA-4",
+        "IA-5",
+        "IA-8",
+        "IA-13",
+        "MA-4",
+        "MA-5",
+        "PE-2",
+        "PL-4",
+        "SA-4",
+        "SA-8"
+      ]
+    },
+    {
+      "id": "IA-3",
+      "title": "Device Identification and Authentication",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AU-6",
+        "CA-3",
+        "CA-9",
+        "IA-4",
+        "IA-5",
+        "IA-9",
+        "IA-11",
+        "IA-13",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "IA-4",
+      "title": "Identifier Management",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-5",
+        "IA-2",
+        "IA-3",
+        "IA-5",
+        "IA-8",
+        "IA-9",
+        "IA-12",
+        "MA-4",
+        "PE-2",
+        "PE-3",
+        "PE-4",
+        "PL-4",
+        "PM-12",
+        "PS-3",
+        "PS-4",
+        "PS-5",
+        "SC-37"
+      ]
+    },
+    {
+      "id": "IA-5",
+      "title": "Authenticator Management",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-3",
+        "AC-6",
+        "CM-6",
+        "IA-2",
+        "IA-4",
+        "IA-7",
+        "IA-8",
+        "IA-9",
+        "MA-4",
+        "PE-2",
+        "PL-4",
+        "SC-12",
+        "SC-13"
+      ]
+    },
+    {
+      "id": "IA-5(1)",
+      "title": "Password-based Authentication",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "IA-6"
+      ]
+    },
+    {
+      "id": "IA-6",
+      "title": "Authentication Feedback",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-3"
+      ]
+    },
+    {
+      "id": "IA-7",
+      "title": "Cryptographic Module Authentication",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-3",
+        "IA-5",
+        "SA-4",
+        "SC-12",
+        "SC-13"
+      ]
+    },
+    {
+      "id": "IA-8",
+      "title": "Identification and Authentication (Non-organizational Users)",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-2",
+        "AC-6",
+        "AC-14",
+        "AC-17",
+        "AC-18",
+        "AU-6",
+        "IA-2",
+        "IA-4",
+        "IA-5",
+        "IA-10",
+        "IA-11",
+        "IA-13",
+        "MA-4",
+        "RA-3",
+        "SA-4",
+        "SC-8"
+      ]
+    },
+    {
+      "id": "IA-9",
+      "title": "Service Identification and Authentication",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "IA-3",
+        "IA-4",
+        "IA-5",
+        "IA-13",
+        "SC-8"
+      ]
+    },
+    {
+      "id": "IA-10",
+      "title": "Adaptive Authentication",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "IA-2",
+        "IA-8"
+      ]
+    },
+    {
+      "id": "IA-11",
+      "title": "Re-authentication",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-3",
+        "AC-11",
+        "IA-2",
+        "IA-3",
+        "IA-4",
+        "IA-8"
+      ]
+    },
+    {
+      "id": "IA-12",
+      "title": "Identity Proofing",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-5",
+        "IA-1",
+        "IA-2",
+        "IA-3",
+        "IA-4",
+        "IA-5",
+        "IA-6",
+        "IA-8",
+        "IA-13"
+      ]
+    },
+    {
+      "id": "IA-13",
+      "title": "Identity Providers and Authorization Servers",
+      "family": "Identification and Authentication",
+      "family_id": "IA",
+      "related": [
+        "AC-3",
+        "IA-2",
+        "IA-3",
+        "IA-8",
+        "IA-9",
+        "IA-12"
+      ]
+    },
+    {
+      "id": "SC-1",
+      "title": "Policy and Procedures",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "PM-9",
+        "PS-8",
+        "SA-8",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "SC-2",
+      "title": "Separation of System and User Functionality",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-6",
+        "SA-4",
+        "SA-8",
+        "SC-3",
+        "SC-7",
+        "SC-22",
+        "SC-32",
+        "SC-39"
+      ]
+    },
+    {
+      "id": "SC-3",
+      "title": "Security Function Isolation",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-6",
+        "AC-25",
+        "CM-2",
+        "CM-4",
+        "SA-4",
+        "SA-5",
+        "SA-8",
+        "SA-15",
+        "SA-17",
+        "SC-2",
+        "SC-7",
+        "SC-32",
+        "SC-39",
+        "SI-16"
+      ]
+    },
+    {
+      "id": "SC-4",
+      "title": "Information in Shared System Resources",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "SA-8"
+      ]
+    },
+    {
+      "id": "SC-5",
+      "title": "Denial-of-service Protection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "CP-2",
+        "IR-4",
+        "SC-6",
+        "SC-7",
+        "SC-40"
+      ]
+    },
+    {
+      "id": "SC-5(1)",
+      "title": "Restrict Ability to Attack Other Systems",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-5(2)",
+      "title": "Capacity, Bandwidth, and Redundancy",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-6",
+      "title": "Resource Availability",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-5"
+      ]
+    },
+    {
+      "id": "SC-7",
+      "title": "Boundary Protection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-4",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AC-20",
+        "AU-13",
+        "CA-3",
+        "CM-2",
+        "CM-4",
+        "CM-7",
+        "CM-10",
+        "CP-8",
+        "CP-10",
+        "IR-4",
+        "MA-4",
+        "PE-3",
+        "PL-8",
+        "PM-12",
+        "SA-8",
+        "SA-17",
+        "SC-5",
+        "SC-26",
+        "SC-32",
+        "SC-35",
+        "SC-43"
+      ]
+    },
+    {
+      "id": "SC-7(5)",
+      "title": "Deny by Default \u2014 Allow by Exception",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-8",
+      "title": "Transmission Confidentiality and Integrity",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-17",
+        "AC-18",
+        "AU-10",
+        "IA-3",
+        "IA-8",
+        "IA-9",
+        "MA-4",
+        "PE-4",
+        "SA-4",
+        "SA-8",
+        "SC-7",
+        "SC-16",
+        "SC-20",
+        "SC-23",
+        "SC-28"
+      ]
+    },
+    {
+      "id": "SC-8(1)",
+      "title": "Cryptographic Protection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-12",
+        "SC-13"
+      ]
+    },
+    {
+      "id": "SC-9",
+      "title": "Transmission Confidentiality",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-10",
+      "title": "Network Disconnect",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-17",
+        "SC-23"
+      ]
+    },
+    {
+      "id": "SC-11",
+      "title": "Trusted Path",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-16",
+        "AC-25",
+        "SC-12",
+        "SC-23"
+      ]
+    },
+    {
+      "id": "SC-12",
+      "title": "Cryptographic Key Establishment and Management",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-17",
+        "AU-9",
+        "AU-10",
+        "CM-3",
+        "IA-3",
+        "IA-7",
+        "IA-13",
+        "SA-4",
+        "SA-8",
+        "SA-9",
+        "SC-8",
+        "SC-11",
+        "SC-13",
+        "SC-17",
+        "SC-20",
+        "SC-37",
+        "SC-40",
+        "SI-3",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "SC-13",
+      "title": "Cryptographic Protection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-7",
+        "AC-17",
+        "AC-18",
+        "AC-19",
+        "AU-9",
+        "AU-10",
+        "CM-11",
+        "CP-9",
+        "IA-3",
+        "IA-5",
+        "IA-7",
+        "IA-13",
+        "MA-4",
+        "MP-2",
+        "MP-4",
+        "MP-5",
+        "SA-4",
+        "SA-8",
+        "SA-9",
+        "SC-8",
+        "SC-12",
+        "SC-20",
+        "SC-23",
+        "SC-28",
+        "SC-40",
+        "SI-3",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "SC-14",
+      "title": "Public Access Protections",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-15",
+      "title": "Collaborative Computing Devices and Applications",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-21",
+        "SC-42"
+      ]
+    },
+    {
+      "id": "SC-16",
+      "title": "Transmission of Security and Privacy Attributes",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "AC-16"
+      ]
+    },
+    {
+      "id": "SC-17",
+      "title": "Public Key Infrastructure Certificates",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AU-10",
+        "IA-5",
+        "SC-12"
+      ]
+    },
+    {
+      "id": "SC-18",
+      "title": "Mobile Code",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AU-2",
+        "AU-12",
+        "CM-2",
+        "CM-6",
+        "SI-3"
+      ]
+    },
+    {
+      "id": "SC-19",
+      "title": "Voice Over Internet Protocol",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-20",
+      "title": "Secure Name/Address Resolution Service (Authoritative Source)",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AU-10",
+        "SC-8",
+        "SC-12",
+        "SC-13",
+        "SC-21",
+        "SC-22"
+      ]
+    },
+    {
+      "id": "SC-21",
+      "title": "Secure Name/Address Resolution Service (Recursive or Caching Resolver)",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-20",
+        "SC-22"
+      ]
+    },
+    {
+      "id": "SC-22",
+      "title": "Architecture and Provisioning for Name/Address Resolution Service",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-2",
+        "SC-20",
+        "SC-21",
+        "SC-24"
+      ]
+    },
+    {
+      "id": "SC-23",
+      "title": "Session Authenticity",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AU-10",
+        "SC-8",
+        "SC-10",
+        "SC-11"
+      ]
+    },
+    {
+      "id": "SC-24",
+      "title": "Fail in Known State",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "CP-2",
+        "CP-4",
+        "CP-10",
+        "CP-12",
+        "SA-8",
+        "SC-7",
+        "SC-22",
+        "SI-13"
+      ]
+    },
+    {
+      "id": "SC-25",
+      "title": "Thin Nodes",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-30",
+        "SC-44"
+      ]
+    },
+    {
+      "id": "SC-26",
+      "title": "Decoys",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "RA-5",
+        "SC-7",
+        "SC-30",
+        "SC-35",
+        "SC-44",
+        "SI-3",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "SC-27",
+      "title": "Platform-independent Applications",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-29"
+      ]
+    },
+    {
+      "id": "SC-28",
+      "title": "Protection of Information at Rest",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "AC-19",
+        "CA-7",
+        "CM-3",
+        "CM-5",
+        "CM-6",
+        "CP-9",
+        "MP-4",
+        "MP-5",
+        "PE-3",
+        "SC-8",
+        "SC-12",
+        "SC-13",
+        "SC-34",
+        "SI-3",
+        "SI-7",
+        "SI-16"
+      ]
+    },
+    {
+      "id": "SC-29",
+      "title": "Heterogeneity",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AU-9",
+        "PL-8",
+        "SC-27",
+        "SC-30",
+        "SR-3"
+      ]
+    },
+    {
+      "id": "SC-30",
+      "title": "Concealment and Misdirection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-6",
+        "SC-25",
+        "SC-26",
+        "SC-29",
+        "SC-44",
+        "SI-14"
+      ]
+    },
+    {
+      "id": "SC-31",
+      "title": "Covert Channel Analysis",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "SA-8",
+        "SI-11"
+      ]
+    },
+    {
+      "id": "SC-32",
+      "title": "System Partitioning",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-4",
+        "AC-6",
+        "SA-8",
+        "SC-2",
+        "SC-3",
+        "SC-7",
+        "SC-36"
+      ]
+    },
+    {
+      "id": "SC-33",
+      "title": "Transmission Preparation Integrity",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SC-34",
+      "title": "Non-modifiable Executable Programs",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "SI-7",
+        "SI-14"
+      ]
+    },
+    {
+      "id": "SC-35",
+      "title": "External Malicious Code Identification",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-7",
+        "SC-26",
+        "SC-44",
+        "SI-3",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "SC-36",
+      "title": "Distributed Processing and Storage",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "CP-6",
+        "CP-7",
+        "PL-8",
+        "SC-32"
+      ]
+    },
+    {
+      "id": "SC-37",
+      "title": "Out-of-band Channels",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-2",
+        "CM-3",
+        "CM-5",
+        "CM-7",
+        "IA-2",
+        "IA-4",
+        "IA-5",
+        "MA-4",
+        "SC-12",
+        "SI-3",
+        "SI-4",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "SC-38",
+      "title": "Operations Security",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "CA-2",
+        "CA-7",
+        "PL-1",
+        "PM-9",
+        "PM-12",
+        "RA-2",
+        "RA-3",
+        "RA-5",
+        "SC-7",
+        "SR-3",
+        "SR-7"
+      ]
+    },
+    {
+      "id": "SC-39",
+      "title": "Process Isolation",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "AC-6",
+        "AC-25",
+        "SA-8",
+        "SC-2",
+        "SC-3",
+        "SI-16"
+      ]
+    },
+    {
+      "id": "SC-40",
+      "title": "Wireless Link Protection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-18",
+        "SC-5"
+      ]
+    },
+    {
+      "id": "SC-41",
+      "title": "Port and I/O Device Access",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-20",
+        "MP-7"
+      ]
+    },
+    {
+      "id": "SC-42",
+      "title": "Sensor Capability and Data",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-15"
+      ]
+    },
+    {
+      "id": "SC-43",
+      "title": "Usage Restrictions",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-18",
+        "AC-19",
+        "CM-6",
+        "SC-7",
+        "SC-18"
+      ]
+    },
+    {
+      "id": "SC-44",
+      "title": "Detonation Chambers",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "SC-7",
+        "SC-18",
+        "SC-25",
+        "SC-26",
+        "SC-30",
+        "SC-35",
+        "SC-39",
+        "SI-3",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "SC-45",
+      "title": "System Time Synchronization",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AU-8",
+        "IA-2",
+        "IA-8"
+      ]
+    },
+    {
+      "id": "SC-46",
+      "title": "Cross Domain Policy Enforcement",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-4",
+        "SC-7"
+      ]
+    },
+    {
+      "id": "SC-47",
+      "title": "Alternate Communications Paths",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "CP-2",
+        "CP-8"
+      ]
+    },
+    {
+      "id": "SC-48",
+      "title": "Sensor Relocation",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AU-2",
+        "SC-7",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "SC-49",
+      "title": "Hardware-enforced Separation and Policy Enforcement",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-4",
+        "SA-8",
+        "SC-50"
+      ]
+    },
+    {
+      "id": "SC-50",
+      "title": "Software-enforced Separation and Policy Enforcement",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": [
+        "AC-3",
+        "AC-4",
+        "SA-8",
+        "SC-2",
+        "SC-3",
+        "SC-49"
+      ]
+    },
+    {
+      "id": "SC-51",
+      "title": "Hardware-based Protection",
+      "family": "System and Communications Protection",
+      "family_id": "SC",
+      "related": []
+    },
+    {
+      "id": "SI-1",
+      "title": "Policy and Procedures",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "PM-9",
+        "PS-8",
+        "SA-8",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "SI-2",
+      "title": "Flaw Remediation",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "CA-5",
+        "CM-3",
+        "CM-4",
+        "CM-5",
+        "CM-6",
+        "CM-8",
+        "MA-2",
+        "RA-5",
+        "SA-8",
+        "SA-10",
+        "SA-11",
+        "SI-3",
+        "SI-5",
+        "SI-7",
+        "SI-11"
+      ]
+    },
+    {
+      "id": "SI-3",
+      "title": "Malicious Code Protection",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AC-4",
+        "AC-19",
+        "CM-3",
+        "CM-8",
+        "IR-4",
+        "MA-3",
+        "MA-4",
+        "PL-9",
+        "RA-5",
+        "SC-7",
+        "SC-23",
+        "SC-26",
+        "SC-28",
+        "SC-44",
+        "SI-2",
+        "SI-4",
+        "SI-7",
+        "SI-8",
+        "SI-15"
+      ]
+    },
+    {
+      "id": "SI-4",
+      "title": "System Monitoring",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AC-2",
+        "AC-3",
+        "AC-4",
+        "AC-8",
+        "AC-17",
+        "AU-2",
+        "AU-6",
+        "AU-7",
+        "AU-9",
+        "AU-12",
+        "AU-13",
+        "AU-14",
+        "CA-7",
+        "CM-3",
+        "CM-6",
+        "CM-8",
+        "CM-11",
+        "IA-10",
+        "IR-4",
+        "MA-3",
+        "MA-4",
+        "PL-9",
+        "PM-12",
+        "RA-5",
+        "RA-10",
+        "SC-5",
+        "SC-7",
+        "SC-18",
+        "SC-26",
+        "SC-31",
+        "SC-35",
+        "SC-36",
+        "SC-37",
+        "SC-43",
+        "SI-3",
+        "SI-6",
+        "SI-7",
+        "SR-9",
+        "SR-10"
+      ]
+    },
+    {
+      "id": "SI-5",
+      "title": "Security Alerts, Advisories, and Directives",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "PM-15",
+        "RA-5",
+        "SI-2"
+      ]
+    },
+    {
+      "id": "SI-6",
+      "title": "Security and Privacy Function Verification",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "CA-7",
+        "CM-4",
+        "CM-6",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "SI-7",
+      "title": "Software, Firmware, and Information Integrity",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AC-4",
+        "CM-3",
+        "CM-7",
+        "CM-8",
+        "MA-3",
+        "MA-4",
+        "RA-5",
+        "SA-8",
+        "SA-9",
+        "SA-10",
+        "SC-8",
+        "SC-12",
+        "SC-13",
+        "SC-28",
+        "SC-37",
+        "SI-3",
+        "SR-3",
+        "SR-4",
+        "SR-5",
+        "SR-6",
+        "SR-9",
+        "SR-10",
+        "SR-11"
+      ]
+    },
+    {
+      "id": "SI-8",
+      "title": "Spam Protection",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "PL-9",
+        "SC-5",
+        "SC-7",
+        "SC-38",
+        "SI-3",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "SI-9",
+      "title": "Information Input Restrictions",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": []
+    },
+    {
+      "id": "SI-10",
+      "title": "Information Input Validation",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": []
+    },
+    {
+      "id": "SI-11",
+      "title": "Error Handling",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AU-2",
+        "AU-3",
+        "SC-31",
+        "SI-2",
+        "SI-15"
+      ]
+    },
+    {
+      "id": "SI-12",
+      "title": "Information Management and Retention",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AC-16",
+        "AU-5",
+        "AU-11",
+        "CA-2",
+        "CA-3",
+        "CA-5",
+        "CA-6",
+        "CA-7",
+        "CA-9",
+        "CM-5",
+        "CM-9",
+        "CP-2",
+        "IR-8",
+        "MP-2",
+        "MP-3",
+        "MP-4",
+        "MP-6",
+        "PL-2",
+        "PL-4",
+        "PM-4",
+        "PM-8",
+        "PM-9",
+        "PS-2",
+        "PS-6",
+        "PT-2",
+        "PT-3",
+        "RA-2",
+        "RA-3",
+        "SA-5",
+        "SA-8",
+        "SR-2"
+      ]
+    },
+    {
+      "id": "SI-13",
+      "title": "Predictable Failure Prevention",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "CP-2",
+        "CP-10",
+        "CP-13",
+        "MA-2",
+        "MA-6",
+        "SA-8",
+        "SC-6"
+      ]
+    },
+    {
+      "id": "SI-14",
+      "title": "Non-persistence",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "SC-30",
+        "SC-34",
+        "SI-21"
+      ]
+    },
+    {
+      "id": "SI-15",
+      "title": "Information Output Filtering",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "SI-3",
+        "SI-4",
+        "SI-11"
+      ]
+    },
+    {
+      "id": "SI-16",
+      "title": "Memory Protection",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AC-25",
+        "SC-3",
+        "SI-7"
+      ]
+    },
+    {
+      "id": "SI-17",
+      "title": "Fail-safe Procedures",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "CP-12",
+        "CP-13",
+        "SC-24",
+        "SI-13"
+      ]
+    },
+    {
+      "id": "SI-18",
+      "title": "Personally Identifiable Information Quality Operations",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "PM-22",
+        "PM-24",
+        "PT-2",
+        "SI-4"
+      ]
+    },
+    {
+      "id": "SI-19",
+      "title": "De-identification",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "MP-6",
+        "PM-22",
+        "PM-23",
+        "PM-24",
+        "RA-2",
+        "SI-12"
+      ]
+    },
+    {
+      "id": "SI-20",
+      "title": "Tainting",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "AU-13"
+      ]
+    },
+    {
+      "id": "SI-21",
+      "title": "Information Refresh",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": [
+        "SI-14"
+      ]
+    },
+    {
+      "id": "SI-22",
+      "title": "Information Diversity",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": []
+    },
+    {
+      "id": "SI-23",
+      "title": "Information Fragmentation",
+      "family": "System and Information Integrity",
+      "family_id": "SI",
+      "related": []
+    }
+  ],
+  "families": [
+    "AC",
+    "AU",
+    "CM",
+    "IA",
+    "SC",
+    "SI"
+  ]
+}

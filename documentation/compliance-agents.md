@@ -8,7 +8,7 @@ suite.
 
 | Agent | Role |
 |-------|------|
-| Network Compliance | Reads the catalog from GitHub. Writes coverage and intel. Invokes Test Author / Test only when the operator asked for checks, not on an intel-only scan. |
+| Compliance | Reads the catalog from GitHub. Writes coverage and intel. Invokes Test Author / Test only when the operator asked for checks, not on an intel-only scan. |
 
 ## What it writes
 

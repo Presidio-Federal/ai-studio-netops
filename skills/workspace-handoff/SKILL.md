@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.33.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.33.0"
+description: "v1.36.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.36.0"
 ---
 
 # Workspace handoff
@@ -105,7 +105,7 @@ otherwise they use catalog rely-on fields and report reduced coverage.
 ```json
 {
   "updated_at": "2026-08-20T17:00:00Z",
-  "source_agent": "network-sync",
+  "source_agent": "ops-network-sync",
   "status": "ok",
   "headline": "One line a human can read",
   "next_action": "What the next agent or human should do"
@@ -121,7 +121,7 @@ skip that step. Never infer missing workspace data from chat. Quote
 `headline` when present. Do not paste the file.
 
 `inventory/infra-sot.json` is a published **snapshot** that **does** carry
-this envelope (handoff from NetBox SoT). Health check files under
+this envelope (handoff from Ops NetBox SoT). Health check files under
 `health/thousandeyes/`, `health/splunk/`, `health/iosxe/`, and
 `health/servicenow/` are
 **observations** — not this envelope. `state/health.json` is the Health
@@ -141,18 +141,18 @@ one row pointing at the writer — not a new schema file here.
 
 | File | Kind | Writer | Schema | Readers may rely on |
 |------|------|--------|--------|---------------------|
-| `inventory/prod.json` `inventory/dev.json` | snapshot | Network Sync | `network-sync` `schemas/network-access-inventory.schema.json` | Canonical accumulating inventory and published access snapshot (`network-access-inventory/v3`). Merge in place; extra keys allowed. Rely on `snapshot_id`, `collected_at` `published_at` `expires_at` (current iff now < `expires_at`; stale access is inspect-only), `status` `complete`\|`partial`, `coverage` (not `unavailable`; failed collect is not this file), documented device identity/access (`name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf`/`ssh` `source_metadata`). `next_action` is not on this file. |
-| `inventory/infra-sot.json` | snapshot | NetBox SoT | `netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`), `seed`, `parents.*.id`, `devices[].name` `id` `device_type` `software_version` (IOS-XE `version` or null), `interfaces[]` name/id/`cidr`, `cables[]` names+ids, `counts` |
-| `state/network-sync.json` | state | Network Sync | `network-sync` `schemas/network-sync-state.schema.json` | Replaceable projection (`network-sync-state/v2`). Envelope `status` is this operation only. Rely on `operation_id` `operation` `started_at` `completed_at`; `inventories.*.latest_attempt`; `inventories.*.current_snapshot` (`snapshot_id` must match the json file, `path`, freshness, `status`, `coverage`); workflow `result` `run_id` `html_url` `updated_at` (per-workflow result words; not the GitHub check); `gaps`; `next_action` string or JSON `null` — never `"none"`. Failed collect updates `latest_attempt` only. |
-| `state/netbox.json` | state | NetBox SoT | `netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`) `seed_match` `counts` `links[]` `details` |
+| `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | Canonical accumulating inventory and published access snapshot (`network-access-inventory/v3`). Merge in place; extra keys allowed. Rely on `snapshot_id`, `collected_at` `published_at` `expires_at` (current iff now < `expires_at`; stale access is inspect-only), `status` `complete`\|`partial`, `coverage` (not `unavailable`; failed collect is not this file), documented device identity/access (`name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf`/`ssh` `source_metadata`). `next_action` is not on this file. |
+| `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`), `seed`, `parents.*.id`, `devices[].name` `id` `device_type` `software_version` (IOS-XE `version` or null), `interfaces[]` name/id/`cidr`, `cables[]` names+ids, `counts` |
+| `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | Replaceable projection (`network-sync-state/v2`). Envelope `status` is this operation only. Rely on `operation_id` `operation` `started_at` `completed_at`; `inventories.*.latest_attempt`; `inventories.*.current_snapshot` (`snapshot_id` must match the json file, `path`, freshness, `status`, `coverage`); workflow `result` `run_id` `html_url` `updated_at` (per-workflow result words; not the GitHub check); `gaps`; `next_action` string or JSON `null` — never `"none"`. Failed collect updates `latest_attempt` only. |
+| `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`) `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` (`yes`\|`no`). Reset sets `config_sync` and `netbox` to `no`. Onboard is the only writer. |
 | `test-request.json` | request | Network Design | this skill `schemas/test-request.schema.json` | envelope + scope in that schema |
 | `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Test | `network-test` run schema / this skill `schemas/testing.schema.json` | envelope, `risk` `results` |
 | `state/testing.json` | state | Test | this skill `schemas/testing.schema.json` / `network-test` | envelope, `latest` `risk` `run.suites` |
 | `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Test | this skill `schemas/compliance.schema.json` / `network-test` run schema | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
 | `state/compliance.json` | state | Test | this skill + `network-test` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
-| `compliance/coverage.json` | snapshot | Network Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
-| `compliance/intel.json` | result | Network Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `candidates` (Test authoring) |
+| `compliance/coverage.json` | snapshot | Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
+| `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `candidates` (Test authoring) |
 | `branch-deploy-summary.json` | result | Network Design | this skill `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
 | `remediation-request.json` | request | Observability | this skill `schemas/remediation-request.schema.json` | envelope + ticket slot (ServiceNow) |
 | `trend-analysis.json` | observation | Observability | this skill `schemas/trend-analysis.schema.json` | leftover; prefer `state/health.json` |
@@ -234,8 +234,8 @@ research merge).
 is the latest **`suites` includes `compliance`** run — not a copy of a
 reachability/routing/path run.
 
-Sync yaml is Sync's file. **NetBox SoT reads `inventory/prod.json` only** for
-seed. Missing json **blocks bootstrap** (owner: Network Sync) — alert and
+Sync yaml is Sync's file. **Ops NetBox SoT reads `inventory/prod.json` only** for
+seed. Missing json **blocks bootstrap** (owner: Ops Network Sync) — alert and
 continue anything that does not need seed. It writes `inventory/infra-sot.json`
 (enveloped snapshot) and `state/netbox.json` (summary). Do not open yaml for
 that agent. Do not put NetBox ids in prod.json. Do not write Sync state from

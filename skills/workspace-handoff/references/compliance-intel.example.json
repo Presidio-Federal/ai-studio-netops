@@ -2,7 +2,7 @@
   "version": 1,
   "run_id": "2026-08-07T22:00:00Z",
   "updated_at": "2026-08-07T22:00:00+00:00",
-  "source_agent": "network-compliance",
+  "source_agent": "compliance",
   "status": "OK",
   "headline": "2 network candidates — eBGP neighbor authentication (high) and cleartext HTTP management (medium)",
   "next_action": "Invoke Test: add intel candidates to the catalog on main, then run the suite",

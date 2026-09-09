@@ -15,8 +15,8 @@ whether the lab still matches prod.
 | Agent | Role |
 |-------|------|
 | Onboard | Workspace control board. Turns inventory / config sync / NetBox planes on. Reset flips sync and NetBox off and runs them again. |
-| Network Sync | Collects access inventory (`inventory/prod.json`, `inventory/dev.json`) and runs the GitHub Actions jobs (collect, deploy twin, reconcile, drift). |
-| NetBox SoT | Ingests seed from prod inventory into NetBox. Modes: bootstrap (create missing), audit (compare, no writes), reconcile (apply approved diffs). A “refresh” is audit — it must not overwrite curated NetBox. |
+| Ops Network Sync | Collects access inventory (`inventory/prod.json`, `inventory/dev.json`) and runs the GitHub Actions jobs (collect, deploy twin, reconcile, drift). |
+| Ops NetBox SoT | Ingests seed from prod inventory into NetBox. Modes: bootstrap (create missing), audit (compare, no writes), reconcile (apply approved diffs). A “refresh” is audit — it must not overwrite curated NetBox. |
 | Digital Twin | Owns deploy and reconcile of the lab. Gathers workspace + NetBox + config presence, prints a plan, waits for go, then Sync runs the Actions. |
 
 ## What readers use

@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "infra-sot/v1",
+  "title": "inventory/infra-sot.json",
+  "description": "Ops NetBox SoT id map (details). Writer is Ops NetBox SoT. Summary is state/netbox.json. Do not put this in prod.json or state/network-sync.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "mode",
+    "seed",
+    "parents",
+    "devices",
+    "cables",
+    "counts",
+    "gaps",
+    "netbox_pushed_at"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "infra-sot/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "ops-netbox-sot" },
+    "status": { "type": "string", "enum": ["ok", "gaps", "failed"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"] },
+    "mode": {
+      "type": "string",
+      "enum": ["bootstrap", "audit", "reconcile"],
+      "description": "Job this invoke ran. refresh records audit."
+    },
+    "seed": {
+      "type": "array",
+      "description": "Simulate identity from prod.json, sorted by name. This agent compares the list. Sync may invoke this agent; it does not copy these rows into Sync state.",
+      "items": { "$ref": "#/$defs/seed_row" }
+    },
+    "parents": { "$ref": "#/$defs/parents" },
+    "devices": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/device" }
+    },
+    "cables": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/cable" }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["devices", "interfaces", "ip_addresses", "cables"],
+      "properties": {
+        "devices": { "type": "integer", "minimum": 0 },
+        "interfaces": { "type": "integer", "minimum": 0 },
+        "ip_addresses": { "type": "integer", "minimum": 0 },
+        "cables": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "netbox_pushed_at": {
+      "type": ["string", "null"],
+      "description": "Last successful NetBox write. Null if snap exists but push has not succeeded."
+    }
+  },
+  "$defs": {
+    "id_slug": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slug", "id"],
+      "properties": {
+        "slug": { "type": "string", "minLength": 1 },
+        "id": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "seed_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "host", "port", "node_definition"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "host": { "type": ["string", "null"] },
+        "port": { "type": ["integer", "null"] },
+        "node_definition": { "type": "string", "minLength": 1 }
+      }
+    },
+    "parents": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tenant", "site", "manufacturer", "device_types", "roles", "tags"],
+      "properties": {
+        "tenant": { "$ref": "#/$defs/id_slug" },
+        "site": { "$ref": "#/$defs/id_slug" },
+        "manufacturer": { "$ref": "#/$defs/id_slug" },
+        "device_types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/id_slug" }
+        },
+        "roles": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/id_slug" }
+        },
+        "tags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/id_slug" }
+        }
+      }
+    },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "id", "role", "device_type", "software_version", "tags", "restconf", "interfaces"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": "integer", "minimum": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "device_type": { "type": "string", "minLength": 1 },
+        "software_version": {
+          "type": ["string", "null"],
+          "description": "IOS-XE version from iosxe_get_platform_and_yang. Null if no RESTCONF or GET failed. Do not invent."
+        },
+        "tags": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "restconf": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["host", "port"],
+              "properties": {
+                "host": { "type": "string", "minLength": 1 },
+                "port": { "type": "integer", "minimum": 1 }
+              }
+            },
+            { "type": "null" }
+          ]
+        },
+        "interfaces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/iface" }
+        }
+      }
+    },
+    "iface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "id", "type", "enabled"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": "integer", "minimum": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "cidr": { "type": ["string", "null"] },
+        "ip_id": { "type": ["integer", "null"] }
+      }
+    },
+    "cable": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "a_device",
+        "a_interface",
+        "a_id",
+        "b_device",
+        "b_interface",
+        "b_id"
+      ],
+      "properties": {
+        "id": { "type": "integer", "minimum": 1 },
+        "a_device": { "type": "string", "minLength": 1 },
+        "a_interface": { "type": "string", "minLength": 1 },
+        "a_id": { "type": "integer", "minimum": 1 },
+        "b_device": { "type": "string", "minLength": 1 },
+        "b_interface": { "type": "string", "minLength": 1 },
+        "b_id": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

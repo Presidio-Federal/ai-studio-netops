@@ -1,0 +1,99 @@
+{
+  "schema": "network-access-inventory/v3",
+  "snapshot_id": "2026-08-14T21-00-10Z",
+  "environment": "dev",
+  "collected_at": "2026-08-14T21:00:10Z",
+  "published_at": "2026-08-14T21:00:12Z",
+  "expires_at": "2026-08-15T23:00:10Z",
+  "status": "partial",
+  "coverage": {
+    "state": "partial",
+    "devices_discovered": 3,
+    "devices_inspected": 3,
+    "accessible_devices": 2,
+    "missing_device_info": [],
+    "missing_restconf": ["AI-BRANCH-01-SW"],
+    "missing_ssh": ["AI-BRANCH-01-SW"]
+  },
+  "source": { "type": "cml", "name": "cisco-ai-lab-dev" },
+  "infra_sot": "netbox",
+  "lab_title": "cisco-ai-lab-dev",
+  "lab_id": "22222222-2222-2222-2222-222222222222",
+  "netbox": { "tenant": "cisco-ai-lab-prod", "site": "cisco-ai-lab-prod" },
+  "device_count": 3,
+  "devices": [
+    {
+      "name": "AI-BRANCH-01",
+      "platform": "iosxe",
+      "role": "branch",
+      "tags": ["tag:sync", "tag:simulate", "edge"],
+      "operational_state": "BOOTED",
+      "agent_access": true,
+      "access": {
+        "restconf": {
+          "host": "cml.presidio.tech",
+          "port": 4503,
+          "protocol": "https",
+          "credential_ref": "iosxe-lab"
+        },
+        "ssh": {
+          "host": "cml.presidio.tech",
+          "port": 4502,
+          "credential_ref": "iosxe-lab"
+        }
+      },
+      "source_metadata": {
+        "lab_id": "22222222-2222-2222-2222-222222222222",
+        "lab_title": "cisco-ai-lab-dev",
+        "node_id": "cccccccc-cccc-cccc-cccc-cccccccccccc",
+        "node_definition": "cat8000v",
+        "pat_tags": ["pat:4503:443", "pat:4502:22"]
+      }
+    },
+    {
+      "name": "AI-BRANCH-01-SW",
+      "platform": "iosxe",
+      "role": "branch",
+      "tags": ["tag:simulate"],
+      "operational_state": "BOOTED",
+      "agent_access": false,
+      "access": { "restconf": null, "ssh": null },
+      "source_metadata": {
+        "lab_id": "22222222-2222-2222-2222-222222222222",
+        "lab_title": "cisco-ai-lab-dev",
+        "node_id": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+        "node_definition": "iosvl2",
+        "pat_tags": []
+      }
+    },
+    {
+      "name": "WAN-04",
+      "platform": "iosxe",
+      "role": "wan",
+      "tags": ["tag:sync", "wan"],
+      "operational_state": "BOOTED",
+      "agent_access": true,
+      "access": {
+        "restconf": {
+          "host": "cml.presidio.tech",
+          "port": 4513,
+          "protocol": "https",
+          "credential_ref": "iosxe-lab"
+        },
+        "ssh": {
+          "host": "cml.presidio.tech",
+          "port": 4512,
+          "credential_ref": "iosxe-lab"
+        }
+      },
+      "source_metadata": {
+        "lab_id": "22222222-2222-2222-2222-222222222222",
+        "lab_title": "cisco-ai-lab-dev",
+        "node_id": "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+        "node_definition": "cat8000v",
+        "pat_tags": ["pat:4513:443", "pat:4512:22"]
+      }
+    }
+  ],
+  "links": []
+}

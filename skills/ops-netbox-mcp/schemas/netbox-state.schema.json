@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "netbox-state/v1",
+  "title": "state/netbox.json",
+  "description": "Ops NetBox SoT summary. Ids stay in inventory/infra-sot.json. links[] is the wiring (names). Other agents read this file first.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "kind",
+    "mode",
+    "source",
+    "tenant",
+    "site",
+    "seed_match",
+    "counts",
+    "links",
+    "gaps",
+    "details",
+    "netbox_pushed_at"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "netbox-state/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "ops-netbox-sot" },
+    "status": { "type": "string", "enum": ["ok", "gaps", "failed"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"] },
+    "kind": { "type": "string", "enum": ["netbox", "git"] },
+    "mode": {
+      "type": "string",
+      "enum": ["bootstrap", "audit", "reconcile"],
+      "description": "Job this invoke ran. refresh records audit. Never a silent overwrite."
+    },
+    "source": { "type": "string", "enum": ["cml", "api", "document"] },
+    "tenant": { "type": ["string", "null"] },
+    "site": { "type": ["string", "null"] },
+    "seed_match": { "type": "boolean" },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["devices", "interfaces", "ip_addresses", "cables"],
+      "properties": {
+        "devices": { "type": "integer", "minimum": 0 },
+        "interfaces": { "type": "integer", "minimum": 0 },
+        "ip_addresses": { "type": "integer", "minimum": 0 },
+        "cables": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "links": {
+      "type": "array",
+      "description": "Wiring for humans and Twin. Names only. Same order as snap cables[]. Length equals counts.cables.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["a_device", "a_interface", "b_device", "b_interface"],
+        "properties": {
+          "a_device": { "type": "string", "minLength": 1 },
+          "a_interface": { "type": "string", "minLength": 1 },
+          "b_device": { "type": "string", "minLength": 1 },
+          "b_interface": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "details": {
+      "type": "string",
+      "const": "inventory/infra-sot.json"
+    },
+    "netbox_pushed_at": { "type": ["string", "null"] }
+  }
+}

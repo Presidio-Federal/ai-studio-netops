@@ -1,0 +1,118 @@
+{
+  "schema": "infra-sot/v1",
+  "updated_at": "2026-08-21T20:00:00Z",
+  "source_agent": "ops-netbox-sot",
+  "status": "ok",
+  "headline": "NetBox infra SoT for cisco-ai-lab-prod: 2 devices, 4 interfaces, 1 cable",
+  "next_action": null,
+  "mode": "bootstrap",
+  "seed": [
+    {
+      "name": "WAN-01",
+      "host": "cml.presidio.tech",
+      "port": 4411,
+      "node_definition": "cat8000v"
+    },
+    {
+      "name": "WAN-02",
+      "host": "cml.presidio.tech",
+      "port": 4413,
+      "node_definition": "cat8000v"
+    }
+  ],
+  "parents": {
+    "tenant": { "slug": "cisco-ai-lab-prod", "id": 12 },
+    "site": { "slug": "cisco-ai-lab-prod", "id": 34 },
+    "manufacturer": { "slug": "cisco", "id": 1 },
+    "device_types": [{ "slug": "cat8000v", "id": 56 }],
+    "roles": [{ "slug": "wan", "id": 7 }],
+    "tags": [
+      { "slug": "cisco-ai-lab-prod-simulate", "id": 88 },
+      { "slug": "cisco-ai-lab-prod-sync", "id": 89 },
+      { "slug": "cisco-ai-lab-prod-site-wan", "id": 90 }
+    ]
+  },
+  "devices": [
+    {
+      "name": "WAN-01",
+      "id": 410,
+      "role": "wan",
+      "device_type": "cat8000v",
+      "software_version": "17.12.04",
+      "tags": [
+        "cisco-ai-lab-prod-simulate",
+        "cisco-ai-lab-prod-sync",
+        "cisco-ai-lab-prod-site-wan"
+      ],
+      "restconf": { "host": "cml.presidio.tech", "port": 4411 },
+      "interfaces": [
+        {
+          "name": "GigabitEthernet1",
+          "id": 8328,
+          "type": "1000base-t",
+          "enabled": true,
+          "cidr": "10.1.1.1/30",
+          "ip_id": 501
+        },
+        {
+          "name": "Loopback0",
+          "id": 8330,
+          "type": "virtual",
+          "enabled": true,
+          "cidr": "10.255.1.1/32",
+          "ip_id": 502
+        }
+      ]
+    },
+    {
+      "name": "WAN-02",
+      "id": 411,
+      "role": "wan",
+      "device_type": "cat8000v",
+      "software_version": null,
+      "tags": [
+        "cisco-ai-lab-prod-simulate",
+        "cisco-ai-lab-prod-sync",
+        "cisco-ai-lab-prod-site-wan"
+      ],
+      "restconf": { "host": "cml.presidio.tech", "port": 4413 },
+      "interfaces": [
+        {
+          "name": "GigabitEthernet1",
+          "id": 8339,
+          "type": "1000base-t",
+          "enabled": true,
+          "cidr": "10.1.1.2/30",
+          "ip_id": 503
+        },
+        {
+          "name": "Loopback0",
+          "id": 8340,
+          "type": "virtual",
+          "enabled": true,
+          "cidr": "10.255.1.2/32",
+          "ip_id": 504
+        }
+      ]
+    }
+  ],
+  "cables": [
+    {
+      "id": 2201,
+      "a_device": "WAN-01",
+      "a_interface": "GigabitEthernet1",
+      "a_id": 8328,
+      "b_device": "WAN-02",
+      "b_interface": "GigabitEthernet1",
+      "b_id": 8339
+    }
+  ],
+  "counts": {
+    "devices": 2,
+    "interfaces": 4,
+    "ip_addresses": 4,
+    "cables": 1
+  },
+  "gaps": [],
+  "netbox_pushed_at": "2026-08-21T20:00:00Z"
+}

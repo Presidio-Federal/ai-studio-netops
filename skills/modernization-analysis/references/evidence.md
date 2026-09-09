@@ -10,12 +10,12 @@ or Cisco lookup says otherwise.
 
 ## Where identity lives
 
-Prefer NetBox SoT when present. Then Sync access inventory.
+Prefer Ops NetBox SoT when present. Then Sync access inventory.
 Then this-turn upload or verbal.
 
-### `inventory/infra-sot.json` (NetBox SoT)
+### `inventory/infra-sot.json` (Ops NetBox SoT)
 
-Writer: NetBox SoT. Schema `infra-sot/v1`.
+Writer: Ops NetBox SoT. Schema `infra-sot/v1`.
 
 Per `devices[]` row:
 
@@ -33,9 +33,9 @@ Use `devices[]` as the estate list, not `seed[]` alone.
 `source.kind` `cmdb` (or `inventory` if they named files only).
 `reliability` `medium`. `ref` `inventory/infra-sot.json`.
 
-### `inventory/prod.json` (Network Sync)
+### `inventory/prod.json` (Ops Network Sync)
 
-Writer: Network Sync. Schema `network-access-inventory/v3`.
+Writer: Ops Network Sync. Schema `network-access-inventory/v3`.
 
 Per `devices[]` row:
 

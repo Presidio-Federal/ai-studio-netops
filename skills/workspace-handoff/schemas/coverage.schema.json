@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "coverage",
   "title": "compliance/coverage.json",
-  "description": "Join of applicable 800-53 ids to live and static tests for this estate, from git catalog/matrix/bridge. Written by Network Compliance. Not a run result.",
+  "description": "Join of applicable 800-53 ids to live and static tests for this estate, from git catalog/matrix/bridge. Written by Compliance. Not a run result.",
   "type": "object",
   "required": ["version", "updated_at", "source_agent", "rows", "counts"],
   "properties": {

@@ -1,0 +1,31 @@
+{
+  "schema": "netbox-state/v1",
+  "updated_at": "2026-08-21T20:00:00Z",
+  "source_agent": "ops-netbox-sot",
+  "status": "ok",
+  "headline": "NetBox infra SoT for cisco-ai-lab-prod: WAN-01 Gi1 -- WAN-02 Gi1",
+  "next_action": null,
+  "kind": "netbox",
+  "mode": "bootstrap",
+  "source": "cml",
+  "tenant": "cisco-ai-lab-prod",
+  "site": "cisco-ai-lab-prod",
+  "seed_match": true,
+  "counts": {
+    "devices": 2,
+    "interfaces": 4,
+    "ip_addresses": 4,
+    "cables": 1
+  },
+  "links": [
+    {
+      "a_device": "WAN-01",
+      "a_interface": "GigabitEthernet1",
+      "b_device": "WAN-02",
+      "b_interface": "GigabitEthernet1"
+    }
+  ],
+  "gaps": [],
+  "details": "inventory/infra-sot.json",
+  "netbox_pushed_at": "2026-08-21T20:00:00Z"
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "network-sync-state/v2",
+  "updated_at": "2026-08-14T21:05:00Z",
+  "source_agent": "ops-network-sync",
+  "status": "gaps",
+  "headline": "Dev collect partial: 2 of 3 devices have agent access",
+  "operation_id": "2026-08-14T21-00-12Z",
+  "operation": "collect-dev",
+  "started_at": "2026-08-14T21:00:10Z",
+  "completed_at": "2026-08-14T21:05:00Z",
+  "inventories": {
+    "prod": {
+      "latest_attempt": {
+        "operation_id": "2026-08-14T21-00-05Z",
+        "attempted_at": "2026-08-14T21:00:00Z",
+        "completed_at": "2026-08-14T21:00:05Z",
+        "status": "complete",
+        "headline": "Prod collect complete: 2 devices"
+      },
+      "current_snapshot": {
+        "snapshot_id": "2026-08-14T21-00-00Z",
+        "path": "inventory/prod.json",
+        "status": "complete",
+        "collected_at": "2026-08-14T21:00:00Z",
+        "expires_at": "2026-08-15T23:00:00Z",
+        "device_count": 2,
+        "accessible_count": 2,
+        "coverage": {
+          "state": "complete",
+          "devices_discovered": 2,
+          "devices_inspected": 2,
+          "accessible_devices": 2,
+          "missing_device_info": [],
+          "missing_restconf": [],
+          "missing_ssh": []
+        }
+      }
+    },
+    "dev": {
+      "latest_attempt": {
+        "operation_id": "2026-08-14T21-00-12Z",
+        "attempted_at": "2026-08-14T21:00:10Z",
+        "completed_at": "2026-08-14T21:00:12Z",
+        "status": "partial",
+        "headline": "Dev collect partial: switch has no PAT"
+      },
+      "current_snapshot": {
+        "snapshot_id": "2026-08-14T21-00-10Z",
+        "path": "inventory/dev.json",
+        "status": "partial",
+        "collected_at": "2026-08-14T21:00:10Z",
+        "expires_at": "2026-08-15T23:00:10Z",
+        "device_count": 3,
+        "accessible_count": 2,
+        "coverage": {
+          "state": "partial",
+          "devices_discovered": 3,
+          "devices_inspected": 3,
+          "accessible_devices": 2,
+          "missing_device_info": [],
+          "missing_restconf": ["AI-BRANCH-01-SW"],
+          "missing_ssh": ["AI-BRANCH-01-SW"]
+        }
+      }
+    }
+  },
+  "sync_prod": {
+    "workflow": "sync-prod.yml",
+    "environment": "prod",
+    "result": "ok",
+    "run_id": "123456789",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/123456789",
+    "updated_at": "2026-08-14T20:40:00Z"
+  },
+  "sync_dev": {
+    "workflow": "sync-dev.yml",
+    "environment": "dev",
+    "result": "gaps",
+    "run_id": "123456790",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/123456790",
+    "updated_at": "2026-08-14T20:50:00Z"
+  },
+  "drift_prod": {
+    "workflow": "detect-drift.yml",
+    "environment": "prod",
+    "result": "in_sync",
+    "run_id": "123456791",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/123456791",
+    "updated_at": "2026-08-14T20:55:00Z"
+  },
+  "drift_dev": null,
+  "deploy_twin": null,
+  "reconcile_dev": null,
+  "gaps": [
+    "AI-BRANCH-01-SW: no pat:*:443 or pat:*:22 — agent_access false"
+  ],
+  "next_action": null
+}

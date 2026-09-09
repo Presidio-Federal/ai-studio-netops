@@ -16,7 +16,7 @@ table.
 ```mermaid
 flowchart LR
   subgraph ingest [Identity — ranked confidence]
-    SoT[NetBox SoT]
+    SoT[Ops NetBox SoT]
     Sync[Sync inventory]
     Upload[Upload or verbal]
   end

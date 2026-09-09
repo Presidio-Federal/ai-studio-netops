@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compliance-intel",
   "title": "compliance/intel.json",
-  "description": "Network Compliance's candidate list: rule and vulnerability findings that are worth turning into a check. Candidates are proposals, not tests — author-check.yml turns an accepted candidate into a real check.",
+  "description": "Compliance candidate list: rule and vulnerability findings that are worth turning into a check. Candidates are proposals, not tests — author-check.yml turns an accepted candidate into a real check.",
   "type": "object",
   "required": [
     "version",

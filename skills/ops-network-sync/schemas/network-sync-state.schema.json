@@ -1,0 +1,298 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "network-sync-state/v2",
+  "title": "state/network-sync.json",
+  "description": "Replaceable coordination projection. Envelope status is this invocation only. Durable Actions evidence stays in GitHub.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "operation_id",
+    "operation",
+    "started_at",
+    "completed_at",
+    "inventories",
+    "gaps",
+    "next_action"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "network-sync-state/v2" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "ops-network-sync" },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "gaps", "failed", "partial", "unknown"],
+      "description": "Outcome of this invocation's requested operation only."
+    },
+    "headline": { "type": "string", "minLength": 1 },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "onboard",
+        "collect-prod",
+        "collect-dev",
+        "sync-prod",
+        "sync-dev",
+        "detect-drift-prod",
+        "detect-drift-dev",
+        "deploy-twin",
+        "reconcile-dev",
+        "author-check-wait",
+        "status-read"
+      ]
+    },
+    "started_at": { "type": "string", "minLength": 1 },
+    "completed_at": { "type": "string", "minLength": 1 },
+    "inventories": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prod", "dev"],
+      "properties": {
+        "prod": { "$ref": "#/$defs/inventory_slot" },
+        "dev": { "$ref": "#/$defs/inventory_slot" }
+      }
+    },
+    "sync_prod": { "$ref": "#/$defs/sync_prod_result" },
+    "sync_dev": { "$ref": "#/$defs/sync_dev_result" },
+    "drift_prod": { "$ref": "#/$defs/drift_prod_result" },
+    "drift_dev": { "$ref": "#/$defs/drift_dev_result" },
+    "deploy_twin": { "$ref": "#/$defs/deploy_twin_result" },
+    "reconcile_dev": { "$ref": "#/$defs/reconcile_dev_result" },
+    "gaps": { "type": "array", "items": { "type": "string" } },
+    "next_action": {
+      "type": ["string", "null"],
+      "not": { "const": "none" }
+    }
+  },
+  "$defs": {
+    "inventory_slot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["latest_attempt", "current_snapshot"],
+      "properties": {
+        "latest_attempt": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "operation_id",
+                "attempted_at",
+                "completed_at",
+                "status",
+                "headline"
+              ],
+              "properties": {
+                "operation_id": { "type": "string", "minLength": 1 },
+                "attempted_at": { "type": "string", "minLength": 1 },
+                "completed_at": { "type": "string", "minLength": 1 },
+                "status": {
+                  "type": "string",
+                  "enum": ["complete", "partial", "failed", "unavailable"]
+                },
+                "headline": { "type": "string", "minLength": 1 },
+                "coverage": { "$ref": "#/$defs/attempt_coverage" }
+              }
+            }
+          ]
+        },
+        "current_snapshot": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "snapshot_id",
+                "path",
+                "status",
+                "collected_at",
+                "expires_at",
+                "device_count",
+                "accessible_count",
+                "coverage"
+              ],
+              "properties": {
+                "snapshot_id": { "type": "string", "minLength": 1 },
+                "path": { "type": "string", "minLength": 1 },
+                "status": { "type": "string", "enum": ["complete", "partial"] },
+                "collected_at": { "type": "string", "minLength": 1 },
+                "expires_at": { "type": "string", "minLength": 1 },
+                "device_count": { "type": "integer", "minimum": 0 },
+                "accessible_count": { "type": "integer", "minimum": 0 },
+                "coverage": { "$ref": "#/$defs/published_coverage" }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "published_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "devices_discovered",
+        "devices_inspected",
+        "accessible_devices",
+        "missing_device_info",
+        "missing_restconf",
+        "missing_ssh"
+      ],
+      "properties": {
+        "state": { "type": "string", "enum": ["complete", "partial"] },
+        "devices_discovered": { "type": "integer", "minimum": 0 },
+        "devices_inspected": { "type": "integer", "minimum": 0 },
+        "accessible_devices": { "type": "integer", "minimum": 0 },
+        "missing_device_info": { "type": "array", "items": { "type": "string" } },
+        "missing_restconf": { "type": "array", "items": { "type": "string" } },
+        "missing_ssh": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "attempt_coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["complete", "partial", "unavailable"]
+        },
+        "devices_discovered": { "type": ["integer", "null"] },
+        "devices_inspected": { "type": ["integer", "null"] },
+        "accessible_devices": { "type": ["integer", "null"] },
+        "missing_device_info": { "type": "array", "items": { "type": "string" } },
+        "missing_restconf": { "type": "array", "items": { "type": "string" } },
+        "missing_ssh": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "completed_run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow",
+        "environment",
+        "result",
+        "run_id",
+        "html_url",
+        "updated_at"
+      ],
+      "properties": {
+        "workflow": { "type": "string", "minLength": 1 },
+        "environment": { "type": ["string", "null"] },
+        "result": { "type": "string", "minLength": 1 },
+        "run_id": { "type": "string", "minLength": 1 },
+        "html_url": { "type": "string", "minLength": 1 },
+        "updated_at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "sync_prod_result": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/completed_run" },
+            {
+              "properties": {
+                "workflow": { "const": "sync-prod.yml" },
+                "environment": { "const": "prod" },
+                "result": { "enum": ["ok", "gaps", "failed"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "sync_dev_result": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/completed_run" },
+            {
+              "properties": {
+                "workflow": { "const": "sync-dev.yml" },
+                "environment": { "const": "dev" },
+                "result": { "enum": ["ok", "gaps", "failed"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "drift_prod_result": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/completed_run" },
+            {
+              "properties": {
+                "workflow": { "const": "detect-drift.yml" },
+                "environment": { "const": "prod" },
+                "result": { "enum": ["in_sync", "drift", "failed"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "drift_dev_result": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/completed_run" },
+            {
+              "properties": {
+                "workflow": { "const": "detect-drift.yml" },
+                "environment": { "const": "dev" },
+                "result": { "enum": ["in_sync", "drift", "failed"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "deploy_twin_result": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/completed_run" },
+            {
+              "properties": {
+                "workflow": { "const": "deploy-twin.yml" },
+                "environment": { "enum": ["dev", null] },
+                "result": { "enum": ["deployed", "gaps", "failed"] }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "reconcile_dev_result": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "allOf": [
+            { "$ref": "#/$defs/completed_run" },
+            {
+              "properties": {
+                "workflow": { "const": "reconcile-dev.yml" },
+                "environment": { "const": "dev" },
+                "result": { "enum": ["in_sync", "synced", "partial", "failed"] }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
