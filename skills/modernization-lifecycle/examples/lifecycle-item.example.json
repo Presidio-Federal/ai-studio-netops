@@ -1,0 +1,33 @@
+{
+  "schema": "lifecycle-item/v1",
+  "pid": "cat8000v",
+  "updated_at": "2026-09-07T00:10:00Z",
+  "expires_at": "2026-12-06T00:10:00Z",
+  "quantity": 1,
+  "sample_device": "device-a",
+  "devices": ["device-a"],
+  "software_versions": [],
+  "eox": {
+    "end_of_sale": null,
+    "end_of_support": "2030-03-31",
+    "end_of_software_support": "2029-03-31",
+    "end_of_security_vuln_support": null
+  },
+  "replacement": {
+    "sku": null,
+    "family": null,
+    "candidates": [],
+    "bulletin_url": null,
+    "ask": null,
+    "priced": false,
+    "list_cost_per_unit": null,
+    "total_list_cost": null,
+    "currency": null,
+    "availability": null,
+    "lead_time": null
+  },
+  "recommended_software": null,
+  "psirts": [],
+  "vulnerabilities": [],
+  "gaps": []
+}

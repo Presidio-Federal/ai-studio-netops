@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.32.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.32.1"
+description: "v1.33.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.33.0"
 ---
 
 # Workspace handoff
@@ -19,8 +19,8 @@ schema only when you are that writer, from that skill. Never copy a write
 schema into this skill.
 
 **Details** go in that agent’s directory. **Summary** is `state/<name>.json`
-(one writer, except `state/lifecycle.json`: Modernization and
-Modernization-Lifecycle merge). Health: per-plane metadata and
+(one writer, except `state/lifecycle.json`: Modernization Analysis and
+Modernization Lifecycle merge). Health: per-plane metadata and
 observations, rollup `state/health.json` (Health Analyzer). Do not
 invent other health files.
 
@@ -48,8 +48,8 @@ the operator to run the Writer.
 Splunk and ThousandEyes are separate invokes. Do not send an unnamed
 Health Monitor line.
 
-**Exception — Modernization:** if any `state/lifecycle.json` row is
-missing EoX or expired and Modernization-Lifecycle is attached,
+**Exception — Modernization Analysis:** if any `state/lifecycle.json` row is
+missing EoX or expired and Modernization Lifecycle is attached,
 invoke `Run the Modernization Lifecycle check only.` and **do not
 wait**. Continue on files already on disk. Record `dispatched[]` on
 `state/lifecycle.json`. Do not tell the operator to run the collector.
@@ -67,7 +67,7 @@ wait**. Continue on files already on disk. Record `dispatched[]` on
 `/shared_workspace/HAI-ASSISTANTS-WAPSPACES/...`), `sessions/`, or
 `Internal directory`.
 
-**Exception — Modernization-Lifecycle:** MiniMax `read_file` /
+**Exception — Modernization Lifecycle:** MiniMax `read_file` /
 `write_file` may be the session sandbox. If Access denied and
 Allowed paths include `file_explorer`, retry **once** as
 `file_explorer/<catalog row>` (no leading slash, no UUID). Same
@@ -164,9 +164,9 @@ one row pointing at the writer — not a new schema file here.
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | One device visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `devices[]` required `metrics[]`. PAT `port` from `inventory/prod.json` `access.restconf.port`. |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | One ServiceNow visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `incidents[]` `changes[]` `recent[]` required `metrics[]`. Find/get only. Never write `state/servicenow.json`. |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | Rollup chart. Envelope `status` is worst of complete/partial **thousandeyes, splunk, iosxe** — ServiceNow does not vote. Rely on `consults.<plane>` (derived from the latest stamp), `freshness` (`current`\|`stale`\|`missing` from `checked_at` + 26h), `series` (`window` 10, `watermark`, `points[]` copied from visit `metrics`), `mode`, `dispatched[]`, `coverage`. `updated_at` is write time. Visit writers do **not** write this file. |
-| `state/lifecycle.json` | state | Modernization **and** Modernization-Lifecycle | `modernization` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | Consolidated estate, one row per evidence product id (`device_type` / `node_definition` / serial PID as written — never hostname-to-SKU). Five-field envelope. Modernization writes identity, `guidance`, `selected_replacement` when the operator **names** a SKU, `recommendations[]` on a plan invoke, and `roadmap_ref`. Copies through research. Never overwrite higher `source.reliability` with lower unless the operator overrides. Modernization-Lifecycle merges hardware EoX, software train, PSIRT, NVD, CCW onto matching `pid`; copies through identity, `guidance`, `roadmap_ref`, `recommendations[]`, and `selected_replacement`; `recommended_replacement` only from Cisco hardware EoX; family-only bulletin → `replacement_ask` / candidates on the **row**; `recommended_software` only from Cisco software EoX / PSIRT Software Checker. CCW prices `selected_replacement` if set, else Cisco `recommended_replacement`. Empty hardware EoX on a virtual PID is `research.eox` `unavailable`. Do not create this file if missing (Lifecycle stops `unknown`). Rely on `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current if `now < expires_at`. |
-| `lifecycle/items/<pid>.json` | observation | Modernization-Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. MiniMax sandbox: `write_file` `file_explorer/lifecycle/items/<pid>.json` after Access denied. |
-| `lifecycle/roadmap.md` | observation | Modernization | `modernization` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
+| `state/lifecycle.json` | state | Modernization Analysis **and** Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | Consolidated estate, one row per evidence product id (`device_type` / `node_definition` / serial PID as written — never hostname-to-SKU). Five-field envelope. Modernization Analysis writes identity, `guidance`, `assessment`, `plan` (cost + timeline), `selected_replacement` when the operator **names** a SKU, `recommendations[]` on a plan invoke, and `roadmap_ref`. Copies through research. Never overwrite higher `source.reliability` with lower unless the operator overrides. Modernization Lifecycle merges hardware EoX, software train, PSIRT, NVD, CCW onto matching `pid`; copies through identity, `guidance`, `roadmap_ref`, `recommendations[]`, and `selected_replacement`; `recommended_replacement` only from Cisco hardware EoX; family-only bulletin → `replacement_ask` / candidates on the **row**; `recommended_software` only from Cisco software EoX / PSIRT Software Checker. CCW prices `selected_replacement` if set, else Cisco `recommended_replacement`. Empty hardware EoX on a virtual PID is `research.eox` `unavailable`. Do not create this file if missing (Lifecycle stops `unknown`). Rely on `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current if `now < expires_at`. |
+| `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. MiniMax sandbox: `write_file` `file_explorer/lifecycle/items/<pid>.json` after Access denied. |
+| `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
 | `state/servicenow.json` | state | ServiceNow | `snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history[]` `trend` |
 | `servicenow/cases/active.json` | snapshot | ServiceNow | `snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases + `devices[]` |
 | `servicenow/cases/index.json` | snapshot | ServiceNow | `snow-mcp` `schemas/servicenow-cases-index.schema.json` | numbers this agent has touched |
@@ -207,26 +207,27 @@ before). They do not merge the rollup.
 ## Lifecycle layout
 
 Primary table: `state/lifecycle.json` (**state**, Modernization
-identity + `guidance` + `selected_replacement` + recommendations
-+ Modernization-Lifecycle research merge). The operator SKU
+Analysis identity + `guidance` + `assessment` + `plan` +
+`selected_replacement` + recommendations
++ Modernization Lifecycle research merge). The operator SKU
 lives **only** on the table row. Headline, `next_action`,
-`guidance`, `recommendations[]`, and `lifecycle/roadmap.md`
-**are** the plan. Details: `lifecycle/items/<pid>.json`
+`guidance`, `assessment`, `plan`, `recommendations[]`, and
+`lifecycle/roadmap.md` **are** the plan. Details: `lifecycle/items/<pid>.json`
 (**observation**, Cisco facts; not the operator pick). Roadmap
-markdown: Modernization only, after operator answers. Do not
+markdown: Modernization Analysis only, after operator answers. Do not
 write `state/modernization.json`.
 Do not `ls` `lifecycle/`. Open `detail_ref` from the table. Do not
 invent `vuln-report.json` or `inventory/lifecycle.json`.
 MiniMax Lifecycle: sandbox `write_file` may need
 `file_explorer/` + catalog row; `detail_ref` stays the catalog
 row.
-Modernization may **read** `state/health.json` for a plan invoke; it
+Modernization Analysis may **read** `state/health.json` for a plan invoke; it
 does not write it.
 
 `testing/YYYY-MM-DDTHH-MM-SSZ.json` and `compliance/YYYY-MM-DDTHH-MM-SSZ.json`
 are append-only. Other files
 are replaced in full except Sync yaml (merge). One writer per `state/` file
-except `state/lifecycle.json` (Modernization identity; Modernization-Lifecycle
+except `state/lifecycle.json` (Modernization Analysis identity; Modernization Lifecycle
 research merge).
 `state/health.json` is Health Analyzer only.
 `state/testing.json` is the latest **any-suite** run. `state/compliance.json`
@@ -255,7 +256,7 @@ file.
    Health Analyzer: named health visits are **not** a wait-for-handoff
    in `assess-now`; invoke and continue (see exception above).
    `refresh-then-assess` may wait for material stale planes only.
-   Modernization: named Modernization-Lifecycle visits are **not** a
+   Modernization Analysis: named Modernization Lifecycle visits are **not** a
    wait-for-handoff; invoke and continue.
 
 ## Reading
@@ -285,6 +286,6 @@ file.
    `lifecycle/items/<pid>.json`. Plan markdown: `roadmap_ref` →
    `lifecycle/roadmap.md`. Do not `ls` `lifecycle/`. Group by
    evidence product id, not hostname. Headline, `next_action`,
-   `guidance`, `recommendations[]`, and the roadmap markdown are
-   the plan. Modernization may read health state for a plan;
+   `guidance`, `assessment`, `plan`, `recommendations[]`, and
+   the roadmap markdown are the plan. Modernization Analysis may read health state for a plan;
    missing health is optional.

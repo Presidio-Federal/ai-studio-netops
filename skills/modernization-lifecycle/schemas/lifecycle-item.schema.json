@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "lifecycle-item/v1",
+  "title": "lifecycle/items/<pid>.json",
+  "description": "Per-PID raw research. Writer Modernization-Lifecycle. Replace when that PID is refreshed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "pid",
+    "updated_at",
+    "expires_at",
+    "quantity",
+    "sample_device",
+    "eox",
+    "replacement",
+    "recommended_software",
+    "psirts",
+    "vulnerabilities",
+    "gaps"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "lifecycle-item/v1" },
+    "pid": { "type": "string", "minLength": 1 },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "expires_at": { "type": "string", "minLength": 1 },
+    "quantity": { "type": "integer", "minimum": 0 },
+    "sample_device": { "type": ["string", "null"] },
+    "devices": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "software_versions": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "eox": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["end_of_support", "end_of_software_support"],
+      "properties": {
+        "end_of_sale": { "type": ["string", "null"] },
+        "end_of_support": { "type": ["string", "null"] },
+        "end_of_software_support": { "type": ["string", "null"] },
+        "end_of_security_vuln_support": { "type": ["string", "null"] }
+      }
+    },
+    "replacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sku"],
+      "properties": {
+        "sku": {
+          "type": ["string", "null"],
+          "description": "Cisco EoX hardware SKU only. Never the operator pick."
+        },
+        "family": {
+          "type": ["string", "null"],
+          "description": "Family-level migration when Cisco named no single SKU."
+        },
+        "candidates": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "bulletin_url": { "type": ["string", "null"] },
+        "ask": {
+          "type": ["string", "null"],
+          "description": "Sizing/license question. Copied onto the estate row. Not the operator SKU."
+        },
+        "priced": { "type": "boolean" },
+        "list_cost_per_unit": { "type": ["string", "null"] },
+        "total_list_cost": { "type": ["string", "null"] },
+        "currency": { "type": ["string", "null"] },
+        "availability": { "type": ["string", "null"] },
+        "lead_time": { "type": ["string", "null"] }
+      }
+    },
+    "recommended_software": {
+      "type": ["string", "null"],
+      "description": "Software train Cisco returned. Never invented. Not a CCW SKU."
+    },
+    "psirts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": ["string", "null"] },
+          "severity": { "type": ["string", "null"] },
+          "cve": { "type": ["string", "null"] },
+          "cvss": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "vulnerabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": ["string", "null"] },
+          "severity": { "type": ["string", "null"] },
+          "cve": { "type": ["string", "null"] },
+          "cvss": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "gaps": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

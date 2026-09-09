@@ -1,0 +1,89 @@
+{
+  "schema": "lifecycle-estate/v2",
+  "updated_at": "2026-09-07T00:10:00Z",
+  "source_agent": "modernization-lifecycle",
+  "status": "ok",
+  "headline": "Shape only — research merged onto the estate pid already present.",
+  "next_action": null,
+  "dispatched": [],
+  "coverage": {
+    "item_count": 1,
+    "with_eox": 1,
+    "with_psirt": 1,
+    "with_cost": 0,
+    "with_software": 0
+  },
+  "recommendations": [],
+  "guidance": {
+    "updated_at": "2026-09-07T00:10:00Z",
+    "identity_confidence": "medium",
+    "research_confidence": "medium",
+    "objectives_status": "missing",
+    "understood": "Shape only — research merged onto the estate pid already present.",
+    "answers": "",
+    "open_asks": []
+  },
+  "assessment": {
+    "must_move": [],
+    "can_wait": ["cat8000v: lab image — copy through Analysis verdict"],
+    "contradictions": [],
+    "opinion": "Copied through — Lifecycle does not rewrite assessment."
+  },
+  "plan": {
+    "status": "none",
+    "cost": {
+      "currency": null,
+      "list_total": null,
+      "priced_qty": 0,
+      "unpriced_qty": 1,
+      "notes": "Copied through."
+    },
+    "timeline": [],
+    "opinion": "Copied through — Lifecycle does not rewrite the plan."
+  },
+  "roadmap_ref": null,
+  "items": [
+    {
+      "pid": "cat8000v",
+      "pid_source": "device_type",
+      "quantity": 1,
+      "devices": ["device-a"],
+      "roles": [],
+      "platforms": ["cat8000v"],
+      "software_versions": [],
+      "sample_device": "device-a",
+      "summary": "One product group; EoX filled from Cisco on this pid.",
+      "source": {
+        "kind": "inventory",
+        "reliability": "medium",
+        "ref": "inventory/infra-sot.json"
+      },
+      "recommended_replacement": null,
+      "selected_replacement": null,
+      "selected_replacement_source": null,
+      "replacement_family": null,
+      "replacement_candidates": [],
+      "replacement_ask": null,
+      "recommended_software": null,
+      "list_cost_per_unit": null,
+      "total_list_cost": null,
+      "currency": null,
+      "end_of_sale": null,
+      "end_of_support": "2030-03-31",
+      "end_of_software_support": "2029-03-31",
+      "end_of_security_vuln_support": null,
+      "vulnerabilities": [],
+      "psirts": [],
+      "detail_ref": "lifecycle/items/cat8000v.json",
+      "updated_at": "2026-09-07T00:10:00Z",
+      "expires_at": "2026-12-06T00:10:00Z",
+      "research": {
+        "eox": "complete",
+        "software": "skipped",
+        "psirt": "complete",
+        "ccw": "skipped",
+        "nvd": "skipped"
+      }
+    }
+  ]
+}

@@ -32,8 +32,8 @@ Sec, and Ops lane agents will own proposals and the twin gate.
 
 | Family | What they do |
 |--------|----------------|
-| [Health Agents](documentation/health-agents.md) | Watch the path, syslog, devices, and lab tickets; roll up the chart |
-| [Modernization Agents](documentation/modernization-agents.md) | Estate identity, Cisco EoX / PSIRT / CCW, refresh plan |
+| [Health Agents](documentation/health-agents.md) | Watch the path, syslog, devices, and lab tickets; assess and trend |
+| [Modernization Agents](documentation/modernization-agents.md) | Ingest estate with ranked confidence; plan with cost and timelines |
 | [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Inventory, NetBox, and the CML lab that must match prod |
 | [Change and Test Agents](documentation/change-and-test-agents.md) | Size a change, run suites, record risk |
 | [Compliance Agents](documentation/compliance-agents.md) | Coverage against the job catalog and NIST titles |
@@ -44,7 +44,7 @@ Sec, and Ops lane agents will own proposals and the twin gate.
 
 Each agent writes only the files it owns. Health nurses write visit
 stamps. Health Analyzer writes `state/health.json`. Sync writes
-inventory. NetBox SoT writes the infra snapshot. Modernization and
+inventory. NetBox SoT writes the infra snapshot. Modernization Analysis and
 Lifecycle share the estate table. Test writes run results. The catalog
 in `workspace-handoff` is the contract.
 
