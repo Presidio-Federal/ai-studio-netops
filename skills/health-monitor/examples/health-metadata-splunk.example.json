@@ -1,0 +1,15 @@
+{
+  "schema": "health-metadata-splunk/v1",
+  "updated_at": "2026-08-30T18:45:00Z",
+  "source_agent": "health-monitor",
+  "splunk": {
+    "index": "example",
+    "sourcetype": "syslog",
+    "dashboard_id": null,
+    "bootstrap_earliest": "-24h",
+    "collected_through": "2026-08-30T18:43:58Z",
+    "last_visit_id": "2026-08-30T18-45-00Z",
+    "last_collected_at": "2026-08-30T18:45:00Z"
+  },
+  "provenance": { "splunk": "discovered" }
+}

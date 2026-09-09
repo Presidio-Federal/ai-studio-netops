@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-metadata-servicenow/v1",
+  "title": "health/metadata-servicenow.json",
+  "description": "ServiceNow lookup inventory (Kind metadata). ServiceNow Health Check only. Not the five-field envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updated_at", "source_agent", "servicenow"],
+  "properties": {
+    "schema": { "type": "string", "const": "health-metadata-servicenow/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "health-servicenow" },
+    "servicenow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marker"],
+      "properties": {
+        "marker": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Workspace lookup. Text that identifies this lab's tickets."
+        },
+        "match_terms": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "last_visit_id": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+        },
+        "last_collected_at": { "type": ["string", "null"] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "servicenow": {
+          "type": "string",
+          "enum": ["user", "discovered"]
+        }
+      }
+    }
+  }
+}

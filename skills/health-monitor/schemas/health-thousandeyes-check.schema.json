@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-thousandeyes-check/v1",
+  "title": "health/thousandeyes/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "ThousandEyes visit (Kind observation). metrics keys required every visit; latency_ms_p95 is null unless this visit measured p95.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source",
+    "watch_id",
+    "checked_at",
+    "ok",
+    "status",
+    "headline",
+    "window",
+    "summary",
+    "coverage",
+    "metrics"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "health-thousandeyes-check/v1" },
+    "source": { "type": "string", "const": "thousandeyes" },
+    "watch_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "checked_at": { "type": "string", "minLength": 1 },
+    "ok": { "type": ["boolean", "null"] },
+    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "window": { "type": "string", "minLength": 1 },
+    "window_start": { "type": ["string", "null"] },
+    "window_end": { "type": ["string", "null"] },
+    "prior_observation": { "type": ["string", "null"] },
+    "summary": { "type": "string" },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" }
+    },
+    "alerts": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "properties": {
+        "firing": { "type": "integer" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": ["string", "null"] },
+              "test_id": { "type": ["string", "null"] },
+              "state": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["test_id", "test_name"],
+        "properties": {
+          "test_id": { "type": "string" },
+          "test_name": { "type": "string" },
+          "rounds": { "type": ["integer", "null"] },
+          "ok_rounds": { "type": ["integer", "null"] },
+          "error_rounds": { "type": ["integer", "null"] },
+          "loss_pct_mean": { "type": ["number", "null"] },
+          "loss_pct_max": { "type": ["number", "null"] },
+          "latency_ms_avg": { "type": ["number", "null"] },
+          "latency_ms_max": { "type": ["number", "null"] },
+          "latency_ms_p95": { "type": ["number", "null"] },
+          "jitter_ms_avg": { "type": ["number", "null"] },
+          "first_round_at": { "type": ["string", "null"] },
+          "last_round_at": { "type": ["string", "null"] },
+          "last_ok_at": { "type": ["string", "null"] },
+          "error_types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["type", "count"],
+              "properties": {
+                "type": { "type": "string" },
+                "count": { "type": "integer" },
+                "last_message": { "type": ["string", "null"] },
+                "last_at": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "last_error": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "at": { "type": ["string", "null"] },
+              "message": { "type": ["string", "null"] }
+            }
+          },
+          "path_summary": {
+            "type": ["object", "null"],
+            "additionalProperties": false,
+            "properties": {
+              "hops": { "type": ["integer", "null"] },
+              "last_error_hop": { "type": ["string", "null"] }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["complete", "unavailable", "not_requested", "partial"]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "scope",
+        "loss_pct",
+        "latency_ms_p95",
+        "latency_ms_avg",
+        "jitter_ms",
+        "ok_rounds",
+        "error_rounds"
+      ],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "loss_pct": { "type": ["number", "null"] },
+        "latency_ms_p95": { "type": ["number", "null"] },
+        "latency_ms_avg": { "type": ["number", "null"] },
+        "jitter_ms": { "type": ["number", "null"] },
+        "ok_rounds": { "type": ["integer", "null"] },
+        "error_rounds": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

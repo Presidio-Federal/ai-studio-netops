@@ -1,0 +1,44 @@
+---
+description: Lean AI Studio agent prompts — identity only; no skill dump; no other agent's procedure.
+globs: agents/**/*.md
+alwaysApply: false
+---
+
+# Agent prompt authoring
+
+Studio prompts are pasted standalone. Keep them lean:
+
+- Who the agent is and what it owns
+- What to read first (workspace files from the catalog)
+- What it must not do (other agents' jobs)
+- Pointer to attached skills by name — tools, demo inventory, and schemas
+  stay in the skill. Do not paste a skip/implicate decision tree into the
+  prompt either.
+
+Do not paste another agent's workflow. Do not paste MCP argument schemas.
+Do not paste the four-act demo essay. Cursor's map is `docs/system.md` and
+`agents/README.md` packets; Studio agents never see those files.
+
+Default deployed model is **MiniMax**. Author so MiniMax can follow the
+prompt without Sonnet. Sonnet is an exception — see `.cursor/rules/minimax-first.mdc`.
+
+Reply contract: `agents/REPLY-CONTRACT.md` — inline the block, do not invent a
+new shape.
+
+When reads/writes change, update `skills/workspace-handoff` catalog in the same
+change. Name only those paths in the prompt. Do not add scratch workspace
+files. Every workspace writer inlines the fleet FS contract: built-in
+`read_file`/`write_file` are workspace-relative; never
+`Internal directory`, `/shared_workspace/` (including a UUID
+`HAI-ASSISTANTS-WAPSPACES` path), or `sessions/`. MiniMax Lifecycle:
+if Access denied lists `file_explorer`, retry
+`file_explorer/<catalog row>` — that is the catalog, not a new
+tree. Health Monitor: one telemetry source per invoke; live ids in
+`health/metadata-splunk.json` / `health/metadata-thousandeyes.json`,
+not the prompt. See `.cursor/rules/health-visits.mdc`
+and `.cursor/rules/catalog-writes-only.mdc`.
+
+**Prompt version.** Every pasteable `agents/*-agent.md` has YAML frontmatter
+`version:` and a matching `Version x.y.z.` line under the H1. Bump both in
+the same edit. Record the number in `agents/VERSIONS.md`. Do not paste the
+frontmatter into Studio.

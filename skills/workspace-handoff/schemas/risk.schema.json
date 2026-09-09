@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "risk",
+  "title": "risk object on a Test run extract",
+  "description": "Nested risk verdict on testing/YYYY-MM-DDTHH-MM-SSZ.json (and on compliance/… when that run was suites=compliance) and on the matching state file. Do not write a separate risk/ file.",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "github_run_id",
+    "environment",
+    "scope",
+    "results",
+    "risk"
+  ],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "minLength": 1},
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "MIXED", "UNKNOWN"],
+      "description": "MIXED when checks passed but coverage was incomplete. UNKNOWN when the run produced no readable report."
+    },
+    "headline": {"type": "string", "minLength": 1},
+    "next_action": {"type": "string", "minLength": 1},
+    "github_run_id": {"type": "string", "minLength": 1},
+    "github_run_url": {"type": "string"},
+    "environment": {
+      "type": "object",
+      "required": ["live_lab", "lab_role"],
+      "properties": {
+        "live_lab": {"type": "string", "enum": ["dev", "prod"]},
+        "lab_role": {"type": "string", "enum": ["digital_twin", "production"]},
+        "note": {"type": "string"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": ["devices_scanned", "suites"],
+      "properties": {
+        "devices_requested": {"type": "array", "items": {"type": "string"}},
+        "devices_scanned": {"type": "array", "items": {"type": "string"}},
+        "suites": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "tags": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "results": {
+      "type": "object",
+      "required": ["counts_ran"],
+      "properties": {
+        "counts_ran": {
+          "type": "object",
+          "required": ["pass", "fail", "error", "skip"],
+          "properties": {
+            "pass": {"type": "integer"},
+            "fail": {"type": "integer"},
+            "error": {"type": "integer"},
+            "skip": {"type": "integer"}
+          }
+        },
+        "counts_na": {"type": "integer"},
+        "ran": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["status", "check", "device"],
+            "properties": {
+              "status": {"type": "string", "enum": ["PASS", "FAIL", "ERROR", "SKIP"]},
+              "check": {"type": "string"},
+              "device": {"type": "string"},
+              "detail": {"type": "string"}
+            }
+          }
+        },
+        "not_applicable": {
+          "type": "array",
+          "description": "Expected role misses. Keep separate from skips so coverage stays honest.",
+          "items": {
+            "type": "object",
+            "required": ["check", "device", "reason"],
+            "properties": {
+              "check": {"type": "string"},
+              "device": {"type": "string"},
+              "reason": {"type": "string"}
+            }
+          }
+        },
+        "gaps": {
+          "type": "array",
+          "description": "Checks that should have run and did not. A non-empty gaps list must not report status PASS.",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["level", "push_to_prod", "verdict", "why"],
+      "properties": {
+        "level": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "UNKNOWN"]},
+        "push_to_prod": {
+          "type": "string",
+          "enum": ["proceed", "proceed_with_caution", "do_not_push", "unknown"]
+        },
+        "verdict": {"type": "string", "minLength": 1},
+        "why": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string"},
+          "description": "Evidence, not restatement. Each entry cites a check or a count."
+        },
+        "blast_radius": {"type": "string"}
+      }
+    },
+    "local_path": {"type": "string"}
+  }
+}

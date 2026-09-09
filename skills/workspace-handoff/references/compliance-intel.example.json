@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "run_id": "2026-08-07T22:00:00Z",
+  "updated_at": "2026-08-07T22:00:00+00:00",
+  "source_agent": "network-compliance",
+  "status": "OK",
+  "headline": "2 network candidates — eBGP neighbor authentication (high) and cleartext HTTP management (medium)",
+  "next_action": "Invoke Test: add intel candidates to the catalog on main, then run the suite",
+  "sources_status": "ok",
+  "oscal_release": "v1.5.0",
+  "sources": [
+    {
+      "name": "OSCAL 800-53 index v1.5.0",
+      "url": "https://github.com/usnistgov/oscal-content/blob/v1.5.0/nist.gov/SP800-53/rev5/json/NIST_SP-800-53_rev5_catalog-min.json",
+      "checked_at": "2026-08-07T22:00:00+00:00",
+      "ok": true
+    },
+    {
+      "name": "STIG Viewer nist-800-53 AC-17",
+      "url": "https://www.stigviewer.com/api/v1/controls/nist-800-53/AC-17",
+      "checked_at": "2026-08-07T22:00:00+00:00",
+      "ok": true
+    },
+    {
+      "name": "PCI SSC public guidance (footnote)",
+      "url": "https://www.pcisecuritystandards.org/",
+      "checked_at": "2026-08-07T22:00:00+00:00"
+    }
+  ],
+  "scope": "network_routing",
+  "candidates": [
+    {
+      "id": "INTEL-0001",
+      "title": "Require BGP neighbor authentication on WAN eBGP",
+      "summary": "Unauthenticated eBGP peers remain a route-injection risk on edge/WAN. Lab already checks adjacency up; it does not assert password/TCP-AO.",
+      "why_network": "Directly affects WAN/edge routing protocol security between peers.",
+      "kind": "compliance_rule",
+      "nist_sp_800_53": ["SC-8", "SC-7", "CM-6"],
+      "source_control": "nist-800-53:SC-8",
+      "resolved_from": null,
+      "oscal_release": "v1.5.0",
+      "pci_dss_footnote": "Supports secure network controls / restrict untrusted routes (conceptual; QSA validates).",
+      "disa_footnote": "Aligns with Cisco RTR STIG routing-protocol authentication themes.",
+      "suggested_assert": "config_contains on each WAN device: neighbor line has password, keychain, or TCP-AO",
+      "suggested_suite": "compliance",
+      "maps_to_existing": "NET-COMP-0010",
+      "priority": "high",
+      "status": "proposed"
+    },
+    {
+      "id": "INTEL-0002",
+      "title": "Disable cleartext HTTP device management",
+      "summary": "Management plane should not expose ip http server on IOS-XE edges.",
+      "why_network": "Router/switch administrative access path — not application security.",
+      "kind": "compliance_rule",
+      "nist_sp_800_53": ["AC-17", "CM-7", "SC-8"],
+      "source_control": "nist-800-53:AC-17",
+      "resolved_from": null,
+      "oscal_release": "v1.5.0",
+      "pci_dss_footnote": "Encrypted administrative access themes in DSS 4.x (footnote).",
+      "disa_footnote": null,
+      "suggested_assert": "config_contains asserting no 'ip http server' line is present",
+      "suggested_suite": "compliance",
+      "maps_to_existing": "NET-COMP-0002",
+      "priority": "medium",
+      "status": "proposed"
+    }
+  ],
+  "skipped_non_network": [
+    "Endpoint disk encryption guidance",
+    "SaaS identity MFA for corporate email"
+  ],
+  "next_action": "review_candidates",
+  "local_paths": {
+    "json": "compliance/intel.json"
+  }
+}

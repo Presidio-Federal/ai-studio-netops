@@ -1,0 +1,44 @@
+---
+description: Health Monitor authoring — one telemetry source per visit; workspace is the chart; metadata holds ids and watermarks.
+alwaysApply: true
+---
+
+# Health visits (Cursor authoring)
+
+You author Studio Health Monitor prompts and skills. You are not the agent.
+
+The shared workspace is the chart. Each visit writes observations for **one**
+telemetry source (Splunk, ThousandEyes, scoped IOS-XE, or ServiceNow). A
+later visit or the Health Analyzer reads accumulated files. Do not design
+a combined TE+Splunk+IOS-XE collect in one conversation.
+
+- Workspace paths stay: `health/metadata-splunk.json`,
+  `health/metadata-thousandeyes.json`,
+  `health/metadata-servicenow.json`, `health/<source>/<stamp>.json`,
+  analyzer rollup `state/health.json`. Nurses do not write `state/`.
+  Do not invent a second health tree. No `health/metadata-iosxe.json`.
+- Nurses write only their observation (and that plane’s metadata when
+  it already exists in the catalog). Persist with `write_file` on
+  catalog rows. Do not merge `state/health.json`.
+- Health Analyzer is the sole writer of `state/health.json`. It does
+  not collect telemetry. It finds latest stamps via metadata
+  `last_visit_id` (iosxe via prior chart `source_ref`). Stale planes:
+  invoke the attached nurse with a named visit line. `assess-now`
+  does not wait; `refresh-then-assess` waits only for planes both
+  stale and material to the question.
+- Lookup ids and Splunk `collected_through` live in that plane’s
+  metadata, not the prompt. IOS-XE PAT stays on `inventory/prod.json`.
+- A Splunk finding does not authorize an IOS-XE GET or a TE query.
+  Record the follow-up. Agents invoke another agent only when that
+  subagent is attached.
+- Append-only observations. Do not overwrite a stamp.
+- Compare matching source, scope, and compatible windows. Missing logs
+  are not a down device. Correlation is not root cause.
+- Focused is not superficial. Stable baseline queries plus bounded
+  follow-ups. MiniMax-first. Tools aggregate; samples do not set window
+  totals.
+- Prompts cannot lock concurrent runs. One writer per catalog file.
+  Change prompt, skill, schema, and the catalog row together.
+
+Keep exact SPL, MCP names, and schemas in the skill. Do not hardcode demo
+timings or unverified platform claims in rules.

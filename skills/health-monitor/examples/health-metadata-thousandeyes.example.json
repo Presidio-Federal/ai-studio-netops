@@ -1,0 +1,18 @@
+{
+  "schema": "health-metadata-thousandeyes/v1",
+  "updated_at": "2026-08-14T16:05:00Z",
+  "source_agent": "health-monitor",
+  "thousandeyes": {
+    "account_id": "0",
+    "account_name": "example-account",
+    "window": "1h",
+    "result_type": "network",
+    "last_visit_id": "2026-08-14T16-05-00Z",
+    "last_collected_at": "2026-08-14T16:05:00Z",
+    "tests": [
+      { "test_id": "t1", "test_name": "path-a" },
+      { "test_id": "t2", "test_name": "path-b" }
+    ]
+  },
+  "provenance": { "thousandeyes": "discovered" }
+}

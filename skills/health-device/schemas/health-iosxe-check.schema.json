@@ -1,0 +1,163 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-iosxe-check/v1",
+  "title": "health/iosxe/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "IOS-XE visit (Kind observation). metrics keys required every visit; null when not collected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source",
+    "watch_id",
+    "checked_at",
+    "ok",
+    "status",
+    "headline",
+    "window",
+    "summary",
+    "coverage",
+    "metrics"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "health-iosxe-check/v1" },
+    "source": { "type": "string", "const": "iosxe" },
+    "watch_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "checked_at": { "type": "string", "minLength": 1 },
+    "ok": { "type": ["boolean", "null"] },
+    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "window": { "type": "string", "minLength": 1 },
+    "prior_observation": { "type": ["string", "null"] },
+    "summary": { "type": "string" },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" }
+    },
+    "skipped_reason": { "type": ["string", "null"] },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "why": { "type": "string" },
+          "yang_paths": { "type": "array", "items": { "type": "string" } },
+          "interfaces": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/interface_row" }
+          },
+          "bgp_neighbors": {
+            "type": "array",
+            "items": { "$ref": "#/$defs/bgp_neighbor" }
+          },
+          "acls": { "$ref": "#/$defs/acls" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["complete", "unavailable", "not_requested", "partial"]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "scope",
+        "oper_not_ready",
+        "bgp_not_established",
+        "in_errors",
+        "in_discards",
+        "num_flaps"
+      ],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "oper_not_ready": { "type": ["integer", "null"] },
+        "bgp_not_established": { "type": ["integer", "null"] },
+        "in_errors": { "type": ["integer", "null"] },
+        "in_discards": { "type": ["integer", "null"] },
+        "num_flaps": { "type": ["integer", "null"] }
+      }
+    },
+    "counter": { "type": ["integer", "string", "null"] },
+    "interface_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string" },
+        "description": { "type": ["string", "null"] },
+        "ipv4": { "type": ["string", "null"] },
+        "admin_status": { "type": ["string", "null"] },
+        "oper_status": { "type": ["string", "null"] },
+        "in_errors": { "$ref": "#/$defs/counter" },
+        "out_errors": { "$ref": "#/$defs/counter" },
+        "in_discards": { "$ref": "#/$defs/counter" },
+        "in_crc_errors": { "$ref": "#/$defs/counter" },
+        "num_flaps": { "$ref": "#/$defs/counter" },
+        "rx_kbps": { "$ref": "#/$defs/counter" },
+        "tx_kbps": { "$ref": "#/$defs/counter" }
+      }
+    },
+    "bgp_neighbor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "state"],
+      "properties": {
+        "id": { "type": "string" },
+        "state": { "type": "string" },
+        "as": { "type": ["integer", "string", "null"] },
+        "up_time": { "type": ["string", "null"] },
+        "prefixes_received": { "$ref": "#/$defs/counter" },
+        "input_queue": { "$ref": "#/$defs/counter" },
+        "output_queue": { "$ref": "#/$defs/counter" },
+        "session_state": { "type": ["string", "null"] },
+        "link": { "type": ["string", "null"] },
+        "installed_prefixes": { "$ref": "#/$defs/counter" },
+        "connection_state": { "type": ["string", "null"] },
+        "reset_reason": { "type": ["string", "null"] },
+        "total_dropped": { "$ref": "#/$defs/counter" },
+        "local_host": { "type": ["string", "null"] },
+        "foreign_host": { "type": ["string", "null"] },
+        "notifications": { "$ref": "#/$defs/counter" }
+      }
+    },
+    "acls": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count"],
+      "properties": {
+        "count": { "type": "integer" },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "name": { "type": "string" },
+              "match_counter": { "$ref": "#/$defs/counter" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

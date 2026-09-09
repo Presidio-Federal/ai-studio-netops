@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "branch-deploy-summary",
+  "title": "branch-deploy-summary.json",
+  "description": "What Network Design actually deployed on the Dev twin, and the WAN hub changes that went with it. This is the input to change packaging — it must describe reality, not the plan.",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "lab",
+    "proposal_tag",
+    "nodes"
+  ],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "minLength": 1},
+    "status": {
+      "type": "string",
+      "enum": ["DEPLOYED", "VALIDATED", "TICKETED", "REVERTED", "FAILED"],
+      "description": "DEPLOYED before tests, VALIDATED after Test passes, TICKETED after ServiceNow returns, REVERTED after snap-back."
+    },
+    "headline": {"type": "string", "minLength": 1},
+    "next_action": {"type": "string", "minLength": 1},
+    "lab": {"type": "string", "minLength": 1},
+    "proposal_tag": {
+      "type": "string",
+      "const": "tag:patch",
+      "description": "Proposed nodes carry tag:patch so sync selectors ignore them."
+    },
+    "tier_answers": {
+      "type": "object",
+      "description": "What the operator answered during sizing.",
+      "properties": {
+        "users": {"type": ["integer", "string"]},
+        "local_apps": {"type": ["boolean", "string"]},
+        "notes": {"type": "string"}
+      }
+    },
+    "architecture_recommended": {"type": "string"},
+    "architecture_deployed": {"type": "string"},
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["label"],
+        "properties": {
+          "label": {"type": "string", "minLength": 1},
+          "id": {"type": "string"},
+          "definition": {"type": "string"},
+          "role": {"type": "string"}
+        }
+      }
+    },
+    "interface_map": {
+      "type": "object",
+      "description": "Real CML interface names per role. Do not guess Gi numbers here.",
+      "additionalProperties": {"type": "string"}
+    },
+    "pat": {
+      "type": "object",
+      "description": "PAT reachability for the new nodes, so Test can connect.",
+      "additionalProperties": {"type": ["string", "integer"]}
+    },
+    "wan_changes": {
+      "type": "object",
+      "description": "Changes written to the existing WAN hub. Records live device state, which may differ from committed SoT.",
+      "properties": {
+        "device": {"type": "string"},
+        "interface": {"type": "string"},
+        "prefix": {"type": "string"},
+        "bgp_neighbor": {"type": "string"},
+        "bgp_asn": {"type": ["string", "integer"]},
+        "method": {"type": "string", "enum": ["restconf", "ssh"]},
+        "note": {"type": "string"}
+      }
+    },
+    "test": {
+      "type": "object",
+      "description": "The validating run. Empty until Test has reported.",
+      "properties": {
+        "run_id": {"type": "string"},
+        "html_url": {"type": "string"},
+        "headline": {"type": "string"},
+        "run_file": {"type": "string", "description": "Workspace-relative testing/YYYY-MM-DDTHH-MM-SSZ.json"}
+      }
+    },
+    "servicenow": {
+      "type": "object",
+      "description": "Filled by Design after ServiceNow returns. Required for status answers.",
+      "properties": {
+        "number": {"type": "string"},
+        "sys_id": {"type": "string"},
+        "table": {"type": "string"},
+        "url": {"type": "string", "description": "Full ServiceNow URL — report this on every status ask."}
+      }
+    },
+    "shipment": {
+      "type": "object",
+      "description": "Filled by Design from what ServiceNow returned. Status asks quote these dates.",
+      "properties": {
+        "warehouse_checked": {
+          "type": "string",
+          "description": "Stockroom name and what was found in stock, in one or two sentences."
+        },
+        "delivery_date": {"type": "string"},
+        "install_date": {"type": "string"},
+        "gear": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "asset_tag": {"type": "string"},
+              "model": {"type": "string"},
+              "serial": {"type": "string"},
+              "stockroom": {"type": "string"}
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-08T19:41:00Z",
+  "source_agent": "network-design",
+  "status": "VALIDATED",
+  "headline": "AI-BRANCH-03 Small-tier site deployed on Dev with WAN-04 eBGP peering; all in-scope checks passed",
+  "next_action": "Package configs into a review branch, then snap Dev back by deleting the tag:patch nodes",
+  "lab": "cisco-ai-lab-dev",
+  "proposal_tag": "tag:patch",
+  "tier_answers": {
+    "users": 45,
+    "local_apps": false,
+    "notes": "No local servers; all applications reached over the WAN"
+  },
+  "architecture_recommended": "Small — single edge router plus access switch, no redundant WAN",
+  "architecture_deployed": "Small",
+  "nodes": [
+    {"label": "AI-BRANCH-03", "id": "n14", "definition": "cat8000v", "role": "edge"},
+    {"label": "AI-BRANCH-03-SW", "id": "n15", "definition": "cat9kv", "role": "access"}
+  ],
+  "interface_map": {
+    "wan": "GigabitEthernet1",
+    "lan": "GigabitEthernet2",
+    "oobm": "GigabitEthernet3",
+    "spare": "GigabitEthernet4"
+  },
+  "pat": {
+    "AI-BRANCH-03": 2014,
+    "AI-BRANCH-03-SW": 2015
+  },
+  "wan_changes": {
+    "device": "WAN-04",
+    "interface": "GigabitEthernet4",
+    "prefix": "10.99.14.0/30",
+    "bgp_neighbor": "10.99.14.2",
+    "bgp_asn": 65014,
+    "method": "restconf",
+    "note": "Written to the live Dev device. Not yet in committed SoT — sync-dev captures it."
+  },
+  "test": {
+    "run_id": "31226585624",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/31226585624",
+    "headline": "8/8 in-scope checks passed on AI-BRANCH-03",
+    "run_file": "testing/2026-08-08T19-40-00Z.json"
+  },
+  "servicenow": {
+    "number": "CHG0031004",
+    "sys_id": "b1f2c3d4e5f60718293a4b5c6d7e8f90",
+    "table": "change_request",
+    "url": "https://contendersoldev2.service-now.com/sc_request.do?sys_id=b1f2c3d4e5f60718293a4b5c6d7e8f90"
+  }
+}

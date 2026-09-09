@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coverage",
+  "title": "compliance/coverage.json",
+  "description": "Join of applicable 800-53 ids to live and static tests for this estate, from git catalog/matrix/bridge. Written by Network Compliance. Not a run result.",
+  "type": "object",
+  "required": ["version", "updated_at", "source_agent", "rows", "counts"],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "updated_at": {"type": "string"},
+    "source_agent": {"type": "string"},
+    "oscal_release": {"type": "string"},
+    "estate_source": {"type": "string"},
+    "git_ref": {"type": "string"},
+    "git_paths": {"type": "array", "items": {"type": "string"}},
+    "catalog_version": {"type": "string"},
+    "platforms": {"type": "array", "items": {"type": "string"}},
+    "counts": {
+      "type": "object",
+      "properties": {
+        "covered": {"type": "integer"},
+        "partial": {"type": "integer"},
+        "gap": {"type": "integer"},
+        "unwired": {"type": "integer"}
+      }
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["nist_id", "status"],
+        "properties": {
+          "nist_id": {"type": "string"},
+          "family_id": {"type": "string"},
+          "title": {"type": "string"},
+          "net_comp": {"type": "array", "items": {"type": "string"}},
+          "live": {"type": "array", "items": {"type": "string"}},
+          "static": {"type": "array", "items": {"type": "string"}},
+          "platforms": {"type": "array", "items": {"type": "string"}},
+          "status": {"type": "string", "enum": ["covered", "partial", "gap", "unwired"]},
+          "partial_why": {"type": ["string", "null"]},
+          "suggested_assert": {"type": ["string", "null"]}
+        }
+      }
+    }
+  }
+}

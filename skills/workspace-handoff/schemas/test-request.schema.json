@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "test-request",
+  "title": "test-request.json",
+  "description": "Network Design asks Test to validate a scope. Fields under request mirror test.yml workflow inputs exactly so Test can trigger without translating.",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "request"
+  ],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "minLength": 1},
+    "status": {
+      "type": "string",
+      "enum": ["PENDING", "CONSUMED"],
+      "description": "PENDING when written. Test does not rewrite this file."
+    },
+    "headline": {"type": "string", "minLength": 1},
+    "next_action": {"type": "string", "minLength": 1},
+    "request": {
+      "type": "object",
+      "required": ["workflow", "mode", "reason"],
+      "properties": {
+        "workflow": {"type": "string", "enum": ["test.yml"]},
+        "mode": {"type": "string", "enum": ["live", "static"]},
+        "devices": {
+          "type": "string",
+          "description": "Comma-separated hostnames. Empty means all SSH-capable devices in live_lab."
+        },
+        "tags": {
+          "type": "string",
+          "description": "Role tag selector, e.g. edge or wan. Empty when devices is set."
+        },
+        "suites": {
+          "type": "string",
+          "description": "Comma-separated live suites. Empty means reachability,routing,path."
+        },
+        "live_lab": {"type": "string", "enum": ["dev", "prod"]},
+        "scan_dir": {"type": "string"},
+        "ref": {"type": "string"},
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this run exists. Appears in the Test agent's reply."
+        }
+      }
+    },
+    "expected_checks": {
+      "type": "array",
+      "description": "Optional. Check ids Design expects to run, so Test can flag silent N/A.",
+      "items": {"type": "string"}
+    },
+    "context": {
+      "type": "object",
+      "description": "Optional. What was deployed, for the risk brief.",
+      "properties": {
+        "lab": {"type": "string"},
+        "nodes": {"type": "array", "items": {"type": "string"}},
+        "proposal_tag": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "schema": "testing-state/v1",
+  "updated_at": "2026-08-17T14:17:26Z",
+  "source_agent": "network-test",
+  "status": "MIXED",
+  "headline": "8/9 in-scope checks PASS on AI-CLOUD-EDGE; edge-WAN eBGP SKIPPED",
+  "run": {
+    "run_id": "32038499244",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/32038499244",
+    "live_lab": "prod",
+    "mode": "live",
+    "suites": ["reachability", "routing", "path"]
+  },
+  "risk": {
+    "level": "MEDIUM",
+    "push_to_prod": "proceed_with_caution",
+    "note": "Coverage incomplete — missing edge_wan_bgp relationship"
+  },
+  "latest": "testing/2026-08-17T14-17-26Z.json",
+  "gaps": [
+    "routing/edge-wan-ebgp-established@AI-CLOUD-EDGE: missing edge_wan_bgp relationship entry"
+  ],
+  "next_action": "Add the relationship mapping and re-run"
+}

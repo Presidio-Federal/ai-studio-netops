@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-08T19:12:00Z",
+  "source_agent": "network-design",
+  "status": "PENDING",
+  "headline": "Validate AI-BRANCH-03 and WAN-04 after a Small-tier branch deploy on the Dev twin",
+  "next_action": "Invoke Test — it reads this file and triggers test.yml with this scope",
+  "request": {
+    "workflow": "test.yml",
+    "mode": "live",
+    "devices": "AI-BRANCH-03,WAN-04",
+    "tags": "",
+    "suites": "reachability,routing,path",
+    "live_lab": "dev",
+    "ref": "main",
+    "reason": "Post-deploy validation of the proposed branch site and its WAN hub peering"
+  },
+  "expected_checks": [
+    "device_reachable",
+    "edge_ios_xe",
+    "edge-wan-ebgp-established",
+    "wan-edge-ebgp-established",
+    "branch_to_hq_ping"
+  ],
+  "context": {
+    "lab": "cisco-ai-lab-dev",
+    "nodes": ["AI-BRANCH-03", "AI-BRANCH-03-SW"],
+    "proposal_tag": "tag:patch"
+  }
+}

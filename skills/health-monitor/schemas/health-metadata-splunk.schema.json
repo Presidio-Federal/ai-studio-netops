@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-metadata-splunk/v1",
+  "title": "health/metadata-splunk.json",
+  "description": "Splunk lookup inventory (Kind metadata). Health Monitor Splunk visit only. Not the five-field envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updated_at", "source_agent", "splunk"],
+  "properties": {
+    "schema": { "type": "string", "const": "health-metadata-splunk/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "health-monitor" },
+    "splunk": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "index": { "type": "string", "minLength": 1 },
+        "sourcetype": { "type": "string", "minLength": 1 },
+        "dashboard_id": { "type": ["string", "null"] },
+        "bootstrap_earliest": {
+          "type": "string",
+          "description": "First-visit lookback when collected_through is absent. Default -24h if unset."
+        },
+        "collected_through": {
+          "type": ["string", "null"],
+          "description": "ISO-8601 UTC watermark. Next Splunk visit earliest_time."
+        },
+        "last_visit_id": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+        },
+        "last_collected_at": { "type": ["string", "null"] }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "splunk": {
+          "type": "string",
+          "enum": ["user", "discovered"]
+        }
+      }
+    }
+  }
+}

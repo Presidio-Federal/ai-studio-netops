@@ -1,0 +1,26 @@
+---
+description: Studio agents write only workspace-handoff catalog paths. Never invent files.
+alwaysApply: true
+---
+
+# Catalog writes only
+
+Studio agents may `write_file` **only** paths listed for that agent in
+`skills/workspace-handoff`. Git stays in GitHub (`github_get_file`). Do not
+dump git (catalog, matrix, configs) into the workspace so a script can run.
+
+When authoring a prompt or skill:
+
+- Name the catalog files, plus schema + example to fill.
+- Inline the fleet FS contract: built-in `read_file`/`write_file` are
+  workspace-relative; never `/shared_workspace/` (UUID workspace
+  paths included), `sessions/`, or `Internal directory`. MiniMax
+  Lifecycle sandbox: Access denied listing `file_explorer` → retry
+  `file_explorer/<catalog row>` once. Do not author a blanket “never
+  `file_explorer`” on that agent — that is why it retries UUID paths.
+- Hard no: helper `.py`, `_git_input.json`, `prepare_*`, `health-board.md`,
+  or any path not in the catalog.
+- Health Analyzer is the template: one (or few) named writes.
+
+Do not add a scratch workspace file to make a Python join easier. Put
+inputs in git or MCP results; put outputs in the catalog row.

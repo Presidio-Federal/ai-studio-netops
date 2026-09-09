@@ -1,0 +1,45 @@
+{
+  "schema": "health-servicenow-check/v1",
+  "source": "servicenow",
+  "watch_id": "2026-09-01T15-00-00Z",
+  "checked_at": "2026-09-01T15:00:00Z",
+  "ok": true,
+  "status": "ok",
+  "headline": "0 open lab INC / 0 open lab CHG / 0 P1P2; 2 recently closed; 14 shared-instance open ignored",
+  "window": "active + recent closed",
+  "summary": "In-scope find returned none open. Two resolved INCs in recent[] for correlation only.",
+  "coverage": {
+    "state": "complete",
+    "detail": "snow_find_incidents + snow_find_changes; classified against metadata marker and inventory labels"
+  },
+  "metrics": [
+    {
+      "at": "2026-09-01T15:00:00Z",
+      "scope": "lab",
+      "open_incidents": 0,
+      "open_changes": 0,
+      "open_p1p2": 0,
+      "out_of_scope_open": 14
+    }
+  ],
+  "open_incidents": 0,
+  "open_changes": 0,
+  "open_p1p2": 0,
+  "out_of_scope_open": 14,
+  "incidents": [],
+  "changes": [],
+  "recent": [
+    {
+      "number": "INC0000001",
+      "sys_id": null,
+      "state": "6",
+      "urgency": "2",
+      "impact": "2",
+      "short_description": "WAN path loss",
+      "opened_at": "2026-08-27T16:15:21Z",
+      "devices": ["edge-1", "edge-2"],
+      "scope": "demo",
+      "scope_reason": "inventory_label"
+    }
+  ]
+}

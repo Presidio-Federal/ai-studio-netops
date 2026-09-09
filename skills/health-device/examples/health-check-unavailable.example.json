@@ -1,0 +1,27 @@
+{
+  "schema": "health-iosxe-check/v1",
+  "source": "iosxe",
+  "watch_id": "2026-08-31T16-00-01Z",
+  "checked_at": "2026-08-31T16:00:01Z",
+  "ok": false,
+  "status": "unknown",
+  "headline": "IOS-XE RESTCONF timed out; no oper extract",
+  "window": "live",
+  "summary": "iosxe_restconf_get did not return. Counts are null, not zero.",
+  "coverage": {
+    "state": "unavailable",
+    "detail": "RESTCONF timeout after retry"
+  },
+  "metrics": [
+    {
+      "at": "2026-08-31T16:00:01Z",
+      "scope": "estate",
+      "oper_not_ready": null,
+      "bgp_not_established": null,
+      "in_errors": null,
+      "in_discards": null,
+      "num_flaps": null
+    }
+  ],
+  "devices": []
+}

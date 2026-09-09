@@ -1,0 +1,32 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-04T00:00:00+00:00",
+  "source_agent": "observability",
+  "status": "OK",
+  "headline": "Watch clean — no ThousandEyes loss, no Splunk criticals, no incident opened",
+  "next_action": "none",
+  "ready_for_remediation": false,
+  "playbook": null,
+  "fingerprint": null,
+  "incident": null,
+  "short_description": null,
+  "summary": null,
+  "recommendation": null,
+  "devices": [],
+  "evidence": {
+    "thousandeyes": [],
+    "splunk": {},
+    "iosxe": {},
+    "compliance": {}
+  },
+  "findings_ids": [],
+  "findings": [],
+  "target": {
+    "prod_lab": "cisco-ai-lab-prod",
+    "dev_lab": "cisco-ai-lab-dev",
+    "implement_in": "dev",
+    "note": "Remediate and validate on the Dev twin first; promote to Prod only when gated"
+  },
+  "trend_file": "/workspace/trend-analysis.json",
+  "skipped_reason": null
+}

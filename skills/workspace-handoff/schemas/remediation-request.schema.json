@@ -1,0 +1,64 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "remediation-request",
+  "title": "remediation-request.json",
+  "description": "Observability's handoff describing a condition someone should fix. Written every run, including clean runs, so its absence always means the watch did not finish. There is no consumer agent yet — a human reads this.",
+  "type": "object",
+  "required": [
+    "version",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "ready_for_remediation",
+    "target"
+  ],
+  "properties": {
+    "version": {"type": "integer", "const": 1},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "minLength": 1},
+    "status": {"type": "string", "enum": ["OK", "DEGRADED", "CRITICAL", "UNKNOWN"]},
+    "headline": {"type": "string", "minLength": 1},
+    "next_action": {"type": "string", "minLength": 1},
+    "ready_for_remediation": {
+      "type": "boolean",
+      "description": "true only when there is a specific, actionable condition with evidence. A clean watch writes false."
+    },
+    "playbook": {"type": ["string", "null"]},
+    "fingerprint": {"type": ["string", "null"]},
+    "incident": {"type": ["string", "null"]},
+    "short_description": {"type": ["string", "null"]},
+    "summary": {"type": ["string", "null"]},
+    "recommendation": {"type": ["string", "null"]},
+    "devices": {"type": "array", "items": {"type": "string"}},
+    "evidence": {
+      "type": "object",
+      "description": "Raw supporting data by source. Required to be non-empty when ready_for_remediation is true.",
+      "properties": {
+        "thousandeyes": {"type": ["array", "object"]},
+        "splunk": {"type": ["array", "object"]},
+        "iosxe": {"type": ["array", "object"]},
+        "compliance": {"type": ["array", "object"]}
+      }
+    },
+    "findings_ids": {"type": "array", "items": {"type": "string"}},
+    "findings": {"type": "array"},
+    "target": {
+      "type": "object",
+      "required": ["implement_in"],
+      "properties": {
+        "prod_lab": {"type": "string"},
+        "dev_lab": {"type": "string"},
+        "implement_in": {
+          "type": "string",
+          "enum": ["dev"],
+          "description": "Always dev. Remediation is validated on the twin before production."
+        },
+        "note": {"type": "string"}
+      }
+    },
+    "trend_file": {"type": "string"},
+    "skipped_reason": {"type": ["string", "null"]}
+  }
+}

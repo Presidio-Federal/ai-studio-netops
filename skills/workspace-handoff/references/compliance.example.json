@@ -1,0 +1,25 @@
+{
+  "schema": "testing-state/v1",
+  "updated_at": "2026-08-16T23:10:00Z",
+  "source_agent": "network-test",
+  "status": "PASS",
+  "headline": "8 pass / 0 fail on AI-BRANCH-03; Dev twin — proceed_with_caution",
+  "next_action": "Review candidates or package for Design",
+  "run": {
+    "run_id": "31226585624",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/31226585624",
+    "live_lab": "dev",
+    "mode": "live",
+    "suites": ["compliance"]
+  },
+  "risk": {
+    "level": "LOW",
+    "push_to_prod": "proceed_with_caution",
+    "note": "Dev twin only — not production evidence"
+  },
+  "latest": "compliance/2026-08-16T23-10-00Z.json",
+  "gaps": [],
+  "failing_controls": 0,
+  "verified_controls": 8,
+  "failing_devices": []
+}

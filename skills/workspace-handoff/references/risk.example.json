@@ -1,0 +1,52 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-07T23:30:45Z",
+  "source_agent": "network-test",
+  "status": "PASS",
+  "headline": "8/8 in-scope checks passed on AI-BRANCH-03; 2 WAN-only checks were N/A for a branch edge",
+  "next_action": "Safe to package for review. Include WAN-04 in the next run to cover the hub side.",
+  "github_run_id": "31226585624",
+  "github_run_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/31226585624",
+  "environment": {
+    "live_lab": "dev",
+    "lab_role": "digital_twin",
+    "note": "Tests ran on the Dev twin — not production CML"
+  },
+  "scope": {
+    "devices_requested": ["AI-BRANCH-03"],
+    "devices_scanned": ["AI-BRANCH-03"],
+    "suites": ["reachability", "routing", "path"],
+    "tags": []
+  },
+  "results": {
+    "counts_ran": {"pass": 8, "fail": 0, "error": 0, "skip": 0},
+    "counts_na": 2,
+    "ran": [
+      {"status": "PASS", "check": "reachability/device_reachable", "device": "AI-BRANCH-03"},
+      {"status": "PASS", "check": "reachability/hostname_in_config", "device": "AI-BRANCH-03"},
+      {"status": "PASS", "check": "reachability/edge_ios_xe", "device": "AI-BRANCH-03"},
+      {"status": "PASS", "check": "routing/edge-wan-ebgp-established", "device": "AI-BRANCH-03"},
+      {"status": "PASS", "check": "path/branch_to_hq_ping", "device": "AI-BRANCH-03"}
+    ],
+    "not_applicable": [
+      {
+        "check": "routing/wan-ibgp-mesh-established",
+        "device": "AI-BRANCH-03",
+        "reason": "needs tags [wan]; device has [common,edge,patch]"
+      }
+    ],
+    "gaps": []
+  },
+  "risk": {
+    "level": "LOW",
+    "push_to_prod": "proceed_with_caution",
+    "verdict": "In-scope Dev twin checks passed; treat as proposal validation, not Prod SoT.",
+    "why": [
+      "Reachability, edge BGP and path checks passed on AI-BRANCH-03 (8/8 ran clean)",
+      "WAN iBGP mesh checks reported N/A because the device carries no wan tag — expected for a branch edge, not a failure",
+      "Prod CML was untouched; the run targeted live_lab=dev"
+    ],
+    "blast_radius": "Single proposed branch site; production configs unchanged"
+  },
+  "local_path": "testing/2026-08-07T23-30-45Z.json"
+}

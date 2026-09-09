@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-splunk-check/v1",
+  "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "Splunk visit (Kind observation). Plane status/headline, not the coordination envelope. metrics keys are required every visit; null when not collected.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source",
+    "watch_id",
+    "checked_at",
+    "ok",
+    "status",
+    "headline",
+    "window",
+    "summary",
+    "coverage",
+    "metrics"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "health-splunk-check/v1" },
+    "source": { "type": "string", "const": "splunk" },
+    "watch_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "checked_at": { "type": "string", "minLength": 1 },
+    "ok": { "type": ["boolean", "null"] },
+    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "window": { "type": "string", "minLength": 1 },
+    "window_start": { "type": ["string", "null"] },
+    "window_end": { "type": ["string", "null"] },
+    "query_profile": { "type": "string" },
+    "scope": { "type": "string" },
+    "prior_observation": { "type": ["string", "null"] },
+    "summary": { "type": "string" },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" }
+    },
+    "event_count": { "type": ["integer", "null"] },
+    "parsed_count": { "type": ["integer", "null"] },
+    "critical_error_count": { "type": ["integer", "null"] },
+    "flap_count": { "type": ["integer", "null"] },
+    "unique_hosts": { "type": ["integer", "null"] },
+    "first_event_at": { "type": ["string", "null"] },
+    "last_event_at": { "type": ["string", "null"] },
+    "by_severity": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["sev", "count"],
+        "properties": {
+          "sev": { "type": "integer" },
+          "count": { "type": "integer" }
+        }
+      }
+    },
+    "by_mnemonic": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["mnemonic", "count"],
+        "properties": {
+          "facility": { "type": ["string", "null"] },
+          "mnemonic": { "type": "string" },
+          "sev": { "type": ["integer", "null"] },
+          "count": { "type": "integer" },
+          "hosts": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "top_hosts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["host", "count"],
+        "properties": {
+          "host": { "type": "string" },
+          "count": { "type": "integer" },
+          "last_seen": { "type": ["string", "null"] },
+          "ios_hostname": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "buckets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["bucket", "count"],
+        "properties": {
+          "bucket": { "type": "string" },
+          "count": { "type": "integer" },
+          "hosts": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "samples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "host", "message"],
+        "properties": {
+          "at": { "type": "string" },
+          "host": { "type": "string" },
+          "mnemonic": { "type": ["string", "null"] },
+          "sev": { "type": ["integer", "null"] },
+          "message": { "type": "string" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["complete", "unavailable", "not_requested", "partial"]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "at",
+        "scope",
+        "event_count",
+        "critical_error_count",
+        "flap_count",
+        "unique_hosts"
+      ],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "minLength": 1 },
+        "event_count": { "type": ["integer", "null"] },
+        "critical_error_count": { "type": ["integer", "null"] },
+        "flap_count": { "type": ["integer", "null"] },
+        "unique_hosts": { "type": ["integer", "null"] }
+      }
+    }
+  }
+}

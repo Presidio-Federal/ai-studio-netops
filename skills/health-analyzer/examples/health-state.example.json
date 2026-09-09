@@ -1,0 +1,135 @@
+{
+  "schema": "health-state/v3",
+  "updated_at": "2026-09-09T12:00:00Z",
+  "source_agent": "health-analyzer",
+  "status": "degraded",
+  "headline": "path-b error rounds dominate this visit; Splunk 37 events 0 flaps; IOS-XE quiet.",
+  "next_action": "none",
+  "mode": "assess-now",
+  "analyzed_at": "2026-09-09T12:00:00Z",
+  "coverage": {
+    "thousandeyes": "complete",
+    "splunk": "complete",
+    "iosxe": "complete",
+    "servicenow": "not_requested"
+  },
+  "freshness": {
+    "thousandeyes": {
+      "state": "current",
+      "observed_at": "2026-08-14T16:05:00Z",
+      "ttl_hours": 26
+    },
+    "splunk": {
+      "state": "current",
+      "observed_at": "2026-08-30T18:45:00Z",
+      "ttl_hours": 26
+    },
+    "iosxe": {
+      "state": "current",
+      "observed_at": "2026-08-31T16:00:00Z",
+      "ttl_hours": 26
+    },
+    "servicenow": {
+      "state": "missing",
+      "observed_at": null,
+      "ttl_hours": 26
+    }
+  },
+  "consults": {
+    "thousandeyes": {
+      "watch_id": "2026-08-14T16-05-00Z",
+      "observed_at": "2026-08-14T16:05:00Z",
+      "status": "degraded",
+      "trend": "first",
+      "impression": "path-b 30/30 errored; path-a one ok round.",
+      "evidence_for": ["test t2 30 error rounds"],
+      "evidence_against": ["test t1 0% loss"],
+      "source_ref": "health/thousandeyes/2026-08-14T16-05-00Z.json",
+      "inspect_when": "Open when per-round error types are needed."
+    },
+    "splunk": {
+      "watch_id": "2026-08-30T18-45-00Z",
+      "observed_at": "2026-08-30T18:45:00Z",
+      "status": "ok",
+      "trend": "first",
+      "impression": "Syslog window is populated with config-sync and no flaps.",
+      "evidence_for": ["37 events across 7 hosts"],
+      "evidence_against": ["0 flaps"],
+      "source_ref": "health/splunk/2026-08-30T18-45-00Z.json",
+      "inspect_when": "Open when mnemonic samples are needed."
+    },
+    "iosxe": {
+      "watch_id": "2026-08-31T16-00-00Z",
+      "observed_at": "2026-08-31T16:00:00Z",
+      "status": "ok",
+      "trend": "first",
+      "impression": "Ranked wan/edge oper ready; BGP established.",
+      "evidence_for": ["0 oper-not-ready"],
+      "evidence_against": [],
+      "source_ref": "health/iosxe/2026-08-31T16-00-00Z.json",
+      "inspect_when": "Open when interface counters are needed."
+    },
+    "servicenow": null
+  },
+  "series": {
+    "thousandeyes": {
+      "window": 10,
+      "watermark": "2026-08-14T16-05-00Z",
+      "points": [
+        {
+          "at": "2026-08-14T16:05:00Z",
+          "scope": "test:t2",
+          "loss_pct": null,
+          "latency_ms_p95": null,
+          "latency_ms_avg": null,
+          "jitter_ms": null,
+          "ok_rounds": 0,
+          "error_rounds": 30
+        }
+      ]
+    },
+    "splunk": {
+      "window": 10,
+      "watermark": "2026-08-30T18-45-00Z",
+      "points": [
+        {
+          "at": "2026-08-30T18:45:00Z",
+          "scope": "window",
+          "event_count": 37,
+          "critical_error_count": 0,
+          "flap_count": 0,
+          "unique_hosts": 7
+        }
+      ]
+    },
+    "iosxe": {
+      "window": 10,
+      "watermark": "2026-08-31T16-00-00Z",
+      "points": [
+        {
+          "at": "2026-08-31T16:00:00Z",
+          "scope": "device:wan-1",
+          "oper_not_ready": 0,
+          "bgp_not_established": 0,
+          "in_errors": 0,
+          "in_discards": 0,
+          "num_flaps": 0
+        }
+      ]
+    },
+    "servicenow": {
+      "window": 10,
+      "watermark": null,
+      "points": []
+    }
+  },
+  "dispatched": [],
+  "read": [
+    "health/metadata-thousandeyes.json",
+    "health/thousandeyes/2026-08-14T16-05-00Z.json",
+    "health/metadata-splunk.json",
+    "health/splunk/2026-08-30T18-45-00Z.json",
+    "health/iosxe/2026-08-31T16-00-00Z.json",
+    "state/health.json"
+  ]
+}

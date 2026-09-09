@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-17T16:21:39Z",
+  "source_agent": "network-compliance",
+  "oscal_release": "v1.5.0",
+  "platforms": ["iosxe", "cat9kv"],
+  "counts": {
+    "covered": 17,
+    "partial": 7,
+    "gap": 9,
+    "unwired": 0
+  },
+  "rows": [
+    {
+      "nist_id": "AC-3",
+      "family_id": "AC",
+      "title": "Access Enforcement",
+      "net_comp": ["NET-COMP-0004"],
+      "live": [],
+      "static": ["aaa-authorization-configured"],
+      "platforms": ["iosxe", "cat9kv"],
+      "status": "partial",
+      "partial_why": "static-only",
+      "suggested_assert": "live output_contains on iosxe: show run | include aaa authorization"
+    },
+    {
+      "nist_id": "AC-4",
+      "family_id": "AC",
+      "title": "Information Flow Enforcement",
+      "net_comp": ["NET-COMP-0005"],
+      "live": [],
+      "static": [],
+      "platforms": ["iosxe", "cat9kv"],
+      "status": "gap",
+      "partial_why": "no-tests",
+      "suggested_assert": "Add a live or static check tagged nist: [AC-4] for iosxe, cat9kv"
+    }
+  ]
+}

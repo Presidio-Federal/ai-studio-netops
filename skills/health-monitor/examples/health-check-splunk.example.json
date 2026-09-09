@@ -1,0 +1,59 @@
+{
+  "schema": "health-splunk-check/v1",
+  "source": "splunk",
+  "watch_id": "2026-08-30T18-45-00Z",
+  "checked_at": "2026-08-30T18:45:00Z",
+  "ok": true,
+  "status": "ok",
+  "headline": "37 new syslog events, 7 hosts; CONFIG_I + DMI sync; 0 flaps",
+  "window": "2026-08-30T04:03:20Z",
+  "window_start": "2026-08-30T04:03:20Z",
+  "window_end": "2026-08-30T18:45:00Z",
+  "query_profile": "splunk-syslog/v2",
+  "scope": "syslog",
+  "summary": "New slice is config-change telemetry (SYS-5-CONFIG_I on 7 hosts, DMI SYNC_* trio). No BGP/LINEPROTO. Last event 2026-08-30T18:43:58Z from 192.0.2.10 router-a.",
+  "coverage": { "state": "complete" },
+  "metrics": [
+    {
+      "at": "2026-08-30T18:45:00Z",
+      "scope": "window",
+      "event_count": 37,
+      "critical_error_count": 0,
+      "flap_count": 0,
+      "unique_hosts": 7
+    }
+  ],
+  "event_count": 37,
+  "parsed_count": 37,
+  "critical_error_count": 0,
+  "flap_count": 0,
+  "unique_hosts": 7,
+  "first_event_at": "2026-08-30T18:30:59Z",
+  "last_event_at": "2026-08-30T18:43:58Z",
+  "by_severity": [
+    { "sev": 5, "count": 32 },
+    { "sev": 6, "count": 5 }
+  ],
+  "by_mnemonic": [
+    { "facility": "SYS", "mnemonic": "CONFIG_I", "sev": 5, "count": 9, "hosts": ["192.0.2.10", "192.0.2.11"] },
+    { "facility": "DMI", "mnemonic": "SYNC_COMPLETE", "sev": 5, "count": 7, "hosts": ["192.0.2.12"] }
+  ],
+  "top_hosts": [
+    { "host": "192.0.2.11", "count": 9, "last_seen": "2026-08-30T18:41:37Z", "ios_hostname": "router-a" },
+    { "host": "192.0.2.10", "count": 8, "last_seen": "2026-08-30T18:42:04Z", "ios_hostname": "router-b" }
+  ],
+  "buckets": [
+    { "bucket": "config", "count": 11, "hosts": 7 },
+    { "bucket": "auth", "count": 0, "hosts": 0 },
+    { "bucket": "other", "count": 5, "hosts": 2 }
+  ],
+  "samples": [
+    {
+      "at": "2026-08-30T18:43:58Z",
+      "host": "192.0.2.12",
+      "mnemonic": "CONFIG_I",
+      "sev": 5,
+      "message": "%SYS-5-CONFIG_I: Configured from console by console"
+    }
+  ]
+}
