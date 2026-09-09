@@ -1,50 +1,44 @@
 # Modernization Agents
 
-Refresh is the fifth network-ops act: take estate identity from
-inventory / SoT, research Cisco lifecycle on the same table, then
-write a plan when the operator asks.
+Refresh: what is in the estate, what Cisco says about it, and what to
+do next. Identity comes from SoT and inventory as written — device
+type, node definition, serial PID. Never a hostname-to-SKU map.
 
-Prompts and skills for these agents are **not in this checkout
-yet**. The contract is the `workspace-handoff` catalog.
+Modernization interviews and plans. Modernization-Lifecycle collects
+vendor research. They share one estate table.
 
-## Intended agents
+## Agents
 
-| Agent | Skill | Owns |
-|-------|-------|------|
-| Modernization | `modernization` | Identity on `state/lifecycle.json`, operator SKU, plan invoke (`recommendations[]`, `lifecycle/roadmap.md`) |
-| Modernization-Lifecycle | `modernization-lifecycle` | Cisco research merge onto the same table; per-PID dumps under `lifecycle/items/<pid>.json` |
+| Agent | Role |
+|-------|------|
+| Modernization | Identity, operator choices, plan |
+| Modernization-Lifecycle | Hardware EoX, software train, PSIRT, NVD, CCW |
 
-Both agents merge `state/lifecycle.json`. Modernization writes
-identity, guidance, and the plan. Lifecycle writes hardware EoX,
-software train, PSIRT, NVD, and CCW onto matching `pid` rows and
-does not overwrite higher-reliability identity.
+## Estate
 
-## Workspace files
+`state/lifecycle.json` is one row per evidence product id. The
+operator’s selected SKU lives only on that row. Headline,
+`next_action`, `guidance`, `recommendations[]`, and
+`lifecycle/roadmap.md` **are** the plan.
 
-| Path | Kind | Writer |
-|------|------|--------|
-| `state/lifecycle.json` | state | Modernization and Modernization-Lifecycle |
-| `lifecycle/items/<pid>.json` | observation | Modernization-Lifecycle |
-| `lifecycle/roadmap.md` | observation | Modernization (after operator answers) |
+Lifecycle writes Cisco facts onto matching `pid` rows and dumps
+detail at `lifecycle/items/<pid>.json`. It does not invent a
+replacement SKU. Family-only bulletin becomes an ask on the row.
+`recommended_software` comes from Cisco software EoX / PSIRT, never
+from a CCW part number. Empty hardware EoX on a virtual PID is
+unavailable research, not a failed estate.
 
-Rows are keyed by evidence product id (`device_type` /
-`node_definition` / serial PID) — never hostname-to-SKU. The
-operator’s selected replacement lives only on the table row, not on
-the per-PID dump.
+## How a refresh runs
 
-Modernization may **read** `state/health.json` on a plan invoke. It
-does not write the health chart.
+1. Modernization seeds identity from inventory / NetBox fields as
+   written.
+2. Missing or expired research: `Run the Modernization Lifecycle
+   check only.` Invoke and continue — do not wait.
+3. Lifecycle merges research and writes the per-PID dump.
+4. Plan invoke: Modernization asks why, then the choice. After
+   answers, it writes `recommendations[]` and the roadmap (order,
+   stage, deploy, schedule, cutover).
 
-## How they split work
-
-1. Modernization seeds identity from SoT / inventory.
-2. If a row is missing EoX or expired and Lifecycle is attached,
-   Analyzer-style dispatch is: `Run the Modernization Lifecycle check
-   only.` — invoke and continue; do not wait.
-3. Lifecycle merges research onto matching `pid` and writes
-   `lifecycle/items/<pid>.json`.
-4. On a plan invoke, Modernization writes `recommendations[]` and
-   `lifecycle/roadmap.md` after `guidance.answers` is non-empty.
-
-When these prompts land in `agents/`, this page will point at the
-files.
+A plan invoke may **read** [Health Agents](health-agents.md)
+`state/health.json`. It does not collect telemetry and does not
+write the health chart.
