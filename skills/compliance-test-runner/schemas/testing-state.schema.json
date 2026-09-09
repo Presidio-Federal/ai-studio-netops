@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "testing-state/v1",
+  "title": "state/testing.json (and state/compliance.json when suites includes compliance)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "run",
+    "risk",
+    "latest"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "testing-state/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "compliance-test" },
+    "status": {
+      "type": "string",
+      "enum": ["PASS", "FAIL", "MIXED", "UNKNOWN", "running"]
+    },
+    "headline": { "type": "string", "minLength": 1 },
+    "run": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "html_url", "live_lab", "mode"],
+      "properties": {
+        "run_id": { "type": ["string", "null"] },
+        "html_url": { "type": ["string", "null"] },
+        "live_lab": { "type": ["string", "null"] },
+        "mode": { "type": ["string", "null"] },
+        "suites": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "push_to_prod"],
+      "properties": {
+        "level": {
+          "type": "string",
+          "enum": ["LOW", "MEDIUM", "HIGH", "UNKNOWN"]
+        },
+        "push_to_prod": { "type": "string" },
+        "note": { "type": "string" }
+      }
+    },
+    "latest": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Workspace-relative path: testing/YYYY-MM-DDTHH-MM-SSZ.json, or compliance/YYYY-MM-DDTHH-MM-SSZ.json when this state file is the compliance pointer"
+    },
+    "gaps": { "type": "array", "items": { "type": "string" } },
+    "next_action": { "type": ["string", "null"] },
+    "failing_controls": { "type": ["integer", "null"] },
+    "verified_controls": { "type": ["integer", "null"] },
+    "failing_devices": { "type": "array", "items": { "type": "string" } }
+  }
+}

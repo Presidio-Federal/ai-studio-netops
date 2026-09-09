@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "testing-state-pointer",
   "title": "state/testing.json",
-  "description": "Latest live/static test-run summary written by Test after every run. latest is testing/YYYY-MM-DDTHH-MM-SSZ.json. Do not treat this as NIST posture.",
+  "description": "Latest live/static test-run summary written by Compliance Test after every run. latest is testing/YYYY-MM-DDTHH-MM-SSZ.json. Do not treat this as NIST posture.",
   "type": "object",
   "required": [
     "schema",

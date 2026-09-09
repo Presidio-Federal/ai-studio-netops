@@ -1,0 +1,57 @@
+{
+  "version": 1,
+  "updated_at": "2026-08-17T14:17:26Z",
+  "source_agent": "compliance-test",
+  "status": "MIXED",
+  "headline": "8/9 in-scope checks PASS on AI-CLOUD-EDGE in prod; edge-WAN eBGP established check SKIPPED — no edge_wan_bgp relationship entry",
+  "next_action": "Add AI-CLOUD-EDGE ↔ WAN peer mapping to tests/live/relationships/edge_wan_bgp.yml, then re-run live tests against AI-CLOUD-EDGE to close the coverage gap.",
+  "github_run_id": "32038499244",
+  "github_run_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/32038499244",
+  "environment": {
+    "live_lab": "prod",
+    "lab_role": "production",
+    "note": "Production CML lab cisco-ai-lab-prod; pyATS connected to AI-CLOUD-EDGE via SSH in 3.0s"
+  },
+  "scope": {
+    "devices_requested": ["AI-CLOUD-EDGE"],
+    "devices_scanned": ["AI-CLOUD-EDGE"],
+    "suites": ["reachability", "routing", "path"],
+    "tags": []
+  },
+  "results": {
+    "counts_ran": { "pass": 8, "fail": 0, "error": 0, "skip": 1 },
+    "counts_na": 0,
+    "ran": [
+      { "status": "PASS", "check": "reachability/device_reachable", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "reachability/edge_ios_xe", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "reachability/hostname_in_config", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "routing/bgp_neighbors_up", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "routing/bgp-receiving-prefixes", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "path/branch_to_cloud_ping", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "path/branch_to_dc_ping", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "path/branch_to_hq_ping", "device": "AI-CLOUD-EDGE" },
+      {
+        "status": "SKIP",
+        "check": "routing/edge-wan-ebgp-established",
+        "device": "AI-CLOUD-EDGE",
+        "detail": "No 'edge_wan_bgp' entry for AI-CLOUD-EDGE — add it to tests/live/relationships/edge_wan_bgp.yml to enable this check."
+      }
+    ],
+    "not_applicable": [],
+    "gaps": [
+      "routing/edge-wan-ebgp-established@AI-CLOUD-EDGE: missing edge_wan_bgp relationship entry"
+    ]
+  },
+  "risk": {
+    "level": "MEDIUM",
+    "push_to_prod": "proceed_with_caution",
+    "verdict": "Device evidence is clean (8/8 ran checks PASS, 0 FAIL); the edge-WAN eBGP established check did not execute because the relationship file has no entry mapping AI-CLOUD-EDGE to its WAN peer. Treat as MIXED — production reality is healthy for what was measured, but coverage is incomplete.",
+    "why": [
+      "8/8 ran checks PASS on AI-CLOUD-EDGE: reachability (3/3), routing (2/2 ran), path (3/3)",
+      "1 SKIP: routing/edge-wan-ebgp-established — missing edge_wan_bgp relationship entry",
+      "SSH to AI-CLOUD-EDGE succeeded; no auth or timeout fault"
+    ],
+    "blast_radius": "Single prod edge device AI-CLOUD-EDGE; tests are read-only"
+  },
+  "local_path": "testing/2026-08-17T14-17-26Z.json"
+}

@@ -174,6 +174,6 @@ Top:
 
 | Outcome | Next |
 |---------|------|
-| User wants assessment of current devices | **Test Executor** — `suites=compliance` |
-| User approves implementing a candidate | **Test Author** — do not write YAML here |
+| User wants assessment of current devices | **Compliance Test** — `suites=compliance` |
+| User approves implementing a candidate | **Compliance Author** — do not write YAML here |
 | Ticket from a live gap | **Observability** |

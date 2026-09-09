@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compliance",
   "title": "state/compliance.json",
-  "description": "Latest Test run whose scope.suites included compliance. latest is compliance/YYYY-MM-DDTHH-MM-SSZ.json. Do not write this file from reachability/routing/path runs. Do not write a root compliance.json.",
+  "description": "Latest Compliance Test run whose scope.suites included compliance. latest is compliance/YYYY-MM-DDTHH-MM-SSZ.json. Do not write this file from reachability/routing/path runs. Do not write a root compliance.json.",
   "type": "object",
   "required": [
     "schema",

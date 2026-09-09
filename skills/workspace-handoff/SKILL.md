@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.36.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.36.0"
+description: "v1.37.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.37.0"
 ---
 
 # Workspace handoff
@@ -128,7 +128,7 @@ this envelope (handoff from Ops NetBox SoT). Health check files under
 Analyzer **state** rollup. Nurses do not write `state/`.
 
 Do not write `lab-access.json`, `vuln-report.json`, `runs/`,
-`risk/`, or a root `compliance.json`. Test writes
+`risk/`, or a root `compliance.json`. Compliance Test writes
 `testing/YYYY-MM-DDTHH-MM-SSZ.json` (e.g. `2026-08-21T19-56-18Z.json`);
 do not invent other files under `testing/`. Do not invent
 `lifecycle/` paths other than the catalog rows below.
@@ -147,10 +147,10 @@ one row pointing at the writer — not a new schema file here.
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`) `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` (`yes`\|`no`). Reset sets `config_sync` and `netbox` to `no`. Onboard is the only writer. |
 | `test-request.json` | request | Network Design | this skill `schemas/test-request.schema.json` | envelope + scope in that schema |
-| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Test | `network-test` run schema / this skill `schemas/testing.schema.json` | envelope, `risk` `results` |
-| `state/testing.json` | state | Test | this skill `schemas/testing.schema.json` / `network-test` | envelope, `latest` `risk` `run.suites` |
-| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Test | this skill `schemas/compliance.schema.json` / `network-test` run schema | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
-| `state/compliance.json` | state | Test | this skill + `network-test` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
+| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` run schema / this skill `schemas/testing.schema.json` | envelope, `risk` `results` |
+| `state/testing.json` | state | Compliance Test | this skill `schemas/testing.schema.json` / `compliance-test-runner` | envelope, `latest` `risk` `run.suites` |
+| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | this skill `schemas/compliance.schema.json` / `compliance-test-runner` run schema | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
+| `state/compliance.json` | state | Compliance Test | this skill + `compliance-test-runner` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
 | `compliance/coverage.json` | snapshot | Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
 | `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `candidates` (Test authoring) |
 | `branch-deploy-summary.json` | result | Network Design | this skill `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |

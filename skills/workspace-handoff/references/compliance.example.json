@@ -1,7 +1,7 @@
 {
   "schema": "testing-state/v1",
   "updated_at": "2026-08-16T23:10:00Z",
-  "source_agent": "network-test",
+  "source_agent": "compliance-test",
   "status": "PASS",
   "headline": "8 pass / 0 fail on AI-BRANCH-03; Dev twin — proceed_with_caution",
   "next_action": "Review candidates or package for Design",

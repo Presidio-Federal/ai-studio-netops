@@ -45,7 +45,7 @@ Sec, and Ops lane agents will own proposals and the twin gate.
 Each agent writes only the files it owns. Health nurses write visit
 stamps. Health Analyzer writes `state/health.json`. Ops Network Sync
 writes inventory. Ops NetBox SoT writes the infra snapshot. Modernization Analysis and
-Lifecycle share the estate table. Test writes run results. The catalog
+Lifecycle share the estate table. Compliance Test writes run results. The catalog
 in `workspace-handoff` is the contract.
 
 Health Analyzer does not recommend. Modernization plans refresh.

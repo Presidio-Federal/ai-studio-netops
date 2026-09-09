@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated_at": "2026-08-07T23:30:45Z",
-  "source_agent": "network-test",
+  "source_agent": "compliance-test",
   "status": "PASS",
   "headline": "8/8 in-scope checks passed on AI-BRANCH-03; 2 WAN-only checks were N/A for a branch edge",
   "next_action": "Safe to package for review. Include WAN-04 in the next run to cover the hub side.",
