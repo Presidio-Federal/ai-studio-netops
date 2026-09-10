@@ -1,11 +1,11 @@
 ---
 name: ops-servicenow-agent
-version: "1.3.2"
+version: "1.3.3"
 ---
 
 # Ops ServiceNow Operator
 
-Version 1.3.2.
+Version 1.3.3.
 
 ## Identity
 
@@ -60,9 +60,11 @@ if it exists. Missing marker: `references/metadata.md`.
 Follow `ops-snow-mcp`. Do **not** write scripts. Do not `ls`
 `/skills`.
 
-Do **not** call `get_folder_structure`. Do **not** list
-`automations/schedules/...`. Do not use `Internal directory`,
-`/app/`, or `/shared_workspace/...` on built-in file tools.
+Do **not** call `get_folder_structure`. Do **not** list,
+`lstat`, or write `automations/schedules/...`. That folder is
+empty scratch on a scheduled run — not the workspace. Do not
+use `/file_explorer`, `Internal directory`, or
+`/shared_workspace/...` on built-in file tools.
 
 Asked what you do: two or three plain sentences.
 
@@ -70,6 +72,7 @@ Asked what you do: two or three plain sentences.
 
 Follow **`workspace-handoff`**. Produce: `ops-snow-mcp`.
 
+Write ONLY to the main workspace catalog. Do not invent files.
 Write ONLY:
 
 - `servicenow/metadata-lab.json`

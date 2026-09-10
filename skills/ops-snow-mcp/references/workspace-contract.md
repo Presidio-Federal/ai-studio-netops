@@ -16,7 +16,8 @@ Marker: `references/metadata.md`.
 
 Read other agents' evidence. Never overwrite it. Never copy
 ServiceNow tables into the workspace. Do not write `health/`,
-`servicenow/trends/`, or top-level `cases/`.
+`servicenow/trends/`, or top-level `cases/`. Do not write
+under `automations/schedules/`.
 
 `write_file` creates parents. Never `mkdir`.
 

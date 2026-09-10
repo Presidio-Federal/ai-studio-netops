@@ -1,19 +1,45 @@
-# Trends scan
+# Trends visit
 
-Lookback and threshold come from metadata
-(`lookback_days`, default 14; `min_related_cases`, default 3).
-Budget: one in-scope incident find (open + closed in the
-lookback), bounded gets for cluster samples, one knowledge
-find per repeating theme. Do not dump the instance.
+A schedule line or a chat that names trends /
+ServiceNow-Trend-Analysis is authorization. Do not confirm.
+
+## Shared order
+
+1. `read_file` `servicenow/metadata-trends.json`. Never
+   `get_folder_structure`. Never `automations/schedules/...`.
+   Follow `references/metadata.md`.
+2. If `last_visit_id` is set, `read_file`
+   `servicenow/trends/<last_visit_id>.json` and compare. Do
+   **not** list `servicenow/trends/` to find a prior stamp.
+3. Pick stamp `YYYY-MM-DDTHH-MM-SSZ`. If
+   `servicenow/trends/<stamp>.json` exists, add 1 second.
+   Never overwrite. That stamp is `watch_id`.
+4. Collect. Write the observation (including `metrics`), then
+   `read_file`.
+5. Write metadata (`last_visit_id` when collection succeeded).
+   Keep **at most 10** stamps under `servicenow/trends/`.
+   After the new write, delete older stamp files in **that
+   directory only** (oldest first) so 10 remain. Do not
+   overwrite. Do not `execute_command`. Persist with
+   `write_file` on catalog paths.
+
+On collection failure: still write that check
+(`coverage.state=unavailable`; counts `null`). Do not
+advance `last_visit_id`.
 
 ## Collect
 
-Use only metadata scope: `assignment_groups[]`, `categories[]`,
-`match_terms[]`, `marker`. Rows that do not match are out of
-scope.
+Lookback and threshold from metadata (`lookback_days`,
+default 14; `min_related_cases`, default 3). One in-scope
+incident find (open + closed in the lookback), bounded gets
+for cluster samples, one knowledge find per repeating theme.
 
-`inventory/prod.json` is optional. A recommendation may name a
-device only if that name is in the file.
+Use only metadata scope: `assignment_groups[]`,
+`categories[]`, `match_terms[]`, `marker`. Rows that do not
+match are out of scope.
+
+`inventory/prod.json` is optional. A recommendation may name
+a device only if that name is in the file.
 
 ## Cluster
 
@@ -34,12 +60,15 @@ For each cluster:
   class is eating open tickets / repeating on a named device)
 - why
 
-Do not create or update Knowledge. This scan writes the stamp
-and stops.
+Do not create or update Knowledge.
 
-## Write
+## Call budget
 
-One new `servicenow/trends/<stamp>.json`. Never overwrite.
-Never `trends.json`. `watch_id` matches the filename. At most
-10 stamps; delete older after write. Then metadata
-`last_visit_id`.
+| Item | Max |
+|------|----:|
+| Workspace file read/write | 20 |
+| ServiceNow find/get | 12 |
+
+If over budget: stop querying, write what you have.
+
+Unavailable measurements are `null`, never `0`.

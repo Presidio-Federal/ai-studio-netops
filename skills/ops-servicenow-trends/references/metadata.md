@@ -32,11 +32,14 @@ If scope is empty:
 2. Build a short options list from those rows (group names,
    category values, repeated short-description tokens) plus
    inventory labels.
-3. Ask which slice this visit is (EUC/demo, a metro pool, a
-   category, a marker string).
-4. Write that into metadata (`provenance` `user` or
-   `discovered` if exactly one fit).
-5. No human and still not unique: stop.
+3. **Interactive:** ask which slice. Write the choice
+   (`provenance` `user`).
+4. **Schedule / no human:** do not ask. If exactly one slice
+   fits, write it (`provenance` `discovered`) and collect.
+   If more than one, pick the largest repeating class from
+   that find, write it, collect. Still write the stamp.
+
+Never stop a scheduled visit to wait for a human.
 
 ```text
 Need: which ServiceNow slice to trend.

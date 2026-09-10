@@ -34,11 +34,13 @@ a marker or treat the whole shared instance as this lab.
 
 ## Trends
 
-Nightly or on demand. Read metadata, find in-scope tickets in
-ServiceNow (lookback), cluster (≥ threshold). Recommend a KB
-only when the same fix shows in close_notes. One new stamp under
-`servicenow/trends/`. Never overwrite. Cap 10. Find/get plus
-knowledge **read** — no create, no update, no `trends.json`.
+Nightly or on demand. Same visit order as Health: read
+metadata, pick a stamp, collect, `write_file` the catalog
+path, read it back. A schedule line is authorization — do
+not ask, do not `lstat` the schedule folder. Recommend a KB
+only when close_notes agree. Cap 10. Find/get plus knowledge
+**read** — no create, no `trends.json`. On MCP failure still
+write the stamp (`unavailable`).
 
 ## Operator
 

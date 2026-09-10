@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.39.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.39.1"
+description: "v1.39.2 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.39.2"
 ---
 
 # Workspace handoff
@@ -82,7 +82,10 @@ Do not `get_folder_structure` / `lstat` it. Do not write observations there.
 Do not prefix catalog paths with it (`…/inventory/prod.json` is wrong;
 `inventory/prod.json` is right). Health visits write catalog paths
 only (`health/<source>/<stamp>.json` and merge `state/health.json`).
-Open catalog names with built-in tools as written in the table below.
+Trends writes `servicenow/metadata-trends.json` and
+`servicenow/trends/<stamp>.json` the same way — never under the
+schedule folder. Open catalog names with built-in tools as written
+in the table below.
 
 The workspace is not the git repo. Config text, the job catalog, and job
 logs stay in git or Actions. Read git with `github_get_file`. Never

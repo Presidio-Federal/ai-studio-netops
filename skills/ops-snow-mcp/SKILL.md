@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.8.2"
-description: "v3.8.2 — Dispatch/onsite: list group members same turn. If they are on a recommend:kb trend ticket, required: recommend a KB to free that engineer. Draft/assign when asked."
+version: "3.8.3"
+description: "v3.8.3 — Dispatch/onsite from catalog paths only. Never lstat automations/schedules. If they are on a recommend:kb trend ticket, recommend a KB to free them."
 ---
 
 # Ops ServiceNow Operator skill
@@ -86,8 +86,9 @@ Use exactly: `references/dispatch.md`, `references/metadata.md`,
 Do not search the workspace for them. Do not pass
 `Internal directory` as a filename.
 
-Do **not** call `get_folder_structure`. Do **not** list
-`automations/schedules`. Do not use `Internal directory`, `/app/`,
+Do **not** call `get_folder_structure`. Do **not** list or
+`lstat` `automations/schedules`. That folder is empty scratch.
+Do not use `/file_explorer`, `Internal directory`, `/app/`,
 or `/shared_workspace/...` on built-in file tools.
 
 `execute_command` only when script execution is required. First
