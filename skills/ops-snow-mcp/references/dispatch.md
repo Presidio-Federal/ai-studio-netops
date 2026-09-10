@@ -38,10 +38,11 @@ not on disk.
 6. If that INC’s number or theme is on a cluster with
    `recommend` `kb`: **required** in the reply — they are
    working a trend case; a KB would free that engineer for
-   onsite. `Recommend` must say that. `Next: draft KB`.
-   Existing `kb_number` → say reuse it / still frees them.
-   Available = a member **not** on an open INC.
-7. Reply in the prompt block. Do not draft or assign unless
-   they asked this turn.
+   onsite. Then **ask**: `Draft that KB now? Yes or no.`
+   Stop. Do not call `snow_create_knowledge` on this turn.
+   Existing `kb_number` → say reuse it; still ask only if
+   they want a new draft.
+7. Available = a member **not** on an open INC. Reply in
+   the prompt block. Draft only after they say yes.
 
 Never dump the instance. Never write `servicenow/trends/`.

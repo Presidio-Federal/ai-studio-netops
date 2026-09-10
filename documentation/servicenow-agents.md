@@ -47,8 +47,8 @@ write the stamp (`unavailable`).
 **Onsite / dispatch** does not need the lab marker. Read the
 latest Trends stamp and live group members for the site they
 named. If the person who could go is on an open ticket in a
-`recommend: kb` cluster, say a KB would free them and offer
-someone who is not on an open ticket.
+`recommend: kb` cluster, say a KB would free them, then
+**ask** whether to draft it. Write Knowledge only after yes.
 
 **Lab cases** stay on `servicenow/metadata-lab.json`. Shared-
 instance rows that are not lab and not this dispatch ask stay

@@ -2,9 +2,11 @@
 
 Operator writes Knowledge. Trends only recommends.
 
-Authorized this turn only: they asked to draft / create / update
-a KB. No recognized policy drafts a KB. Missing ask:
-`status=needs_approval`, `action=noop`, no write.
+Authorized this turn only: they said **yes** / “draft it” /
+“create the KB” after you asked, or they named the draft
+themselves. No recognized policy drafts a KB. They said no,
+or you have not asked yet: `status=needs_approval`,
+`action=recommended`, no write.
 
 Never `snow_create_knowledge` / `snow_update_knowledge` on a
 board or recommend invoke. Never publish. Never invent a KB

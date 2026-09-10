@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.8.3"
-description: "v3.8.3 — Dispatch/onsite from catalog paths only. Never lstat automations/schedules. If they are on a recommend:kb trend ticket, recommend a KB to free them."
+version: "3.8.4"
+description: "v3.8.4 — Dispatch/onsite: if they are on a recommend:kb trend ticket, ask to draft a KB. Write Knowledge only after yes. Never the schedule folder."
 ---
 
 # Ops ServiceNow Operator skill
