@@ -23,6 +23,8 @@ category. A cluster needs at least `min_related_cases`.
 For each cluster:
 
 - theme, count, example numbers (from this find, never invented)
+- `open_consuming[]` — open tickets in the cluster with
+  `assigned_to` (from get). Empty if none are open.
 - `fix_consistent` — true only when close_notes / work notes
   show the same resolution
 - already-have KB? (`snow_find_knowledge` on the theme)

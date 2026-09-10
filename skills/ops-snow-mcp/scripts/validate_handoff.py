@@ -87,7 +87,7 @@ RESULT_REQUIRED = [
     "error",
 ]
 RESULT_STATUSES = {"succeeded", "failed", "needs_approval"}
-RESULT_ACTIONS = {"found", "created", "updated", "recommended", "noop", "failed"}
+RESULT_ACTIONS = {"found", "created", "updated", "assigned", "drafted", "recommended", "noop", "failed"}
 RECORD_TYPES = {"incident", "change"}
 AUTH_FIELDS = ("mode", "policy", "authorized_by", "authorized_at")
 RESULT_RECORD_FIELDS = ("type", "number", "sys_id", "state", "updated_at", "url")
@@ -354,7 +354,7 @@ STATE_SCHEMA = "servicenow-state/v1"
 ACTIVE_SCHEMA = "servicenow-cases-active/v1"
 INDEX_SCHEMA = "servicenow-cases-index/v1"
 BOARD_STATUSES = {"clear", "open", "unknown"}
-BOARD_ACTIONS = {"created", "updated", "recommended", "noop", "needs_approval", "failed", "board"}
+BOARD_ACTIONS = {"created", "updated", "assigned", "drafted", "recommended", "noop", "needs_approval", "failed", "board"}
 TRENDS = {"first", "unchanged", "worse", "better"}
 STATE_REQUIRED = [
     "schema",

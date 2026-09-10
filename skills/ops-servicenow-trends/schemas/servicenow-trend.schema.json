@@ -73,6 +73,18 @@
             "type": "array",
             "items": { "type": "string", "minLength": 1 }
           },
+          "open_consuming": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["number"],
+              "properties": {
+                "number": { "type": "string", "minLength": 1 },
+                "assignee": { "type": ["string", "null"] }
+              }
+            }
+          },
           "fix_consistent": { "type": ["boolean", "null"] },
           "kb_exists": { "type": ["boolean", "null"] },
           "kb_number": { "type": ["string", "null"] },

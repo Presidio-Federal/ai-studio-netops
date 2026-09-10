@@ -1,7 +1,7 @@
 ---
 name: ops-servicenow-trends
-version: "1.1.0"
-description: "v1.1.0 — Nightly/on-demand ServiceNow trend scan. Scope from servicenow/metadata-trends.json. Write servicenow/trends/<stamp>.json. Recommend KB when close_notes agree. Do not mutate records."
+version: "1.1.1"
+description: "v1.1.1 — Nightly/on-demand ServiceNow trend scan. Scope from servicenow/metadata-trends.json. Write servicenow/trends/<stamp>.json with open_consuming. Recommend KB when close_notes agree. Do not mutate records."
 ---
 
 # Ops ServiceNow Trends skill

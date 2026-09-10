@@ -35,7 +35,7 @@
     "last_run_at": { "type": "string", "minLength": 1 },
     "last_action": {
       "type": "string",
-      "enum": ["created", "updated", "recommended", "noop", "needs_approval", "failed", "board"]
+      "enum": ["created", "updated", "assigned", "drafted", "recommended", "noop", "needs_approval", "failed", "board"]
     },
     "last_record": {
       "type": ["object", "null"],
@@ -87,7 +87,7 @@
           "at": { "type": "string", "minLength": 1 },
           "action": {
             "type": "string",
-            "enum": ["created", "updated", "recommended", "noop", "needs_approval", "failed", "board"]
+            "enum": ["created", "updated", "assigned", "drafted", "recommended", "noop", "needs_approval", "failed", "board"]
           },
           "status": { "type": "string", "enum": ["clear", "open", "unknown"] },
           "headline": { "type": "string", "minLength": 1 },

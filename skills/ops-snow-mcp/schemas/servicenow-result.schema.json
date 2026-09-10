@@ -39,7 +39,7 @@
     },
     "action": {
       "type": "string",
-      "enum": ["found", "created", "updated", "recommended", "noop", "failed"]
+      "enum": ["found", "created", "updated", "assigned", "drafted", "recommended", "noop", "failed"]
     },
     "record": {
       "type": "object",

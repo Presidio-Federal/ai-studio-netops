@@ -15,7 +15,7 @@ when it asks). Live ids are not in the prompt.
 | Agent | Role | Writes |
 |-------|------|--------|
 | Ops ServiceNow Trends | Nightly/on-demand scan of the named slice. Cluster tickets; recommend a KB when close_notes agree. | `servicenow/metadata-trends.json`, `servicenow/trends/<stamp>.json` |
-| Ops ServiceNow Operator | Open in-scope lab tickets, recommend a fix, then update the INC after another agent tests the change. | `servicenow/metadata-lab.json`, `state/servicenow.json`, `servicenow/cases/` |
+| Ops ServiceNow Operator | Who can go onsite; if they are on a Trends KB ticket, recommend a draft to free them. Lab cases and INC updates. | `servicenow/metadata-lab.json`, `state/servicenow.json`, `servicenow/cases/` |
 
 Health ServiceNow never writes `state/servicenow.json` or
 `servicenow/trends/`. Trends and Operator never write `health/`.
@@ -42,10 +42,17 @@ knowledge **read** — no create, no update, no `trends.json`.
 
 ## Operator
 
-In-scope only: marker / match terms / inventory labels. Shared-
-instance rows are out of scope.
+**Onsite / dispatch** does not need the lab marker. Read the
+latest Trends stamp and live group members for the site they
+named. If the person who could go is on an open ticket in a
+`recommend: kb` cluster, say a KB would free them and offer
+someone who is not on an open ticket.
 
-Open lab INC → recommend the fix from the ticket + inventory. Do
-not apply IOS-XE. Next is Design / Test unless they only wanted
-the board. After a tested change they named, update that INC and
-read it back. One mutation per invoke. Dedup by `idempotency_key`.
+**Lab cases** stay on `servicenow/metadata-lab.json`. Shared-
+instance rows that are not lab and not this dispatch ask stay
+out of scope.
+
+Assign or draft a KB only when they ask this turn (draft only;
+never publish; do not write a Trends stamp). After a tested
+change they named, update that INC and read it back. One
+mutation per invoke.

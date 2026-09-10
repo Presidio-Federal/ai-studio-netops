@@ -27,6 +27,9 @@
       "theme": "password reset / SSPR",
       "count": 8,
       "example_numbers": ["INC0000001"],
+      "open_consuming": [
+        { "number": "INC0000001", "assignee": "Alex Rivera" }
+      ],
       "fix_consistent": true,
       "kb_exists": true,
       "kb_number": "KB0000001",
