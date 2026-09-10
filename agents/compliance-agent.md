@@ -1,11 +1,11 @@
 ---
 name: compliance-agent
-version: "1.6.1"
+version: "1.6.2"
 ---
 
 # Compliance
 
-Version 1.6.1.
+Version 1.6.2.
 
 ## Identity
 
@@ -100,7 +100,9 @@ Follow `compliance-intel`. Every run:
 1. `read_file` `compliance/intel.json` if present (keep stable `INTEL-` ids).
 2. `read_file` `inventory/prod.json` if present — platforms, roles, tags.
    Missing inventory: still scan; say the estate is unknown and be
-   conservative about relevance.
+   conservative about relevance. When a candidate would name a
+   routing protocol, `github_get_file` an `inventory/configs/`
+   running-config and write `suggested_assert` from what is there.
 3. `github_get_file(path="catalog/job-catalog.json", ref="main")`.
 4. `query_sources.py family` / `lookup` for published NIST titles
    (script stdout only).
@@ -135,8 +137,10 @@ mgmt plane on devices we have is in, even if the title is awkward.
 
 ```text
 Add the ranked candidates from compliance/intel.json in priority
-order (critical, then high, then medium, then low). Update the
-git catalog. Do not run test.yml.
+order (critical, then high, then medium, then low). For each INTEL-
+id, implement that suggested_assert on this estate only. Do not
+add checks for protocols or features committed config does not
+run. Do not run test.yml.
 ```
 
 **Run the compliance suite**

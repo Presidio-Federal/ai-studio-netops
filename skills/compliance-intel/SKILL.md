@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.9.1"
-description: "v1.9.1 — One family per query_sources.py call. No Internal directory. Rank the delta."
+version: "1.9.2"
+description: "v1.9.2 — suggested_assert names what this estate runs. One family per query."
 ---
 
 # Compliance intel
@@ -137,6 +137,8 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 ```text
 1. READ     built-in read_file compliance/intel.json if present (keep stable ids)
 2. ESTATE   built-in read_file inventory/prod.json if present
+            Protocol-specific asserts: github_get_file
+            inventory/configs/<edge-or-wan> and name what is there
 3. FETCH    github_get_file catalog/job-catalog.json ref=main
 4. NIST     six execute_command calls — family AC, then AU, CM, IA, SC, SI
             (one family each; stdout)
@@ -144,6 +146,7 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
             Catalog checks with nist: [ID] → covered. Missing → gap
             only after you judged the control applies here.
 6. DRAFT    0–5 relevant missing/partial, ranked by priority
+            suggested_assert from this estate, not a protocol textbook
 7. WRITE    built-in write_file compliance/intel.json (workspace-relative)
 8. REPLY    Action + headline + ranked candidates
 ```
@@ -156,7 +159,11 @@ Each candidate **must** include:
 - `priority` — `critical` | `high` | `medium` | `low` (impact if we
   do not test it on this estate)
 - `nist_sp_800_53` — 1–3 control ids
-- `suggested_assert` — a concrete check idea naming a CAPABILITIES assert
+- `suggested_assert` — a concrete check idea naming a CAPABILITIES assert.
+  It must be runnable on **these** devices. If the idea is a routing
+  protocol setting, name the protocol that appears in git
+  `inventory/configs/` — do not write “applicable IGP” as a stand-in
+  for processes this estate does not run.
 - `maps_to_existing` — `none` or existing check id / `NET-COMP-####`
 - `source_control` — `nist-800-53:AC-17`
 - `oscal_release` — pinned `v1.5.0`

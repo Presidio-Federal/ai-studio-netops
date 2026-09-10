@@ -35,6 +35,10 @@ suite: routing
 
 `on` needs quoting in YAML — bare `on` parses as boolean true.
 
+Do not add a check for a protocol or feature that is not in
+`inventory/configs/`. A regex that passes when the section is empty
+is not a test.
+
 ## Fields
 
 | Field | Required | Notes |

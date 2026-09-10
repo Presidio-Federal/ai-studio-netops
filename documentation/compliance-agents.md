@@ -74,8 +74,12 @@ those agents are not attached, it names them and stops.
 ## Compliance Author
 
 Workspace is input (`compliance/intel.json` or a sentence). Checks
-live in git. It matches the shape of existing live or static
-checks, pushes to `main`, and adds the id to the catalog.
+live in git. Before YAML it reads inventory and a committed
+running-config from git (`inventory/configs/`). **Applicable** is
+what those files show this estate runs. It implements the named
+INTEL row against that estate — it does not add sibling checks for
+protocols that are not in config, and it does not write a test that
+passes because the protocol is absent.
 
 It does not run `test.yml`. After the commit, Compliance invokes
 Test. A device fail on that later run is a finding — Author does
