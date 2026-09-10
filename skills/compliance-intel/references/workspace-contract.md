@@ -19,6 +19,7 @@ Every completed intel run writes **only**:
 | `compliance/coverage.json` | snapshot | Every run. Replace in full. |
 | `compliance/intel.json` | result | Every run, even if `candidates` is empty. |
 
+Read-only: `inventory/prod.json` when present (estate for relevance).
 Git `catalog/job-catalog.json` is read with `github_get_file`. Do not
 `write_file` the catalog, matrix, bridge, or a scratch `_git_input.json`.
 

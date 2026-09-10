@@ -4,8 +4,8 @@
   "updated_at": "2026-08-07T22:00:00+00:00",
   "source_agent": "compliance",
   "status": "OK",
-  "headline": "2 network candidates — eBGP neighbor authentication (high) and cleartext HTTP management (medium)",
-  "next_action": "Invoke Test: add intel candidates to the catalog on main, then run the suite",
+  "headline": "2 relevant gaps — eBGP neighbor authentication (high), cleartext HTTP management (medium)",
+  "next_action": "Compliance Author writes the ranked candidates, then Compliance Test runs suites=compliance",
   "sources_status": "ok",
   "oscal_release": "v1.5.0",
   "sources": [
@@ -28,6 +28,11 @@
     }
   ],
   "scope": "network_routing",
+  "delta": {
+    "catalog_covered": 17,
+    "relevant_missing": 2,
+    "not_applicable": 2
+  },
   "candidates": [
     {
       "id": "INTEL-0001",
@@ -67,10 +72,9 @@
     }
   ],
   "skipped_non_network": [
-    "Endpoint disk encryption guidance",
-    "SaaS identity MFA for corporate email"
+    "MP-6 media protection / portable device — no endpoints in prod.json",
+    "IA-5(1) password for corporate email SaaS — no identity plane on these routers"
   ],
-  "next_action": "review_candidates",
   "local_paths": {
     "json": "compliance/intel.json"
   }

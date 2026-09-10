@@ -20,8 +20,9 @@ Start any act if the prior workspace files already exist.
 4. **Ticket** — ServiceNow case → twin → test → prod.
 5. **Refresh** — Estate identity from SoT, Cisco research, then a plan.
 
-Test and compliance sit on every act that claims success. Health is the
-watch that runs beside those acts.
+Compliance Test sits on every act that claims success. Compliance
+intel finds gaps; it does not score devices. Health is the watch
+that runs beside those acts.
 
 A fact lives in one workspace file, has one writer, and is cited
 downstream. Producers collect one source. Summarizers own one state
@@ -34,9 +35,9 @@ Sec, and Ops lane agents will own proposals and the twin gate.
 |--------|----------------|
 | [Health Agents](documentation/health-agents.md) | Watch the path, syslog, devices, and lab tickets; assess and trend |
 | [Modernization Agents](documentation/modernization-agents.md) | Ingest estate with ranked confidence; plan with cost and timelines |
-| [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Inventory, NetBox, and the CML lab that must match prod |
-| [Change and Test Agents](documentation/change-and-test-agents.md) | Size a change, run suites, record risk |
-| [Compliance Agents](documentation/compliance-agents.md) | Coverage against the job catalog and NIST titles |
+| [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Ops Network Sync inventory, Ops NetBox SoT, and the CML lab that must match prod |
+| [Change and Test Agents](documentation/change-and-test-agents.md) | Size a change; Compliance Test runs the suite and records risk |
+| [Compliance Agents](documentation/compliance-agents.md) | Intel gaps, author a check, run the suite |
 | [ServiceNow Agents](documentation/servicenow-agents.md) | Cases and logistics — not the health watch |
 | [Network Ops](documentation/network-ops.md) | Attending: read the chart, do not collect |
 
@@ -49,5 +50,6 @@ Lifecycle share the estate table. Compliance Test writes run results. The catalo
 in `workspace-handoff` is the contract.
 
 Health Analyzer does not recommend. Modernization plans refresh.
-Compliance proposes intel. A passing test on a drifted twin is not
-evidence — fidelity belongs in the gate.
+Compliance proposes intel; Compliance Test scores the run. A
+passing test on a drifted twin is not evidence — fidelity belongs
+in the gate.

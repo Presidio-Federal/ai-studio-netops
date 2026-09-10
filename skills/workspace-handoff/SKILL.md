@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.37.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.37.0"
+description: "v1.38.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.38.0"
 ---
 
 # Workspace handoff
@@ -152,7 +152,7 @@ one row pointing at the writer — not a new schema file here.
 | `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | this skill `schemas/compliance.schema.json` / `compliance-test-runner` run schema | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
 | `state/compliance.json` | state | Compliance Test | this skill + `compliance-test-runner` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
 | `compliance/coverage.json` | snapshot | Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
-| `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `candidates` (Test authoring) |
+| `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
 | `branch-deploy-summary.json` | result | Network Design | this skill `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
 | `remediation-request.json` | request | Observability | this skill `schemas/remediation-request.schema.json` | envelope + ticket slot (ServiceNow) |
 | `trend-analysis.json` | observation | Observability | this skill `schemas/trend-analysis.schema.json` | leftover; prefer `state/health.json` |

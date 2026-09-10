@@ -50,6 +50,28 @@
       }
     },
     "scope": {"type": "string"},
+    "delta": {
+      "type": "object",
+      "description": "This visit: catalog already testing a relevant control vs relevant missing vs judged not applicable to this estate.",
+      "required": ["catalog_covered", "relevant_missing", "not_applicable"],
+      "properties": {
+        "catalog_covered": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Relevant controls already mapped on a catalog check (nist:)."
+        },
+        "relevant_missing": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Applies to this estate and is not covered. Should match candidates length this run (capped at 5)."
+        },
+        "not_applicable": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Published titles judged not applicable here. Should match skipped_non_network length."
+        }
+      }
+    },
     "candidates": {
       "type": "array",
       "maxItems": 5,

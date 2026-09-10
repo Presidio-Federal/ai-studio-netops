@@ -1,13 +1,14 @@
 ---
 name: compliance-intel
-version: "1.8.2"
-description: "v1.8.2 — Workspace-relative write_file only. No file_explorer / sessions sandbox."
+version: "1.9.0"
+description: "v1.9.0 — Relevant published controls vs this estate and the git catalog. Rank the delta. Workspace-relative write_file only."
 ---
 
 # Compliance intel
 
-For the **Compliance** agent. Compare **NIST network/routing**
-controls** to **tests on git `main`**. Write the two catalog files. Stop.
+For the **Compliance** agent. Compare **published NIST titles** to
+**this network** and **tests on git `main`**. Write the two catalog
+files. The prompt then hands Author and Test the ranked gaps.
 
 You do **not** run `test.yml`. You do **not** invent pass/fail for devices.
 You do **not** copy git into the workspace.
@@ -55,26 +56,31 @@ Stdout only. Do not redirect into a workspace file from the shell.
    `github_get_file(path="catalog/job-catalog.json", ref="main")`.
    Use the MCP result in this turn. Never write that JSON to the workspace.
 2. **Write every run** — coverage then intel (even if `candidates` is empty).
-3. **Network / routing filter** — routers, switches, WAN/edge, routing,
-   management plane, logging, NTP, SNMP, AAA, path/boundary. Drop the rest.
+3. **Relevance is this estate.** Read `inventory/prod.json` when it
+   exists (platform, role, tags). Interpret the control. If it only
+   applies to servers, endpoints, or SaaS and we have none of those,
+   put it on `skipped_non_network` with why. Do not propose it. Do
+   not use a family letter as the skip.
 4. **Primary map = NIST SP 800-53 Rev 5** — ids like `AC-17`, `SC-8`.
    PCI / STIG are footnotes. Resolve 800-171 / STIG Viewer URLs **to**
    800-53 before a candidate.
 5. **No copyrighted control text** — your words; cite URL + date. Titles
    and identifiers are fine.
-6. **Cap 5 candidates.** Prefer gaps, not SSH/SNMPv3/NTP/AAA/logging already
-   in the catalog.
+6. **Delta, then rank.** Catalog `nist:` on a check is covered, not a
+   gap. Candidates are relevant missing / partial controls only. Sort
+   `critical` → `high` → `medium` → `low`. Cap 5. Fill `delta`.
 7. **status stays `proposed`.** Do not edit git tests.
 8. **Reuse `INTEL-` ids** when re-proposing the same theme; bump `run_id`.
    Missing intel on first run is normal.
-9. Candidates from coverage rows `partial` or `gap` in families
-   AC AU CM IA SC SI. Do not invent gaps. Catalog `nist:` on a check means
-   that control is already tested (`covered`).
+9. Do not invent gaps. Do not write zeros into coverage when the
+   source query failed.
 10. Paths: `workspace-handoff`. Produce: `references/workspace-contract.md`.
 
-## Lab context
+## Estate
 
-IOS-XE edges/WANs/branches in CML. Live checks target `iosxe` / `cat9kv`.
+The network is whatever `inventory/prod.json` says this visit.
+Typical lab: IOS-XE edge / WAN / branch. Live checks target those
+platforms. Do not assume a device that is not in the file.
 
 ## Scripts (stdout only — not workspace files)
 
@@ -119,20 +125,24 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 
 ```text
 1. READ     built-in read_file compliance/intel.json if present (keep stable ids)
-2. FETCH    github_get_file catalog/job-catalog.json ref=main
-3. NIST     execute_command query_sources.py family AC AU CM IA SC SI (stdout)
-4. COVER    built-in write_file compliance/coverage.json (workspace-relative)
-            Catalog checks with nist: [ID] → covered. Missing → gap.
-5. DRAFT    0–5 candidates from partial/gap rows (network/routing only)
-6. WRITE    built-in write_file compliance/intel.json (workspace-relative)
-7. REPLY    Action + headline + top candidates
+2. ESTATE   built-in read_file inventory/prod.json if present
+3. FETCH    github_get_file catalog/job-catalog.json ref=main
+4. NIST     execute_command query_sources.py family AC AU CM IA SC SI (stdout)
+5. COVER    built-in write_file compliance/coverage.json (workspace-relative)
+            Catalog checks with nist: [ID] → covered. Missing → gap
+            only after you judged the control applies here.
+6. DRAFT    0–5 relevant missing/partial, ranked by priority
+7. WRITE    built-in write_file compliance/intel.json (workspace-relative)
+8. REPLY    Action + headline + ranked candidates
 ```
 
 ### Candidate quality bar
 
 Each candidate **must** include:
 
-- `why_network` — routers/routing/mgmt plane
+- `why_network` — why this control applies to **these** devices
+- `priority` — `critical` | `high` | `medium` | `low` (impact if we
+  do not test it on this estate)
 - `nist_sp_800_53` — 1–3 control ids
 - `suggested_assert` — a concrete check idea naming a CAPABILITIES assert
 - `maps_to_existing` — `none` or existing check id / `NET-COMP-####`
@@ -140,8 +150,16 @@ Each candidate **must** include:
 - `oscal_release` — pinned `v1.5.0`
 - `resolved_from` — `nist-800-171:3.1.7` when they started from 800-171
 
-Good themes: BGP neighbor auth, prefix filters, no HTTP server, CoPP,
-syslog+NTP only if still a gap, AAA exec authorization if not in catalog.
+List order is the rank. `skipped_non_network` names what you judged
+not applicable and why (e.g. `AC-19 portable device — no endpoints
+in prod.json`).
+
+`delta.catalog_covered` / `relevant_missing` / `not_applicable`
+must match coverage + candidates + skipped this run.
+
+Good themes when they apply here: BGP neighbor auth, prefix filters,
+no HTTP server, CoPP, syslog+NTP if still a gap, AAA exec
+authorization if not in catalog.
 
 ## Workspace schema
 
@@ -153,7 +171,7 @@ Fill from **`workspace-handoff`**:
 - [`references/compliance-intel.example.json`](../workspace-handoff/references/compliance-intel.example.json)
 
 Intel envelope: `version`, `updated_at`, `source_agent`, `status`,
-`headline`, `next_action`, `sources`, `candidates`.
+`headline`, `next_action`, `sources`, `delta`, `candidates`.
 
 `status`: `OK` | `NO_CANDIDATES` | `SOURCES_DEGRADED`.
 `sources_status`: `ok` | `partial` | `failed`.
@@ -166,14 +184,15 @@ Sources: git catalog + <NIST names>
 Candidates: <n>
 Headline: <one line>
 File: compliance/intel.json
-Top:
-- INTEL-0001: <title> → <NIST ids>
+Ranked:
+- INTEL-0001 <priority>: <title> → <NIST ids>
 ```
 
 ## Handoffs
 
 | Outcome | Next |
 |---------|------|
-| User wants assessment of current devices | **Compliance Test** — `suites=compliance` |
-| User approves implementing a candidate | **Compliance Author** — do not write YAML here |
+| Ranked candidates (default scan) | Prompt invokes **Compliance Author**, then **Compliance Test** |
+| Report-only / intel-only | Stop after the two files |
+| User wants device score only | **Compliance Test** — `suites=compliance` |
 | Ticket from a live gap | **Observability** |

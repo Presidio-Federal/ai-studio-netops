@@ -17,7 +17,7 @@ table.
 flowchart LR
   subgraph ingest [Identity — ranked confidence]
     SoT[Ops NetBox SoT]
-    Sync[Sync inventory]
+    Sync[Ops Network Sync]
     Upload[Upload or verbal]
   end
   subgraph estate [state/lifecycle.json]
