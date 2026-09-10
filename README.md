@@ -38,7 +38,7 @@ Sec, and Ops lane agents will own proposals and the twin gate.
 | [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Ops Network Sync inventory, Ops NetBox SoT, and the CML lab that must match prod |
 | [Change and Test Agents](documentation/change-and-test-agents.md) | Size a change; Compliance Test runs the suite and records risk |
 | [Compliance Agents](documentation/compliance-agents.md) | Intel gaps, author a check, run the suite |
-| [ServiceNow Agents](documentation/servicenow-agents.md) | Cases and logistics — not the health watch |
+| [ServiceNow Agents](documentation/servicenow-agents.md) | Lab cases and named-slice trends — not the health watch |
 | [Network Ops](documentation/network-ops.md) | Attending: read the chart, do not collect |
 
 ## How they coordinate

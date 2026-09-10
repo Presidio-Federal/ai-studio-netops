@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "servicenow-cases-index/v1",
+  "title": "servicenow/cases/index.json",
+  "description": "Every case this agent has touched. Use find/get for older detail — do not sync the instance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updated_at", "source_agent", "cases"],
+  "properties": {
+    "schema": { "type": "string", "const": "servicenow-cases-index/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "servicenow" },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["number", "type", "state", "headline", "updated_at"],
+        "properties": {
+          "number": { "type": "string", "minLength": 1 },
+          "type": { "type": "string", "enum": ["incident", "change"] },
+          "state": { "type": "string", "minLength": 1 },
+          "headline": { "type": "string", "minLength": 1 },
+          "sys_id": { "type": "string" },
+          "correlation_id": { "type": "string" },
+          "devices": { "type": "array", "items": { "type": "string" } },
+          "updated_at": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

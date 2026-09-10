@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "servicenow-request/v1",
+  "title": "servicenow-request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "request_id",
+    "created_at",
+    "requested_by",
+    "operation",
+    "correlation_id",
+    "idempotency_key",
+    "source_refs",
+    "authorization",
+    "record"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "servicenow-request/v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requested_by": {
+      "type": "string",
+      "minLength": 1
+    },
+    "operation": {
+      "type": "string",
+      "enum": [
+        "find_incident",
+        "get_incident",
+        "upsert_incident",
+        "append_incident_work_notes",
+        "resolve_incident",
+        "find_change",
+        "get_change",
+        "upsert_change",
+        "append_change_validation",
+        "append_change_deployment",
+        "close_change"
+      ]
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "policy", "authorized_by", "authorized_at"],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": ["human", "policy", "conversation"]
+        },
+        "policy": {
+          "type": ["string", "null"]
+        },
+        "authorized_by": {
+          "type": ["string", "null"]
+        },
+        "authorized_at": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["incident", "change"]
+        },
+        "number": {
+          "type": ["string", "null"]
+        },
+        "sys_id": {
+          "type": ["string", "null"]
+        },
+        "short_description": {
+          "type": ["string", "null"]
+        },
+        "description": {
+          "type": ["string", "null"]
+        },
+        "summary": {
+          "type": ["string", "null"]
+        },
+        "objective": {
+          "type": ["string", "null"]
+        },
+        "justification": {
+          "type": ["string", "null"]
+        },
+        "urgency": {
+          "type": ["string", "null"]
+        },
+        "impact": {
+          "type": ["string", "null"]
+        },
+        "category": {
+          "type": ["string", "null"]
+        },
+        "risk": {
+          "type": ["string", "null"]
+        },
+        "change_type": {
+          "type": ["string", "null"]
+        },
+        "state": {
+          "type": ["string", "null"]
+        },
+        "work_notes": {
+          "type": ["string", "null"]
+        },
+        "close_notes": {
+          "type": ["string", "null"]
+        },
+        "close_code": {
+          "type": ["string", "null"]
+        },
+        "implementation_plan": {
+          "type": ["string", "null"]
+        },
+        "risk_impact_analysis": {
+          "type": ["string", "null"]
+        },
+        "test_plan": {
+          "type": ["string", "null"]
+        },
+        "backout_plan": {
+          "type": ["string", "null"]
+        },
+        "start_date": {
+          "type": ["string", "null"]
+        },
+        "end_date": {
+          "type": ["string", "null"]
+        },
+        "affected_devices": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    }
+  }
+}

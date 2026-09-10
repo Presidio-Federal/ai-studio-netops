@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.9.0"
-description: "v1.9.0 — Relevant published controls vs this estate and the git catalog. Rank the delta. Workspace-relative write_file only."
+version: "1.9.1"
+description: "v1.9.1 — One family per query_sources.py call. No Internal directory. Rank the delta."
 ---
 
 # Compliance intel
@@ -21,10 +21,11 @@ Write **only** these **workspace-relative** paths with built-in
 - `compliance/coverage.json`
 - `compliance/intel.json`
 
-Do not use `/file_explorer`, `Internal directory`, or
-`/shared_workspace/...` on built-in file tools. Do not write to
-`sessions/`, `skills/`, `scripts/`, `tool_results`, or a schedule
-scratch folder. Write ONLY to the main workspace catalog.
+Do not use `Internal directory`, `/app/`, or `/shared_workspace/...`
+on built-in file tools. Do not write to `sessions/`, `skills/`,
+`scripts/`, `tool_results`, or a schedule scratch folder. Write
+ONLY to the main workspace catalog. Access denied with allowed
+`file_explorer`: retry once `file_explorer/<catalog row>`.
 
 Do **not** write `compliance/_git_input.json`, `prepare_*.py`, any `.py`,
 the matrix, the bridge, check YAML, `testing/`, `runs/`, or any other
@@ -42,13 +43,22 @@ Do not create helper scripts. Do not scrape HTML. **No curl.** The query
 script performs HTTP. Never `--output`. No icons/emoji. Do not dump raw
 tool payloads.
 
-`execute_command` is only:
+`execute_command` is only this script, **one family per call**:
 
 ```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py …
+python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
+python3 /skills/user/compliance-intel/scripts/query_sources.py family AU
+python3 /skills/user/compliance-intel/scripts/query_sources.py family CM
+python3 /skills/user/compliance-intel/scripts/query_sources.py family IA
+python3 /skills/user/compliance-intel/scripts/query_sources.py family SC
+python3 /skills/user/compliance-intel/scripts/query_sources.py family SI
 ```
 
+`family` takes **one** letter. Never `family AC AU CM IA SC SI`.
+
 Stdout only. Do not redirect into a workspace file from the shell.
+If that `.py` is missing: skip NIST, set `sources_status` `failed`.
+Never `Internal directory`. Never `/app/`. Never invent a path.
 
 ## CRITICAL RULES
 
@@ -94,9 +104,10 @@ python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
 python3 /skills/user/compliance-intel/scripts/query_sources.py lookup AC-17
 ```
 
-If `/skills` is empty, use the repo-relative path. After coverage exists,
-`lookup … --coverage compliance/coverage.json` is allowed (that file is a
-catalog path).
+After coverage exists, `lookup … --coverage /workspace/compliance/coverage.json`
+is allowed on **that command only**. If the script file is missing, skip
+it — do not invent `Internal directory` or a workspace copy of the
+script.
 
 Do **not** run `build_coverage.py` in Studio. Do not pass git bodies as
 `--input`. That script is for a local repo checkout only.
@@ -127,7 +138,8 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 1. READ     built-in read_file compliance/intel.json if present (keep stable ids)
 2. ESTATE   built-in read_file inventory/prod.json if present
 3. FETCH    github_get_file catalog/job-catalog.json ref=main
-4. NIST     execute_command query_sources.py family AC AU CM IA SC SI (stdout)
+4. NIST     six execute_command calls — family AC, then AU, CM, IA, SC, SI
+            (one family each; stdout)
 5. COVER    built-in write_file compliance/coverage.json (workspace-relative)
             Catalog checks with nist: [ID] → covered. Missing → gap
             only after you judged the control applies here.

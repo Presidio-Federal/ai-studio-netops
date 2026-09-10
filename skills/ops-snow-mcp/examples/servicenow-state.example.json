@@ -1,0 +1,54 @@
+{
+  "schema": "servicenow-state/v1",
+  "updated_at": "2026-08-20T17:38:00Z",
+  "source_agent": "servicenow",
+  "status": "open",
+  "headline": "2 open INC on AI-HQ-EDGE, AI-CLOUD-EDGE; 0 open CHG",
+  "run_count": 4,
+  "first_run_at": "2026-08-12T18:06:14Z",
+  "last_run_at": "2026-08-20T17:38:00Z",
+  "last_action": "created",
+  "last_record": {
+    "type": "incident",
+    "number": "INC0100452",
+    "state": "New"
+  },
+  "open": {
+    "incidents": 2,
+    "changes": 0,
+    "devices": ["AI-HQ-EDGE", "AI-CLOUD-EDGE"]
+  },
+  "trend": {
+    "vs_prior": "worse",
+    "note": "open INC 1→2; added INC0100452 for AI-HQ-EDGE from state/health.json",
+    "open_incidents_prior": 1,
+    "open_changes_prior": 0
+  },
+  "history": [
+    {
+      "at": "2026-08-20T17:38:00Z",
+      "action": "created",
+      "status": "open",
+      "headline": "Created INC0100452; 2 open INC",
+      "open_incidents": 2,
+      "open_changes": 0,
+      "devices": ["AI-HQ-EDGE", "AI-CLOUD-EDGE"],
+      "record": "INC0100452"
+    },
+    {
+      "at": "2026-08-20T17:08:00Z",
+      "action": "board",
+      "status": "open",
+      "headline": "1 open INC on AI-CLOUD-EDGE; no new record",
+      "open_incidents": 1,
+      "open_changes": 0,
+      "devices": ["AI-CLOUD-EDGE"],
+      "record": null
+    }
+  ],
+  "cases": {
+    "active": "servicenow/cases/active.json",
+    "index": "servicenow/cases/index.json"
+  },
+  "inventory": "inventory/prod.json"
+}

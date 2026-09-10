@@ -9,7 +9,7 @@ Use when:
 
 Do not use for:
 - Live device config (cisco-iosxe) — NetBox is inventory, not the box
-- ITSM tickets (snow-mcp)
+- ITSM tickets (ops-snow-mcp)
 
 Typical flows:
 - Lookup: netbox_test_connection → netbox_find(object_type='device', site=...) → netbox_get

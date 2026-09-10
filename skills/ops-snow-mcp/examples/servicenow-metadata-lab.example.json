@@ -1,0 +1,13 @@
+{
+  "schema": "servicenow-metadata-lab/v1",
+  "updated_at": "2026-09-10T15:00:00Z",
+  "source_agent": "ops-snow-mcp",
+  "servicenow": {
+    "marker": "EXAMPLE_LAB_MARKER",
+    "match_terms": ["AUTOMATION-ID:", "CORRELATION-ID:"],
+    "last_visit_id": "2026-09-10T15-00-00Z",
+    "last_collected_at": "2026-09-10T15:00:00Z"
+  },
+  "inventory_ref": "inventory/prod.json",
+  "provenance": { "servicenow": "user" }
+}

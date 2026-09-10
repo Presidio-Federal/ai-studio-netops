@@ -88,7 +88,9 @@ IOS-XE metadata file.
 Tickets for **this lab**, scoped by a workspace marker and
 inventory labels. Shared-instance rows are out of scope. Open
 in-scope tickets do not degrade vital status. This agent does not
-file or update cases — that is [ServiceNow Agents](servicenow-agents.md).
+file or update cases — that is [Ops ServiceNow Operator](servicenow-agents.md).
+Trends (EUC/demo clustering) are a separate ops visit, not this
+health stamp.
 
 ## Health Analyzer
 

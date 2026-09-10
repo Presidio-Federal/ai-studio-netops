@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "servicenow-result/v1",
+  "title": "servicenow-result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "request_id",
+    "correlation_id",
+    "completed_at",
+    "status",
+    "action",
+    "record",
+    "verification",
+    "source_refs",
+    "error"
+  ],
+  "properties": {
+    "schema": {
+      "type": "string",
+      "const": "servicenow-result/v1"
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "correlation_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "completed_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "status": {
+      "type": "string",
+      "enum": ["succeeded", "failed", "needs_approval"]
+    },
+    "action": {
+      "type": "string",
+      "enum": ["found", "created", "updated", "recommended", "noop", "failed"]
+    },
+    "record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "number", "sys_id", "state", "updated_at", "url"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["incident", "change"]
+        },
+        "number": {
+          "type": ["string", "null"]
+        },
+        "sys_id": {
+          "type": ["string", "null"]
+        },
+        "state": {
+          "type": ["string", "null"]
+        },
+        "updated_at": {
+          "type": ["string", "null"]
+        },
+        "url": {
+          "type": ["string", "null"]
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["read_back", "matched_request", "verified_fields"],
+      "properties": {
+        "read_back": {
+          "type": "boolean"
+        },
+        "matched_request": {
+          "type": "boolean"
+        },
+        "verified_fields": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "source_refs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "error": {
+      "type": ["object", "string", "null"],
+      "properties": {
+        "code": {"type": "string"},
+        "message": {"type": "string"}
+      }
+    }
+  }
+}

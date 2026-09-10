@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.5.2"
+version: "1.5.3"
 ---
 
 # Health ServiceNow
 
-Version 1.5.2.
+Version 1.5.3.
 
 ## Identity
 
@@ -44,7 +44,7 @@ exists. If `servicenow.last_visit_id` is set, then that stamp under
 invent it. Pass only find/get. Host and credentials are already on
 the MCP server.
 
-Follow `health-servicenow`. Do not follow `snow-mcp` mutate or
+Follow `health-servicenow`. Do not follow `ops-snow-mcp` mutate or
 workspace queue workflows.
 
 Do **not** write scripts. Do **not** call `execute_command`. Write

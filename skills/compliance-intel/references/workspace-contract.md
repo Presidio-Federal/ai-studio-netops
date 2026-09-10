@@ -3,10 +3,13 @@
 Paths, Kind, catalog: **`workspace-handoff`**.
 Write from the schemas and examples. Do not invent files.
 
-Built-in `read_file` / `write_file`: workspace-relative
+Built-in `read_file` / `write_file`: catalog row
 (`compliance/intel.json`). Never `/workspace/` on those tools. Never
-`/file_explorer`, `Internal directory`, `/shared_workspace/`, `sessions/`,
+`Internal directory`, `/shared_workspace/`, `sessions/`, `/app/`,
 or `tool_results`. `write_file` creates parents. Never `mkdir`.
+
+If Access denied and Allowed paths include `file_explorer`, retry
+**once** as `file_explorer/<catalog row>` (same file, no UUID).
 
 `execute_command` is only the query script (stdout). If it must see a
 catalog file, use `/workspace/compliance/coverage.json` on that command

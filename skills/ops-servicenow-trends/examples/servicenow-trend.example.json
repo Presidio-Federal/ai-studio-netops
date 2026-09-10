@@ -1,0 +1,45 @@
+{
+  "schema": "servicenow-trend/v1",
+  "source": "servicenow-trends",
+  "watch_id": "2026-09-10T15-00-00Z",
+  "checked_at": "2026-09-10T15:00:00Z",
+  "ok": true,
+  "status": "ok",
+  "headline": "Password-reset class repeats in the named EUC slice; one published KB already exists.",
+  "prior_observation": null,
+  "scope_ref": "servicenow/metadata-trends.json",
+  "coverage": {
+    "state": "complete",
+    "detail": "Find returned in-scope incidents matching metadata match_terms."
+  },
+  "metrics": [
+    {
+      "at": "2026-09-10T15:00:00Z",
+      "in_scope_open": 12,
+      "out_of_scope_open": null,
+      "clusters": 2
+    }
+  ],
+  "clusters": [
+    {
+      "theme": "password reset / SSPR",
+      "count": 8,
+      "example_numbers": ["INC0000001"],
+      "kb_exists": true,
+      "kb_number": "KB0000001",
+      "devices": [],
+      "recommend": "kb",
+      "why": "Same short-description class; published article already exists — restaff to self-service, do not open a network change."
+    },
+    {
+      "theme": "repeated WAN path alert",
+      "count": 3,
+      "example_numbers": ["INC0000002"],
+      "kb_exists": false,
+      "kb_number": null,
+      "devices": ["edge-01"],
+      "recommend": "problem",
+      "why": "Same site/path repeating; inventory names the edge. Operator owns the live INC; this visit only recommends a problem."
+    }
+  ]
+}

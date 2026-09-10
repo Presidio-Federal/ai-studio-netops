@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.38.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.38.0"
+description: "v1.39.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.39.0"
 ---
 
 # Workspace handoff
@@ -167,10 +167,13 @@ one row pointing at the writer — not a new schema file here.
 | `state/lifecycle.json` | state | Modernization Analysis **and** Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | Consolidated estate, one row per evidence product id (`device_type` / `node_definition` / serial PID as written — never hostname-to-SKU). Five-field envelope. Modernization Analysis writes identity, `guidance`, `assessment`, `plan` (cost + timeline), `selected_replacement` when the operator **names** a SKU, `recommendations[]` on a plan invoke, and `roadmap_ref`. Copies through research. Never overwrite higher `source.reliability` with lower unless the operator overrides. Modernization Lifecycle merges hardware EoX, software train, PSIRT, NVD, CCW onto matching `pid`; copies through identity, `guidance`, `roadmap_ref`, `recommendations[]`, and `selected_replacement`; `recommended_replacement` only from Cisco hardware EoX; family-only bulletin → `replacement_ask` / candidates on the **row**; `recommended_software` only from Cisco software EoX / PSIRT Software Checker. CCW prices `selected_replacement` if set, else Cisco `recommended_replacement`. Empty hardware EoX on a virtual PID is `research.eox` `unavailable`. Do not create this file if missing (Lifecycle stops `unknown`). Rely on `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current if `now < expires_at`. |
 | `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. MiniMax sandbox: `write_file` `file_explorer/lifecycle/items/<pid>.json` after Access denied. |
 | `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
-| `state/servicenow.json` | state | ServiceNow | `snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history[]` `trend` |
-| `servicenow/cases/active.json` | snapshot | ServiceNow | `snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases + `devices[]` |
-| `servicenow/cases/index.json` | snapshot | ServiceNow | `snow-mcp` `schemas/servicenow-cases-index.schema.json` | numbers this agent has touched |
-| `servicenow/requests/**` | request | ServiceNow (queue) | `snow-mcp` `schemas/servicenow-request.schema.json` | **Not** the five-field envelope. `servicenow-request/v1`: `request_id` `created_at` `requested_by` `operation` `correlation_id` `idempotency_key` `source_refs` `authorization` `record`. Pending file the operator named. |
+| `servicenow/metadata-lab.json` | metadata | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-metadata-lab.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. Not `health/metadata-servicenow.json`. |
+| `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | Writer schema. Groups, categories, match terms, marker, `last_visit_id` from the workspace file (not the prompt). Missing scope: ask or stop — do not invent. **Not** the five-field envelope. |
+| `servicenow/trends/<stamp>.json` | observation | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-trend.schema.json` | One trends visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `clusters[]` `metrics[]` required. Find/get + knowledge read only. Never write `state/servicenow.json` or `health/`. |
+| `state/servicenow.json` | state | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history[]` `trend` |
+| `servicenow/cases/active.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases + `devices[]` |
+| `servicenow/cases/index.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-index.schema.json` | numbers this agent has touched |
+| `servicenow/requests/**` | request | Ops ServiceNow Operator (queue) | `ops-snow-mcp` `schemas/servicenow-request.schema.json` | **Not** the five-field envelope. `servicenow-request/v1`: `request_id` `created_at` `requested_by` `operation` `correlation_id` `idempotency_key` `source_refs` `authorization` `record`. Pending file the operator named. |
 
 ## Health layout
 
@@ -203,6 +206,22 @@ metadata.
 
 Visit writers persist with `write_file` on their catalog rows (same as
 before). They do not merge the rollup.
+
+## ServiceNow ops layout
+
+Lookup: `servicenow/metadata-lab.json` (Ops ServiceNow Operator)
+and `servicenow/metadata-trends.json` (Ops ServiceNow Trends)
+(**metadata**, not enveloped). Live groups, categories, match
+terms, and markers live in those files — not in the prompt.
+
+Trends visits: `servicenow/trends/<stamp>.json` (**observation**).
+Never overwrite. At most **10** stamps; that writer deletes older
+after a new write. Do not write trends under `health/`.
+
+Operator board: `state/servicenow.json` (**state**),
+`servicenow/cases/active.json`, `servicenow/cases/index.json`,
+and the request queue. Health ServiceNow never writes these.
+Operator never writes `health/servicenow/<stamp>.json`.
 
 ## Lifecycle layout
 

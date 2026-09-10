@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "servicenow-trend/v1",
+  "title": "servicenow/trends/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "One trends visit (Kind observation). Clusters in metadata scope plus recommendations. Not a health stamp.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "source",
+    "watch_id",
+    "checked_at",
+    "ok",
+    "status",
+    "headline",
+    "coverage",
+    "metrics",
+    "clusters"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "servicenow-trend/v1" },
+    "source": { "type": "string", "const": "servicenow-trends" },
+    "watch_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "checked_at": { "type": "string", "minLength": 1 },
+    "ok": { "type": ["boolean", "null"] },
+    "status": { "type": "string", "enum": ["ok", "unknown"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "prior_observation": { "type": ["string", "null"] },
+    "scope_ref": { "type": "string", "const": "servicenow/metadata-trends.json" },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": ["complete", "partial", "unavailable"]
+        },
+        "detail": { "type": "string" }
+      }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "in_scope_open", "clusters"],
+        "properties": {
+          "at": { "type": "string", "minLength": 1 },
+          "in_scope_open": { "type": ["integer", "null"] },
+          "out_of_scope_open": { "type": ["integer", "null"] },
+          "clusters": { "type": ["integer", "null"] }
+        }
+      }
+    },
+    "clusters": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["theme", "count", "recommend", "why"],
+        "properties": {
+          "theme": { "type": "string", "minLength": 1 },
+          "count": { "type": "integer", "minimum": 1 },
+          "example_numbers": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "kb_exists": { "type": ["boolean", "null"] },
+          "kb_number": { "type": ["string", "null"] },
+          "devices": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "recommend": {
+            "type": "string",
+            "enum": ["kb", "restaff", "problem", "watch", "none"]
+          },
+          "why": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}
