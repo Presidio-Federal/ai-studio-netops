@@ -3,28 +3,45 @@
 This is Operator. Trends only wrote the stamp.
 
 They named a site or group (or “who can go onsite”). That is
-a read. Do not require a lab marker for this ask.
+a read. Do not require a lab marker. Do not stop after finding
+the group. Do not invent filenames, availability tags, or
+“field-capable” filters. Every member the tool returns is in
+the pool.
 
-## Order
+## Exact paths
 
-1. `read_file` `servicenow/metadata-trends.json`. If
-   `last_visit_id` is set, that stamp. Do not invent trends.
-   No stamp: say trends are not on disk yet; still answer from
-   live groups.
-2. Resolve the pool: metadata `assignment_groups[]`, or
-   `snow_find_assignment_groups` for the site/group they
-   named. Then `snow_list_group_members` (and
-   `snow_find_users` if needed). Do not invent names.
-3. For members on an **open** INC: `snow_get_incident` (or
-   the stamp `open_consuming[]`). Busy = assigned to an open
-   ticket.
-4. If that open ticket’s number or theme is on a stamp
-   cluster with `recommend` `kb`: they are local but tied up
-   on a repeating ticket. Say a KB (or the existing
-   `kb_number`) would free them for onsite. Offer a member
-   who is **not** on an open ticket for true onsite work.
-5. Do not draft the KB until they ask this turn
-   (`references/knowledge.md`). Do not assign until they
-   name the person this turn.
+- Metadata: `servicenow/metadata-trends.json`
+- Stamp: `servicenow/trends/<last_visit_id>.json`
+
+`last_visit_id` is already `YYYY-MM-DDTHH-MM-SSZ`. That string
+**is** the filename. Never `metadata-trends.json`,
+`metadata-trends-stamp.json`, `trends.json`, or a path you
+invented.
+
+No metadata or stamp: continue on live groups. Say trends are
+not on disk.
+
+## Same-turn tools (do not stop between them)
+
+1. `read_file` `servicenow/metadata-trends.json`
+2. If `servicenow.last_visit_id` (or `last_visit_id`) is set:
+   `read_file` `servicenow/trends/<that id>.json`
+3. `snow_find_assignment_groups(search=<site they named>)`.
+   Prefer the metro / dispatch pool over a program-management
+   row.
+4. **Immediately** `snow_list_group_members` on that group’s
+   `sys_id` or `name`. If this call is missing, the visit
+   failed.
+5. Busy: stamp `clusters[].open_consuming[]`, or
+   `snow_find_incidents` / `snow_get_incident` for open tickets
+   assigned to those members. Busy = on an open INC.
+6. If that INC’s number or theme is on a cluster with
+   `recommend` `kb`: **required** in the reply — they are
+   working a trend case; a KB would free that engineer for
+   onsite. `Recommend` must say that. `Next: draft KB`.
+   Existing `kb_number` → say reuse it / still frees them.
+   Available = a member **not** on an open INC.
+7. Reply in the prompt block. Do not draft or assign unless
+   they asked this turn.
 
 Never dump the instance. Never write `servicenow/trends/`.

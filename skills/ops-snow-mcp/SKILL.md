@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.8.0"
-description: "v3.8.0 — Dispatch/onsite from live groups + latest Trends stamp. If they are on a kb-trend ticket, recommend a KB to free them. Draft KB / assign when asked. Lab cases from metadata-lab.json. Do not write health/ or trends."
+version: "3.8.2"
+description: "v3.8.2 — Dispatch/onsite: list group members same turn. If they are on a recommend:kb trend ticket, required: recommend a KB to free that engineer. Draft/assign when asked."
 ---
 
 # Ops ServiceNow Operator skill
@@ -106,8 +106,12 @@ If `source_refs` start with `workspace/` or `/workspace/`, strip
 that prefix and read the remainder with built-in file tools.
 
 **Dispatch / onsite:** `read_file` `servicenow/metadata-trends.json`
-if it exists; if `last_visit_id` is set, that stamp. Then
-`references/dispatch.md`. Do not stop for a missing lab marker.
+if it exists. Stamp path is **only**
+`servicenow/trends/<last_visit_id>.json`. Then
+`references/dispatch.md`. Same turn:
+`snow_find_assignment_groups` then `snow_list_group_members`.
+Do not invent `metadata-trends-stamp.json`. Do not stop after
+find-groups. Do not stop for a missing lab marker.
 
 **Lab ticket / board:** `read_file` `servicenow/metadata-lab.json`
 if it exists. Then `inventory/prod.json`. Then prior
