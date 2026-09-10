@@ -10,10 +10,14 @@ Do not put live group names or markers in the prompt.
 1. `read_file` `servicenow/metadata-trends.json` if it exists.
 2. If `last_visit_id` is set, open that stamp under
    `servicenow/trends/`.
-3. `read_file` `inventory/prod.json` — device names, roles, tags.
+3. `read_file` `inventory/prod.json` if it exists — device names,
+   roles, tags. Optional.
 
-This visit needs at least one of: `marker`, `match_terms[]`,
+This scan needs at least one of: `marker`, `match_terms[]`,
 `assignment_groups[]`, `categories[]`.
+
+`lookback_days` defaults to 14. `min_related_cases` defaults
+to 3. Write those defaults if the file omitted them.
 
 ## Resolve — incomplete scope only
 
@@ -43,9 +47,10 @@ Which?
 
 ## Write metadata
 
-After resolve, and after every successful visit:
+After resolve, and after every successful scan:
 
 - `source_agent` — `ops-servicenow-trends`
 - scope fields from prior file or this resolve
-- `last_visit_id` / `last_collected_at` — this visit when
+- `lookback_days` / `min_related_cases` — prior file or defaults
+- `last_visit_id` / `last_collected_at` — this scan when
   collection succeeded; do not advance on MCP failure

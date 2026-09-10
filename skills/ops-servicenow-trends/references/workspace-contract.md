@@ -12,4 +12,4 @@ Stamp `YYYY-MM-DDTHH-MM-SSZ.json`. If that path exists, bump 1s.
 At most **10** stamps; delete older after write.
 
 Do not write `state/servicenow.json`, `servicenow/cases/`,
-`health/`, or `trend-analysis.json`.
+`health/`, `trends.json`, or `trend-analysis.json`.

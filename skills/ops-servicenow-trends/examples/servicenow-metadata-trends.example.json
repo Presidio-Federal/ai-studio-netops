@@ -7,6 +7,8 @@
     "match_terms": ["password reset", "SSPR", "EUC"],
     "assignment_groups": [],
     "categories": ["inquiry"],
+    "lookback_days": 14,
+    "min_related_cases": 3,
     "last_visit_id": "2026-09-10T15-00-00Z",
     "last_collected_at": "2026-09-10T15:00:00Z"
   },

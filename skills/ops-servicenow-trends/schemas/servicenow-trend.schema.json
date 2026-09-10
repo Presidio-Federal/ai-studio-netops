@@ -48,11 +48,13 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["at", "in_scope_open", "clusters"],
+        "required": ["at", "in_scope", "clusters"],
         "properties": {
           "at": { "type": "string", "minLength": 1 },
+          "in_scope": { "type": ["integer", "null"] },
           "in_scope_open": { "type": ["integer", "null"] },
           "out_of_scope_open": { "type": ["integer", "null"] },
+          "lookback_days": { "type": ["integer", "null"] },
           "clusters": { "type": ["integer", "null"] }
         }
       }
@@ -63,7 +65,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["theme", "count", "recommend", "why"],
+        "required": ["theme", "count", "fix_consistent", "recommend", "why"],
         "properties": {
           "theme": { "type": "string", "minLength": 1 },
           "count": { "type": "integer", "minimum": 1 },
@@ -71,6 +73,7 @@
             "type": "array",
             "items": { "type": "string", "minLength": 1 }
           },
+          "fix_consistent": { "type": ["boolean", "null"] },
           "kb_exists": { "type": ["boolean", "null"] },
           "kb_number": { "type": ["string", "null"] },
           "devices": {

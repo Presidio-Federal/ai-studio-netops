@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.39.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.39.0"
+description: "v1.39.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.39.1"
 ---
 
 # Workspace handoff
@@ -168,7 +168,7 @@ one row pointing at the writer — not a new schema file here.
 | `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. MiniMax sandbox: `write_file` `file_explorer/lifecycle/items/<pid>.json` after Access denied. |
 | `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
 | `servicenow/metadata-lab.json` | metadata | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-metadata-lab.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. Not `health/metadata-servicenow.json`. |
-| `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | Writer schema. Groups, categories, match terms, marker, `last_visit_id` from the workspace file (not the prompt). Missing scope: ask or stop — do not invent. **Not** the five-field envelope. |
+| `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | Writer schema. Groups, categories, match terms, marker, `lookback_days` (default 14), `min_related_cases` (default 3), `last_visit_id` from the workspace file (not the prompt). Missing scope: ask or stop — do not invent. **Not** the five-field envelope. |
 | `servicenow/trends/<stamp>.json` | observation | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-trend.schema.json` | One trends visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `clusters[]` `metrics[]` required. Find/get + knowledge read only. Never write `state/servicenow.json` or `health/`. |
 | `state/servicenow.json` | state | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history[]` `trend` |
 | `servicenow/cases/active.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases + `devices[]` |

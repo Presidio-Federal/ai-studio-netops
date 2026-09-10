@@ -15,8 +15,10 @@
   "metrics": [
     {
       "at": "2026-09-10T15:00:00Z",
+      "in_scope": 20,
       "in_scope_open": 12,
       "out_of_scope_open": null,
+      "lookback_days": 14,
       "clusters": 2
     }
   ],
@@ -25,6 +27,7 @@
       "theme": "password reset / SSPR",
       "count": 8,
       "example_numbers": ["INC0000001"],
+      "fix_consistent": true,
       "kb_exists": true,
       "kb_number": "KB0000001",
       "devices": [],
@@ -35,6 +38,7 @@
       "theme": "repeated WAN path alert",
       "count": 3,
       "example_numbers": ["INC0000002"],
+      "fix_consistent": false,
       "kb_exists": false,
       "kb_number": null,
       "devices": ["edge-01"],

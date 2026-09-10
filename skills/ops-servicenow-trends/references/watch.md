@@ -1,40 +1,43 @@
-# Trends visit
+# Trends scan
 
-Budget: one find of incidents, one find of changes if needed,
-bounded gets for cluster samples, one knowledge find per
-repeating theme. Do not dump the instance.
+Lookback and threshold come from metadata
+(`lookback_days`, default 14; `min_related_cases`, default 3).
+Budget: one in-scope incident find (open + closed in the
+lookback), bounded gets for cluster samples, one knowledge
+find per repeating theme. Do not dump the instance.
 
 ## Collect
 
 Use only metadata scope: `assignment_groups[]`, `categories[]`,
-`match_terms[]`, `marker` (short_description / work_notes /
-correlation text). Rows that do not match are out of scope.
+`match_terms[]`, `marker`. Rows that do not match are out of
+scope.
 
-Inventory `name` / `role` / `tags` are the engineering side.
-A recommendation may name a device only if that name is in
-`prod.json`.
+`inventory/prod.json` is optional. A recommendation may name a
+device only if that name is in the file.
 
 ## Cluster
 
-Group in-scope open (and recent closed if useful) by similar
-short_description / category. A cluster needs at least two
-tickets or a clear repeating alert string.
+Group in-scope tickets by similar short_description /
+category. A cluster needs at least `min_related_cases`.
 
-For each cluster, say:
+For each cluster:
 
-- theme
-- count
-- example numbers (from this find, never invented)
+- theme, count, example numbers (from this find, never invented)
+- `fix_consistent` — true only when close_notes / work notes
+  show the same resolution
 - already-have KB? (`snow_find_knowledge` on the theme)
-- recommend: `kb` | `restaff` | `problem` | `watch` | `none`
+- recommend `kb` only when count ≥ threshold **and**
+  `fix_consistent` is true
+- otherwise `watch` (or `restaff` / `problem` when the same
+  class is eating open tickets / repeating on a named device)
 - why
 
-Password-reset-class noise → KB / self-service if no published
-article. Same WAN path / same site repeating → problem or
-restaff. One-off lab INC → not a trend; Operator owns that.
+Do not create or update Knowledge. This scan writes the stamp
+and stops.
 
 ## Write
 
 One new `servicenow/trends/<stamp>.json`. Never overwrite.
-`watch_id` matches the filename. At most 10 stamps; delete
-older after write. Then metadata `last_visit_id`.
+Never `trends.json`. `watch_id` matches the filename. At most
+10 stamps; delete older after write. Then metadata
+`last_visit_id`.

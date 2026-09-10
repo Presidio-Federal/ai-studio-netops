@@ -14,7 +14,7 @@ when it asks). Live ids are not in the prompt.
 
 | Agent | Role | Writes |
 |-------|------|--------|
-| Ops ServiceNow Trends | Cluster tickets in the named slice. Recommend KB, restaff, or a problem. | `servicenow/metadata-trends.json`, `servicenow/trends/<stamp>.json` |
+| Ops ServiceNow Trends | Nightly/on-demand scan of the named slice. Cluster tickets; recommend a KB when close_notes agree. | `servicenow/metadata-trends.json`, `servicenow/trends/<stamp>.json` |
 | Ops ServiceNow Operator | Open in-scope lab tickets, recommend a fix, then update the INC after another agent tests the change. | `servicenow/metadata-lab.json`, `state/servicenow.json`, `servicenow/cases/` |
 
 Health ServiceNow never writes `state/servicenow.json` or
@@ -24,7 +24,7 @@ Health ServiceNow never writes `state/servicenow.json` or
 
 | File | Who | What you set |
 |------|-----|----------------|
-| `servicenow/metadata-trends.json` | Trends | Assignment groups, categories, match terms, optional marker. First visit reads this, then `inventory/prod.json`. |
+| `servicenow/metadata-trends.json` | Trends | Assignment groups, categories, match terms, optional marker, lookback (default 14 days), cluster threshold (default 3). |
 | `servicenow/metadata-lab.json` | Operator | Lab marker + match terms. Same discover-then-ask pattern as `health/metadata-servicenow.json`. |
 | `health/metadata-servicenow.json` | Health ServiceNow | Lab marker for the **health** stamp. Separate file. |
 
@@ -34,12 +34,11 @@ a marker or treat the whole shared instance as this lab.
 
 ## Trends
 
-One visit writes one new stamp under `servicenow/trends/`. Never
-overwrite. Cap 10. Inventory names the engineering side
-(`inventory/prod.json`). Find/get plus knowledge **read** — no
-create, no update. Password-reset class noise can recommend a KB;
-repeating path/site can recommend a problem or restaff. It does not
-file the ticket and does not invent a network change.
+Nightly or on demand. Read metadata, find in-scope tickets in
+ServiceNow (lookback), cluster (≥ threshold). Recommend a KB
+only when the same fix shows in close_notes. One new stamp under
+`servicenow/trends/`. Never overwrite. Cap 10. Find/get plus
+knowledge **read** — no create, no update, no `trends.json`.
 
 ## Operator
 
