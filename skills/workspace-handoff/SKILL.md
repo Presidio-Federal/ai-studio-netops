@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.39.2 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.39.2"
+description: "v1.39.3 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.39.3"
 ---
 
 # Workspace handoff
@@ -67,14 +67,19 @@ wait**. Continue on files already on disk. Record `dispatched[]` on
 `/shared_workspace/HAI-ASSISTANTS-WAPSPACES/...`), `sessions/`, or
 `Internal directory`.
 
-**Exception — Modernization Lifecycle:** MiniMax `read_file` /
+**Exception — MiniMax scheduled / sandbox:** `read_file` /
 `write_file` may be the session sandbox. If Access denied and
 Allowed paths include `file_explorer`, retry **once** as
 `file_explorer/<catalog row>` (no leading slash, no UUID). Same
-catalog, not a new tree. JSON `detail_ref` stays the catalog row
-(`lifecycle/items/<pid>.json`). If the item write still fails,
-still merge onto `state/lifecycle.json` (same prefix that
-worked).
+catalog, not a new tree. Applies to Modernization Lifecycle
+(`file_explorer/state/lifecycle.json`,
+`file_explorer/lifecycle/items/<pid>.json` — `detail_ref`
+stays the catalog row), Compliance
+(`file_explorer/compliance/intel.json`), and Ops ServiceNow
+Trends (`file_explorer/servicenow/metadata-trends.json`,
+`file_explorer/servicenow/trends/<stamp>.json`). If a Lifecycle
+item write still fails, still merge onto `state/lifecycle.json`
+(same prefix that worked).
 
 A scheduled invoke may list `automations/schedules/<name>/<timestamp>` as an
 allowed `dirPath`. That folder is empty scratch. It is **not** the workspace.

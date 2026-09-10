@@ -3,7 +3,11 @@
 Paths, Kind, catalog: **`workspace-handoff`**.
 Write schemas live in this skill. Do not `execute_command`.
 Do not invent files. Persist with `write_file` on catalog
-paths.
+paths (`servicenow/metadata-trends.json`,
+`servicenow/trends/<stamp>.json`). Never a bare filename.
+If Access denied lists `file_explorer`, retry once
+`file_explorer/<catalog row>`. Never write under
+`automations/schedules/`.
 
 One visit writes **one** new observation and updates
 metadata. Do not write `state/`.

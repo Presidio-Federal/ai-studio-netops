@@ -1,7 +1,7 @@
 ---
 name: ops-servicenow-trends
-version: "1.2.0"
-description: "v1.2.0 — One ServiceNow trend visit. Write servicenow/trends/<stamp>.json then metadata. Use when a schedule or chat names the trends scan. Do not mutate records."
+version: "1.2.1"
+description: "v1.2.1 — One ServiceNow trend visit. write_file catalog rows only (servicenow/trends/<stamp>.json). Access denied → file_explorer/<row> once. Never the schedule folder. Do not mutate records."
 ---
 
 # Ops ServiceNow Trends skill
@@ -56,11 +56,19 @@ Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
 **Visit — first tool:** `read_file`
-`servicenow/metadata-trends.json` if it exists. If
+`servicenow/metadata-trends.json` (exact name, no schedule
+prefix). If Access denied and Allowed paths include
+`file_explorer`, retry once
+`file_explorer/servicenow/metadata-trends.json`. If
 `last_visit_id` is set, then
-`servicenow/trends/<last_visit_id>.json`. Then
-`inventory/prod.json` if it exists. Never overwrite a
-timestamped file.
+`servicenow/trends/<last_visit_id>.json` (same prefix if that
+is what worked). Never a bare stamp filename. Never overwrite
+a timestamped file.
+
+`write_file` the same catalog rows. If Access denied lists
+`file_explorer`, retry
+`file_explorer/servicenow/trends/<stamp>.json` and
+`file_explorer/servicenow/metadata-trends.json`.
 
 ## State machine
 
