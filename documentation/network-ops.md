@@ -9,6 +9,10 @@ trend. Open a stamp when the consult says to inspect. Modernization
 (`state/lifecycle.json`) and Compliance intel are other
 summarizers; Network Ops does not own those files.
 
+Dated improvement work (hardware, software, configuration,
+compliance) is [Network Design](change-and-test-agents.md). Ops
+reads the chart and does not write `state/design.json`.
+
 If a plane is stale, the named nurse visit is Health Analyzer’s
 dispatch, not a collect this agent runs itself. EoX, CCW, and NVD
 belong to [Modernization Agents](modernization-agents.md).

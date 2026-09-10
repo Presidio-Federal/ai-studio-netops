@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.39.3 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.39.3"
+description: "v1.41.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.41.0"
 ---
 
 # Workspace handoff
@@ -53,6 +53,14 @@ missing EoX or expired and Modernization Lifecycle is attached,
 invoke `Run the Modernization Lifecycle check only.` and **do not
 wait**. Continue on files already on disk. Record `dispatched[]` on
 `state/lifecycle.json`. Do not tell the operator to run the collector.
+
+**Exception — Network Design:** reads the chart already on disk
+(inventory, health, lifecycle, compliance, tickets). Missing or
+stale is reduced coverage; still write `state/design.json` with
+all four layers. Warehouse **check** uses ServiceNow
+`snow_find_stockrooms` / `snow_find_assets`. Reserve / order /
+CHG only when they asked to coordinate. Do not collect Splunk,
+ThousandEyes, or Cisco. Do not write other agents’ state files.
 
 ## Paths (once)
 
@@ -139,7 +147,7 @@ Do not write `lab-access.json`, `vuln-report.json`, `runs/`,
 `risk/`, or a root `compliance.json`. Compliance Test writes
 `testing/YYYY-MM-DDTHH-MM-SSZ.json` (e.g. `2026-08-21T19-56-18Z.json`);
 do not invent other files under `testing/`. Do not invent
-`lifecycle/` paths other than the catalog rows below.
+`lifecycle/` or `design/` paths other than the catalog rows below.
 
 ## Catalog
 
@@ -162,6 +170,8 @@ one row pointing at the writer — not a new schema file here.
 | `compliance/coverage.json` | snapshot | Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
 | `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
 | `branch-deploy-summary.json` | result | Network Design | this skill `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
+| `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, or the ServiceNow desk. |
+| `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | Human roadmap: hardware, software, configuration, compliance, timeline, warehouse. Written every completed design. Replace in full. Path is `roadmap_ref`. |
 | `remediation-request.json` | request | Observability | this skill `schemas/remediation-request.schema.json` | envelope + ticket slot (ServiceNow) |
 | `trend-analysis.json` | observation | Observability | this skill `schemas/trend-analysis.schema.json` | leftover; prefer `state/health.json` |
 | `health/metadata-splunk.json` | metadata | Health Monitor (Splunk visit) | `health-monitor` `schemas/health-metadata-splunk.schema.json` | Writer schema. Splunk `index` / `sourcetype` / `collected_through` / `last_visit_id` from the workspace file (not from the skill or prompt). **Not** the five-field envelope. |
@@ -251,12 +261,25 @@ row.
 Modernization Analysis may **read** `state/health.json` for a plan invoke; it
 does not write it.
 
+## Design layout
+
+Primary program: `state/design.json` (**state**, Network Design
+only). Four layers (`hardware[]` `software[]` `configuration[]`
+`compliance[]`), `timeline[]`, `warehouse`, `assessment`,
+`horizon`. Human sequence: `design/roadmap.md` (**observation**,
+path is `roadmap_ref`). Design **reads** health, lifecycle,
+compliance, inventory, and tickets; it checks ServiceNow
+warehouse itself. It does not write those other state files
+and does not rewrite `lifecycle/roadmap.md`.
+Do not invent extra `design/` paths.
+
 `testing/YYYY-MM-DDTHH-MM-SSZ.json` and `compliance/YYYY-MM-DDTHH-MM-SSZ.json`
 are append-only. Other files
 are replaced in full except Sync yaml (merge). One writer per `state/` file
 except `state/lifecycle.json` (Modernization Analysis identity; Modernization Lifecycle
 research merge).
 `state/health.json` is Health Analyzer only.
+`state/design.json` is Network Design only.
 `state/testing.json` is the latest **any-suite** run. `state/compliance.json`
 is the latest **`suites` includes `compliance`** run — not a copy of a
 reachability/routing/path run.
@@ -285,6 +308,8 @@ file.
    `refresh-then-assess` may wait for material stale planes only.
    Modernization Analysis: named Modernization Lifecycle visits are **not** a
    wait-for-handoff; invoke and continue.
+   Network Design: not a wait-for-handoff; write from files
+   already on disk. Warehouse check is this agent’s MCP.
 
 ## Reading
 
@@ -316,3 +341,10 @@ file.
    `guidance`, `assessment`, `plan`, `recommendations[]`, and
    the roadmap markdown are the plan. Modernization Analysis may read health state for a plan;
    missing health is optional.
+7. Design: `state/design.json` is the roadmap (envelope +
+   four layers + `timeline` + `warehouse`). Plan markdown:
+   `roadmap_ref` → `design/roadmap.md`. Network Design may
+   read health, lifecycle, compliance, inventory, tickets;
+   missing inputs are optional (reduced coverage). Warehouse
+   facts come from its own `snow_find_*` calls. It does not
+   write those other files.

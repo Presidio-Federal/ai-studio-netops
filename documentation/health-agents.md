@@ -53,7 +53,8 @@ flowchart LR
 
 Nurses do not write `state/`. Analyzer does not collect and does
 not write visit files. [Network Ops](network-ops.md) reads the
-chart. Lane agents decide later.
+chart. [Network Design](change-and-test-agents.md) sequences a
+dated program from it.
 
 ## Agents
 
@@ -118,7 +119,9 @@ Silent plane is not health.
   history).
 
 `next_action` is an inspect pointer or `none`. No SKUs. No work
-queue.
+queue. [Network Ops](network-ops.md) reads the
+chart. [Network Design](change-and-test-agents.md) sequences a
+dated program from it.
 
 ## Invoke lines
 

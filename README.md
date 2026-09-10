@@ -16,7 +16,7 @@ Start any act if the prior workspace files already exist.
 
 1. **SoT** — Collect inventory and configs, ingest NetBox, deploy the twin.
 2. **Day-two change** — Apply on twin IOS-XE, test, approve, then prod.
-3. **Design** — Size a branch on the twin, test, ServiceNow logistics.
+3. **Design** — Read the chart. Roadmap at hardware, software, configuration, and compliance. Warehouse check; coordinate on ask.
 4. **Ticket** — ServiceNow case → twin → test → prod.
 5. **Refresh** — Estate identity from SoT, Cisco research, then a plan.
 
@@ -26,8 +26,8 @@ that runs beside those acts.
 
 A fact lives in one workspace file, has one writer, and is cited
 downstream. Producers collect one source. Summarizers own one state
-file (findings, not plans). Network Ops reads the chart. Later Dev,
-Sec, and Ops lane agents will own proposals and the twin gate.
+file (findings, not plans). Network Ops reads the chart. Network
+Design owns the four-layer roadmap.
 
 ## Agent families
 
@@ -36,7 +36,7 @@ Sec, and Ops lane agents will own proposals and the twin gate.
 | [Health Agents](documentation/health-agents.md) | Watch the path, syslog, devices, and lab tickets; assess and trend |
 | [Modernization Agents](documentation/modernization-agents.md) | Ingest estate with ranked confidence; plan with cost and timelines |
 | [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Ops Network Sync inventory, Ops NetBox SoT, and the CML lab that must match prod |
-| [Change and Test Agents](documentation/change-and-test-agents.md) | Size a change; Compliance Test runs the suite and records risk |
+| [Change and Test Agents](documentation/change-and-test-agents.md) | Design: hardware, software, config, compliance roadmap + warehouse; Compliance Test scores the run |
 | [Compliance Agents](documentation/compliance-agents.md) | Intel gaps, author a check, run the suite |
 | [ServiceNow Agents](documentation/servicenow-agents.md) | Lab cases and named-slice trends — not the health watch |
 | [Network Ops](documentation/network-ops.md) | Attending: read the chart, do not collect |
@@ -49,7 +49,9 @@ writes inventory. Ops NetBox SoT writes the infra snapshot. Modernization Analys
 Lifecycle share the estate table. Compliance Test writes run results. The catalog
 in `workspace-handoff` is the contract.
 
-Health Analyzer does not recommend. Modernization plans refresh.
-Compliance proposes intel; Compliance Test scores the run. A
-passing test on a drifted twin is not evidence — fidelity belongs
-in the gate.
+Health Analyzer does not recommend. Modernization fills Cisco
+dates, PSIRTs, and replacement SKUs. Network Design turns that
+chart into hardware, software, configuration, and compliance
+work, then checks the warehouse. Compliance proposes intel;
+Compliance Test scores the run. A passing test on a drifted
+twin is not evidence — fidelity belongs in the gate.

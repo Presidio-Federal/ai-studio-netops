@@ -1,0 +1,229 @@
+{
+  "schema": "design-plan/v2",
+  "updated_at": "2026-09-10T17:00:00Z",
+  "source_agent": "network-design",
+  "status": "partial",
+  "headline": "Replace the EoS group, patch PSIRT software, fix the degraded path, and close the ranked compliance gap.",
+  "next_action": "Check Southern California Warehouse for the Cisco replacement SKU already on the estate row.",
+  "analyzed_at": "2026-09-10T17:00:00Z",
+  "horizon": {
+    "start": "2026-09-10",
+    "end": "2027-01-31",
+    "basis": "Path is degraded now; software support on the estate row ends 2027-01-31. Shape only."
+  },
+  "coverage": {
+    "health": "current",
+    "lifecycle": "current",
+    "compliance": "current",
+    "compliance_test": "missing",
+    "inventory_prod": "current",
+    "inventory_dev": "current",
+    "infra_sot": "current",
+    "network_sync": "current",
+    "servicenow": "current",
+    "trends": "missing",
+    "testing": "missing",
+    "warehouse": "current"
+  },
+  "read": [
+    "inventory/prod.json",
+    "inventory/dev.json",
+    "state/lifecycle.json",
+    "state/health.json",
+    "compliance/intel.json",
+    "compliance/coverage.json"
+  ],
+  "assessment": {
+    "environment": "Prod and Dev inventories are both present; Sync does not report drift in this shape.",
+    "hardware": "One product group is at end of support — order the Cisco replacement already on the row.",
+    "software": "Recommended train is filled; a PSIRT is on the row — upgrade those devices.",
+    "configuration": "WAN path is the unhealthy vital — change the path/QoS on the named edge, prove on Dev.",
+    "compliance": "One relevant-missing control is ranked high; no compliance-suite score yet.",
+    "contradictions": [
+      "Path degraded while IOS-XE consult is ok — recommend the path change from TE, not a guessed CLI."
+    ],
+    "opinion": "Replace the EoS group, patch PSIRT software, fix the degraded path, and close the ranked compliance gap."
+  },
+  "hardware": [
+    {
+      "id": "hw-eox-1",
+      "targets": ["device-a"],
+      "action": "Order the replacement SKU for this product group because hardware support ends on the estate date.",
+      "why": "end_of_support is filled on the lifecycle row.",
+      "sku": "C8200-1N-4T",
+      "software": null,
+      "date": "2027-01-31",
+      "date_basis": "cisco_eox",
+      "environment": "both",
+      "stock": "in_stock",
+      "steps": [
+        {
+          "order": 1,
+          "action": "Reserve the in-stock unit that matches the SKU.",
+          "date": null,
+          "date_basis": "servicenow",
+          "environment": "prod",
+          "done_when": "Asset comment names this item; tag+model+serial reported."
+        },
+        {
+          "order": 2,
+          "action": "Stage on Dev, Test, then cut over before end_of_support.",
+          "date": "2027-01-31",
+          "date_basis": "cisco_eox",
+          "environment": "both",
+          "done_when": "Cutover is before the Cisco date and after Dev Test."
+        }
+      ],
+      "evidence_refs": ["state/lifecycle.json"]
+    }
+  ],
+  "software": [
+    {
+      "id": "sw-psirt-1",
+      "targets": ["device-a"],
+      "action": "Update software to the recommended train because a PSIRT is on this product group.",
+      "why": "psirts and recommended_software are filled on the estate row.",
+      "sku": null,
+      "software": "17.12.x",
+      "date": "2027-01-31",
+      "date_basis": "psirt",
+      "environment": "both",
+      "stock": "n_a",
+      "steps": [
+        {
+          "order": 1,
+          "action": "Qualify the train on Dev.",
+          "date": null,
+          "date_basis": "unknown",
+          "environment": "dev",
+          "done_when": "Dev box is on the recommended train."
+        },
+        {
+          "order": 2,
+          "action": "Upgrade prod after Test.",
+          "date": "2027-01-31",
+          "date_basis": "cisco_eox",
+          "environment": "prod",
+          "done_when": "Prod software_versions include the train."
+        }
+      ],
+      "evidence_refs": ["state/lifecycle.json"]
+    }
+  ],
+  "configuration": [
+    {
+      "id": "cfg-path-1",
+      "targets": ["device-a"],
+      "action": "Change the WAN path / QoS on the named edge to clear the degraded ThousandEyes test.",
+      "why": "Health Analyzer says the path is the unhealthy vital; boxes and syslog do not explain it.",
+      "sku": null,
+      "software": null,
+      "date": "2026-09-10",
+      "date_basis": "health_constraint",
+      "environment": "both",
+      "stock": "n_a",
+      "steps": [
+        {
+          "order": 1,
+          "action": "Apply the bounded path change on Dev.",
+          "date": "2026-09-10",
+          "date_basis": "health_constraint",
+          "environment": "dev",
+          "done_when": "Dev Test reachability,routing,path is not fail."
+        },
+        {
+          "order": 2,
+          "action": "Same change on prod after Test.",
+          "date": null,
+          "date_basis": "unknown",
+          "environment": "prod",
+          "done_when": "Health path consult is not degraded."
+        }
+      ],
+      "evidence_refs": ["state/health.json"]
+    }
+  ],
+  "compliance": [
+    {
+      "id": "cmp-intel-1",
+      "targets": ["estate"],
+      "action": "Update the estate for the ranked missing control — devices are out of compliance until it is in the catalog and the suite passes.",
+      "why": "intel.candidates lists a high relevant-missing control; no state/compliance.json score.",
+      "sku": null,
+      "software": null,
+      "date": null,
+      "date_basis": "compliance",
+      "environment": "dev",
+      "stock": "n_a",
+      "steps": [
+        {
+          "order": 1,
+          "action": "Author the control into the catalog, then run suites=compliance on Dev.",
+          "date": null,
+          "date_basis": "compliance",
+          "environment": "dev",
+          "done_when": "state/compliance.json exists for that run."
+        }
+      ],
+      "evidence_refs": ["compliance/intel.json"]
+    }
+  ],
+  "timeline": [
+    {
+      "order": 1,
+      "date": "2026-09-10",
+      "date_basis": "health_constraint",
+      "layer": "configuration",
+      "item_id": "cfg-path-1",
+      "action": "Dev path/QoS change for the degraded TE test."
+    },
+    {
+      "order": 2,
+      "date": null,
+      "date_basis": "compliance",
+      "layer": "compliance",
+      "item_id": "cmp-intel-1",
+      "action": "Author and run the ranked missing control."
+    },
+    {
+      "order": 3,
+      "date": null,
+      "date_basis": "psirt",
+      "layer": "software",
+      "item_id": "sw-psirt-1",
+      "action": "Qualify the recommended train on Dev."
+    },
+    {
+      "order": 4,
+      "date": "2027-01-31",
+      "date_basis": "cisco_eox",
+      "layer": "hardware",
+      "item_id": "hw-eox-1",
+      "action": "Cut over replacement SKU before end_of_support."
+    }
+  ],
+  "warehouse": {
+    "checked": true,
+    "stockroom": "Southern California Warehouse",
+    "found": [
+      {
+        "asset_tag": "NETOPS-RTR-8200-A",
+        "model": "Cisco C8200-1N-4T",
+        "serial": "FOC2731NETOPS4",
+        "fits": "hw-eox-1"
+      }
+    ],
+    "reserved": [],
+    "ordered": [],
+    "notes": "Shape only — in_stock match for the SKU on the estate row. No reserve until they ask to coordinate."
+  },
+  "asks": [
+    {
+      "id": "ask-window",
+      "why": "The path change and the EoS cutover both touch the same hub; I will not pick a prod night without you.",
+      "question": "What change window can the hub take (date, or max minutes of WAN downtime)?"
+    }
+  ],
+  "answers": "",
+  "roadmap_ref": "design/roadmap.md"
+}

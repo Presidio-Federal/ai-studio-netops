@@ -1,35 +1,55 @@
 # Change and Test Agents
 
-Day-two and design acts prove the change on the twin before prod.
-These agents size the work and record risk. The actual suite run
-is [Compliance Test](compliance-agents.md). They do not replace
-[Health Agents](health-agents.md) or [SoT and Twin](sot-and-twin-agents.md).
+Network Design is the designer. It reads the whole chart and
+writes a roadmap at **hardware, software, configuration, and
+compliance**. It checks warehouse stock on ServiceNow and
+coordinates when asked. The suite run is
+[Compliance Test](compliance-agents.md). It does not replace
+[Health Agents](health-agents.md),
+[Modernization Agents](modernization-agents.md), or
+[SoT and Twin](sot-and-twin-agents.md) — it uses their files.
+
+```mermaid
+flowchart LR
+  subgraph chart [Chart]
+    Health[state/health.json]
+    Life[state/lifecycle.json]
+    Comp[compliance intel]
+    Inv[inventory]
+  end
+  ND[Network Design]
+  SNOW[ServiceNow warehouse]
+  DesignState[state/design.json]
+  Road[design/roadmap.md]
+  Health --> ND
+  Life --> ND
+  Comp --> ND
+  Inv --> ND
+  SNOW --> ND
+  ND --> DesignState
+  ND --> Road
+```
 
 ## Agents
 
 | Agent | Role |
 |-------|------|
-| Network Design | Size a branch on the twin. Writes the test request and a deploy summary (ticket slot for ServiceNow). |
+| Network Design | Hardware (order because EoS), software (patch because PSIRT), configuration (latency/path/flap), compliance (out of compliance — update). Warehouse check; reserve/REQ/CHG when they coordinate. Writes `state/design.json` and `design/roadmap.md`. |
 | Compliance Author | Turns compliance intel or a named ask into a check in git. |
 | Compliance Test | Triggers `test.yml`, records risk, writes the timestamped result. |
 
-## What a successful change looks like
+## What the roadmap looks like
 
-Apply on twin IOS-XE → Compliance Test → approve → prod. Design
-follows the same gate: size on the twin, test, then ServiceNow
-logistics.
+All four layers every invoke. Each item names targets, why,
+date, and steps. Empty layer only if nothing to do — still
+say why. One timeline across the four. Warehouse: asset tag,
+model, and serial together. Lab images are not orderable
+models. SKUs and trains come from the lifecycle row or from
+stock actually found.
 
-Compliance Test writes `testing/<stamp>.json` and
-`state/testing.json` after every run. `state/compliance.json` is
-only the latest run whose suites include compliance — not a copy
-of a reachability run. Device score is Compliance Test, not the
-intel scan.
+Config changes prove on Dev, then prod. A drifted twin is
+not evidence — [SoT and Twin](sot-and-twin-agents.md).
 
-A passing test on a drifted twin is not evidence. Fidelity belongs
-in the [SoT and Twin](sot-and-twin-agents.md) gate.
-
-Network Design does not file warehouse or catalog requests itself.
-[ServiceNow Agents](servicenow-agents.md) own tickets.
-
-New checks and NIST coverage live on
-[Compliance Agents](compliance-agents.md).
+Design does not collect Splunk, ThousandEyes, or Cisco EoX.
+It does not run the ServiceNow desk (assign / KB). Warehouse
+and catalog order **are** this agent.

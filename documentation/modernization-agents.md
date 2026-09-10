@@ -82,3 +82,8 @@ PID is unavailable research, not a failed estate.
 A plan invoke may **read** [Health Agents](health-agents.md)
 `state/health.json`. It does not collect telemetry and does not
 write the health chart.
+
+[Network Design](change-and-test-agents.md) **reads** this
+estate for hardware SKUs, software trains, PSIRTs, and EoX
+dates. It writes `state/design.json` (four layers + warehouse),
+not this table.

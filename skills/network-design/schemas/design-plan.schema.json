@@ -1,0 +1,317 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "design-plan/v2",
+  "title": "state/design.json",
+  "description": "Network Design roadmap. Four layers — hardware, software, configuration, compliance — plus warehouse check and a dated timeline. Sole writer network-design.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "analyzed_at",
+    "horizon",
+    "coverage",
+    "read",
+    "assessment",
+    "hardware",
+    "software",
+    "configuration",
+    "compliance",
+    "timeline",
+    "warehouse",
+    "asks",
+    "answers",
+    "roadmap_ref"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "design-plan/v2" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "network-design" },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "partial", "unknown", "coordinating", "asking"]
+    },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"] },
+    "analyzed_at": { "type": "string", "minLength": 1 },
+    "horizon": { "$ref": "#/$defs/horizon" },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "read": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "assessment": { "$ref": "#/$defs/assessment" },
+    "hardware": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "software": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "configuration": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "compliance": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/item" }
+    },
+    "timeline": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/timeline_row" }
+    },
+    "warehouse": { "$ref": "#/$defs/warehouse" },
+    "asks": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/ask" }
+    },
+    "answers": {
+      "type": "string",
+      "description": "Operator answers appended this run. Empty if none yet."
+    },
+    "roadmap_ref": {
+      "type": ["string", "null"]
+    }
+  },
+  "$defs": {
+    "horizon": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "basis"],
+      "properties": {
+        "start": { "type": ["string", "null"] },
+        "end": { "type": ["string", "null"] },
+        "basis": { "type": "string", "minLength": 1 }
+      }
+    },
+    "plane_state": {
+      "type": "string",
+      "enum": ["current", "stale", "missing"]
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "health",
+        "lifecycle",
+        "compliance",
+        "compliance_test",
+        "inventory_prod",
+        "inventory_dev",
+        "infra_sot",
+        "network_sync",
+        "servicenow",
+        "trends",
+        "testing",
+        "warehouse"
+      ],
+      "properties": {
+        "health": { "$ref": "#/$defs/plane_state" },
+        "lifecycle": { "$ref": "#/$defs/plane_state" },
+        "compliance": { "$ref": "#/$defs/plane_state" },
+        "compliance_test": { "$ref": "#/$defs/plane_state" },
+        "inventory_prod": { "$ref": "#/$defs/plane_state" },
+        "inventory_dev": { "$ref": "#/$defs/plane_state" },
+        "infra_sot": { "$ref": "#/$defs/plane_state" },
+        "network_sync": { "$ref": "#/$defs/plane_state" },
+        "servicenow": { "$ref": "#/$defs/plane_state" },
+        "trends": { "$ref": "#/$defs/plane_state" },
+        "testing": { "$ref": "#/$defs/plane_state" },
+        "warehouse": { "$ref": "#/$defs/plane_state" }
+      }
+    },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment",
+        "hardware",
+        "software",
+        "configuration",
+        "compliance",
+        "contradictions",
+        "opinion"
+      ],
+      "properties": {
+        "environment": { "type": "string", "minLength": 1 },
+        "hardware": { "type": "string", "minLength": 1 },
+        "software": { "type": "string", "minLength": 1 },
+        "configuration": { "type": "string", "minLength": 1 },
+        "compliance": { "type": "string", "minLength": 1 },
+        "contradictions": {
+          "type": "array",
+          "maxItems": 12,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "opinion": { "type": "string", "minLength": 1 }
+      }
+    },
+    "date_basis": {
+      "type": "string",
+      "enum": [
+        "cisco_eox",
+        "psirt",
+        "lifecycle_window",
+        "servicenow",
+        "health_constraint",
+        "compliance",
+        "testing",
+        "operator",
+        "unknown"
+      ]
+    },
+    "environment": {
+      "type": "string",
+      "enum": ["dev", "prod", "both", "lab"]
+    },
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "targets",
+        "action",
+        "why",
+        "date",
+        "date_basis",
+        "environment",
+        "steps",
+        "evidence_refs"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 24,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Device names, product ids, path tests, or control ids as written on disk."
+        },
+        "action": { "type": "string", "minLength": 1 },
+        "why": { "type": "string", "minLength": 1 },
+        "sku": {
+          "type": ["string", "null"],
+          "description": "Replacement SKU from Cisco recommended_replacement / selected_replacement or a warehouse model actually found. Null if none."
+        },
+        "software": {
+          "type": ["string", "null"],
+          "description": "Train/version from recommended_software or a PSIRT checker result on disk. Never invented."
+        },
+        "date": { "type": ["string", "null"] },
+        "date_basis": { "$ref": "#/$defs/date_basis" },
+        "environment": { "$ref": "#/$defs/environment" },
+        "stock": {
+          "type": ["string", "null"],
+          "description": "in_stock / not_in_stock / not_checked / n_a"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": { "$ref": "#/$defs/step" }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "action", "date", "date_basis", "environment", "done_when"],
+      "properties": {
+        "order": { "type": "integer", "minimum": 1 },
+        "action": { "type": "string", "minLength": 1 },
+        "date": { "type": ["string", "null"] },
+        "date_basis": { "$ref": "#/$defs/date_basis" },
+        "environment": { "$ref": "#/$defs/environment" },
+        "done_when": { "type": "string", "minLength": 1 }
+      }
+    },
+    "timeline_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["order", "date", "date_basis", "layer", "item_id", "action"],
+      "properties": {
+        "order": { "type": "integer", "minimum": 1 },
+        "date": { "type": ["string", "null"] },
+        "date_basis": { "$ref": "#/$defs/date_basis" },
+        "layer": {
+          "type": "string",
+          "enum": ["hardware", "software", "configuration", "compliance"]
+        },
+        "item_id": { "type": "string", "minLength": 1 },
+        "action": { "type": "string", "minLength": 1 }
+      }
+    },
+    "warehouse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["checked", "stockroom", "found", "reserved", "ordered", "notes"],
+      "properties": {
+        "checked": { "type": "boolean" },
+        "stockroom": { "type": ["string", "null"] },
+        "found": {
+          "type": "array",
+          "maxItems": 24,
+          "items": { "$ref": "#/$defs/stock_unit" }
+        },
+        "reserved": {
+          "type": "array",
+          "maxItems": 24,
+          "items": { "$ref": "#/$defs/stock_unit" }
+        },
+        "ordered": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["number", "url"],
+            "properties": {
+              "number": { "type": "string", "minLength": 1 },
+              "url": { "type": ["string", "null"] },
+              "item": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "ask": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "why", "question"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "why": { "type": "string", "minLength": 1 },
+        "question": { "type": "string", "minLength": 1 }
+      }
+    },
+    "stock_unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["asset_tag", "model", "serial"],
+      "properties": {
+        "asset_tag": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "serial": { "type": "string", "minLength": 1 },
+        "fits": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
