@@ -36,7 +36,14 @@ Registered names and required args: [references/tools.md](references/tools.md).
 | `iosxe_save_config` | Save running config to NVRAM (write memory) | After ANY config change |
 | `iosxe_ssh_command` | SSH CLI (RESTRICTED) | ONLY to enable the RESTCONF API — nothing else |
 
-## NetBox source of truth (read-only)
+## GitOps (estate running-config)
+
+Day-two device config is **Network Ops** via git (`github_put_file`
+`ref=dev`), not RESTCONF write. `iosxe_restconf_put` / `patch` /
+`delete` and `iosxe_save_config` are not the change path for this
+fleet. Health Device and NetBox SoT stay GET-only as below.
+
+
 
 When the user wants to **build / populate / refresh the NetBox SoT or digital twin** from live boxes:
 

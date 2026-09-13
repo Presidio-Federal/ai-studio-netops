@@ -35,7 +35,7 @@
     "bgp_neighbor": "10.99.14.2",
     "bgp_asn": 65014,
     "method": "restconf",
-    "note": "Written to the live Dev device. Not yet in committed SoT — sync-dev captures it."
+    "note": "Proposed on git dev via Network Ops. Not written live with RESTCONF."
   },
   "test": {
     "run_id": "31226585624",

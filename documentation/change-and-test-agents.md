@@ -1,13 +1,13 @@
 # Change and Test Agents
 
-Network Design is the designer. It reads the whole chart and
-writes a roadmap at **hardware, software, configuration, and
-compliance**. It checks warehouse stock on ServiceNow and
-coordinates when asked. The suite run is
-[Compliance Test](compliance-agents.md). It does not replace
-[Health Agents](health-agents.md),
-[Modernization Agents](modernization-agents.md), or
-[SoT and Twin](sot-and-twin-agents.md) — it uses their files.
+Network Design is the long-horizon designer. It reads the chart
+and writes a roadmap at **hardware, software, configuration, and
+compliance**. It checks warehouse stock and coordinates when
+asked. It does not change boxes.
+
+[Network Ops](network-ops.md) implements running-config fixes
+from evidence (failed tests, missing stanzas vs peers) through
+git. The suite run is [Compliance Test](compliance-agents.md).
 
 ```mermaid
 flowchart LR
@@ -18,37 +18,43 @@ flowchart LR
     Inv[inventory]
   end
   ND[Network Design]
+  Ops[Network Ops]
   SNOW[ServiceNow warehouse]
   DesignState[state/design.json]
-  Road[design/roadmap.md]
+  OpsState[state/network-ops.json]
   Health --> ND
   Life --> ND
   Comp --> ND
   Inv --> ND
   SNOW --> ND
   ND --> DesignState
-  ND --> Road
+  Health --> Ops
+  Comp --> Ops
+  Inv --> Ops
+  DesignState --> Ops
+  Ops --> OpsState
 ```
 
 ## Agents
 
 | Agent | Role |
-|-------|------|
-| Network Design | Hardware (order because EoS), software (patch because PSIRT), configuration (latency/path/flap), compliance (out of compliance — update). Warehouse check; reserve/REQ/CHG when they coordinate. Writes `state/design.json` and `design/roadmap.md`. |
+|-------|-------|
+| Network Design | Hardware (order because EoS), software (patch because PSIRT), long-horizon configuration and compliance. Warehouse check; reserve/REQ/CHG when they coordinate. Writes `state/design.json` and `design/roadmap.md`. |
+| Network Ops | Operate: specific config from SoT + evidence → git `dev` → GitOps → merge `main`. Writes `state/network-ops.json`. |
+| Pipeline Monitor | Watch `apply.yml` / `test.yml` by git ref. Marker, not the green check. Writes nothing. |
 | Compliance Author | Turns compliance intel or a named ask into a check in git. |
 | Compliance Test | Triggers `test.yml`, records risk, writes the timestamped result. |
 
 ## What the roadmap looks like
 
-All four layers every invoke. Each item names targets, why,
-date, and steps. Empty layer only if nothing to do — still
+All four layers every Design invoke. Each item names targets,
+why, date, and steps. Empty layer only if nothing to do — still
 say why. One timeline across the four. Warehouse: asset tag,
 model, and serial together. Lab images are not orderable
-models. SKUs and trains come from the lifecycle row or from
-stock actually found.
+models.
 
-Config changes prove on Dev, then prod. A drifted twin is
-not evidence — [SoT and Twin](sot-and-twin-agents.md).
+Ops does not wait for a Design `configuration[]` row. Config
+changes prove on git `dev` (Dev lab), then a PR to `main`.
 
 Design does not collect Splunk, ThousandEyes, or Cisco EoX.
 It does not run the ServiceNow desk (assign / KB). Warehouse

@@ -1,0 +1,49 @@
+{
+  "schema": "network-ops-state/v1",
+  "updated_at": "2026-09-13T16:00:00Z",
+  "source_agent": "network-ops",
+  "status": "committed",
+  "headline": "Add WAN NTP peers to five edges that have no ntp stanza in git",
+  "next_action": "Wait for apply.yml on dev; merge if live pass",
+  "mode": "implement",
+  "finding": {
+    "source": "state/testing.json",
+    "headline": "NTP unsynchronized on all five checked edges; WAN not in the fail list",
+    "kind": "missing_config"
+  },
+  "change": {
+    "devices": [
+      "AI-BRANCH-01",
+      "AI-BRANCH-02",
+      "AI-CLOUD-EDGE",
+      "AI-DC-EDGE",
+      "AI-HQ-EDGE"
+    ],
+    "peer": "WAN-01",
+    "files": [
+      "inventory/configs/AI-BRANCH-01",
+      "inventory/configs/AI-BRANCH-02",
+      "inventory/configs/AI-CLOUD-EDGE",
+      "inventory/configs/AI-DC-EDGE",
+      "inventory/configs/AI-HQ-EDGE"
+    ],
+    "summary": "Copy ntp server/peer lines from WAN-01 onto each failing edge; do not replace the rest of the file"
+  },
+  "git": {
+    "ref": "dev",
+    "commit_sha": "abc123def456",
+    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/commit/abc123def456"
+  },
+  "ci": {
+    "workflow": "apply.yml",
+    "ref": "dev",
+    "run_id": null,
+    "html_url": null,
+    "result": "running"
+  },
+  "pr": {
+    "number": null,
+    "html_url": null,
+    "merged": false
+  }
+}

@@ -1,18 +1,23 @@
 # Network Ops
 
-The attending. Reads the chart and says what it means. Does not
-collect telemetry, does not deploy the twin, and does not file
-tickets.
+The operator. Reads the chart, names a specific running-config
+fix from the committed SoT, and ships it through GitOps. Does
+not collect telemetry and does not replace hardware.
 
-Start at `state/health.json` — Health Analyzer’s assessment and
-trend. Open a stamp when the consult says to inspect. Modernization
-(`state/lifecycle.json`) and Compliance intel are other
-summarizers; Network Ops does not own those files.
+Evidence is the work queue: `state/testing.json`,
+`state/compliance.json`, `state/health.json`. Design
+(`state/design.json`) is awareness — hardware and replacement —
+not a ticket list. A missing NTP stanza on an edge when WAN
+already has NTP is Ops even if Design never wrote a `cfg-*` row.
 
-Dated improvement work (hardware, software, configuration,
-compliance) is [Network Design](change-and-test-agents.md). Ops
-reads the chart and does not write `state/design.json`.
+Git `dev` is the proposal. git `main` is Prod SoT and is locked
+except by merge. Pipeline Monitor watches `apply.yml` on that
+ref. Live pass → Ops opens `dev` → `main` and merges (merge
+commit; do not delete `dev`).
 
-If a plane is stale, the named nurse visit is Health Analyzer’s
-dispatch, not a collect this agent runs itself. EoX, CCW, and NVD
-belong to [Modernization Agents](modernization-agents.md).
+Writes `state/network-ops.json` only. Config text stays in git.
+
+Dated hardware / software / warehouse work is
+[Network Design](change-and-test-agents.md). Check bugs are
+[Compliance Author](compliance-agents.md). Ad-hoc suites are
+[Compliance Test](compliance-agents.md).

@@ -48,12 +48,9 @@ After every invoke it writes `state/network-sync.json` last. That
 file is this operation only. A failed collect updates the attempt
 and leaves last-known-good inventory alone.
 
-Config jobs (capture prod, push dev, detect drift) go through
-Actions. It reports the job-log marker, not the green check. A
-green job with failed devices is gaps, never ok.
-
-`deploy-twin.yml` / `reconcile-dev.yml` are Digital Twin’s product.
-Sync is the runner when Twin names those files.
+Config apply is GitOps (`apply.yml` on the git ref), owned by
+Network Ops. Sync still owns workspace inventory. It reports
+Actions markers it actually ran, not the green check.
 
 After a successful CML collect it compares simulate-tagged devices
 to `inventory/infra-sot.json`. Match → stop. Mismatch → next action

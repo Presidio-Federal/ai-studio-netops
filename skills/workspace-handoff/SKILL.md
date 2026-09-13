@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.41.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.41.0"
+description: "v1.42.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.42.0"
 ---
 
 # Workspace handoff
@@ -170,8 +170,9 @@ one row pointing at the writer — not a new schema file here.
 | `compliance/coverage.json` | snapshot | Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
 | `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
 | `branch-deploy-summary.json` | result | Network Design | this skill `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
-| `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, or the ServiceNow desk. |
+| `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, the ServiceNow desk, or a Network Ops work queue. |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | Human roadmap: hardware, software, configuration, compliance, timeline, warehouse. Written every completed design. Replace in full. Path is `roadmap_ref`. |
+| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` (`recommend`\|`implement`), `finding` (`source` `kind` `missing_config`\|`test_bug`\|`other`), `change` (`devices[]` `peer` `files[]` `summary`), `git` (`ref` `commit_sha`), `ci` (`workflow` `ref` `run_id` `result`), `pr`. GitOps change this invoke. Not Design’s roadmap. |
 | `remediation-request.json` | request | Observability | this skill `schemas/remediation-request.schema.json` | envelope + ticket slot (ServiceNow) |
 | `trend-analysis.json` | observation | Observability | this skill `schemas/trend-analysis.schema.json` | leftover; prefer `state/health.json` |
 | `health/metadata-splunk.json` | metadata | Health Monitor (Splunk visit) | `health-monitor` `schemas/health-metadata-splunk.schema.json` | Writer schema. Splunk `index` / `sourcetype` / `collected_through` / `last_visit_id` from the workspace file (not from the skill or prompt). **Not** the five-field envelope. |
@@ -273,6 +274,15 @@ warehouse itself. It does not write those other state files
 and does not rewrite `lifecycle/roadmap.md`.
 Do not invent extra `design/` paths.
 
+## Ops layout
+
+Primary: `state/network-ops.json` (**state**, Network Ops only).
+This invoke’s finding, git `dev` commit, apply run, and PR.
+Network Ops **reads** testing, compliance, health, inventory, and
+Design as awareness. It does not write those files. Config text
+stays in git (`github_get_file` / `github_put_file` `ref=dev`).
+Pipeline Monitor does not write the workspace.
+
 `testing/YYYY-MM-DDTHH-MM-SSZ.json` and `compliance/YYYY-MM-DDTHH-MM-SSZ.json`
 are append-only. Other files
 are replaced in full except Sync yaml (merge). One writer per `state/` file
@@ -280,6 +290,7 @@ except `state/lifecycle.json` (Modernization Analysis identity; Modernization Li
 research merge).
 `state/health.json` is Health Analyzer only.
 `state/design.json` is Network Design only.
+`state/network-ops.json` is Network Ops only.
 `state/testing.json` is the latest **any-suite** run. `state/compliance.json`
 is the latest **`suites` includes `compliance`** run — not a copy of a
 reachability/routing/path run.
@@ -310,6 +321,8 @@ file.
    wait-for-handoff; invoke and continue.
    Network Design: not a wait-for-handoff; write from files
    already on disk. Warehouse check is this agent’s MCP.
+   Network Ops: after a `dev` commit, invoke Pipeline Monitor
+   and **wait**; then merge or stop.
 
 ## Reading
 
@@ -347,4 +360,10 @@ file.
    read health, lifecycle, compliance, inventory, tickets;
    missing inputs are optional (reduced coverage). Warehouse
    facts come from its own `snow_find_*` calls. It does not
-   write those other files.
+   write those other files. Network Ops does not treat
+   `configuration[]` as a work queue.
+8. Network Ops: `state/network-ops.json` is this change (envelope
+   + `finding` `change` `git` `ci` `pr`). Network Ops may read
+   testing, compliance, health, inventory, and Design; missing
+   is reduced coverage. Config text is git, not a workspace
+   file. Pipeline Monitor writes nothing.

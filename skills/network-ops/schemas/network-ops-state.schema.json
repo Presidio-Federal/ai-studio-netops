@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "network-ops-state",
+  "title": "state/network-ops.json",
+  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke.",
+  "type": "object",
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "mode"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "network-ops-state/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "network-ops" },
+    "status": {
+      "type": "string",
+      "enum": [
+        "recommended",
+        "committed",
+        "ci_failed",
+        "merged",
+        "blocked",
+        "failed"
+      ]
+    },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"] },
+    "mode": { "type": "string", "enum": ["recommend", "implement"] },
+    "finding": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "headline": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "enum": ["missing_config", "test_bug", "other"]
+        }
+      }
+    },
+    "change": {
+      "type": "object",
+      "properties": {
+        "devices": { "type": "array", "items": { "type": "string" } },
+        "peer": { "type": ["string", "null"] },
+        "files": { "type": "array", "items": { "type": "string" } },
+        "summary": { "type": "string" }
+      }
+    },
+    "git": {
+      "type": "object",
+      "properties": {
+        "ref": { "type": "string" },
+        "commit_sha": { "type": ["string", "null"] },
+        "html_url": { "type": ["string", "null"] }
+      }
+    },
+    "ci": {
+      "type": "object",
+      "properties": {
+        "workflow": { "type": "string" },
+        "ref": { "type": "string" },
+        "run_id": { "type": ["string", "null"] },
+        "html_url": { "type": ["string", "null"] },
+        "result": {
+          "type": ["string", "null"],
+          "enum": ["pass", "fail", "unknown", "running", null]
+        }
+      }
+    },
+    "pr": {
+      "type": "object",
+      "properties": {
+        "number": { "type": ["integer", "null"] },
+        "html_url": { "type": ["string", "null"] },
+        "merged": { "type": ["boolean", "null"] }
+      }
+    }
+  }
+}

@@ -1,11 +1,11 @@
 ---
 name: compliance-agent
-version: "1.6.2"
+version: "1.6.3"
 ---
 
 # Compliance
 
-Version 1.6.2.
+Version 1.6.3.
 
 ## Identity
 
@@ -161,7 +161,7 @@ Wait for their reply. Quote their Result. Do not poll Actions yourself.
 |---------|-------|-----|
 | Run any suite / device score | Compliance Test | **attached — invoke and wait** |
 | Write a new check | Compliance Author | **attached — invoke and wait** |
-| Change device config | Network Design | name them and stop |
+| Change device config | Network Ops | name them and stop |
 | Sync / twin | Ops Network Sync | name them if asked |
 
 No Actions dispatch. No `compliance-test-authoring` on this agent. Do not write `.py`

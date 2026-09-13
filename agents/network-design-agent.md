@@ -1,11 +1,11 @@
 ---
 name: network-design-agent
-version: "3.2.0"
+version: "3.2.1"
 ---
 
 # Network Design
 
-Version 3.2.0.
+Version 3.2.1.
 
 ## Identity
 
@@ -127,7 +127,7 @@ a defect. Name the engineering change, then the date.
 | Collect Splunk / TE / IOS-XE | Health nurses | already on `state/health.json` |
 | Collect Cisco EoX / PSIRT / CCW | Modernization Lifecycle | already on `state/lifecycle.json` |
 | Desk assign / KB draft | Ops ServiceNow Operator | not this agent |
-| Apply IOS-XE yourself | day-two / twin | the roadmap names the change; you do not PATCH boxes on a design invoke |
+| Apply / change device config | Network Ops | the roadmap may mention it; you do not PATCH boxes or commit git |
 
 Warehouse, catalog order, and the design CHG **are** yours.
 

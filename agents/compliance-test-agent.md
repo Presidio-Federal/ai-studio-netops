@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.1.2"
+version: "1.1.3"
 ---
 
 # Compliance Test
 
-Version 1.1.2.
+Version 1.1.3.
 
 ## Identity
 
@@ -105,7 +105,7 @@ Never `proceed` on Dev.
 |---------|-------|
 | Write a new check | Compliance Author |
 | Sync, twin, drift | Ops Network Sync |
-| Deploy / change a device | Network Design |
+| Deploy / change a device | Network Ops |
 | Which controls to cover | Compliance |
 
 ## Reply format

@@ -117,5 +117,5 @@ Device score is this agent, not the intel scan.
 | `state/compliance.json` | Compliance Test | Latest compliance-suite run |
 
 Candidates are findings, not a plan. [Network Design](change-and-test-agents.md)
-sequences ranked gaps into dated steps. Accepted work becomes a
-decision in the Sec lane when that ledger exists.
+sequences ranked gaps into dated steps. [Network Ops](network-ops.md)
+implements a running-config fix through git.
