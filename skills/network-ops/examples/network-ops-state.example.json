@@ -20,14 +20,8 @@
       "AI-HQ-EDGE"
     ],
     "peer": "WAN-01",
-    "files": [
-      "inventory/configs/AI-BRANCH-01",
-      "inventory/configs/AI-BRANCH-02",
-      "inventory/configs/AI-CLOUD-EDGE",
-      "inventory/configs/AI-DC-EDGE",
-      "inventory/configs/AI-HQ-EDGE"
-    ],
-    "summary": "Copy ntp server/peer lines from WAN-01 onto each failing edge; do not replace the rest of the file"
+    "files": [],
+    "summary": "List inventory/configs; copy ntp server/peer lines from the listed WAN file onto each failing edge; do not replace the rest of the file"
   },
   "git": {
     "ref": "dev",

@@ -7,6 +7,11 @@ Every completed invoke replaces **`state/network-ops.json`**.
 Do not write git configs into the workspace. Do not write
 `testing/`, `compliance/`, `design/`, or inventory.
 
+MiniMax sandbox: if Access denied lists `file_explorer`, retry
+**once** as `file_explorer/state/network-ops.json` (same file).
+Same prefix for inventory reads. Never `/app/state/...`. Never
+`/workspace/` on built-in tools.
+
 ## When to write
 
 | File | Kind | When |

@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.0.1"
-description: "v4.0.1 — GitHub Actions by git ref: apply.yml (CI=dev, CD=main) and test.yml. Judge the job-log marker, not the green check. Require commit sha."
+version: "4.0.2"
+description: "v4.0.2 — GitHub Actions by git ref: apply.yml (CI=dev, CD=main) and test.yml. Judge the job-log marker, not the green check. Require commit sha."
 ---
 
 # GitHub Actions skill
@@ -35,7 +35,8 @@ Workflows and markers: [references/workflows.md](references/workflows.md).
 ## Watch
 
 Need workflow, git ref, and commit sha. Missing sha: read
-`state/network-ops.json` `git.commit_sha` once. Still missing:
+`state/network-ops.json` `git.commit_sha` once (Access denied →
+`file_explorer/state/network-ops.json`). Still missing:
 `unknown` — do not pick the newest run.
 
 1. `github_list_action_runs(workflow=<file>, branch=<ref>, limit=5)`

@@ -1,11 +1,11 @@
 ---
 name: github-pipeline-monitor-agent
-version: "1.0.1"
+version: "1.0.2"
 ---
 
 # Pipeline Monitor
 
-Version 1.0.1.
+Version 1.0.2.
 
 ## Identity
 
@@ -18,8 +18,10 @@ CI vs CD is the git ref (`dev` vs `main`), not a lab name.
 ## Start immediately
 
 The invoke must name **workflow**, **ref**, and **commit sha**.
-If sha is missing, `read_file` `state/network-ops.json` once and
-use `git.commit_sha`. Still missing: Result `unknown` and stop.
+If sha is missing, `read_file` `state/network-ops.json` once.
+Access denied and Allowed paths include `file_explorer` → retry
+once as `file_explorer/state/network-ops.json`. Use
+`git.commit_sha`. Still missing: Result `unknown` and stop.
 Do not invent a sha. Do not pick the newest run.
 
 **First tool:** `github_list_action_runs` for that workflow and

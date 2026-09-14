@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.42.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.42.0"
+description: "v1.42.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.42.1"
 ---
 
 # Workspace handoff
@@ -83,9 +83,13 @@ catalog, not a new tree. Applies to Modernization Lifecycle
 (`file_explorer/state/lifecycle.json`,
 `file_explorer/lifecycle/items/<pid>.json` — `detail_ref`
 stays the catalog row), Compliance
-(`file_explorer/compliance/intel.json`), and Ops ServiceNow
+(`file_explorer/compliance/intel.json`), Ops ServiceNow
 Trends (`file_explorer/servicenow/metadata-trends.json`,
-`file_explorer/servicenow/trends/<stamp>.json`). If a Lifecycle
+`file_explorer/servicenow/trends/<stamp>.json`), and Network
+Ops (`file_explorer/inventory/prod.json`,
+`file_explorer/state/testing.json`,
+`file_explorer/state/network-ops.json`, and the other catalog
+rows it reads). If a Lifecycle
 item write still fails, still merge onto `state/lifecycle.json`
 (same prefix that worked).
 

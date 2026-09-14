@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "1.0.2"
-description: "v1.0.2 — Operate the network: read failures, copy working SoT config onto peers that lack it, commit git dev, wait for GitOps, merge to main."
+version: "1.0.6"
+description: "v1.0.6 — Operate the network: list inventory/configs, edit the listed file, commit git dev, wait for GitOps, merge to main."
 ---
 
 # Network Ops skill
@@ -21,7 +21,7 @@ recommendation and stop.
 | Intent | How |
 |--------|-----|
 | What’s wrong / recommend | Read chart + git SoT. Write `state/network-ops.json`. |
-| Fix / remediate / implement | Recommend, then commit `dev`, invoke Pipeline Monitor, merge if live pass. |
+| Fix / remediate / implement | List configs, get listed path, put `ref=dev`, invoke Pipeline Monitor, merge if live pass. |
 | Check bug (`dict` has no `.lower`, checker error) | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. Name them and stop. |
 | Run a suite with no config change | Compliance Test. |
@@ -35,20 +35,25 @@ Monitor once and wait — do not poll Actions yourself.
 
 ## First action
 
-**Read workspace, then git.** Do not confirm.
+**List, then get the listed path.** Do not invent a filename or
+suffix. Do not confirm.
 
-1. `state/testing.json` if present, then `state/compliance.json` if
-   present, then `state/health.json`, `inventory/prod.json`,
-   `inventory/dev.json`. `state/design.json` is awareness only —
-   hardware/software dates; not the work queue.
-2. Pick devices from evidence (gaps, failed checks). Copy hostnames
-   from inventory character for character. Never invent or prefix
-   `AI-`.
-3. Git SoT: `github_get_file` on `inventory/configs/<hostname>`
-   `ref=dev`. 404 → same path `ref=main`. Still 404 → try
-   `<hostname>.cfg`. Stop after those. A failed get is not “no NTP.”
-4. Compare a failing device to a peer that passed (or a same-role
-   neighbor that has the feature). How: [references/change.md](references/change.md).
+1. `github_list_files(path="inventory/configs", ref="dev")`.
+2. Pick the `entries[]` whose `name` is the hostname plus whatever
+   suffix the listing shows. Use that entry’s `path`.
+3. `github_get_file` that `path` `ref=dev`. Keep `content` and
+   `sha`.
+
+Named line change: do not open design. Do not open a peer.
+
+No hostname yet: `read_file` `inventory/prod.json` (Access denied
+and Allowed paths include `file_explorer` → retry once
+`file_explorer/inventory/prod.json`). Then list. Never `/app/`,
+never `/workspace/` on built-in tools, never `/file_explorer`.
+Copy hostnames character for character. Never invent or prefix
+`AI-`.
+
+How to edit: [references/change.md](references/change.md).
 
 ## Implement
 

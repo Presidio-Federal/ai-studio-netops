@@ -5,13 +5,16 @@ files in git. Apply is GitOps on the git ref.
 
 ## Config path
 
-`inventory/configs/<hostname>` — hostname copied from inventory
-(`AI-CLOUD-EDGE`, `WAN-01`). 404 on `ref=dev` → same path
-`ref=main`. Still 404 → `<hostname>.cfg` on `dev` then `main`.
-That is the whole search.
+`github_list_files` `path=inventory/configs` `ref=dev`. The file
+is `entries[].path` for that hostname — suffix included as listed.
+Then `github_get_file` that path `ref=dev`. Keep `content` and
+`sha`. Put the same path. Do not build a filename.
 
-`github_get_file` returns `content` and `sha`. You need both for
-`github_put_file`.
+## Named edit
+
+Operator names device + line (description, one stanza): list,
+get the listed path, change only the named text, `github_put_file`
+the full file `ref=dev` with `sha` from get. No peer.
 
 ## Peer template
 
@@ -24,7 +27,7 @@ gap, not a mystery.
 2. Find a peer that passed the same check, or a same-role
    neighbor that has the feature in git (WAN has NTP; edge does
    not).
-3. `github_get_file` both devices.
+3. List once, then `github_get_file` both listed paths.
 4. Copy **only the missing stanza** from the working peer into
    the failing file. Keep the rest of the failing file. Do not
    replace the whole running-config with the peer’s file.
@@ -37,8 +40,8 @@ Compliance Author.
 ## NTP (estate example)
 
 Compliance: edges fail `ntp-synchronized` / `ntp-associations-iosxe`.
-WAN does not. `AI-CLOUD-EDGE` in git has no `ntp` stanza. `WAN-01`
-does. Add the WAN NTP servers/peers to each failing edge file the
+WAN does not. List `inventory/configs`, get the listed files for
+the failing edges and a WAN that has `ntp`. Add the WAN NTP servers/peers to each failing edge file the
 same way WAN declares them (`ntp server` / `ntp peer` as written
 on WAN). Then `github_put_file` each changed file `ref=dev`.
 
