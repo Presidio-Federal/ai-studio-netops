@@ -44,7 +44,8 @@ on WAN). Then `github_put_file` each changed file `ref=dev`.
 
 One commit message covering the set is fine if you put files in
 sequence; each `github_put_file` is one commit on `dev`. Prefer
-one file per call. Monitor the **last** `commit_sha`.
+one file per call. Pass the **last** `commit_sha` to Pipeline
+Monitor. Never omit it.
 
 ## After the commit
 

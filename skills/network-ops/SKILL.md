@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "1.0.1"
-description: "v1.0.1 — Operate the network: read failures, copy working SoT config onto peers that lack it, commit git dev, wait for GitOps, merge to main."
+version: "1.0.2"
+description: "v1.0.2 — Operate the network: read failures, copy working SoT config onto peers that lack it, commit git dev, wait for GitOps, merge to main."
 ---
 
 # Network Ops skill
@@ -54,7 +54,9 @@ Monitor once and wait — do not poll Actions yourself.
 
 How to edit and ship: [references/change.md](references/change.md).
 
-After `github_put_file` on `dev`, invoke Pipeline Monitor:
+After the last `github_put_file` on `dev`, take `commit_sha` from
+that tool result. Invoke Pipeline Monitor with those three fields
+filled — never omit the sha:
 
 ```text
 Watch apply.yml on ref=dev for commit <commit_sha>. Return the run URL and the marker result. Do not merge.

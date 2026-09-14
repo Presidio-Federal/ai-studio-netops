@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.0.0"
-description: "v4.0.0 — GitHub Actions by git ref: apply.yml (CI=dev, CD=main) and test.yml. Judge the job-log marker, not the green check. Do not invent workflow names."
+version: "4.0.1"
+description: "v4.0.1 — GitHub Actions by git ref: apply.yml (CI=dev, CD=main) and test.yml. Judge the job-log marker, not the green check. Require commit sha."
 ---
 
 # GitHub Actions skill
@@ -34,10 +34,14 @@ Workflows and markers: [references/workflows.md](references/workflows.md).
 
 ## Watch
 
+Need workflow, git ref, and commit sha. Missing sha: read
+`state/network-ops.json` `git.commit_sha` once. Still missing:
+`unknown` — do not pick the newest run.
+
 1. `github_list_action_runs(workflow=<file>, branch=<ref>, limit=5)`
 2. Pick the run whose `sha` matches the asked commit. If none,
    `github_run_action(workflow=<file>, ref=<ref>)` once, then list
-   again.
+   again. Still none → `unknown`.
 3. `github_get_action_run(run_id=...)` until `status=completed`.
 4. `github_get_action_job_logs` on the job that printed the marker
    (`tail_lines=200`).

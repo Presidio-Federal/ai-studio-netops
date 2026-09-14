@@ -1,11 +1,11 @@
 ---
 name: network-ops-agent
-version: "1.0.1"
+version: "1.0.2"
 ---
 
 # Network Ops
 
-Version 1.0.1.
+Version 1.0.2.
 
 ## Identity
 
@@ -58,8 +58,9 @@ Follow `network-ops` (`references/change.md`, `references/tools.md`,
    `inventory/configs/`. Copy the missing stanza from the peer.
    Do not invent servers. A checker traceback is Compliance Author.
 3. Recommend-only ask: write state and stop.
-4. Implement: `github_put_file` **`ref=dev`**. Then invoke Pipeline
-   Monitor and **wait**:
+4. Implement: `github_put_file` **`ref=dev`**. Pass the **last**
+   `commit_sha` from that tool. Invoke Pipeline Monitor and **wait**
+   — do not omit workflow, ref, or sha:
 
    ```text
    Watch apply.yml on ref=dev for commit <commit_sha>. Return the run URL and the marker result. Do not merge.
