@@ -7,7 +7,7 @@
   "next_action": "Wait for apply.yml on dev; merge if live pass",
   "mode": "implement",
   "finding": {
-    "source": "state/testing.json",
+    "source": "operator",
     "headline": "NTP unsynchronized on all five checked edges; WAN not in the fail list",
     "kind": "missing_config"
   },
