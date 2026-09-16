@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" role="img" aria-labelledby="title desc">
+  <title id="title">Building the Patient Chart</title>
+  <desc id="desc">Four health nurses write one-source observations into the shared workspace. Health Analyzer writes SOAP assessment on the chart. Network Ops and Network Design read the chart, not four chat recaps.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#062015"/>
+      <stop offset="45%" stop-color="#08140e"/>
+      <stop offset="100%" stop-color="#0c1a10"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1440" height="900" fill="url(#bg)"/>
+  <circle cx="180" cy="120" r="220" fill="#1a6b3a" opacity="0.18"/>
+  <circle cx="1280" cy="780" r="260" fill="#c45a12" opacity="0.12"/>
+
+  <text x="72" y="56" fill="#f4c430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="3">HEALTH AGENTS</text>
+  <text x="72" y="92" fill="#9dbaa4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" letter-spacing="2">CONTINUITY OF CARE</text>
+  <text x="72" y="148" fill="#f7f4ea" font-family="ui-serif, Georgia, serif" font-size="42" font-weight="700">Building the <tspan fill="#f4c430">Patient Chart.</tspan></text>
+  <text x="72" y="182" fill="#b7c9bb" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">Each nurse visit is one specialty. The next clinician starts from the chart  not from a recap.</text>
+
+  <!-- Splunk -->
+  <rect x="56" y="230" width="300" height="148" rx="14" fill="#0d2418" stroke="#3dcf7a" stroke-width="2"/>
+  <text x="76" y="258" fill="#3dcf7a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700">Splunk</text>
+  <text x="76" y="280" fill="#7d9a88" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" letter-spacing="1.2">HEALTH MONITOR · WRITES WHAT WE OBSERVED</text>
+  <text x="76" y="322" fill="#e8f6ec" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">br-west-edge: LINK-UPDOWN ×14 / 15m</text>
+  <text x="76" y="348" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">health/splunk/&lt;stamp&gt;.json</text>
+
+  <!-- ServiceNow -->
+  <rect x="56" y="398" width="300" height="148" rx="14" fill="#0d2418" stroke="#b07cff" stroke-width="2"/>
+  <text x="76" y="426" fill="#c9a0ff" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700">ServiceNow</text>
+  <text x="76" y="448" fill="#7d9a88" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" letter-spacing="1.2">HEALTH SERVICENOW · WRITES WHAT WE OBSERVED</text>
+  <text x="76" y="490" fill="#e8f6ec" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">INC0148821 · west campus · repeat symptom</text>
+  <text x="76" y="516" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">health/servicenow/&lt;stamp&gt;.json</text>
+
+  <!-- Chart -->
+  <rect x="392" y="230" width="656" height="316" rx="16" fill="#16140c" stroke="#e0b43a" stroke-width="2"/>
+  <text x="720" y="262" text-anchor="middle" fill="#e0b43a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13" font-weight="700" letter-spacing="2">WORKSPACE</text>
+  <text x="720" y="292" text-anchor="middle" fill="#f7f4ea" font-family="ui-serif, Georgia, serif" font-size="26" font-weight="700">Patient chart · SOAP</text>
+  <text x="720" y="318" text-anchor="middle" fill="#9dbaa4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">Each visit writes the chart. The next agent starts here  not from a recap.</text>
+  <text x="428" y="362" fill="#d7c48a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">S/O · flaps + 4.2% loss</text>
+  <text x="428" y="392" fill="#d7c48a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">A · west-edge interface  not WAN</text>
+  <text x="428" y="422" fill="#d7c48a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="15">P · confirm Gi1/0/24</text>
+  <text x="428" y="452" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">Owner of the note: Health Analyzer · state/health.json</text>
+  <rect x="428" y="478" width="268" height="44" rx="8" fill="#1a3d2a" stroke="#3dcf7a"/>
+  <text x="562" y="506" text-anchor="middle" fill="#3dcf7a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700">SOAP</text>
+  <text x="562" y="492" text-anchor="middle" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10">Nursing concern is on the chart.</text>
+  <rect x="744" y="478" width="268" height="44" rx="8" fill="#1a3d2a" stroke="#4ec3e0"/>
+  <text x="878" y="506" text-anchor="middle" fill="#4ec3e0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700">I-PASS</text>
+  <text x="878" y="492" text-anchor="middle" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="10">Next owner is on the chart.</text>
+
+  <!-- ThousandEyes -->
+  <rect x="1084" y="230" width="300" height="148" rx="14" fill="#0d2418" stroke="#5adf8a" stroke-width="2"/>
+  <text x="1104" y="258" fill="#5adf8a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700">ThousandEyes</text>
+  <text x="1104" y="280" fill="#7d9a88" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" letter-spacing="1.2">HEALTH MONITOR · WRITES WHAT WE OBSERVED</text>
+  <text x="1104" y="322" fill="#e8f6ec" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">SFO’IAD: 4.2% loss · 38ms jitter</text>
+  <text x="1104" y="348" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">health/thousandeyes/&lt;stamp&gt;.json</text>
+
+  <!-- IOS-XE -->
+  <rect x="1084" y="398" width="300" height="148" rx="14" fill="#0d2418" stroke="#f0a14a" stroke-width="2"/>
+  <text x="1104" y="426" fill="#f0a14a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16" font-weight="700">IOS-XE</text>
+  <text x="1104" y="448" fill="#7d9a88" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" letter-spacing="1.2">HEALTH DEVICE · WRITES WHAT WE OBSERVED</text>
+  <text x="1104" y="490" fill="#e8f6ec" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">Gi1/0/24: CRC + input errors climbing</text>
+  <text x="1104" y="516" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12">health/iosxe/&lt;stamp&gt;.json</text>
+
+  <!-- Connectors -->
+  <path d="M356 304 H392" fill="none" stroke="#3dcf7a" stroke-width="2"/>
+  <path d="M356 472 H392" fill="none" stroke="#b07cff" stroke-width="2"/>
+  <path d="M1084 304 H1048" fill="none" stroke="#5adf8a" stroke-width="2"/>
+  <path d="M1084 472 H1048" fill="none" stroke="#f0a14a" stroke-width="2"/>
+  <path d="M720 546 V574" fill="none" stroke="#4ec3e0" stroke-width="2"/>
+
+  <!-- Analyzer / Ops -->
+  <rect x="392" y="574" width="656" height="130" rx="14" fill="#0c2430" stroke="#4ec3e0" stroke-width="2"/>
+  <text x="412" y="602" fill="#4ec3e0" font-family="ui-sans-serif, system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="1.4">ATTENDING · DIAGNOSIS</text>
+  <text x="412" y="628" fill="#f7f4ea" font-family="ui-sans-serif, system-ui, sans-serif" font-size="18" font-weight="700">Health Analyzer writes what we think</text>
+  <text x="412" y="650" fill="#9dbaa4" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">Network Ops / Network Design read the chart. They do not re-collect Splunk, TE, or IOS-XE.</text>
+  <text x="412" y="678" fill="#cfe4d6" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14">Loss tracks the interface, not the WAN. Dirty optic or congestion on the west edge.</text>
+
+  <text x="72" y="760" fill="#f4c430" font-family="ui-sans-serif, system-ui, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">WHY THIS MATTERS</text>
+  <text x="72" y="784" fill="#d5e4da" font-family="ui-sans-serif, system-ui, sans-serif" font-size="16">The attending diagnoses from the chart. Not from four recaps.</text>
+  <text x="72" y="808" fill="#8fad9a" font-family="ui-sans-serif, system-ui, sans-serif" font-size="13">Check chart ’ get data ’ update chart ’ summarize. One specialty per conversation.</text>
+
+  <rect x="56" y="836" width="1328" height="40" rx="8" fill="#e07a20"/>
+  <text x="720" y="862" text-anchor="middle" fill="#1a1208" font-family="ui-sans-serif, system-ui, sans-serif" font-size="14" font-weight="700" letter-spacing="2">CHECK CHART · GET DATA · UPDATE CHART · SUMMARIZE</text>
+</svg>
