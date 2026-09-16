@@ -189,7 +189,7 @@ data=[
     "status": "active",
     "assigned_object_type": "dcim.interface",
     "assigned_object_id": 8334,
-    "tenant": { "slug": "cisco-ai-lab-prod" }
+    "tenant": { "slug": "example-lab-prod" }
   }
 ]
 ```

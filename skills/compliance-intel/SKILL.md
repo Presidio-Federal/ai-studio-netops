@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.9.2"
-description: "v1.9.2 — suggested_assert names what this estate runs. One family per query."
+version: "1.10.0"
+description: "v1.10.0 — suggested_assert names what this estate runs. One family per query."
 ---
 
 # Compliance intel
@@ -182,12 +182,12 @@ authorization if not in catalog.
 
 ## Workspace schema
 
-Fill from **`workspace-handoff`**:
+Fill from this skill:
 
-- [`schemas/coverage.schema.json`](../workspace-handoff/schemas/coverage.schema.json)
-- [`references/coverage.example.json`](../workspace-handoff/references/coverage.example.json)
-- [`schemas/compliance-intel.schema.json`](../workspace-handoff/schemas/compliance-intel.schema.json)
-- [`references/compliance-intel.example.json`](../workspace-handoff/references/compliance-intel.example.json)
+- [`schemas/coverage.schema.json`](schemas/coverage.schema.json)
+- [`examples/coverage.example.json`](examples/coverage.example.json)
+- [`schemas/compliance-intel.schema.json`](schemas/compliance-intel.schema.json)
+- [`examples/compliance-intel.example.json`](examples/compliance-intel.example.json)
 
 Intel envelope: `version`, `updated_at`, `source_agent`, `status`,
 `headline`, `next_action`, `sources`, `delta`, `candidates`.

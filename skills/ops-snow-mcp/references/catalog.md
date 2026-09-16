@@ -22,14 +22,15 @@ read them from `snow_get_catalog_item`.
 
 ## Items used by this demo
 
-| Item | sys_id | Variables |
-|------|--------|-----------|
-| Network Port Provisioning | `1dee557a2f3b729482ae474fafa4e380` | device_name, interface_name, vlan_id, ip_address, port_description, business_justification |
-| Add network switch to datacenter cabinet | `508e02ec47410200e90d87e8dee49058` | none |
-| Change VLAN on a Cisco switchport | `b1c8d15147810200e90d87e8dee490f7` | none |
-| Clear BGP sessions on a Cisco router | `d6c2273c47010200e90d87e8dee49004` | none |
+Resolve catalog items **by name** on this instance. sys_ids differ per
+instance — do not copy ids from this skill.
 
-Prefer resolving by name; sys_ids differ per instance.
+| Item | Variables |
+|------|-----------|
+| Network Port Provisioning | device_name, interface_name, vlan_id, ip_address, port_description, business_justification |
+| Add network switch to datacenter cabinet | none |
+| Change VLAN on a Cisco switchport | none |
+| Clear BGP sessions on a Cisco router | none |
 
 ### Gotchas, both found by testing
 
@@ -40,7 +41,7 @@ valid IP address". Send `100.64.7.1` and put the mask in `port_description`.
 **Ordering does not create a change request.** The last three items above are
 classed "Standard Change Template" and look like they should produce a CHG. They
 do not — ordering them yields a REQ and RITM like any other item. Verified with
-REQ0010101 and REQ0010102. Report the REQ; do not call it a change.
+REQ0001001 and REQ0001002. Report the REQ; do not call it a change.
 
 All variables on Network Port Provisioning are non-mandatory, so nothing stops a
 useless ticket being submitted. Fill all of them.
@@ -52,11 +53,11 @@ removed with one query per table:
 
 | Table | Query | Records |
 |-------|-------|---------|
-| `change_request` | `short_descriptionLIKENETOPS_DEMO` | CHG0031457 |
-| `sc_request` | `short_descriptionLIKENETOPS_DEMO` | REQ0010101, REQ0010102 |
-| `sc_req_item` | `short_descriptionLIKENETOPS_DEMO` | RITM0010097, RITM0010098 |
-| `alm_hardware` | `commentsLIKENETOPS_DEMO` | FOC2731NETOPS1/2/3 |
+| `change_request` | `short_descriptionLIKENETOPS_DEMO` | CHG0001001 |
+| `sc_request` | `short_descriptionLIKENETOPS_DEMO` | REQ0001001, REQ0001002 |
+| `sc_req_item` | `short_descriptionLIKENETOPS_DEMO` | RITM0001001, RITM0001002 |
+| `alm_hardware` | `commentsLIKENETOPS_DEMO` | SNEXAMPLE01/02/03 |
 
-`CHG0031457` is a hand-built reference change with implementation, backout and
+`CHG0001001` is a hand-built reference change with implementation, backout and
 test plans populated — worth keeping as an example of the target shape, since
 almost every real change on this instance leaves those fields empty.

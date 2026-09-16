@@ -287,12 +287,13 @@ All RESTCONF tools accept optional connection overrides:
 ```
 iosxe_restconf_get(
     path="Cisco-IOS-XE-native:native/hostname",
-    host="10.0.0.2",
-    port=443,
-    username="admin",
-    password="cisco123"
+    host="192.0.2.2",
+    port=443
 )
 ```
+
+Host, port, and credentials stay on the MCP server (or env). Do not
+put passwords in this skill or in workspace files.
 
 ## YANG Model Lookup Before Configuration
 

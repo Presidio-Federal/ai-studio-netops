@@ -6,7 +6,7 @@
   "headline": "8/9 in-scope checks PASS on AI-CLOUD-EDGE; edge-WAN eBGP SKIPPED",
   "run": {
     "run_id": "32038499244",
-    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/32038499244",
+    "html_url": "https://github.com/example-org/network-sot/actions/runs/32038499244",
     "live_lab": "prod",
     "mode": "live",
     "suites": ["reachability", "routing", "path"]

@@ -1,7 +1,7 @@
 # Produce — Compliance intel
 
 Paths, Kind, catalog: **`workspace-handoff`**.
-Write from the schemas and examples. Do not invent files.
+Write from this skill’s schemas and examples. Do not invent files.
 
 Built-in `read_file` / `write_file`: catalog row
 (`compliance/intel.json`). Never `/workspace/` on those tools. Never

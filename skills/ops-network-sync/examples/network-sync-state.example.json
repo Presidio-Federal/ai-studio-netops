@@ -69,7 +69,7 @@
     "environment": "prod",
     "result": "ok",
     "run_id": "123456789",
-    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/123456789",
+    "html_url": "https://github.com/example-org/network-sot/actions/runs/123456789",
     "updated_at": "2026-08-14T20:40:00Z"
   },
   "sync_dev": {
@@ -77,7 +77,7 @@
     "environment": "dev",
     "result": "gaps",
     "run_id": "123456790",
-    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/123456790",
+    "html_url": "https://github.com/example-org/network-sot/actions/runs/123456790",
     "updated_at": "2026-08-14T20:50:00Z"
   },
   "drift_prod": {
@@ -85,7 +85,7 @@
     "environment": "prod",
     "result": "in_sync",
     "run_id": "123456791",
-    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/123456791",
+    "html_url": "https://github.com/example-org/network-sot/actions/runs/123456791",
     "updated_at": "2026-08-14T20:55:00Z"
   },
   "drift_dev": null,

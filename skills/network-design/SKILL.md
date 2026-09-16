@@ -1,7 +1,7 @@
 ---
 name: network-design
-version: "3.1.0"
-description: "v3.1.0 — Network design from the as-built: hardware, software, configuration, compliance, best-practice judgment. Ask when something is missing. Warehouse on ServiceNow."
+version: "3.1.1"
+description: "v3.1.1 — Network design from the as-built: hardware, software, configuration, compliance, best-practice judgment. Ask when something is missing. Warehouse on ServiceNow."
 ---
 
 # Network Design skill

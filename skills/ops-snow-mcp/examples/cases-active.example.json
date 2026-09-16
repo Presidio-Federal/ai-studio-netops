@@ -6,17 +6,17 @@
   "headline": "2 open INC",
   "cases": [
     {
-      "number": "INC0100452",
+      "number": "INC0001002",
       "type": "incident",
       "state": "New",
       "headline": "AI-HQ-EDGE path loss above 5%",
       "devices": ["AI-HQ-EDGE"],
       "source_refs": ["state/health.json"],
-      "sys_id": "b7c41e2a3f9d4c0e8a12f6d90c44e1ab",
+      "sys_id": "00000000000000000000000000000001",
       "updated_at": "2026-08-20T17:38:00Z"
     },
     {
-      "number": "INC0100451",
+      "number": "INC0001001",
       "type": "incident",
       "state": "In Progress",
       "headline": "AI-CLOUD-EDGE syslog auth failures",

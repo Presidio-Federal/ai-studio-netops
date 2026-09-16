@@ -3,33 +3,33 @@
   "updated_at": "2026-08-21T20:00:00Z",
   "source_agent": "ops-netbox-sot",
   "status": "ok",
-  "headline": "NetBox infra SoT for cisco-ai-lab-prod: 2 devices, 4 interfaces, 1 cable",
+  "headline": "NetBox infra SoT for example-lab-prod: 2 devices, 4 interfaces, 1 cable",
   "next_action": null,
   "mode": "bootstrap",
   "seed": [
     {
       "name": "WAN-01",
-      "host": "cml.presidio.tech",
+      "host": "cml.example.com",
       "port": 4411,
       "node_definition": "cat8000v"
     },
     {
       "name": "WAN-02",
-      "host": "cml.presidio.tech",
+      "host": "cml.example.com",
       "port": 4413,
       "node_definition": "cat8000v"
     }
   ],
   "parents": {
-    "tenant": { "slug": "cisco-ai-lab-prod", "id": 12 },
-    "site": { "slug": "cisco-ai-lab-prod", "id": 34 },
+    "tenant": { "slug": "example-lab-prod", "id": 12 },
+    "site": { "slug": "example-lab-prod", "id": 34 },
     "manufacturer": { "slug": "cisco", "id": 1 },
     "device_types": [{ "slug": "cat8000v", "id": 56 }],
     "roles": [{ "slug": "wan", "id": 7 }],
     "tags": [
-      { "slug": "cisco-ai-lab-prod-simulate", "id": 88 },
-      { "slug": "cisco-ai-lab-prod-sync", "id": 89 },
-      { "slug": "cisco-ai-lab-prod-site-wan", "id": 90 }
+      { "slug": "example-lab-prod-simulate", "id": 88 },
+      { "slug": "example-lab-prod-sync", "id": 89 },
+      { "slug": "example-lab-prod-site-wan", "id": 90 }
     ]
   },
   "devices": [
@@ -40,11 +40,11 @@
       "device_type": "cat8000v",
       "software_version": "17.12.04",
       "tags": [
-        "cisco-ai-lab-prod-simulate",
-        "cisco-ai-lab-prod-sync",
-        "cisco-ai-lab-prod-site-wan"
+        "example-lab-prod-simulate",
+        "example-lab-prod-sync",
+        "example-lab-prod-site-wan"
       ],
-      "restconf": { "host": "cml.presidio.tech", "port": 4411 },
+      "restconf": { "host": "cml.example.com", "port": 4411 },
       "interfaces": [
         {
           "name": "GigabitEthernet1",
@@ -71,11 +71,11 @@
       "device_type": "cat8000v",
       "software_version": null,
       "tags": [
-        "cisco-ai-lab-prod-simulate",
-        "cisco-ai-lab-prod-sync",
-        "cisco-ai-lab-prod-site-wan"
+        "example-lab-prod-simulate",
+        "example-lab-prod-sync",
+        "example-lab-prod-site-wan"
       ],
-      "restconf": { "host": "cml.presidio.tech", "port": 4413 },
+      "restconf": { "host": "cml.example.com", "port": 4413 },
       "interfaces": [
         {
           "name": "GigabitEthernet1",

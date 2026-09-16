@@ -10,7 +10,7 @@
   "last_action": "created",
   "last_record": {
     "type": "incident",
-    "number": "INC0100452",
+    "number": "INC0001002",
     "state": "New"
   },
   "open": {
@@ -20,7 +20,7 @@
   },
   "trend": {
     "vs_prior": "worse",
-    "note": "open INC 1→2; added INC0100452 for AI-HQ-EDGE from state/health.json",
+    "note": "open INC 1→2; added INC0001002 for AI-HQ-EDGE from state/health.json",
     "open_incidents_prior": 1,
     "open_changes_prior": 0
   },
@@ -29,11 +29,11 @@
       "at": "2026-08-20T17:38:00Z",
       "action": "created",
       "status": "open",
-      "headline": "Created INC0100452; 2 open INC",
+      "headline": "Created INC0001002; 2 open INC",
       "open_incidents": 2,
       "open_changes": 0,
       "devices": ["AI-HQ-EDGE", "AI-CLOUD-EDGE"],
-      "record": "INC0100452"
+      "record": "INC0001002"
     },
     {
       "at": "2026-08-20T17:08:00Z",

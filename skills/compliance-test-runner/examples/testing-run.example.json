@@ -6,11 +6,11 @@
   "headline": "8/9 in-scope checks PASS on AI-CLOUD-EDGE in prod; edge-WAN eBGP established check SKIPPED — no edge_wan_bgp relationship entry",
   "next_action": "Add AI-CLOUD-EDGE ↔ WAN peer mapping to tests/live/relationships/edge_wan_bgp.yml, then re-run live tests against AI-CLOUD-EDGE to close the coverage gap.",
   "github_run_id": "32038499244",
-  "github_run_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/32038499244",
+  "github_run_url": "https://github.com/example-org/network-sot/actions/runs/32038499244",
   "environment": {
     "live_lab": "prod",
     "lab_role": "production",
-    "note": "Production CML lab cisco-ai-lab-prod; pyATS connected to AI-CLOUD-EDGE via SSH in 3.0s"
+    "note": "Production CML lab example-lab-prod; pyATS connected to AI-CLOUD-EDGE via SSH in 3.0s"
   },
   "scope": {
     "devices_requested": ["AI-CLOUD-EDGE"],

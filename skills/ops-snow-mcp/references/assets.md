@@ -51,46 +51,46 @@ snow_find_assets(stockroom=<name or sys_id>)
 snow_find_locations(search=...)      # cmn_location, for the destination site
 ```
 
-23 stockrooms exist. The ones holding real stock:
+23 stockrooms exist. Discover them with `snow_find_stockrooms` —
+do not hardcode instance names or street addresses in this skill.
+
+Example shape (fictional):
 
 | Stockroom | Location |
 |-----------|----------|
-| Southern California Warehouse | 615 North Bush Street, Santa Ana, CA |
-| San Diego South Warehouse | 815 E Street, San Diego, CA |
-| Orlando FL — Staging | Presidio Hub - Orlando FL |
-| Fulton MD — Staging | Presidio Hub - Fulton MD |
+| Example West Warehouse | Example City, CA |
+| Example East Staging | Example Hub - East |
 
-There are also `AE Spare Pool` and `Pickup/Dropoff` rooms, which model last-mile
-handoff and make a shipment story more believable than warehouse-to-site.
+Spare-pool and pickup rooms are last-mile, not source warehouses.
 
-### Seeded network gear
+### Example network gear
 
-Southern California Warehouse holds thirteen `NETOPS_DEMO` units, all `in_stock`
-and shippable.
+A demo warehouse might hold `in_stock` routers and switches. **Prefer
+what `snow_find_assets` returns** over memorizing tags.
 
-**Routers** — Catalyst 8000 family only. No ISR 4000 or ASR 1000: both are
-end-of-sale and stocking them as new spares does not survive scrutiny on camera.
+**Routers** — Catalyst 8000 family. Do not stock EoS ISR 4000 / ASR 1000
+as new spares.
 
 | Asset tag | Model | Serial | Fits |
 |-----------|-------|--------|------|
-| `NETOPS-RTR-8200-A` | Cisco C8200-1N-4T | `FOC2731NETOPS4` | small branch |
-| `NETOPS-RTR-8200-B` | Cisco C8200-1N-4T | `FOC2731NETOPS5` | small branch |
-| `NETOPS-RTR-8300-A` | Cisco C8300-1N1S-4T2X | `FOC2731NETOPS7` | medium branch |
-| `NETOPS-RTR-8300-B` | Cisco C8300-1N1S-4T2X | `FOC2731NETOPS8` | medium branch |
-| `NETOPS-RTR-8300-2N-A` | Cisco C8300-2N2S-6T | `FOC2731NETOPS6` | large branch |
-| `NETOPS-RTR-8500-A` | Cisco C8500-12X | `FOC2731NETOPS9` | WAN hub / aggregation |
+| `EX-RTR-8200-A` | Cisco C8200-1N-4T | `SNEXAMPLE04` | small branch |
+| `EX-RTR-8200-B` | Cisco C8200-1N-4T | `SNEXAMPLE05` | small branch |
+| `EX-RTR-8300-A` | Cisco C8300-1N1S-4T2X | `SNEXAMPLE07` | medium branch |
+| `EX-RTR-8300-B` | Cisco C8300-1N1S-4T2X | `SNEXAMPLE08` | medium branch |
+| `EX-RTR-8300-2N-A` | Cisco C8300-2N2S-6T | `SNEXAMPLE06` | large branch |
+| `EX-RTR-8500-A` | Cisco C8500-12X | `SNEXAMPLE09` | WAN hub / aggregation |
 
 **Switches**
 
 | Asset tag | Model | Serial | Fits |
 |-----------|-------|--------|------|
-| `NETOPS-SW-9200-24P-A` | Cisco C9200L-24P-4X-E | `FOC2731NETOPS10` | small branch access |
-| `NETOPS-SW-9200-24P-B` | Cisco C9200L-24P-4X-E | `FOC2731NETOPS11` | small branch access |
-| `NETOPS-SW-9200-48P-A` | Cisco C9200L-48P-4X-E | `FOC2731NETOPS12` | medium branch access |
-| `NETOPS-SW-9200-48P-B` | Cisco C9200L-48P-4X-E | `FOC2731NETOPS13` | medium branch access |
-| `NETOPS-SW-9300-24P-B` | Cisco C9300-24P-E | `FOC2731NETOPS2` | branch access, stackable |
-| `NETOPS-SW-9300-48P-A` | Cisco C9300-48P-A | `FOC2731NETOPS1` | large branch access |
-| `NETOPS-RTR-9500-A` | Cisco C9500-24Y4C-A | `FOC2731NETOPS3` | core / distribution |
+| `EX-SW-9200-24P-A` | Cisco C9200L-24P-4X-E | `SNEXAMPLE10` | small branch access |
+| `EX-SW-9200-24P-B` | Cisco C9200L-24P-4X-E | `SNEXAMPLE11` | small branch access |
+| `EX-SW-9200-48P-A` | Cisco C9200L-48P-4X-E | `SNEXAMPLE12` | medium branch access |
+| `EX-SW-9200-48P-B` | Cisco C9200L-48P-4X-E | `SNEXAMPLE13` | medium branch access |
+| `EX-SW-9300-24P-B` | Cisco C9300-24P-E | `SNEXAMPLE02` | branch access, stackable |
+| `EX-SW-9300-48P-A` | Cisco C9300-48P-A | `SNEXAMPLE01` | large branch access |
+| `EX-SW-9500-A` | Cisco C9500-24Y4C-A | `SNEXAMPLE03` | core / distribution |
 
 **Match gear to the site, not to the CML image name.** Lab definitions like
 `cat8000v` / `iosvl2` are how the twin was built — they are not warehouse models.
@@ -107,10 +107,10 @@ Leave aggregation (C8500) and core (C9500) in the warehouse unless the summary i
 clearly a hub job. Prefer what the find-assets tool returns over memorizing SKUs.
 
 Everything else in stock instance-wide is laptops and printers, so a warehouse
-query that is not filtered to `NETOPS` will look wrong on camera. To add more,
-create `alm_hardware` with `install_status=6`, `substatus=available`, stockroom
-`a2aa2b3f3763100044e0bfc8bcbe5de2` and location
-`f90735e70a0a0b9100de208fbc63907d`.
+query that is not filtered to network gear will look wrong. To add more,
+create `alm_hardware` with `install_status=6`, `substatus=available`,
+and the stockroom / location **returned by find** — never a sys_id from
+this skill.
 
 ## Model resolution
 

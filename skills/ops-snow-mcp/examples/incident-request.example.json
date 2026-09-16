@@ -5,7 +5,7 @@
   "requested_by": "observability-agent",
   "operation": "upsert_incident",
   "correlation_id": "network-fault-001",
-  "idempotency_key": "inc:ai-branch-03:bgp-adjchange:dea-cloud",
+  "idempotency_key": "inc:ai-branch-03:bgp-adjchange:cloud-edge",
   "source_refs": [
     "state/health.json"
   ],
@@ -19,9 +19,9 @@
     "type": "incident",
     "number": null,
     "sys_id": null,
-    "short_description": "BGP adjacency down between AI-BRANCH-03 and DEA-CLOUD",
-    "description": "ThousandEyes path loss on DEA-CLOUD-to-HQ coincided with a BGP adjacency drop on AI-BRANCH-03 toward DEA-CLOUD. Diagnosis recommends restoring the WAN peer session and collecting interface counters. Do not change production until the twin change is validated.",
-    "summary": "AI-BRANCH-03 lost BGP to DEA-CLOUD; path loss is sustained across recent ThousandEyes rounds.",
+    "short_description": "BGP adjacency down between AI-BRANCH-03 and cloud-edge",
+    "description": "ThousandEyes path loss on cloud-to-hq coincided with a BGP adjacency drop on AI-BRANCH-03 toward cloud-edge. Diagnosis recommends restoring the WAN peer session and collecting interface counters. Do not change production until the twin change is validated.",
+    "summary": "AI-BRANCH-03 lost BGP to cloud-edge; path loss is sustained across recent ThousandEyes rounds.",
     "objective": null,
     "justification": null,
     "urgency": "2",
@@ -30,7 +30,7 @@
     "risk": null,
     "change_type": null,
     "state": null,
-    "work_notes": "Diagnosis next action: validate WAN peer restore on the Dev twin, then append results to this incident.\n[AUTOMATION-ID:inc:ai-branch-03:bgp-adjchange:dea-cloud]\n[CORRELATION-ID:network-fault-001]\n[REQUEST-ID:req-inc-bgp-adj-20260812-001]",
+    "work_notes": "Diagnosis next action: validate WAN peer restore on the Dev twin, then append results to this incident.\n[AUTOMATION-ID:inc:ai-branch-03:bgp-adjchange:cloud-edge]\n[CORRELATION-ID:network-fault-001]\n[REQUEST-ID:req-inc-bgp-adj-20260812-001]",
     "close_notes": null,
     "close_code": null,
     "implementation_plan": null,
@@ -41,7 +41,7 @@
     "end_date": null,
     "affected_devices": [
       "AI-BRANCH-03",
-      "DEA-CLOUD"
+      "cloud-edge"
     ]
   }
 }

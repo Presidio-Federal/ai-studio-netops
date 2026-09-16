@@ -19,8 +19,8 @@ Prod and Dev inventories both present. No drift in this shape.
 ## Hardware
 
 - **device-a** — Order C8200-1N-4T because hardware support
-  ends 2027-01-31. Stock: in_stock (NETOPS-RTR-8200-A /
-  Cisco C8200-1N-4T / FOC2731NETOPS4).
+  ends 2027-01-31. Stock: in_stock (EX-RTR-8200-A /
+  Cisco C8200-1N-4T / SNEXAMPLE04).
   1. Reserve the unit (coordinate ask).
   2. Stage on Dev, Test, cut over before that date.
 
@@ -51,8 +51,8 @@ Prod and Dev inventories both present. No drift in this shape.
 
 ## Warehouse
 
-Southern California Warehouse checked. Found
-NETOPS-RTR-8200-A / Cisco C8200-1N-4T / FOC2731NETOPS4.
+Example West Warehouse checked. Found
+EX-RTR-8200-A / Cisco C8200-1N-4T / SNEXAMPLE04.
 Reserved: none (no coordinate ask). REQ: none.
 
 ## Gaps

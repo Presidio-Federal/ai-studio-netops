@@ -4,7 +4,7 @@
   "source_agent": "network-design",
   "status": "partial",
   "headline": "Replace the EoS group, patch PSIRT software, fix the degraded path, and close the ranked compliance gap.",
-  "next_action": "Check Southern California Warehouse for the Cisco replacement SKU already on the estate row.",
+  "next_action": "Check Example West Warehouse for the Cisco replacement SKU already on the estate row.",
   "analyzed_at": "2026-09-10T17:00:00Z",
   "horizon": {
     "start": "2026-09-10",
@@ -204,12 +204,12 @@
   ],
   "warehouse": {
     "checked": true,
-    "stockroom": "Southern California Warehouse",
+    "stockroom": "Example West Warehouse",
     "found": [
       {
-        "asset_tag": "NETOPS-RTR-8200-A",
+        "asset_tag": "EX-RTR-8200-A",
         "model": "Cisco C8200-1N-4T",
-        "serial": "FOC2731NETOPS4",
+        "serial": "SNEXAMPLE04",
         "fits": "hw-eox-1"
       }
     ],

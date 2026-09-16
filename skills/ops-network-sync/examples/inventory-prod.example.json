@@ -15,11 +15,11 @@
     "missing_restconf": [],
     "missing_ssh": []
   },
-  "source": { "type": "cml", "name": "cisco-ai-lab-prod" },
+  "source": { "type": "cml", "name": "example-lab-prod" },
   "infra_sot": "netbox",
-  "lab_title": "cisco-ai-lab-prod",
+  "lab_title": "example-lab-prod",
   "lab_id": "11111111-1111-1111-1111-111111111111",
-  "netbox": { "tenant": "cisco-ai-lab-prod", "site": "cisco-ai-lab-prod" },
+  "netbox": { "tenant": "example-lab-prod", "site": "example-lab-prod" },
   "device_count": 2,
   "devices": [
     {
@@ -31,20 +31,20 @@
       "agent_access": true,
       "access": {
         "restconf": {
-          "host": "cml.presidio.tech",
+          "host": "cml.example.com",
           "port": 4403,
           "protocol": "https",
           "credential_ref": "iosxe-lab"
         },
         "ssh": {
-          "host": "cml.presidio.tech",
+          "host": "cml.example.com",
           "port": 4402,
           "credential_ref": "iosxe-lab"
         }
       },
       "source_metadata": {
         "lab_id": "11111111-1111-1111-1111-111111111111",
-        "lab_title": "cisco-ai-lab-prod",
+        "lab_title": "example-lab-prod",
         "node_id": "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
         "node_definition": "cat8000v",
         "pat_tags": ["pat:4403:443", "pat:4402:22"]
@@ -59,20 +59,20 @@
       "agent_access": true,
       "access": {
         "restconf": {
-          "host": "cml.presidio.tech",
+          "host": "cml.example.com",
           "port": 4411,
           "protocol": "https",
           "credential_ref": "iosxe-lab"
         },
         "ssh": {
-          "host": "cml.presidio.tech",
+          "host": "cml.example.com",
           "port": 4410,
           "credential_ref": "iosxe-lab"
         }
       },
       "source_metadata": {
         "lab_id": "11111111-1111-1111-1111-111111111111",
-        "lab_title": "cisco-ai-lab-prod",
+        "lab_title": "example-lab-prod",
         "node_id": "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
         "node_definition": "cat8000v",
         "pat_tags": ["pat:4411:443", "pat:4410:22"]

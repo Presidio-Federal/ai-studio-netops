@@ -131,9 +131,7 @@ port from one environment to the other.
 
 Never invent a lab title. If you cannot resolve one, record a **failed
 attempt** in state and leave the last-known-good inventory file untouched.
-
-Seed titles (schedule only, when state is empty): `cisco-ai-lab-prod`,
-`cisco-ai-lab-dev`.
+Do not hardcode lab titles in this skill.
 
 Controller host for `access.*.host` is the CML controller hostname from the
 lab record or prior inventory. Never guess a new hostname. Never guess a port.

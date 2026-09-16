@@ -23,7 +23,7 @@
     "branch_to_hq_ping"
   ],
   "context": {
-    "lab": "cisco-ai-lab-dev",
+    "lab": "example-lab-dev",
     "nodes": ["AI-BRANCH-03", "AI-BRANCH-03-SW"],
     "proposal_tag": "tag:patch"
   }

@@ -12,7 +12,7 @@ missing** objects. `reconcile` uses it to apply **approved** creates/updates.
 
 Enough for a digital twin:
 
-- One **tenant** for this lab (`source.name`, e.g. `cisco-ai-lab-prod`)
+- One **tenant** for this lab (`source.name` from inventory — e.g. `example-lab-prod`)
 - One **site** on that tenant (same slug)
 - **Devices** for every inventory row with `tag:simulate`
 - **Interfaces + IPv4** from IOS-XE RESTCONF (not invented)
@@ -133,7 +133,7 @@ not set `netbox_pushed_at`.
 | You sent | API |
 |----------|-----|
 | `device_type`: `"Cisco Catalyst 8000v"` | `Related object not found … {'slug': 'Cisco Catalyst 8000v'}` |
-| `tags`: `["cisco-ai-lab-prod-simulate"]` | `Related objects must be referenced by numeric ID or by dictionary of attributes` |
+| `tags`: `["example-lab-prod-simulate"]` | `Related objects must be referenced by numeric ID or by dictionary of attributes` |
 
 ## Related objects — slugs, not display names
 
@@ -168,9 +168,9 @@ On the **device**, always a JSON array of dicts:
 
 ```
 "tags": [
-  { "slug": "cisco-ai-lab-prod-simulate" },
-  { "slug": "cisco-ai-lab-prod-sync" },
-  { "slug": "cisco-ai-lab-prod-site-wan" }
+  { "slug": "example-lab-prod-simulate" },
+  { "slug": "example-lab-prod-sync" },
+  { "slug": "example-lab-prod-site-wan" }
 ]
 ```
 
@@ -213,14 +213,14 @@ data=[
   {
     "name": "WAN-04",
     "status": "active",
-    "site": { "slug": "cisco-ai-lab-prod" },
+    "site": { "slug": "example-lab-prod" },
     "role": { "slug": "wan" },
     "device_type": { "slug": "cat8000v" },
-    "tenant": { "slug": "cisco-ai-lab-prod" },
+    "tenant": { "slug": "example-lab-prod" },
     "tags": [
-      { "slug": "cisco-ai-lab-prod-simulate" },
-      { "slug": "cisco-ai-lab-prod-sync" },
-      { "slug": "cisco-ai-lab-prod-site-wan" }
+      { "slug": "example-lab-prod-simulate" },
+      { "slug": "example-lab-prod-sync" },
+      { "slug": "example-lab-prod-site-wan" }
     ]
   }
 ]
@@ -274,7 +274,7 @@ data=[
     "status": "active",
     "assigned_object_type": "dcim.interface",
     "assigned_object_id": <id>,
-    "tenant": { "slug": "cisco-ai-lab-prod" }
+    "tenant": { "slug": "example-lab-prod" }
   }
 ]
 ```
@@ -317,7 +317,7 @@ Each row:
 
 Skip the row if:
 
-- far name is not a seed device (`DEA-CLOUD-SWITCH` → gap, do not create it)
+- far name is not a seed device (`cloud-switch` → gap, do not create it)
 - local or far name is Loopback / Vlan / mgmt
 - you cannot resolve both interface ids (snap or create)
 - either interface id is already on a cable you accepted

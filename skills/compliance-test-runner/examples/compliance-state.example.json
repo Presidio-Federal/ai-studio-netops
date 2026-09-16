@@ -7,7 +7,7 @@
   "next_action": "Review candidates or package for Design",
   "run": {
     "run_id": "31226585624",
-    "html_url": "https://github.com/Presidio-Federal/cml-ai-automation/actions/runs/31226585624",
+    "html_url": "https://github.com/example-org/network-sot/actions/runs/31226585624",
     "live_lab": "dev",
     "mode": "live",
     "suites": ["compliance"]

@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.5.2"
-description: "v1.5.2 — Run extracts use YYYY-MM-DDTHH-MM-SSZ.json (same as Health). testing/ always; compliance/ only when suites includes compliance."
+version: "1.5.3"
+description: "v1.5.3 — Run extracts use YYYY-MM-DDTHH-MM-SSZ.json (same as Health). testing/ always; compliance/ only when suites includes compliance."
 ---
 
 # Compliance test runner skill

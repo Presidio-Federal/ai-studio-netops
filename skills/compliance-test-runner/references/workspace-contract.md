@@ -2,8 +2,8 @@
 
 Paths, envelope, catalog: **`workspace-handoff`**.
 Write schemas live in this skill (`schemas/testing-run.schema.json`,
-`schemas/testing-state.schema.json`). Shared run/state copies also live
-under workspace-handoff for Design/Compliance readers of those two files.
+`schemas/testing-state.schema.json`). Readers use catalog rely-on;
+they do not load a second copy from workspace-handoff.
 
 ## When to write
 

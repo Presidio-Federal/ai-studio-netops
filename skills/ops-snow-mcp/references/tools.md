@@ -38,8 +38,8 @@ Typical flows:
 | `snow_get_request` | read | — | Get a ServiceNow Service Catalog Request (REQ) and its Requested Items (RITM). |
 | `snow_find_incidents` | read | — | Search / list ServiceNow incidents. |
 | `snow_find_requests` | read | — | Search / list ServiceNow Service Catalog Requests (REQ). |
-| `snow_find_users` | read | — | Find ServiceNow users / EUC demo engineers. |
-| `snow_update_user` | write | — | Patch a sys_user for EUC demo dispatch state. |
+| `snow_find_users` | read | — | Find ServiceNow users. |
+| `snow_update_user` | write | — | Patch a sys_user. |
 | `snow_ensure_user` | write | email | Find a ServiceNow sys_user by email or create a minimal active user if missing. |
 | `snow_get_incident` | read | — | Get a single ServiceNow incident by incident_number (e.g. |
 | `snow_create_incident` | write | short_description | Create a ServiceNow incident. |
@@ -49,10 +49,10 @@ Typical flows:
 | `snow_get_asset` | read | — | Get a single ServiceNow hardware asset by asset_id (sys_id), serial_number, or asset_tag. |
 | `snow_create_asset` | write | serial_number | Create a ServiceNow hardware asset (alm_hardware). |
 | `snow_update_asset` | write | — | Update a ServiceNow hardware asset. |
-| `snow_upsert_asset` | write | serial_number | Create or update a ServiceNow hardware asset by serial_number (preferred for Coupa receive). |
+| `snow_upsert_asset` | write | serial_number | Create or update a ServiceNow hardware asset by serial_number. |
 | `snow_find_assignment_groups` | read | — | Find ServiceNow assignment groups (sys_user_group). |
-| `snow_find_locations` | read | — | Find cmn_location hubs and sites (Presidio Hub - *, Disney sites). |
-| `snow_find_stockrooms` | read | — | Find alm_stockroom pools (AE spare / Staging / Loaner) by hub. |
+| `snow_find_locations` | read | — | Find cmn_location hubs and sites. |
+| `snow_find_stockrooms` | read | — | Find alm_stockroom pools. |
 | `snow_find_slas` | read | — | Find SLA definitions (contract_sla, fallback sla). |
 | `snow_get_task_slas` | read | — | Get live task_sla clocks for an INC/REQ/task (has_breached, percentage, planned_end_time). |
 | `snow_find_knowledge` | read | — | Search kb_knowledge articles (e.g. |
@@ -62,7 +62,7 @@ Typical flows:
 | `snow_list_group_members` | read | — | List members of a sys_user_group (e.g. |
 | `snow_find_cis` | read | — | Find cmdb_ci_computer records (e.g. |
 | `snow_get_ci` | read | — | Get one cmdb_ci_computer by ci_id, name, or serial_number. |
-| `snow_find_companies` | read | — | Find core_company records (Disney EUC vs DCL scope). |
+| `snow_find_companies` | read | — | Find core_company records. |
 | `snow_find_changes` | read | — | Search change_request records (CHG…). |
 | `snow_get_change` | read | — | Get a change_request by number (CHG…) or change_id, including plan fields and change_tasks[] (set include_tasks=false to skip tasks). |
 | `snow_create_change` | write | short_description | Create a change_request. |

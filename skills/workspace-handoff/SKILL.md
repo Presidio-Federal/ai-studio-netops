@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.42.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.42.1"
+description: "v1.43.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.43.0"
 ---
 
 # Workspace handoff
@@ -148,7 +148,8 @@ this envelope (handoff from Ops NetBox SoT). Health check files under
 Analyzer **state** rollup. Nurses do not write `state/`.
 
 Do not write `lab-access.json`, `vuln-report.json`, `runs/`,
-`risk/`, or a root `compliance.json`. Compliance Test writes
+`risk/`, `trend-analysis.json`, `remediation-request.json`, or a
+root `compliance.json`. Compliance Test writes
 `testing/YYYY-MM-DDTHH-MM-SSZ.json` (e.g. `2026-08-21T19-56-18Z.json`);
 do not invent other files under `testing/`. Do not invent
 `lifecycle/` or `design/` paths other than the catalog rows below.
@@ -166,19 +167,17 @@ one row pointing at the writer — not a new schema file here.
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | Replaceable projection (`network-sync-state/v2`). Envelope `status` is this operation only. Rely on `operation_id` `operation` `started_at` `completed_at`; `inventories.*.latest_attempt`; `inventories.*.current_snapshot` (`snapshot_id` must match the json file, `path`, freshness, `status`, `coverage`); workflow `result` `run_id` `html_url` `updated_at` (per-workflow result words; not the GitHub check); `gaps`; `next_action` string or JSON `null` — never `"none"`. Failed collect updates `latest_attempt` only. |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`) `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` (`yes`\|`no`). Reset sets `config_sync` and `netbox` to `no`. Onboard is the only writer. |
-| `test-request.json` | request | Network Design | this skill `schemas/test-request.schema.json` | envelope + scope in that schema |
-| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` run schema / this skill `schemas/testing.schema.json` | envelope, `risk` `results` |
-| `state/testing.json` | state | Compliance Test | this skill `schemas/testing.schema.json` / `compliance-test-runner` | envelope, `latest` `risk` `run.suites` |
-| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | this skill `schemas/compliance.schema.json` / `compliance-test-runner` run schema | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
-| `state/compliance.json` | state | Compliance Test | this skill + `compliance-test-runner` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
-| `compliance/coverage.json` | snapshot | Compliance | this skill `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
-| `compliance/intel.json` | result | Compliance | this skill `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
-| `branch-deploy-summary.json` | result | Network Design | this skill `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
+| `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope + scope in that schema |
+| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` |
+| `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
+| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
+| `state/compliance.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
+| `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
+| `compliance/intel.json` | result | Compliance | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
+| `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, the ServiceNow desk, or a Network Ops work queue. |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | Human roadmap: hardware, software, configuration, compliance, timeline, warehouse. Written every completed design. Replace in full. Path is `roadmap_ref`. |
 | `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` (`recommend`\|`implement`), `finding` (`source` `kind` `missing_config`\|`test_bug`\|`other`), `change` (`devices[]` `peer` `files[]` `summary`), `git` (`ref` `commit_sha`), `ci` (`workflow` `ref` `run_id` `result`), `pr`. GitOps change this invoke. Not Design’s roadmap. |
-| `remediation-request.json` | request | Observability | this skill `schemas/remediation-request.schema.json` | envelope + ticket slot (ServiceNow) |
-| `trend-analysis.json` | observation | Observability | this skill `schemas/trend-analysis.schema.json` | leftover; prefer `state/health.json` |
 | `health/metadata-splunk.json` | metadata | Health Monitor (Splunk visit) | `health-monitor` `schemas/health-metadata-splunk.schema.json` | Writer schema. Splunk `index` / `sourcetype` / `collected_through` / `last_visit_id` from the workspace file (not from the skill or prompt). **Not** the five-field envelope. |
 | `health/metadata-thousandeyes.json` | metadata | Health Monitor (TE visit) | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | Writer schema. TE `account_id`, `tests[]`, `last_visit_id` from the API / workspace file (not from the skill or prompt). **Not** the five-field envelope. |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. |
