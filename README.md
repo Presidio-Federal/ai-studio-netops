@@ -1,109 +1,177 @@
 # AI Studio NetOps
 
-This fleet is built to run like an ER, not like one clever intern
-who remembers the whole hospital. The shared Studio workspace is
-the **patient chart**. Agents share those files, not each other’s
-prompts. GitHub holds running-configs. NetBox holds devices,
-interfaces, IPs, and cables so the lab can be rebuilt. CML is the
-twin.
+Multi-agent systems are good at breaking a large task into smaller
+jobs. The trouble starts when those jobs need to come back together.
 
-A specialist opens the chart, does one job, writes the note, and
-leaves. The next person starts from the record. That is how you
-move fast without losing the plot.
+This is especially true when a frontier model delegates work to
+specialized agents, and those agents use different tools, run at
+different times, or use different models. The individual tasks
+might work perfectly well, but the overall result can still fall
+apart if the next agent does not know what happened before it
+arrived.
+
+This repo is built around a simple idea: treat the shared Studio
+workspace like a patient chart.
+
+I started thinking about emergency rooms because the comparison is
+useful. An ER has specialists, shift changes, interruptions,
+delayed test results, and a lot of information moving through the
+system. Nobody expects every nurse or doctor to remember the entire
+history of every patient. They rely on the chart.
+
+That is the same problem this fleet is trying to solve for network
+operations.
+
+A specialist opens the chart, does one job, records what it found,
+and leaves. The next specialist can start from that record without
+needing the previous conversation or a perfectly timed handoff.
+
+The shared workspace is the durable handoff. Agents share the files
+and the schemas, not the entire contents of each other’s prompts.
+
+GitHub owns the network configuration. NetBox owns the
+infrastructure record — devices, interfaces, IPs, and cables. CML
+is the digital twin used to rebuild and test the environment.
 
 ## Why the chart exists
 
-Here are the challenges I experienced when trying to deploy a
-fleet of agents to optimize an entire business process, not just
-an individual task.
+A single task is usually manageable. Summarize a log. Open a
+ticket. Check an interface. One conversation, one tool, and a messy
+thread may be good enough.
 
-A single task is easy. Summarize this log. Open this ticket. One
-chat, one tool, you can live with a messy thread. An end-to-end
-process is not that. Health, inventory, design, change, test, and
-refresh all have to line up — and they happen in **different**
-conversations, on **different** days, often by **different**
-agents. The moment I put that in one window, it fell apart.
+An end-to-end network process is different. Health, inventory,
+design, change, testing, compliance, and modernization all need to
+work together. They happen in different conversations, on different
+days, and sometimes with different agents or models.
 
-- **The god agent.** I asked one conversation to collect, diagnose,
-  and change config. Context filled with tools it should never
-  touch. It started guessing paths and mixing jobs.
-- **Recap as state.** I handed the next agent a story from the last
-  chat. Each retell drifted. Nobody could point at a file and say
-  “this is what we knew at 14:00.”
-- **Token burn.** Every invoke dragged four telemetry dumps, last
-  week’s thread, and another agent’s prompt into the window. Cost
-  went up. Accuracy went down. The model was judging a blend it
-  was told, not a source it queried.
-- **No owner.** Two agents wrote the same board. Someone invented a
-  scratch file so a script could join git. The last write won.
-  Concurrent runs clobbered the diagnosis.
-- **Observation, opinion, and change in one turn.** Labs got treated
-  as a diagnosis. A diagnosis got treated as a merge. I could not
-  tell who was allowed to touch the box.
-- **“It’s fine” from one quiet source.** No critical syslog was not
-  a healthy WAN. Missing logs were not a down device. Stale data
-  sat next to live data with no date on either.
-- **Couldn’t resume.** If the chat died, the case died. I had to
-  re-explain the estate instead of opening the chart.
-- **Prompts that contained the whole hospital.** Every specialist
-  carried everyone else’s playbook. They were unmaintainable, and
-  MiniMax could not follow them.
+That is where I ran into the problems this repo is designed around.
 
-The chart is how I got out of that. One fact, one file, one writer.
-New conversation on every invoke — that is a feature. Initial
-context stays small. Memory lives on disk. Nurses write what they
-observed. The attending writes what we think. Ops ships through
-git. You can start any act if the prior files already exist.
+- **The god agent.** I asked one conversation to collect
+  information, diagnose the problem, and change the configuration.
+  Its context filled with tools it should never have needed, and it
+  started mixing jobs.
+- **Recap as state.** I handed the next agent a summary from the
+  previous conversation. Each retelling introduced some drift.
+  Nobody could point to a file and say, “This is what we knew at
+  14:00.”
+- **Token burn.** Every invocation carried telemetry dumps, old
+  context, and instructions from other agents into the window. Cost
+  went up, and the model had to reason over a blend of information
+  instead of reading the source it actually needed.
+- **No clear owner.** Multiple agents wrote to the same board, or
+  someone created a scratch file so another process could join the
+  data. The last write won, and concurrent runs could overwrite the
+  diagnosis.
+- **Observation and action got mixed together.** A lab result
+  started being treated like a diagnosis. A diagnosis started being
+  treated like approval to change production. It became difficult
+  to tell who was allowed to touch the device.
+- **Silence looked like health.** No critical syslog did not mean
+  the WAN was healthy. Missing logs did not mean the device was
+  down. Stale information sat beside live information without
+  enough context to tell them apart.
+- **The process could not resume.** If the conversation ended, the
+  case effectively ended with it. I had to explain the environment
+  again instead of opening the current record.
+- **Every prompt contained the whole hospital.** Each specialist
+  carried everyone else’s instructions. The prompts became
+  difficult to maintain, and smaller models had trouble following
+  them.
+
+The chart is how I got out of that.
+
+The workspace has a catalog of files. Each file has an owner, a
+schema, and defined readers. A specialist writes the observation it
+owns. A different agent may summarize those observations into
+shared state. Metadata records when the information was collected
+and whether it is still current.
+
+A new conversation on every invoke is a feature. The prompt stays
+small, while the durable context lives in the workspace.
+
+## What the chart does
+
+The patient chart is not a memory dump and it is not a collection
+of transcripts. It is a set of structured records that let agents
+continue work without carrying the entire history in their prompts.
+
+A health specialist might write a dated observation from Splunk,
+ThousandEyes, IOS-XE, or ServiceNow. The Health Analyzer reads
+those observations and writes the health rollup. The Network Ops
+agent then interprets the chart and recommends what should happen
+next.
+
+That separation matters.
+
+The specialist reports what it observed. The analyzer determines
+what is current and what is stale. The attending agent interprets
+the overall situation. A design or testing agent handles the next
+authorized step.
+
+The same pattern applies outside health. Network Sync owns the
+configuration inventory and GitHub Actions results. NetBox SoT
+owns the infrastructure snapshot. Digital Twin owns the CML
+topology. Test owns test results and risk. ServiceNow owns ticket
+creation and updates.
+
+The file is the handoff. The schema tells the next agent what the
+file means. The catalog is `workspace-handoff`.
+
+This does not mean every agent can run independently without any
+coordination. Required inputs still have to exist, and stale or
+failed inputs can block a dependent action. The point is that the
+agent can determine that from the record instead of guessing from
+a conversation.
 
 ## What you have to accept
 
-This only works if the underlying change process uses these
-workflows. If someone changes a device outside GitOps, the next
-apply from git `main` will overwrite it. Same for a lab box that
-was clicked into by hand — the twin is rebuilt from GitHub and
-NetBox, not from memory.
+This approach only works if the sources of truth are treated as
+authoritative.
 
-The chart is only as current as the last visit. Stale notes are
-labeled stale; they are not live truth. Readers have to read the
-file instead of re-collecting. If you attach every agent to every
-chat, you are back to the god agent.
+If someone changes a device outside the GitOps path, the next
+approved apply from GitHub may overwrite that change. If someone
+clicks changes into the lab by hand, the digital twin does not
+treat the lab as the source of truth. It is rebuilt from the
+approved inventory, NetBox data, and configuration sources.
+
+The chart is also only as current as its last visit. A stale note
+is still useful history, but it is not live truth. That is why the
+records include timestamps, freshness rules, status, and ownership.
+
+The other important rule is that agents should not all be attached
+to every conversation. That recreates the god agent problem. Each
+agent should have the tools and instructions needed for its
+responsibility, and the workspace should carry the information
+between responsibilities.
 
 ## What the fleet does
 
-1. **SoT** — Collect inventory and configs, ingest NetBox, deploy the twin.
-2. **Day-two change** — Network Ops: evidence → git `dev` → GitOps → PR `main`.
-3. **Design** — Read the chart. Roadmap at hardware, software, configuration, and compliance. Warehouse check; coordinate on ask.
-4. **Ticket** — ServiceNow case → Network Ops → test → PR `main`.
-5. **Refresh** — Estate identity from SoT, Cisco research, then a plan.
+The fleet separates the major network-operations responsibilities:
 
-Compliance Test sits on every act that claims success. Health is
-the watch that runs beside those acts. Config text stays in git.
-NetBox is not a second running-config.
+1. **Onboard** coordinates the initial inventory and source-of-truth process.
+2. **Network Sync** collects inventory and configuration evidence and runs the GitHub Actions path.
+3. **NetBox SoT** maintains the infrastructure record: devices, interfaces, IPs, and cables.
+4. **Digital Twin** builds or reconciles the CML environment from those approved sources.
+5. **Health Monitor** collects specialist observations from individual health planes.
+6. **Health Analyzer** rolls those observations into `state/health.json` and tracks freshness.
+7. **Network Ops** reads the health chart, correlates the evidence, and recommends a next step.
+8. **Network Design** handles proposed changes and creates the testing handoff.
+9. **Test** proves the change and records the risk and result.
+10. **ServiceNow** owns ticket creation and updates.
+11. **Modernization** builds the roadmap from infrastructure, lifecycle, and support data.
+
+The goal is not to make one agent responsible for the entire
+hospital. The goal is to let each specialist do its job while
+keeping the patient record coherent.
 
 ## Agent families
 
 | Family | What they do |
 |--------|----------------|
-| [Health Agents](documentation/health-agents.md) | Patient chart: one-source nurse visits, attending assessment, Ops/Design read the chart |
-| [Modernization Agents](documentation/modernization-agents.md) | Ingest estate with ranked confidence; plan with cost and timelines |
-| [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Ops Network Sync inventory, Ops NetBox SoT, and the CML lab that must match prod |
-| [Change and Test Agents](documentation/change-and-test-agents.md) | Design: long-horizon roadmap + warehouse; Network Ops: git `dev` config change; Compliance Test scores the run |
+| [Health Agents](documentation/health-agents.md) | One-source visits, attending rollup, Ops/Design read the chart |
+| [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Onboard, Network Sync, NetBox SoT, Digital Twin |
+| [Network Ops](documentation/network-ops.md) | Read the chart, recommend, ship running-config through git |
+| [Change and Test Agents](documentation/change-and-test-agents.md) | Design handoff and Compliance Test risk/result |
 | [Compliance Agents](documentation/compliance-agents.md) | Intel gaps, author a check, run the suite |
-| [ServiceNow Agents](documentation/servicenow-agents.md) | Lab cases and named-slice trends — not the health watch |
-| [Network Ops](documentation/network-ops.md) | Operate: evidence + SoT → git `dev` → merge `main` |
-
-## How they coordinate
-
-Each agent writes only the files it owns. Health nurses write visit
-stamps. Health Analyzer writes `state/health.json`. Ops Network Sync
-writes inventory. Ops NetBox SoT writes the infra snapshot. Network
-Ops writes `state/network-ops.json`. Modernization Analysis and
-Lifecycle share the estate table. Compliance Test writes run results.
-The catalog in `workspace-handoff` is the contract.
-
-Health Analyzer does not recommend. Modernization fills Cisco
-dates, PSIRTs, and replacement SKUs. Network Design turns that
-chart into hardware, software, configuration, and compliance
-work, then checks the warehouse. Network Ops ships running-config
-fixes through git. Compliance proposes intel; Compliance Test
-scores the run.
+| [ServiceNow Agents](documentation/servicenow-agents.md) | Tickets and named-slice trends — not the health watch |
+| [Modernization Agents](documentation/modernization-agents.md) | Estate identity, lifecycle research, roadmap |
