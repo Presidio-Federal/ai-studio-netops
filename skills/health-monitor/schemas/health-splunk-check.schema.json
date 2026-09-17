@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-splunk-check/v1",
+  "$id": "health-splunk-check/v2",
   "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "Splunk visit (Kind observation). Plane status/headline, not the coordination envelope. metrics keys are required every visit; null when not collected.",
+  "description": "Splunk lab slip (Kind observation). Vitals + vs_prior + coverage. Not a dump of the SPL result. metrics keys required every visit; null when not collected.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -14,12 +14,12 @@
     "status",
     "headline",
     "window",
-    "summary",
     "coverage",
-    "metrics"
+    "metrics",
+    "vs_prior"
   ],
   "properties": {
-    "schema": { "type": "string", "const": "health-splunk-check/v1" },
+    "schema": { "type": "string", "const": "health-splunk-check/v2" },
     "source": { "type": "string", "const": "splunk" },
     "watch_id": {
       "type": "string",
@@ -37,6 +37,7 @@
     "prior_observation": { "type": ["string", "null"] },
     "summary": { "type": "string" },
     "coverage": { "$ref": "#/$defs/coverage" },
+    "vs_prior": { "$ref": "#/$defs/vs_prior" },
     "metrics": {
       "type": "array",
       "minItems": 1,
@@ -120,6 +121,24 @@
     }
   },
   "$defs": {
+    "vs_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior_watch_id", "delta", "changed"],
+      "description": "This visit vs the last stamp of this source. Not a MCP dump.",
+      "properties": {
+        "prior_watch_id": { "type": ["string", "null"] },
+        "delta": {
+          "type": "string",
+          "enum": ["first", "unchanged", "worse", "better"]
+        },
+        "changed": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
     "coverage": {
       "type": "object",
       "additionalProperties": false,

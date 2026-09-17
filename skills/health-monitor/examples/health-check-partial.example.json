@@ -1,5 +1,5 @@
 {
-  "schema": "health-thousandeyes-check/v1",
+  "schema": "health-thousandeyes-check/v2",
   "source": "thousandeyes",
   "watch_id": "2026-08-19T12-00-00Z",
   "checked_at": "2026-08-19T12:00:00Z",
@@ -7,10 +7,14 @@
   "status": "degraded",
   "headline": "path-a 14.5% mean loss; path-b result missing",
   "window": "1h",
-  "summary": "test t1 returned; t2 call failed. Partial extract, not a zero-loss second test.",
   "coverage": {
     "state": "partial",
     "detail": "only test t1 network results; t2 timed out"
+  },
+  "vs_prior": {
+    "prior_watch_id": null,
+    "delta": "first",
+    "changed": []
   },
   "metrics": [
     {
@@ -34,28 +38,5 @@
       "error_rounds": null
     }
   ],
-  "alerts": {
-    "firing": 0,
-    "items": []
-  },
-  "tests": [
-    {
-      "test_id": "t1",
-      "test_name": "path-a",
-      "rounds": 10,
-      "ok_rounds": 10,
-      "error_rounds": 0,
-      "loss_pct_mean": 14.5,
-      "loss_pct_max": 18.0,
-      "latency_ms_avg": 12.0,
-      "latency_ms_max": 20.0,
-      "latency_ms_p95": null,
-      "jitter_ms_avg": 1.2,
-      "first_round_at": "2026-08-19T11:00:00Z",
-      "last_round_at": "2026-08-19T11:55:00Z",
-      "last_ok_at": "2026-08-19T11:55:00Z",
-      "error_types": [],
-      "last_error": null
-    }
-  ]
+  "alerts": { "firing": 0, "items": [] }
 }

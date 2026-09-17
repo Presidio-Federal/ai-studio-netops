@@ -1,5 +1,5 @@
 {
-  "schema": "health-servicenow-check/v1",
+  "schema": "health-servicenow-check/v2",
   "source": "servicenow",
   "watch_id": "2026-09-01T15-00-01Z",
   "checked_at": "2026-09-01T15:00:01Z",
@@ -7,10 +7,14 @@
   "status": "unknown",
   "headline": "ServiceNow find failed; no incident extract",
   "window": "active + recent closed",
-  "summary": "snow_find_incidents returned an error after retry. Counts are null, not zero.",
   "coverage": {
     "state": "unavailable",
     "detail": "snow_find_incidents error; snow_query_table not reached budget"
+  },
+  "vs_prior": {
+    "prior_watch_id": null,
+    "delta": "first",
+    "changed": []
   },
   "metrics": [
     {
@@ -21,12 +25,5 @@
       "open_p1p2": null,
       "out_of_scope_open": null
     }
-  ],
-  "open_incidents": null,
-  "open_changes": null,
-  "open_p1p2": null,
-  "out_of_scope_open": null,
-  "incidents": [],
-  "changes": [],
-  "recent": []
+  ]
 }

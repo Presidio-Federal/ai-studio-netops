@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-state/v4",
+  "$id": "health-state/v5",
   "title": "state/health.json",
-  "description": "Health Analyzer assessment and trend (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). series points copied from visit metrics. assessment and trend_analysis are this agent's verdict — not pasted visit headlines.",
+  "description": "Health Analyzer SOAP rollup (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). series points copied from visit metrics. soap is S/O/A/P; plan is a forward step (named nurse visit, refer Ops/Design, or none) — not an inspect path for a stamp already read. assessment and trend_analysis are this agent's verdict — not pasted visit headlines."
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -20,11 +20,12 @@
     "series",
     "assessment",
     "trend_analysis",
+    "soap",
     "dispatched",
     "read"
   ],
   "properties": {
-    "schema": { "type": "string", "const": "health-state/v4" },
+    "schema": { "type": "string", "const": "health-state/v5" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-analyzer" },
     "status": {
@@ -40,7 +41,7 @@
     "next_action": {
       "type": "string",
       "minLength": 1,
-      "description": "Inspect pointer to a stamp path, or none. Not a SKU, ticket, or work queue."
+      "description": "Same string as soap.plan. Named nurse visit, refer Network Ops or Network Design, or none. Not an inspect path. Not a SKU, ticket, git change, or test plan."
     },
     "mode": {
       "type": "string",
@@ -82,6 +83,7 @@
     },
     "assessment": { "$ref": "#/$defs/assessment" },
     "trend_analysis": { "$ref": "#/$defs/trend_analysis" },
+    "soap": { "$ref": "#/$defs/soap" },
     "dispatched": {
       "type": "array",
       "maxItems": 8,
@@ -195,6 +197,34 @@
           "type": "array",
           "maxItems": 6,
           "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "soap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subjective", "objective", "assessment", "plan"],
+      "description": "Attending SOAP on this chart. Nurses do not write this object.",
+      "properties": {
+        "subjective": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Why this analysis ran: the operator ask, or scheduled assess-now / refresh-then-assess."
+        },
+        "objective": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What the lab slips and series measured this visit. Coverage and freshness belong here. Stamp paths stay on consults.*.source_ref — do not put inspect instructions here."
+        },
+        "assessment": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Same verdict as assessment.opinion. One sentence from all four planes and the series."
+        },
+        "plan": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Forward clinical step only: another named nurse visit, refer Network Ops or Network Design, or none. Not 'Inspect health/...json'. Not a SKU, git change, or test plan."
         }
       }
     },

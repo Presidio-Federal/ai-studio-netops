@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.29.0"
-description: "v1.29.0 — One named Splunk or ThousandEyes health visit. Write that plane’s stamp and metadata. Use when the invoke names Splunk or ThousandEyes. Do not collect the other source."
+version: "1.30.0"
+description: "v1.30.0 — One named Splunk or ThousandEyes health visit. Write that plane’s lab slip (metrics + vs_prior) and metadata. Use when the invoke names Splunk or ThousandEyes. Do not collect the other source."
 ---
 
 # Health Monitor skill
@@ -17,8 +17,10 @@ the other source on this visit. Do not call other health MCPs.
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
 
-Write `health/<source>/<stamp>.json`. Do not write `state/`. You
-interpret this source vs its last stamp (`metadata.last_visit_id`).
+Write `health/<source>/<stamp>.json` as a **lab slip**: `headline`,
+`coverage`, `metrics`, `vs_prior`. Do not dump the MCP result.
+Do not write `state/`. You interpret this source vs its last stamp
+(`metadata.last_visit_id`).
 
 ## Hard boundaries
 
@@ -42,8 +44,8 @@ on catalog paths.
 |------|------|----------|
 | `health/metadata-splunk.json` | metadata | Splunk visit. **Not** five-field. |
 | `health/metadata-thousandeyes.json` | metadata | TE visit. **Not** five-field. |
-| `health/splunk/<stamp>.json` | observation | Never overwrite. Required `metrics`. |
-| `health/thousandeyes/<stamp>.json` | observation | Never overwrite. Required `metrics`. |
+| `health/splunk/<stamp>.json` | observation | Never overwrite. Required `metrics` and `vs_prior`. |
+| `health/thousandeyes/<stamp>.json` | observation | Never overwrite. Required `metrics` and `vs_prior`. |
 
 Use exactly: `references/watch.md`, `references/demo-scope.md`,
 `references/workspace-contract.md`, `references/metadata.md`.

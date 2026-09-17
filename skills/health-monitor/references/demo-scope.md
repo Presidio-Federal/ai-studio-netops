@@ -94,11 +94,10 @@ that bucket. Samples never set `event_count` or `flap_count`.
 window (`complete`, zeros allowed). MCP/timeout with no extract is
 `unavailable`: counts **null**, never `0`; do not advance the watermark.
 
-Write into the Splunk check: `query_profile` `splunk-syslog/v2`;
-`window` = watermark ISO or bootstrap; `event_count`, `parsed_count`,
-`critical_error_count`, `flap_count`, `unique_hosts`; `by_severity`;
-`by_mnemonic` (omit `hosts` if you only have a count); `top_hosts` cap
-10; `buckets` from F1; up to 5 `samples`.
+Write the **lab slip**: `headline`, `coverage`, `metrics` (one
+row `scope` `window`), `vs_prior`. Do **not** write `by_mnemonic`,
+`top_hosts`, `buckets`, `samples`, or a `summary` that restates
+metrics. F2 is for your judgment of `headline` / `status` only.
 
 Severity alone does not set `degraded`. SSH-NO_MATCH is a finding.
 
@@ -131,19 +130,23 @@ resolving metadata. Forbidden: agent listing on a healthy extract,
 - one `te_agents_get_agents` with `agent_types` (e.g. `["enterprise"]`)
   if `INTERNAL_ERROR` dominates
 
-From **each** network result, write a `tests[]` object with:
+Write the **lab slip**: `headline`, `coverage`, `metrics` (one row
+per test `scope` `test:<id>`), `vs_prior`, `alerts.firing`. Do
+**not** write a `tests[]` dump of every round. After standing-order
+path-vis, you may add `tests[]` with **only** the worst test’s
+`test_id`, `test_name`, and `path_summary` (`hops`,
+`last_error_hop`). Cap; do not dump hops.
 
-- `test_id`, `test_name` — `test_name` from the payload’s `test.testName`
-  (do not require `GET /tests/{id}`; that path 404s here)
-- `rounds`, `ok_rounds`, `error_rounds`
-- `loss_pct_mean`, `loss_pct_max` (null when every round errored)
-- `latency_ms_avg`, `latency_ms_max`, `jitter_ms_avg` (null when no ok
-  rounds)
-- `first_round_at`, `last_round_at`, `last_ok_at` from `date`
-- `error_types` — `{ "type", "count", "last_message", "last_at" }`
-- `last_error` — `{ "at", "message" }` or null
-- `path_summary` — when path-vis ran: `{ "hops", "last_error_hop" }`.
-  Cap; do not dump hops.
+Vitals on `metrics[]` come from each network result:
+
+- `loss_pct` from mean loss on ok rounds (null when every round errored)
+- `latency_ms_avg`, `jitter_ms` (null when no ok rounds)
+- `latency_ms_p95` null unless this visit measured p95
+- `ok_rounds`, `error_rounds`
+
+Use `test_name` from the payload’s `test.testName` (do not require
+`GET /tests/{id}`; that path 404s here). `first_round_at` /
+`last_ok_at` inform the headline; they are not extra stamp arrays.
 
 Live `results[]` rows (agent-to-agent `network`) carry **top-level**
 `loss`, `avgLatency`, `jitter`, `date`, `direction`, `agent.agentName`,

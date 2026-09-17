@@ -23,8 +23,18 @@ The observation file is **this visit’s plane** (`ok` / `degraded` /
 `unknown`). Do not write `state/`. Do not read or write another
 plane.
 
-Check `headline` quotes this plane’s measurements. `trend` in the
-reply is vs the prior stamp of **this** source (`last_visit_id`).
+Check `headline` quotes this plane’s measurements. `vs_prior` is
+required: compare to the prior stamp of **this** source
+(`last_visit_id`). First visit: `prior_watch_id` null, `delta`
+`first`, `changed` [].
+
+The observation is a **lab slip**, not a MCP dump. Required:
+`headline`, `coverage`, `metrics`, `vs_prior`. Do not write
+`summary` that restates `metrics`. Do not write `tests[]`,
+`by_mnemonic`, `samples`, `top_hosts`, or `buckets` unless a
+standing-order follow-up produced **one** extra fact (TE:
+`tests[]` with only the worst test’s `path_summary` after
+path-vis). Splunk F2 samples stay off the stamp.
 
 Required `metrics` on the observation: same keys every visit;
 explicit `null` when not collected.
@@ -39,8 +49,9 @@ explicit `null` when not collected.
    `health/<source>/<last_visit_id>.json` and compare.
 3. Pick stamp `YYYY-MM-DDTHH-MM-SSZ`. If that path exists, add 1
    second. Never overwrite. That stamp is `watch_id`.
-4. Collect (`references/demo-scope.md`). Write the observation
-   (including `metrics`), then `read_file`.
+4. Collect (`references/demo-scope.md`). Write the **lab slip**
+   (`headline`, `coverage`, `metrics`, `vs_prior`), then
+   `read_file`. Do not paste the tool JSON into extra arrays.
 5. Write this visit’s metadata (`last_visit_id`, Splunk watermark
    when applicable). Keep **at most 10** stamps under
    `health/<this source>/`. After the new write, delete older stamp

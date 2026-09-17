@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.6.1"
-description: "v1.6.1 — IOS-XE device health visit. GET-only RESTCONF. Write health/iosxe/<stamp>.json. Use when the invoke names the network device or IOS-XE health check."
+version: "1.7.0"
+description: "v1.7.0 — IOS-XE device health visit. GET-only RESTCONF. Write a lab slip at health/iosxe/<stamp>.json. Use when the invoke names the network device or IOS-XE health check."
 ---
 
 # Health Device skill
@@ -12,8 +12,9 @@ write or YANG-discovery workflows. Do not call other health MCPs.
 
 Write `health/iosxe/<stamp>.json`. Do not write `state/`. Do not
 write metadata. Do not read other planes. Do not list `health/iosxe/`.
-Trend is `first` unless this visit already named a prior stamp
-without listing (it will not). Rank from `prod.json` only.
+Trend is `vs_prior` vs the last IOS-XE stamp named on
+`state/health.json` `consults.iosxe.source_ref` (no directory list).
+If that path is missing: `delta` `first`. Rank from `prod.json` only.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
@@ -39,7 +40,7 @@ run a validator. Persist with `write_file` on catalog paths.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `health/iosxe/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics`. |
+| `health/iosxe/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics` and `vs_prior`. |
 
 Use exactly: `references/watch.md`, `references/iosxe.md`,
 `references/workspace-contract.md`,
@@ -52,12 +53,13 @@ Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
 **Visit — first tool:** `read_file` `inventory/prod.json` before any
-RESTCONF. Read the new observation back. Never overwrite a
-timestamped file.
+RESTCONF. If `state/health.json` exists, read it for
+`consults.iosxe.source_ref` then that stamp. Read the new observation
+back. Never overwrite a timestamped file.
 
 ## State machine
 
-READ_PROD → PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK → STOP
+READ_PROD → READ_PRIOR_FROM_CHART → PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK → STOP
 
 On collection failure: still write that check (`unavailable`, null
 facts).

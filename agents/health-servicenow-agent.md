@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.5.3"
+version: "1.6.0"
 ---
 
 # Health ServiceNow
 
-Version 1.5.3.
+Version 1.6.0.
 
 ## Identity
 
@@ -102,10 +102,10 @@ Visit: servicenow
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Wrote: health/servicenow/<stamp>.json
-Trend: <vs_prior> this visit
+Trend: <vs_prior.delta>
 Findings:
 - <evidence line>
-Next: <none, or Investigate the latest health. if degraded or unknown>
+Next: none
 ```
 
 `Result:` is this plane’s envelope (collection), not ticket busyness.

@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.43.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.43.0"
+description: "v1.44.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.44.0"
 ---
 
 # Workspace handoff
@@ -181,11 +181,11 @@ one row pointing at the writer — not a new schema file here.
 | `health/metadata-splunk.json` | metadata | Health Monitor (Splunk visit) | `health-monitor` `schemas/health-metadata-splunk.schema.json` | Writer schema. Splunk `index` / `sourcetype` / `collected_through` / `last_visit_id` from the workspace file (not from the skill or prompt). **Not** the five-field envelope. |
 | `health/metadata-thousandeyes.json` | metadata | Health Monitor (TE visit) | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | Writer schema. TE `account_id`, `tests[]`, `last_visit_id` from the API / workspace file (not from the skill or prompt). **Not** the five-field envelope. |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. |
-| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | One TE visit writes **one** new file. Never overwrite. At most **10** stamps in this directory; writer deletes older after write. `watch_id` `checked_at` `ok` plane `status` `headline` `coverage.state` required `metrics[]`. |
-| `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | One Splunk visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `metrics[]`. |
-| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | One device visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `devices[]` required `metrics[]`. PAT `port` from `inventory/prod.json` `access.restconf.port`. |
-| `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | One ServiceNow visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `incidents[]` `changes[]` `recent[]` required `metrics[]`. Find/get only. Never write `state/servicenow.json`. |
-| `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | Rollup chart. Envelope `status` is worst of complete/partial **thousandeyes, splunk, iosxe** — ServiceNow does not vote. Rely on `consults.<plane>` (derived from the latest stamp), `freshness` (`current`\|`stale`\|`missing` from `checked_at` + 26h), `series` (`window` 10, `watermark`, `points[]` copied from visit `metrics`), `mode`, `dispatched[]`, `coverage`. `updated_at` is write time. Visit writers do **not** write this file. |
+| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | Lab slip. One TE visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Omit `tests[]` except standing-order `path_summary` on the worst test. |
+| `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | Lab slip. One Splunk visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Do not dump `by_mnemonic` / `samples`. |
+| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | Lab slip. One device visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Omit `devices[]` trees. PAT `port` from `inventory/prod.json` `access.restconf.port`. |
+| `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | Lab slip. One ServiceNow visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Ticket arrays optional. Find/get only. Never write `state/servicenow.json`. |
+| `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | Attending SOAP rollup. Envelope `status` is worst of complete/partial **thousandeyes, splunk, iosxe** — ServiceNow does not vote. Rely on `soap` (`subjective` `objective` `assessment` `plan`), `consults.<plane>` (derived from the latest stamp; `source_ref` is the citation), `freshness` (`current`\|`stale`\|`missing` from `checked_at` + 26h), `series` (`window` 10, `watermark`, `points[]` copied from visit `metrics`), `mode`, `dispatched[]`, `coverage`. Envelope `next_action` is `soap.plan` (named nurse visit, refer Ops/Design, or `none`) — not an inspect path. `updated_at` is write time. Visit writers do **not** write this file. |
 | `state/lifecycle.json` | state | Modernization Analysis **and** Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | Consolidated estate, one row per evidence product id (`device_type` / `node_definition` / serial PID as written — never hostname-to-SKU). Five-field envelope. Modernization Analysis writes identity, `guidance`, `assessment`, `plan` (cost + timeline), `selected_replacement` when the operator **names** a SKU, `recommendations[]` on a plan invoke, and `roadmap_ref`. Copies through research. Never overwrite higher `source.reliability` with lower unless the operator overrides. Modernization Lifecycle merges hardware EoX, software train, PSIRT, NVD, CCW onto matching `pid`; copies through identity, `guidance`, `roadmap_ref`, `recommendations[]`, and `selected_replacement`; `recommended_replacement` only from Cisco hardware EoX; family-only bulletin → `replacement_ask` / candidates on the **row**; `recommended_software` only from Cisco software EoX / PSIRT Software Checker. CCW prices `selected_replacement` if set, else Cisco `recommended_replacement`. Empty hardware EoX on a virtual PID is `research.eox` `unavailable`. Do not create this file if missing (Lifecycle stops `unknown`). Rely on `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current if `now < expires_at`. |
 | `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. MiniMax sandbox: `write_file` `file_explorer/lifecycle/items/<pid>.json` after Access denied. |
 | `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
@@ -213,9 +213,10 @@ Analyzer only). Do not write `health-board.md`. Keep these lowercase
 paths. Timestamped observations are never overwritten. `watch_id`
 matches **this visit’s** new observation.
 
-On `state/health.json`, readers may use the envelope, `consults`,
-`freshness`, `series`, `coverage`, `mode`, `dispatched[]`, and
-`next_action`. Envelope `status` is vital worst-of (not ServiceNow).
+On `state/health.json`, readers may use the envelope, `soap`,
+`consults`, `freshness`, `series`, `coverage`, `mode`,
+`dispatched[]`, and `next_action` (`soap.plan`). Envelope `status`
+is vital worst-of (not ServiceNow).
 **Current** when `freshness.<plane>.state` is `current`. **Stale**
 when `stale`. **Missing** when `missing`. `updated_at` is write time.
 Write schema lives in `health-analyzer`. Do not load a visit writer’s
@@ -339,13 +340,12 @@ file.
 3. **observation** / **snapshot** (except infra-sot envelope) /
    **metadata** / **configuration**: rely-on fields only. Do not apply the
    five-field stop rule.
-4. Health: `state/health.json` is the analyzer rollup (envelope +
-   `consults` `freshness` `series` `coverage` `mode` `dispatched[]`
+4. Health: `state/health.json` is the analyzer SOAP rollup (envelope +
+   `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched[]`
    `next_action`). Current vs stale vs missing as in the Health
-   catalog row. Plane files: envelope + `consult`. Check files:
-   observation fields (`watch_id` `coverage.state` `metrics`) — not
-   envelope-block. `health/metadata-*.json`: lookup ids — not
-   envelope-block.
+   catalog row. Stamp files: observation fields (`watch_id`
+   `coverage.state` `metrics` `vs_prior`) — not envelope-block.
+   `health/metadata-*.json`: lookup ids — not envelope-block.
 5. `source_refs` that start with `workspace/` or `/workspace/` → strip and
    read the remainder.
 6. Lifecycle: `state/lifecycle.json` is the estate table (envelope +

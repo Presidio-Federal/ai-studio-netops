@@ -1,5 +1,5 @@
 {
-  "schema": "health-iosxe-check/v1",
+  "schema": "health-iosxe-check/v2",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-00Z",
   "checked_at": "2026-08-31T16:00:00Z",
@@ -7,10 +7,14 @@
   "status": "ok",
   "headline": "edge-1 + wan-1: 0 oper-not-ready, BGP all fsm-established, 0 errors/flaps",
   "window": "live",
-  "summary": "Ranked wan/edge from prod.json. Interfaces-oper ready on linked ports. wan-1 ipv4-unicast neighbors established. No drops — ACL GET skipped.",
   "coverage": {
     "state": "complete",
     "detail": "RESTCONF GET on ranked wan/edge; ACL not requested (no discards/errors)"
+  },
+  "vs_prior": {
+    "prior_watch_id": "2026-08-31T10-00-00Z",
+    "delta": "unchanged",
+    "changed": []
   },
   "metrics": [
     {
@@ -30,75 +34,6 @@
       "in_errors": 0,
       "in_discards": 0,
       "num_flaps": 0
-    }
-  ],
-  "devices": [
-    {
-      "name": "wan-1",
-      "why": "wan",
-      "yang_paths": [
-        "Cisco-IOS-XE-interfaces-oper:interfaces",
-        "Cisco-IOS-XE-bgp-oper:bgp-state-data/address-families"
-      ],
-      "interfaces": [
-        {
-          "name": "GigabitEthernet1",
-          "description": "uplink",
-          "ipv4": "192.0.2.1",
-          "admin_status": "up",
-          "oper_status": "up",
-          "in_errors": 0,
-          "out_errors": 0,
-          "in_discards": 0,
-          "in_crc_errors": "0",
-          "num_flaps": "0",
-          "rx_kbps": "0",
-          "tx_kbps": "0"
-        }
-      ],
-      "bgp_neighbors": [
-        {
-          "id": "192.0.2.2",
-          "state": "fsm-established",
-          "as": 65000,
-          "up_time": "2d20h",
-          "prefixes_received": "3",
-          "input_queue": "0",
-          "output_queue": "0"
-        },
-        {
-          "id": "198.51.100.1",
-          "state": "fsm-established",
-          "as": 65100,
-          "up_time": "2d20h",
-          "prefixes_received": "3",
-          "input_queue": "0",
-          "output_queue": "0"
-        }
-      ]
-    },
-    {
-      "name": "edge-1",
-      "why": "estate",
-      "yang_paths": [
-        "Cisco-IOS-XE-interfaces-oper:interfaces"
-      ],
-      "interfaces": [
-        {
-          "name": "GigabitEthernet2",
-          "description": "uplink",
-          "ipv4": "203.0.113.1",
-          "admin_status": "up",
-          "oper_status": "up",
-          "in_errors": 0,
-          "out_errors": 0,
-          "in_discards": 0,
-          "num_flaps": "0",
-          "rx_kbps": "0",
-          "tx_kbps": "0"
-        }
-      ],
-      "bgp_neighbors": []
     }
   ]
 }

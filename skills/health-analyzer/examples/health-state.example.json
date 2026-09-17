@@ -1,10 +1,10 @@
 {
-  "schema": "health-state/v4",
+  "schema": "health-state/v5",
   "updated_at": "2026-09-09T12:00:00Z",
   "source_agent": "health-analyzer",
   "status": "degraded",
   "headline": "Unhealthy is the WAN path, not the lab syslog or the boxes.",
-  "next_action": "Inspect health/thousandeyes/2026-08-14T16-05-00Z.json",
+  "next_action": "Network Ops: path or config, not a down box.",
   "mode": "assess-now",
   "analyzed_at": "2026-09-09T12:00:00Z",
   "coverage": {
@@ -40,10 +40,10 @@
       "watch_id": "2026-08-14T16-05-00Z",
       "observed_at": "2026-08-14T16:05:00Z",
       "status": "degraded",
-      "trend": "first",
-      "trend_note": "First point in the window; path-b is all error rounds, path-a is not.",
+      "trend": "worse",
+      "trend_note": "path-b flipped from ok rounds to 30/30 errors vs the prior TE stamp; path-a did not.",
       "impression": "Path-b is the unhealthy test; path-a does not share that failure.",
-      "evidence_for": ["test t2 30 error rounds, 0 ok"],
+      "evidence_for": ["test t2 30 error rounds, 0 ok", "vs_prior: ok_rounds 12 → 0"],
       "evidence_against": ["test t1 completed with 0% loss"],
       "source_ref": "health/thousandeyes/2026-08-14T16-05-00Z.json",
       "inspect_when": "Open when per-round error types are needed."
@@ -52,8 +52,8 @@
       "watch_id": "2026-08-30T18-45-00Z",
       "observed_at": "2026-08-30T18:45:00Z",
       "status": "ok",
-      "trend": "first",
-      "trend_note": "First Splunk point; volume is present, flaps are not.",
+      "trend": "unchanged",
+      "trend_note": "Volume is present, flaps are not; vs_prior unchanged.",
       "impression": "Syslog is busy with config-sync and is not showing flaps or critical errors.",
       "evidence_for": ["37 events across 7 hosts", "0 flaps", "0 critical"],
       "evidence_against": [],
@@ -64,8 +64,8 @@
       "watch_id": "2026-08-31T16-00-00Z",
       "observed_at": "2026-08-31T16:00:00Z",
       "status": "ok",
-      "trend": "first",
-      "trend_note": "First IOS-XE point; no baseline yet.",
+      "trend": "unchanged",
+      "trend_note": "Ranked wan/edge still oper-ready; vs_prior unchanged.",
       "impression": "Ranked wan/edge is oper-ready and BGP is established — this plane does not explain the path errors.",
       "evidence_for": ["0 oper-not-ready", "0 bgp_not_established"],
       "evidence_against": [],
@@ -141,8 +141,14 @@
     "opinion": "Unhealthy is the WAN path, not the lab syslog or the boxes."
   },
   "trend_analysis": {
-    "narrative": "Each vital plane has one point — no baseline. path-b is already all errors; Splunk and IOS-XE are quiet on first sample.",
-    "flips": []
+    "narrative": "TE path-b flipped from ok rounds to all errors vs prior stamp; Splunk and IOS-XE stayed quiet.",
+    "flips": ["was path-stable on TE, now path-b all errors"]
+  },
+  "soap": {
+    "subjective": "Scheduled assess-now.",
+    "objective": "TE path-b 30/30 error rounds (worse vs prior); path-a 0% loss. Splunk 37 events / 7 hosts / 0 flaps. IOS-XE ranked wan/edge oper-ready, BGP established. ServiceNow not requested. Vital planes current.",
+    "assessment": "Unhealthy is the WAN path, not the lab syslog or the boxes.",
+    "plan": "Network Ops: path or config, not a down box."
   },
   "dispatched": [],
   "read": [

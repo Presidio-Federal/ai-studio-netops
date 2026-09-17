@@ -1,5 +1,5 @@
 {
-  "schema": "health-splunk-check/v1",
+  "schema": "health-splunk-check/v2",
   "source": "splunk",
   "watch_id": "2026-08-19T17-38-00Z",
   "checked_at": "2026-08-19T17:38:00Z",
@@ -7,10 +7,14 @@
   "status": "unknown",
   "headline": "Splunk search skill timed out; no event extract",
   "window": "-24h",
-  "summary": "MCP search_oneshot did not return after retry and fallback. Counts are null, not zero.",
   "coverage": {
     "state": "unavailable",
     "detail": "search_oneshot timeout after retry and stats count fallback"
+  },
+  "vs_prior": {
+    "prior_watch_id": null,
+    "delta": "first",
+    "changed": []
   },
   "metrics": [
     {
@@ -21,15 +25,5 @@
       "flap_count": null,
       "unique_hosts": null
     }
-  ],
-  "event_count": null,
-  "critical_error_count": null,
-  "flap_count": null,
-  "unique_hosts": null,
-  "first_event_at": null,
-  "last_event_at": null,
-  "by_severity": [],
-  "by_mnemonic": [],
-  "top_hosts": [],
-  "samples": []
+  ]
 }

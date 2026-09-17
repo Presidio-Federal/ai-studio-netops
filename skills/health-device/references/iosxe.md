@@ -55,37 +55,28 @@ not look for ACLs. HTTP **204** (empty) = no ACLs on that box; write
 `acls.count` 0, do not GET native ACL config, do not degrade. Omit
 `acls` entirely when you did not run the GET.
 
-## Write `devices[]` — not the RESTCONF body
+## Write the lab slip — not the RESTCONF body
 
-Map oper enums in the observation (`if-state-up` / `if-oper-state-ready`
-→ up). IETF fallback uses `admin-status` / `oper-status` `up`/`down`.
+Map oper enums to counts (`if-state-up` / `if-oper-state-ready`
+→ ready). IETF fallback uses `admin-status` / `oper-status`
+`up`/`down`.
 
-Per device: `name`, `why` (`wan` / `edge` / `estate`),
-`yang_paths[]`.
+Write `headline`, `coverage`, `metrics` (one row per collected
+device `scope` `device:<name>`), `vs_prior`. Do **not** write
+`devices[]` interface, BGP, or ACL trees. Keys on each metric
+row: `oper_not_ready`, `bgp_not_established`, `in_errors`,
+`in_discards`, `num_flaps`. Null when that device was not
+collected.
 
-**Interfaces** (from oper; skip idle shutdown — admin down and not on
-`links[]`):
+Count **oper_not_ready** from admin-up / oper-not-ready (non-idle).
+Count **bgp_not_established** from `bgp-neighbor-summary` whose
+`state` is not `fsm-established`. Sum errors/flaps from ranked up
+ports (skip idle shutdown). Live counters may be strings — coerce
+to numbers for the metric row.
 
-- `name`, `description`, `ipv4`
-- `admin_status`, `oper_status`
-- `in_errors`, `out_errors`, `in_discards`, `in_crc_errors`, `num_flaps`
-- `rx_kbps`, `tx_kbps`
-
-Keep admin-up / oper-not-ready, `links[]` members, and rows with
-errors/flaps. Cap. Live counters may be strings.
-
-**BGP** from `address-family[]`: `afi-safi`, `vrf-name`, `router-id`,
-`local-as`. Each `bgp-neighbor-summary`: `id`, `as`, `state`
-(`fsm-established` is healthy), `up_time`, `prefixes_received`,
-`input_queue`, `output_queue`. Keyed follow-up only when `state` is not
-established, queues non-zero, or that peer was implicated. Then add
-`session_state`, `link`, `installed_prefixes`, `connection_state`,
-`reset_reason`, `total_dropped`, `local_host`, `foreign_host`,
-`notifications`. Do not copy `negotiated-cap`.
-
-**ACL** (only if you ran the GET): `count` 0 and `items` [] on 204. On
-200: name + ACE `match-counter` only (cap). Do not GET
-`native/ip/access-list` unless oper returned entries.
+ACL GET is follow-up evidence for `headline` only (drops already
+set `in_discards` / `in_errors`). Do not dump ACE lists onto the
+stamp.
 
 ## Plane status
 

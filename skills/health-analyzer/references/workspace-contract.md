@@ -19,9 +19,9 @@ and none degraded; `partial` when a vital plane is missing or
 or dispatched; `degraded` when a voting vital consult is degraded;
 `unknown` when no vital observation is usable.
 
-`headline` is one line of `assessment.opinion`. `assessment` and
-`trend_analysis` are required. `next_action` is an inspect pointer
-or `none`.
+`headline` is one line of `assessment.opinion`. `assessment`,
+`trend_analysis`, and `soap` are required. `next_action` is
+`soap.plan` (named nurse visit, refer Ops/Design, or `none`).
 
 Do not write visit files under `health/`.
 

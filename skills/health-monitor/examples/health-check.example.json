@@ -1,5 +1,5 @@
 {
-  "schema": "health-thousandeyes-check/v1",
+  "schema": "health-thousandeyes-check/v2",
   "source": "thousandeyes",
   "watch_id": "2026-08-14T16-05-00Z",
   "checked_at": "2026-08-14T16:05:00Z",
@@ -7,8 +7,12 @@
   "status": "degraded",
   "headline": "path-b 30/30 errored (source IP); path-a 1 ok 0% loss 1ms / 0.49ms jitter; alerts 0",
   "window": "1h",
-  "summary": "t2: 29x Cannot use the selected source IP (192.0.2.1), 1x Connection to target agent failed. t1: 1 round loss 0% latency 1ms jitter 0.49ms. Alerts firing: 0 (no rule bound).",
   "coverage": { "state": "complete" },
+  "vs_prior": {
+    "prior_watch_id": "2026-08-14T15-00-00Z",
+    "delta": "worse",
+    "changed": ["test:t2 ok_rounds 12 → 0", "test:t2 error_rounds 0 → 30"]
+  },
   "metrics": [
     {
       "at": "2026-08-14T16:05:00Z",
@@ -31,65 +35,14 @@
       "error_rounds": 30
     }
   ],
-  "alerts": {
-    "firing": 0,
-    "items": []
-  },
+  "alerts": { "firing": 0, "items": [] },
   "tests": [
-    {
-      "test_id": "t1",
-      "test_name": "path-a",
-      "rounds": 1,
-      "ok_rounds": 1,
-      "error_rounds": 0,
-      "loss_pct_mean": 0.0,
-      "loss_pct_max": 0.0,
-      "latency_ms_avg": 1.0,
-      "latency_ms_max": 1.0,
-      "latency_ms_p95": null,
-      "jitter_ms_avg": 0.49,
-      "first_round_at": "2026-08-14T16:00:00Z",
-      "last_round_at": "2026-08-14T16:00:00Z",
-      "last_ok_at": "2026-08-14T16:00:00Z",
-      "error_types": [],
-      "last_error": null
-    },
     {
       "test_id": "t2",
       "test_name": "path-b",
-      "rounds": 30,
-      "ok_rounds": 0,
-      "error_rounds": 30,
-      "loss_pct_mean": null,
-      "loss_pct_max": null,
-      "latency_ms_avg": null,
-      "latency_ms_max": null,
-      "latency_ms_p95": null,
-      "jitter_ms_avg": null,
-      "first_round_at": "2026-08-14T15:05:00Z",
-      "last_round_at": "2026-08-14T16:04:00Z",
-      "last_ok_at": null,
-      "error_types": [
-        {
-          "type": "source_ip",
-          "count": 29,
-          "last_message": "Cannot use the selected source IP (192.0.2.1)",
-          "last_at": "2026-08-14T16:02:00Z"
-        },
-        {
-          "type": "target_agent",
-          "count": 1,
-          "last_message": "Connection to target agent failed",
-          "last_at": "2026-08-14T16:04:00Z"
-        }
-      ],
-      "last_error": {
-        "at": "2026-08-14T16:04:00Z",
-        "message": "Connection to target agent failed"
-      },
       "path_summary": {
         "hops": 4,
-        "last_error_hop": "192.0.2.1 source IP unusable"
+        "last_error_hop": "Cannot use the selected source IP (192.0.2.1)"
       }
     }
   ]

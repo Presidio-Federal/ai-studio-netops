@@ -162,9 +162,37 @@ only when that bucket is truly empty (say why in `opinion` /
 
 `headline` is one line of `assessment.opinion`. Not a metrics dump.
 
+When a latest stamp has `vs_prior`, use it in `consult.trend` /
+`trend_note` (and in `evidence_for` if the delta is the finding).
+Missing `vs_prior` on an old stamp is not an error — fall back to
+prior consult `status` as today.
+
 Do not invent a root cause no stamp measured. Correlation across
 planes is allowed as contradiction or agreement — not as a hidden
 fault you did not see.
+
+## SOAP (required)
+
+Fill `soap` every invoke. Envelope `next_action` **is** `soap.plan`
+(same string).
+
+- `subjective` — why this analysis ran: the operator ask, or
+  `Scheduled assess-now.` / `Scheduled refresh-then-assess.`
+- `objective` — what the lab slips and series measured: coverage,
+  freshness, vitals, `vs_prior` deltas. Stamp paths stay on
+  `consults.*.source_ref`. Do not write inspect instructions here.
+- `assessment` — same sentence as `assessment.opinion`
+- `plan` — **one** of:
+  - another named nurse visit (`Run the network device health
+    check only.` / Splunk / ThousandEyes / ServiceNow) when that
+    plane is stale, missing, or the finding needs that specialty
+  - `Network Ops: …` or `Network Design: …` when the chart is
+    enough for a referral (path/config, not a down box)
+  - `none` when no further clinical step is warranted
+
+`plan` is **not** `Inspect health/…json`. That stamp is already
+the citation. `plan` is **not** a SKU, git change, or test plan.
+Treatment and test live on Ops / Design / Compliance Test.
 
 ## Rollup
 
@@ -185,8 +213,8 @@ Envelope `status`:
 `coverage.<plane>` from that observation’s `coverage.state`, or
 `not_requested` if missing.
 
-`next_action` is an inspect pointer to a stamp or `none`. Not a
-SKU. Not a ticket. Not a work queue.
+`next_action` is `soap.plan`. Not an inspect path. Not a SKU. Not
+a ticket. Not a work queue.
 
 ## Write
 

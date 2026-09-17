@@ -8,54 +8,54 @@
 
   <rect x="56" y="230" width="300" height="148" rx="14" fill="#0d2418" stroke="#3dcf7a" stroke-width="2"/>
   <text x="76" y="258" fill="#3dcf7a" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700">Splunk</text>
-  <text x="76" y="280" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">HEALTH MONITOR - WRITES WHAT WE OBSERVED</text>
-  <text x="76" y="322" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">br-west-edge: LINK-UPDOWN x14 / 15m</text>
+  <text x="76" y="280" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">LAB SLIP - VITALS + VS PRIOR</text>
+  <text x="76" y="322" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">37 events / 7 hosts / 0 flaps</text>
   <text x="76" y="348" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="12">health/splunk/stamp.json</text>
 
   <rect x="56" y="398" width="300" height="148" rx="14" fill="#0d2418" stroke="#b07cff" stroke-width="2"/>
   <text x="76" y="426" fill="#c9a0ff" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700">ServiceNow</text>
-  <text x="76" y="448" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">HEALTH SERVICENOW - WRITES WHAT WE OBSERVED</text>
-  <text x="76" y="490" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">INC0001001 - west campus - repeat symptom</text>
+  <text x="76" y="448" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">LAB SLIP - TICKET COUNTS + VS PRIOR</text>
+  <text x="76" y="490" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">0 lab INC / 0 lab CHG this visit</text>
   <text x="76" y="516" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="12">health/servicenow/stamp.json</text>
 
   <rect x="392" y="230" width="656" height="316" rx="16" fill="#16140c" stroke="#e0b43a" stroke-width="2"/>
   <text x="720" y="262" text-anchor="middle" fill="#e0b43a" font-family="Helvetica, Arial, sans-serif" font-size="13" font-weight="700" letter-spacing="2">WORKSPACE</text>
-  <text x="720" y="292" text-anchor="middle" fill="#f7f4ea" font-family="Georgia, serif" font-size="26" font-weight="700">Patient chart - SOAP</text>
-  <text x="720" y="318" text-anchor="middle" fill="#9dbaa4" font-family="Helvetica, Arial, sans-serif" font-size="13">Each visit writes the chart. The next agent starts here, not from a recap.</text>
-  <text x="428" y="362" fill="#d7c48a" font-family="Helvetica, Arial, sans-serif" font-size="15">S/O - flaps + 4.2% loss</text>
-  <text x="428" y="392" fill="#d7c48a" font-family="Helvetica, Arial, sans-serif" font-size="15">A - west-edge interface, not WAN</text>
-  <text x="428" y="422" fill="#d7c48a" font-family="Helvetica, Arial, sans-serif" font-size="15">P - confirm Gi1/0/24</text>
-  <text x="428" y="452" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="13">Owner of the note: Health Analyzer - state/health.json</text>
+  <text x="720" y="292" text-anchor="middle" fill="#f7f4ea" font-family="Georgia, serif" font-size="26" font-weight="700">Patient chart</text>
+  <text x="720" y="318" text-anchor="middle" fill="#9dbaa4" font-family="Helvetica, Arial, sans-serif" font-size="13">Nurses write lab slips. Analyzer writes SOAP. Next agent starts here.</text>
+  <text x="428" y="362" fill="#d7c48a" font-family="Helvetica, Arial, sans-serif" font-size="15">O - TE path-b 30/30 errors (worse vs prior)</text>
+  <text x="428" y="392" fill="#d7c48a" font-family="Helvetica, Arial, sans-serif" font-size="15">A - WAN path, not syslog or the boxes</text>
+  <text x="428" y="422" fill="#d7c48a" font-family="Helvetica, Arial, sans-serif" font-size="15">P - Network Ops: path or config, not a down box</text>
+  <text x="428" y="452" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="13">Owner of SOAP: Health Analyzer - state/health.json</text>
   <rect x="428" y="478" width="268" height="44" rx="8" fill="#1a3d2a" stroke="#3dcf7a"/>
-  <text x="562" y="496" text-anchor="middle" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="10">Nursing concern is on the chart.</text>
-  <text x="562" y="512" text-anchor="middle" fill="#3dcf7a" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700">SOAP</text>
-  <rect x="744" y="478" width="268" height="44" rx="8" fill="#1a3d2a" stroke="#4ec3e0"/>
-  <text x="878" y="496" text-anchor="middle" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="10">Next owner is on the chart.</text>
-  <text x="878" y="512" text-anchor="middle" fill="#4ec3e0" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700">I-PASS</text>
+  <text x="562" y="496" text-anchor="middle" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="10">Nurse stamp is Objective only.</text>
+  <text x="562" y="512" text-anchor="middle" fill="#3dcf7a" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700">LAB SLIP</text>
+  <rect x="744" y="478" width="268" height="44" rx="8" fill="#1a3d2a" stroke="#e0b43a"/>
+  <text x="878" y="496" text-anchor="middle" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="10">Attending note is S/O/A/P.</text>
+  <text x="878" y="512" text-anchor="middle" fill="#e0b43a" font-family="Helvetica, Arial, sans-serif" font-size="14" font-weight="700">SOAP</text>
 
   <rect x="1084" y="230" width="300" height="148" rx="14" fill="#0d2418" stroke="#5adf8a" stroke-width="2"/>
   <text x="1104" y="258" fill="#5adf8a" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700">ThousandEyes</text>
-  <text x="1104" y="280" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">HEALTH MONITOR - WRITES WHAT WE OBSERVED</text>
-  <text x="1104" y="322" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">SFO to IAD: 4.2% loss, 38ms jitter</text>
+  <text x="1104" y="280" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">LAB SLIP - VITALS + VS PRIOR</text>
+  <text x="1104" y="322" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">path-b: 0 ok / 30 error rounds</text>
   <text x="1104" y="348" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="12">health/thousandeyes/stamp.json</text>
 
   <rect x="1084" y="398" width="300" height="148" rx="14" fill="#0d2418" stroke="#f0a14a" stroke-width="2"/>
   <text x="1104" y="426" fill="#f0a14a" font-family="Helvetica, Arial, sans-serif" font-size="16" font-weight="700">IOS-XE</text>
-  <text x="1104" y="448" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">HEALTH DEVICE - WRITES WHAT WE OBSERVED</text>
-  <text x="1104" y="490" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">Gi1/0/24: CRC + input errors climbing</text>
+  <text x="1104" y="448" fill="#7d9a88" font-family="Helvetica, Arial, sans-serif" font-size="11">LAB SLIP - VITALS + VS PRIOR</text>
+  <text x="1104" y="490" fill="#e8f6ec" font-family="Helvetica, Arial, sans-serif" font-size="14">wan-1: 0 oper-not-ready, BGP up</text>
   <text x="1104" y="516" fill="#8fad9a" font-family="Helvetica, Arial, sans-serif" font-size="12">health/iosxe/stamp.json</text>
 
   <path d="M356 304 H392" fill="none" stroke="#3dcf7a" stroke-width="2"/>
   <path d="M356 472 H392" fill="none" stroke="#b07cff" stroke-width="2"/>
   <path d="M1084 304 H1048" fill="none" stroke="#5adf8a" stroke-width="2"/>
   <path d="M1084 472 H1048" fill="none" stroke="#f0a14a" stroke-width="2"/>
-  <path d="M720 546 V574" fill="none" stroke="#4ec3e0" stroke-width="2"/>
+  <path d="M720 546 V574" fill="none" stroke="#e0b43a" stroke-width="2"/>
 
   <rect x="392" y="574" width="656" height="130" rx="14" fill="#0c2430" stroke="#4ec3e0" stroke-width="2"/>
-  <text x="412" y="602" fill="#4ec3e0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.4">ATTENDING - DIAGNOSIS</text>
+  <text x="412" y="602" fill="#4ec3e0" font-family="Helvetica, Arial, sans-serif" font-size="11" font-weight="700" letter-spacing="1.4">ATTENDING - SOAP</text>
   <text x="412" y="628" fill="#f7f4ea" font-family="Helvetica, Arial, sans-serif" font-size="18" font-weight="700">Health Analyzer writes what we think</text>
-  <text x="412" y="650" fill="#9dbaa4" font-family="Helvetica, Arial, sans-serif" font-size="13">Network Ops / Network Design read the chart. They do not re-collect Splunk, TE, or IOS-XE.</text>
-  <text x="412" y="678" fill="#cfe4d6" font-family="Helvetica, Arial, sans-serif" font-size="14">Loss tracks the interface, not the WAN. Dirty optic or congestion on the west edge.</text>
+  <text x="412" y="650" fill="#9dbaa4" font-family="Helvetica, Arial, sans-serif" font-size="13">Plan is another named visit, refer Ops/Design, or none. Not inspect-stamp.</text>
+  <text x="412" y="678" fill="#cfe4d6" font-family="Helvetica, Arial, sans-serif" font-size="14">Network Ops / Network Design read the chart. They do not re-collect.</text>
 
   <text x="72" y="760" fill="#f4c430" font-family="Helvetica, Arial, sans-serif" font-size="12" font-weight="700" letter-spacing="1.5">WHY THIS MATTERS</text>
   <text x="72" y="784" fill="#d5e4da" font-family="Helvetica, Arial, sans-serif" font-size="16">The attending diagnoses from the chart. Not from four recaps.</text>

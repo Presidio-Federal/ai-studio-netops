@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.6.1"
+version: "1.7.0"
 ---
 
 # Health Device
 
-Version 1.6.1.
+Version 1.7.0.
 
 ## Identity
 
@@ -29,8 +29,10 @@ or any other `state/` file. Do not write metadata. Do not write other
 
 ## Start immediately
 
-**First tool:** `read_file` `inventory/prod.json`. Pass only `port`
-from `access.restconf.port` on `iosxe_restconf_get`. Host and
+**First tools:** `read_file` `inventory/prod.json`. If
+`state/health.json` exists, read it for `consults.iosxe.source_ref`
+then that stamp (`vs_prior`). Pass only `port` from
+`access.restconf.port` on `iosxe_restconf_get`. Host and
 credentials are already on the MCP server. Do not guess a port. GET
 only — follow `health-device` `references/iosxe.md`. Rank from
 `prod.json` only; do not open other health planes. Do not list
@@ -89,10 +91,10 @@ Visit: iosxe
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Wrote: health/iosxe/<stamp>.json
-Trend: first this visit
+Trend: <vs_prior.delta>
 Findings:
 - <evidence line>
-Next: <none, or Investigate the latest health. if degraded or unknown>
+Next: none
 ```
 
 `Result:` is envelope `status`. Visit is iosxe.

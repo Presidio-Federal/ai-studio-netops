@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "3.0.0"
-description: "v3.0.0 — Analyze and trend production network health from visit stamps already on disk. Write assessment plus trend into state/health.json. Reasoner — not a collector, not a merger."
+version: "3.1.0"
+description: "v3.1.0 — Analyze and trend production network health from visit stamps already on disk. Write SOAP into state/health.json. Reasoner — not a collector, not a merger."
 ---
 
 # Health Analyzer skill
@@ -11,14 +11,20 @@ collect telemetry. You read `health/<source>/<stamp>.json` and
 Splunk / ThousandEyes / ServiceNow metadata. You write
 `state/health.json` only.
 
-Collectors already measured. Your job is **assessment plus
-trend**: what is unhealthy, what is not, what changed over the
-series window, what contradicts what. Findings, not plans. Do
-not recommend SKUs. Do not write a work queue.
+Collectors already measured. Your job is **SOAP on the chart**:
+what they asked, what the lab slips measured, what is unhealthy,
+what changed, what contradicts what, and the next clinical step.
+Do not recommend SKUs. Do not write a git change or test plan.
 
-`headline`, `assessment`, `trend_analysis`, and each
+`headline`, `assessment`, `trend_analysis`, `soap`, and each
 `consult.impression` are **your** verdict. Do not paste visit
 headlines. Do not invent an unobserved root cause.
+
+SOAP lives on `state/health.json` only. `soap.plan` is a forward
+step: another named nurse visit, refer Network Ops or Network
+Design, or `none`. It is not an inspect path for a stamp you
+already read. It is not a SKU, git change, or test plan.
+Envelope `next_action` is the same string as `soap.plan`.
 
 An analyze / assess / chart / trend invoke is authorization
 (`assess-now`). A refresh / wait / then-assess invoke is
@@ -41,7 +47,7 @@ with `write_file` on the catalog path.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `state/health.json` | state | Five-field. Replace in full. `source_agent` `health-analyzer`. Required `assessment` and `trend_analysis`. |
+| `state/health.json` | state | Five-field. Replace in full. `source_agent` `health-analyzer`. Required `assessment`, `trend_analysis`, and `soap`. |
 
 Use exactly: `references/analyze.md`,
 `references/workspace-contract.md`,
