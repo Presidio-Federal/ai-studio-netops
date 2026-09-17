@@ -1,157 +1,152 @@
 # Health Agents — the patient chart
 
-The shared workspace is the chart. Nurses collect **one** telemetry
-source per conversation and write a **lab slip** (what they measured,
-vs the last visit of that source). Health Analyzer is the attending:
-it reads those slips and writes **SOAP** on `state/health.json`.
-Network Ops and Network Design start from that chart — not from four
-chat recaps.
+Health is the first family that implements the
+[patient-chart architecture](patient-chart.md). Nurses query **one**
+telemetry source, compare it to the last visit of that source, and
+write a structured **observation** (lab slip). Health Analyzer
+reads those slips and writes **SOAP** on `state/health.json`.
+Network Ops and Network Design start from that chart — not from
+four chat recaps.
 
 ![Building the Patient Chart](health-patient-chart.svg)
 
-## Background
+## How this family maps
 
-The model comes from **continuity of patient care**. A hospital does
-not ask every clinician to re-interview the patient and re-run every
-lab. Each encounter is a specialty visit. The specialist opens the
-chart, does their work, writes a note, and hands off. The next
-person — night shift, attending, or another service — reads the
-record. They do not reconstruct the stay from memory or from four
-separate recaps.
+| Architecture | This family |
+|--------------|-------------|
+| Shared case | Studio workspace (`workspace-handoff`) |
+| Specialist | One telemetry source per conversation |
+| Observation | Lab slip under `health/<source>/<stamp>.json` |
+| Authoritative source | Splunk, ThousandEyes, IOS-XE RESTCONF, ServiceNow |
+| Material change | Required `vs_prior` (`delta`, `changed[]`) |
+| Evidence, not dump | `headline`, `coverage`, `metrics` — not MCP JSON |
+| Interpretation | Health Analyzer SOAP on `state/health.json` |
+| Plan | Named nurse visit, refer Ops/Design, or `none` |
+| Action / outcome | Network Ops, Network Design, Compliance Test |
 
-Treat the production network the same way.
-
-| Hospital | This fleet |
-|----------|------------|
-| Medical record | Studio workspace |
-| Specialty visit (one chat) | One telemetry source |
-| Lab slip (Objective) | Visit stamp under `health/<source>/` |
-| Wristband / known ids | Plane metadata (`health/metadata-*.json`) |
-| Attending SOAP | `state/health.json` |
-| Vitals expire | Freshness window (26 hours from `checked_at`) |
-| Envelope | `status`, `headline`, `next_action` (`soap.plan`) |
-| Next service on the floor | Network Ops / Network Design |
-
-**SOAP** (Subjective / Objective / Assessment / Plan) is the
-attending note on `state/health.json`. Nurses do not write SOAP.
-They write Objective only: vitals (`metrics`), coverage, and
-`vs_prior`. **Plan** is a forward clinical step: another named
-nurse visit, refer Network Ops or Network Design, or `none`. It is
-not “inspect the stamp the Analyzer already read.” Treatment and
-test live on Ops / Design / Compliance Test.
+SOAP is the attending note. Nurses do not write SOAP. SBAR and
+I-PASS are escalation / responsibility patterns in the
+architecture; they are not the visit-file format.
 
 A Splunk visit is labs. A ThousandEyes visit is imaging. An IOS-XE
-visit is examining the patient. ServiceNow is the prior-admission
+visit is examining the patient. ServiceNow is prior-admission
 history. Mixing those in one conversation is one clinician doing
-everyone else’s job — and it destroys the record for the next reader.
+everyone else’s job.
 
-## What this solves
-
-**Standardized prompts and skills.** Every health agent is the same
-loop: check chart, get data, update chart, summarize. Domain detail
-(SPL, test ids, YANG, ticket marker) stays in the skill. The prompt
-stays identity plus that loop. Each agent owns one specialty and can
-run unattended.
-
-**Small chats, better accuracy.** Studio starts a **new conversation**
-on every invoke. That is a feature: the nurse does not drag four other
-planes, last week’s recap, or another agent’s prompt into context.
-Initial tokens stay small. The chart on disk is the memory. Accuracy
-goes up because the model is judging one source it actually queried,
-not a blended story it was told.
-
-**No telephone recap.** The next agent reads files, not the previous
-chat. Four recaps of the same incident drift; one chart does not.
-
-**One writer per note.** Nurses never write `state/`. Analyzer never
-collects and never overwrites a visit stamp. Stamps are append-only
-(keep ten). Concurrent visits cannot clobber each other.
-
-**Vitals expire; silence is not health.** A missing log is not a down
-device. Correlation across planes is not root cause. ServiceNow does
-not vote on envelope status. “No critical errors” is one fact — the
-visit still records volume, hosts, and coverage for **that** source.
-
-**Executors vs attending.** Nurses are MiniMax-shaped: named tools,
-named paths, get the data, write a lab slip. Analyzer spends tokens on
-synthesis (`soap`, `assessment`, `trend_analysis`, each
-`consult.impression`). Downstream agents implement; they do not
-re-pull Splunk because the chart already said what syslog showed.
-
-## The visit loop
+## Specialist loop
 
 ```text
-1. Check chart   → metadata + last stamp for this plane (Analyzer: all four + prior state/health.json)
-2. Get data      → one source (Analyzer: none — collectors already measured)
-3. Update chart  → append lab slip; metadata if ids/watermark/last_visit_id changed
-                   Analyzer replaces state/health.json (SOAP)
-4. Summarize     → tight reply with the path; do not paste the note
+READ CASE          metadata + last stamp for this plane
+    │
+    ▼
+QUERY SOURCE       Splunk or TE or IOS-XE or ServiceNow — one only
+    │
+    ▼
+COMPARE            vs_prior against last_visit_id (IOS-XE: chart source_ref)
+    │
+    ▼
+DETECT CHANGE      delta first | unchanged | worse | better
+    │
+    ▼
+WRITE LAB SLIP     headline, coverage, metrics, vs_prior
+    │
+    ▼
+EXIT
 ```
 
-Live lookup ids and the Splunk watermark live in metadata, not in the
-prompt. IOS-XE PAT lives on `inventory/prod.json` — there is no
-`health/metadata-iosxe.json`. Empty, 0 rows, or a tool error is a
-failed query, not a healthy network.
+Skills own tools, thresholds, and the schema. The prompt stays
+identity plus this loop. MiniMax-shaped nurses query and compare.
+Analyzer spends tokens on synthesis.
+
+**What is on the slip.** Vitals (`metrics`, same keys every visit,
+`null` when not collected), coverage, and `vs_prior`. The proof of
+a change is `vs_prior.changed` (for example `test:t2 ok_rounds 12 →
+0`), not a copy of `tests[]`, `samples`, or `devices[]` trees.
+Standing-order follow-up (TE path-vis on loss/errors) stays on
+**this** visit. A Splunk finding does not authorize an IOS-XE GET.
+
+**What a named visit still does today.** A completed collection
+still writes a lab slip, including `delta: unchanged` and
+`changed: []`. That is thinner than a telemetry dump, and it keeps
+freshness and the series honest. Skip-write on no change is the
+architecture target (`Write or Exit`); it is not the Health skill
+behavior yet.
+
+Failed query (empty, 0 rows, tool error): still write
+`unavailable` with null counts — never `0`. Do not treat silence
+as health.
 
 ## Who writes what
 
-| Role | Hospital | Agent | Writes |
-|------|----------|-------|--------|
-| Path / syslog nurse | Imaging / labs | Health Monitor | Named Splunk **or** ThousandEyes lab slip + that plane’s metadata |
-| Bedside nurse | Exam | Health Device | `health/iosxe/<stamp>.json` |
-| Records nurse | Prior admissions | Health ServiceNow | ServiceNow lab slip + metadata |
-| Attending | SOAP | Health Analyzer | `state/health.json` only |
+| Role | Agent | Writes |
+|------|-------|--------|
+| Path / syslog | Health Monitor | Named Splunk **or** ThousandEyes slip + that plane’s metadata |
+| Bedside | Health Device | `health/iosxe/<stamp>.json` |
+| Records | Health ServiceNow | ServiceNow slip + metadata |
+| Attending | Health Analyzer | `state/health.json` only |
 
-Nurses do not write `state/`. Analyzer does not write visit files.
-[Network Ops](network-ops.md) and [Network Design](change-and-test-agents.md)
-read the chart. They do not collect these planes.
+Nurses never write `state/`. Analyzer never collects and never
+overwrites a visit stamp. Stamps are append-only (keep ten).
+[Network Ops](network-ops.md) and
+[Network Design](change-and-test-agents.md) read the chart. They
+do not collect these planes.
+
+Live lookup ids and the Splunk watermark live in metadata, not in
+the prompt. IOS-XE PAT lives on `inventory/prod.json` — there is
+no `health/metadata-iosxe.json`.
 
 ## Health Monitor
 
-One named check. Unnamed invoke asks which and stops. A Splunk finding
-does not authorize a ThousandEyes query or an IOS-XE GET.
+One named check. Unnamed invoke asks which and stops.
 
-**Splunk** — syslog for the lab index and sourcetype. Window is the
-watermark (`collected_through`), not another rolling 24 hours.
+**Splunk** — syslog for the lab index and sourcetype. Window is
+the watermark (`collected_through`), not another rolling 24 hours.
 
-**ThousandEyes** — path tests: loss, latency, jitter, errors, alerts.
-Account and test ids come from metadata. Standing order on loss /
-error rounds: one path-vis on the worst direction — still this visit.
-
-The stamp is vitals + `vs_prior`, not a copy of the MCP JSON.
+**ThousandEyes** — path tests: loss, latency, jitter, errors,
+alerts. Account and test ids come from metadata. Standing order on
+loss / error rounds: one path-vis on the worst direction.
 
 ## Health Device
 
 Device plane only. GET interfaces, BGP, and counters. ACL GET only
 when a ranked up port is dropping. Rank from `inventory/prod.json`.
-Prior stamp comes from `state/health.json` `consults.iosxe.source_ref`
-(no directory list). Does not change config.
+Prior stamp comes from `state/health.json`
+`consults.iosxe.source_ref` (no directory list). Does not change
+config.
 
 ## Health ServiceNow
 
-Tickets for **this lab**, scoped by a workspace marker and inventory
-labels. Shared-instance rows are out of scope. Open in-scope tickets
-do not degrade vital status. Filing cases is
+Tickets for **this lab**, scoped by a workspace marker and
+inventory labels. Shared-instance rows are out of scope. Open
+in-scope tickets do not degrade vital status. Filing cases is
 [Ops ServiceNow Operator](servicenow-agents.md).
 
 ## Health Analyzer
 
-Reasoner. Reads the four latest stamps (and prior `state/health.json`),
-**folds** new visit `metrics` into `series` (last 10 per plane), then
-writes SOAP. Envelope status is worst of ThousandEyes, Splunk, and
-IOS-XE. ServiceNow does not vote. Silent plane is not health.
+Reasoner. Reads the four latest slips (and prior
+`state/health.json`), **folds** new visit `metrics` into `series`
+(last 10 per plane), then writes SOAP. Envelope status is worst of
+ThousandEyes, Splunk, and IOS-XE. ServiceNow does not vote.
 
-- **assess-now** — dispatch stale planes if attached; do not wait;
-  analyze what is on disk.
-- **refresh-then-assess** — wait only for planes that are both stale
-  and material (a WAN question does not block on ticket history).
+- **S** — why this analysis ran (the ask, or scheduled
+  assess-now / refresh-then-assess).
+- **O** — what the slips and series measured, including
+  `vs_prior` deltas. Stamp paths stay on `consults.*.source_ref`.
+- **A** — `assessment.opinion` from all four planes. Quiet planes
+  are findings. Contradictions stay contradictions, not an
+  invented root cause.
+- **P** — another named nurse visit, refer Network Ops or Network
+  Design, or `none`. Not “inspect the stamp already read.” Not a
+  SKU, git change, or test plan.
 
-`soap.plan` / envelope `next_action` is a named nurse visit, a
-referral, or `none`. No inspect-stamp. No SKUs. No git change.
+Modes: **assess-now** dispatches stale planes if attached and does
+not wait. **refresh-then-assess** waits only for planes that are
+both stale and material.
 
 ## Example notes
 
-Trimmed from the skill examples. Full schemas live next to each skill.
+Trimmed from the skill examples. Full schemas live next to each
+skill.
 
 ### Wristband — Splunk metadata
 
@@ -173,7 +168,7 @@ Trimmed from the skill examples. Full schemas live next to each skill.
 ThousandEyes metadata holds `account_id` and `tests[]`. ServiceNow
 metadata holds `marker` and `last_visit_id`.
 
-### O — Splunk lab slip
+### Observation — Splunk lab slip
 
 `health/splunk/<stamp>.json`
 
@@ -203,7 +198,7 @@ metadata holds `marker` and `last_visit_id`.
 }
 ```
 
-### O — ThousandEyes lab slip
+### Observation — ThousandEyes (material change)
 
 `health/thousandeyes/<stamp>.json`
 
@@ -227,7 +222,7 @@ metadata holds `marker` and `last_visit_id`.
 }
 ```
 
-### O — IOS-XE lab slip
+### Observation — IOS-XE lab slip
 
 `health/iosxe/<stamp>.json`
 
@@ -250,7 +245,7 @@ metadata holds `marker` and `last_visit_id`.
 }
 ```
 
-### O — ServiceNow lab slip
+### Observation — ServiceNow lab slip
 
 `health/servicenow/<stamp>.json`
 
@@ -273,8 +268,8 @@ metadata holds `marker` and `last_visit_id`.
 }
 ```
 
-An in-scope open ticket does not set `status` to `degraded`. Tickets
-are history, not vitals.
+An in-scope open ticket does not set `status` to `degraded`.
+Tickets are history, not vitals.
 
 ### SOAP — attending chart
 
@@ -305,9 +300,10 @@ are history, not vitals.
 }
 ```
 
-`consults.<plane>` is the attending’s impression of that lab slip, not
-a paste of the nurse headline. `series` is the last ten `metrics`
-points per plane. Stamp path stays on `consults.*.source_ref`.
+`consults.<plane>` is the attending’s impression of that lab slip,
+not a paste of the nurse headline. `series` is the last ten
+`metrics` points per plane. Stamp path stays on
+`consults.*.source_ref`.
 
 ## Invoke lines
 
@@ -316,5 +312,5 @@ points per plane. Stamp path stays on `consults.*.source_ref`.
 - `Run the network device health check only.`
 - `Run the ServiceNow health check only.`
 
-Analyzer: an ask to analyze, assess, chart, or trend is `assess-now`.
-Refresh first is `refresh-then-assess`.
+Analyzer: an ask to analyze, assess, chart, or trend is
+`assess-now`. Refresh first is `refresh-then-assess`.
