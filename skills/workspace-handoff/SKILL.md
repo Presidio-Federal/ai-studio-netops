@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.44.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.44.0"
+description: "v1.45.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.45.0"
 ---
 
 # Workspace handoff
@@ -174,6 +174,7 @@ one row pointing at the writer — not a new schema file here.
 | `state/compliance.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
 | `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
 | `compliance/intel.json` | result | Compliance | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
+| `compliance/metadata.json` | metadata | Compliance | `compliance-intel` `schemas/compliance-metadata.schema.json` | Writer schema. Fingerprints of framework, estate, and git catalog (`hash` plus framework `name` `version` `control_count` `source`). `last_evaluated` from the last successful Intel visit. **Not** the five-field envelope. Not NIST, inventory, or a catalog copy. |
 | `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, the ServiceNow desk, or a Network Ops work queue. |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | Human roadmap: hardware, software, configuration, compliance, timeline, warehouse. Written every completed design. Replace in full. Path is `roadmap_ref`. |
@@ -298,6 +299,8 @@ research merge).
 `state/testing.json` is the latest **any-suite** run. `state/compliance.json`
 is the latest **`suites` includes `compliance`** run — not a copy of a
 reachability/routing/path run.
+`compliance/metadata.json` is Compliance Intel fingerprints (**metadata**,
+not enveloped). Not `state/compliance.json`.
 
 Sync yaml is Sync's file. **Ops NetBox SoT reads `inventory/prod.json` only** for
 seed. Missing json **blocks bootstrap** (owner: Ops Network Sync) — alert and
@@ -346,6 +349,7 @@ file.
    catalog row. Stamp files: observation fields (`watch_id`
    `coverage.state` `metrics` `vs_prior`) — not envelope-block.
    `health/metadata-*.json`: lookup ids — not envelope-block.
+   `compliance/metadata.json`: Intel input fingerprints — not envelope-block.
 5. `source_refs` that start with `workspace/` or `/workspace/` → strip and
    read the remainder.
 6. Lifecycle: `state/lifecycle.json` is the estate table (envelope +

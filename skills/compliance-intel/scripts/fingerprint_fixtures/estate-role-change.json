@@ -1,0 +1,43 @@
+{
+  "schema": "network-access-inventory/v3",
+  "snapshot_id": "2026-08-14T21-00-00Z",
+  "environment": "prod",
+  "collected_at": "2026-08-14T21:00:00Z",
+  "published_at": "2026-08-14T21:00:05Z",
+  "expires_at": "2026-08-15T23:00:00Z",
+  "status": "complete",
+  "devices": [
+    {
+      "name": "WAN-01",
+      "platform": "iosxe",
+      "role": "firewall",
+      "tags": ["wan", "tag:sync"],
+      "operational_state": "BOOTED",
+      "agent_access": true,
+      "access": {
+        "restconf": { "host": "cml.example.com", "port": 4411 },
+        "ssh": { "host": "cml.example.com", "port": 4410 }
+      }
+    },
+    {
+      "name": "AI-HQ-EDGE",
+      "platform": "iosxe",
+      "role": "edge",
+      "tags": ["tag:sync", "edge"],
+      "operational_state": "BOOTED",
+      "agent_access": true,
+      "access": {
+        "restconf": { "host": "cml.example.com", "port": 4403 },
+        "ssh": { "host": "cml.example.com", "port": 4402 }
+      }
+    }
+  ],
+  "links": [
+    {
+      "a_device": "AI-HQ-EDGE",
+      "a_interface": "GigabitEthernet2",
+      "b_device": "WAN-01",
+      "b_interface": "GigabitEthernet1"
+    }
+  ]
+}

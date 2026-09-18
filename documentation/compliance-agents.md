@@ -5,15 +5,18 @@ apply to **this** network and are not in the catalog. Compliance
 Author writes a check into git. Compliance Test runs the suite and
 records risk.
 
-A default scan writes coverage and intel, ranks the missing
-controls, then hands Author and Test the work. “Report only” or
-“intel only” stops after the two files.
+A default scan fingerprints the framework, estate, and git catalog,
+reconciles open INTEL candidates against git, does only the work
+those fingerprints require, then hands Author and Test the queue
+when it is not empty. “Report only” or “intel only” stops after
+reading or writing intel.
 
 ```mermaid
 flowchart LR
   Estate[inventory/prod.json]
   Git[GitHub job catalog]
   NIST[Published NIST titles]
+  Meta[compliance/metadata.json]
   CI[Compliance]
   Cover[compliance/coverage.json]
   Intel[compliance/intel.json]
@@ -24,8 +27,10 @@ flowchart LR
   Estate --> CI
   Git --> CI
   NIST --> CI
+  Meta --> CI
   CI --> Cover
   CI --> Intel
+  CI --> Meta
   Intel --> CA
   CA --> Git
   CA --> CT
@@ -46,8 +51,25 @@ flowchart LR
 
 Reads the job catalog from GitHub. It does not copy git into the
 workspace. It reads `inventory/prod.json` so it knows what devices
-we actually have. It looks up published NIST titles and then
-**interprets** each one:
+we actually have. It stores input fingerprints in
+`compliance/metadata.json` so the next visit does not re-skim NIST
+when the pin, the estate, and the catalog have not changed.
+
+Every scheduled visit still fetches the live catalog and
+**reconciles** `intel.json`: if an INTEL row is now mapped on a
+catalog check (`nist:`), drop it and refill the queue (cap 5) from
+gaps already on `coverage.json`.
+
+Then fingerprints choose the rest of the work:
+
+| What changed | What Intel does |
+|--------------|-----------------|
+| Framework (OSCAL pin/index) or first visit | Skim published titles. Rebuild coverage. |
+| Estate only | Rejudge applicability on existing coverage rows. No family skim. |
+| Catalog only | Join `nist:` tags onto coverage. Drop covered candidates. Refill. |
+| None | Reconcile only. Do not rewrite coverage/intel if the queue did not move. |
+
+It interprets each title it actually considers:
 
 - Already mapped on a catalog check (`nist:`) — covered. Not a gap.
 - Applies to these routers / switches / WAN / mgmt plane — relevant
@@ -61,25 +83,29 @@ published it.
 It writes:
 
 - `compliance/coverage.json` — covered / partial / gap for what
-  applies here.
+  applies here (when coverage changed).
 - `compliance/intel.json` — up to five **proposed** candidates,
   sorted by criticality (`critical`, `high`, `medium`, `low`), plus
   `delta` (catalog covered vs relevant missing vs not applicable).
+- `compliance/metadata.json` — hashes of the three inputs from the
+  last successful evaluation. Not NIST. Not a catalog copy.
 
 It does not write checks and it does not run them. After a default
-scan with candidates, it invokes Compliance Author (ranked list),
-waits, then Compliance Test (`suites=compliance`) and waits. If
-those agents are not attached, it names them and stops.
+scan with candidates still in the queue, it invokes Compliance
+Author (ranked list), waits, then Compliance Test
+(`suites=compliance`) and waits. If those agents are not attached,
+it names them and stops. An empty queue after reconcile does not
+invoke Author.
 
 ## Compliance Author
 
 Workspace is input (`compliance/intel.json` or a sentence). Checks
-live in git. Before YAML it reads inventory and a committed
-running-config from git (`inventory/configs/`). **Applicable** is
-what those files show this estate runs. It implements the named
-INTEL row against that estate — it does not add sibling checks for
-protocols that are not in config, and it does not write a test that
-passes because the protocol is absent.
+live in git. Before it writes a check it reads inventory and a
+committed running-config from git (`inventory/configs/`).
+**Applicable** is what those files show this estate runs. It
+implements the named INTEL row against that estate — it does not
+add sibling checks for protocols that are not in config, and it
+does not write a test that passes because the protocol is absent.
 
 It does not run `test.yml`. After the commit, Compliance invokes
 Test. A device fail on that later run is a finding — Author does
@@ -111,6 +137,7 @@ Device score is this agent, not the intel scan.
 |------|--------|---------|
 | `compliance/coverage.json` | Compliance | Catalog vs NIST titles that apply here |
 | `compliance/intel.json` | Compliance | Ranked relevant gaps + skipped not-applicable |
+| `compliance/metadata.json` | Compliance | Input fingerprints from the last successful Intel visit |
 | `testing/<stamp>.json` | Compliance Test | This run, any suite |
 | `state/testing.json` | Compliance Test | Latest any-suite run |
 | `compliance/<stamp>.json` | Compliance Test | This run, compliance suite only |

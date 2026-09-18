@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "jobs": [
+    {
+      "id": "http-server-disabled",
+      "nist": ["CM-7"]
+    },
+    {
+      "id": "bgp-neighbor-auth",
+      "nist": ["SC-8"]
+    }
+  ]
+}

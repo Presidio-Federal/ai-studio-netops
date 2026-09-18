@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compliance-intel-metadata/v1",
+  "title": "compliance/metadata.json",
+  "description": "Kind metadata. Fingerprints of the three Intel inputs from the last successful evaluation. Not NIST, not inventory, not the job catalog. Not the five-field envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "framework",
+    "estate",
+    "catalog",
+    "last_evaluated"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "compliance-intel-metadata/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "compliance" },
+    "framework": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "control_count", "source", "hash"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "control_count": { "type": "integer", "minimum": 0 },
+        "source": { "type": "string", "minLength": 1 },
+        "hash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" }
+      }
+    },
+    "estate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash"],
+      "properties": {
+        "hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "catalog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hash"],
+      "properties": {
+        "hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    },
+    "last_evaluated": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["framework_hash", "estate_hash", "catalog_hash"],
+      "properties": {
+        "framework_hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "estate_hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "catalog_hash": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}
