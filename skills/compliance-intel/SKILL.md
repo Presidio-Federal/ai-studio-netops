@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.11.0"
-description: "v1.11.0 — Fingerprints choose Intel work. Reconcile candidates every visit. One family per query when the framework changes."
+version: "1.11.1"
+description: "v1.11.1 — Inventory is device kinds, not configs. Catalog is current checks. Fingerprints choose Intel work."
 ---
 
 # Compliance intel
@@ -34,9 +34,10 @@ the matrix, the bridge, check files, `testing/`, `runs/`, or any other
 path. If it is not a `workspace-handoff` row for this agent, do not
 `write_file` it. Do not invent files.
 
-Do not `github_get_file` the matrix or bridge. The test list is
-`catalog/job-catalog.json`. NIST titles come from `query_sources.py`
-(pinned OSCAL index + optional STIG Viewer HTTP).
+Do not `github_get_file` the matrix, bridge, or `inventory/configs/`.
+The test list is `catalog/job-catalog.json` only. NIST titles come
+from `query_sources.py` (pinned OSCAL index + optional STIG Viewer
+HTTP). Running-configs are Author’s job.
 
 GitHub is read-only: `github_get_file` only. Never `github_run_action`.
 Never `github_put_file`.
@@ -109,9 +110,11 @@ Never invent a path.
 
 ## Estate
 
-The network is whatever `inventory/prod.json` says this visit.
-Typical lab: IOS-XE edge / WAN / branch. Live checks target those
-platforms. Do not assume a device that is not in the file.
+`inventory/prod.json` is the kinds of things we have (platform, role,
+tags) — so you recommend network-gear controls and skip endpoint /
+server / SaaS titles. Typical lab: IOS-XE edge / WAN / branch. Do
+not open running-configs to see which protocol is configured. Do
+not assume a device that is not in the file.
 
 ## Scripts (stdout only — not workspace files)
 
@@ -161,10 +164,9 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 ```text
 1. READ     intel.json, coverage.json, metadata.json if present
             (keep stable INTEL- ids)
-2. ESTATE   inventory/prod.json if present
-            Protocol-specific asserts: github_get_file
-            inventory/configs/<edge-or-wan> and name what is there
+2. ESTATE   inventory/prod.json if present (kinds of devices only)
 3. FETCH    github_get_file catalog/job-catalog.json ref=main
+            (only git path; never inventory/configs)
 4. FINGER   fingerprint_inputs.py (catalog JSON on stdin)
 5. RECON    drop INTEL rows now covered by catalog nist:
 6. WORK     follow stdout work.* flags (table below)
@@ -199,11 +201,10 @@ Each candidate **must** include:
 - `priority` — `critical` | `high` | `medium` | `low` (impact if we
   do not test it on this estate)
 - `nist_sp_800_53` — 1–3 control ids
-- `suggested_assert` — a concrete check idea naming a CAPABILITIES assert.
-  It must be runnable on **these** devices. If the idea is a routing
-  protocol setting, name the protocol that appears in git
-  `inventory/configs/` — do not write “applicable IGP” as a stand-in
-  for processes this estate does not run.
+- `suggested_assert` — what to add to the test catalog (static vs
+  live, on these platforms from inventory). Do not inspect device
+  configs to pick a protocol. Author reads configs when it writes
+  the check.
 - `maps_to_existing` — `none` or existing check id / `NET-COMP-####`
 - `source_control` — `nist-800-53:AC-17`
 - `oscal_release` — pinned `v1.5.0`
@@ -216,9 +217,10 @@ in prod.json`).
 `delta.catalog_covered` / `relevant_missing` / `not_applicable`
 must match coverage + candidates + skipped this run.
 
-Good themes when they apply here: BGP neighbor auth, prefix filters,
-no HTTP server, CoPP, syslog+NTP if still a gap, AAA exec
-authorization if not in catalog.
+Good themes when inventory shows network gear and the catalog does
+not already cover them: mgmt-plane hardening, AAA, logging/NTP,
+routing-protocol authentication, CoPP. Author decides the exact
+CLI against committed config.
 
 ## Workspace schema
 

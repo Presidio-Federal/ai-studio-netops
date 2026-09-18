@@ -49,11 +49,16 @@ flowchart LR
 
 ## Compliance
 
-Reads the job catalog from GitHub. It does not copy git into the
-workspace. It reads `inventory/prod.json` so it knows what devices
-we actually have. It stores input fingerprints in
-`compliance/metadata.json` so the next visit does not re-skim NIST
-when the pin, the estate, and the catalog have not changed.
+Reads the job catalog from GitHub (`catalog/job-catalog.json`).
+That is the checks we already run. It does not copy git into the
+workspace. It does not read running-configs.
+
+It reads `inventory/prod.json` so it knows what *kinds* of things
+we have (network gear vs endpoints vs SaaS). That filter is why a
+laptop or server control is not a candidate. It stores input
+fingerprints in `compliance/metadata.json` so the next visit does
+not re-skim NIST when the pin, the estate, and the catalog have
+not changed.
 
 Every scheduled visit still fetches the live catalog and
 **reconciles** `intel.json`: if an INTEL row is now mapped on a
