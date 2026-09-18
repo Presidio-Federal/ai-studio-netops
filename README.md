@@ -1,40 +1,169 @@
 # AI Studio NetOps
 
-AI Studio NetOps is a multi-agent system for understanding, testing, changing, and evolving network infrastructure.
+# Patient Chart Multi-Agent Architecture
 
-The architecture treats the Studio workspace as a **patient chart**: a persistent shared case record that allows specialized agents to contribute knowledge without relying on agent-to-agent conversation history.
+A general architecture for coordinating specialized AI agents through a persistent, structured workspace.
 
-> **Agents distribute the work. The chart preserves the knowledge. Higher-level models concentrate the reasoning.**
-
-## Why the Patient Chart
-
-Network operations rarely follows a predictable sequence.
-
-Health checks, compliance analysis, testing, configuration changes, incidents, and infrastructure discovery can occur independently, at different times, and using different models.
-
-Traditional multi-agent workflows often depend on handoffs:
+Traditional multi-agent systems often treat orchestration as a sequence of handoffs:
 
 ```text
-Agent A → Agent B → Agent C
+Agent A → Agent B → Agent C → Agent D
 ```
 
-That makes continuity dependent on execution order and requires each agent to reconstruct context from previous conversations or summaries.
+Each agent receives context from the previous agent, performs its task, and passes its understanding forward.
 
-This architecture moves continuity into the workspace.
+That works when the workflow is predictable. It becomes increasingly difficult when agents operate asynchronously, use different models, revisit the same problem over time, or need to incorporate information that did not exist when the workflow began.
 
-Specialists inspect authoritative systems, compare what they find with what is already known, and record meaningful changes. Higher-level analysis uses that shared record to interpret the environment and determine what should happen next.
+This architecture takes a different approach:
 
-The workspace is not a copy of the underlying systems. Splunk owns its logs, ThousandEyes owns its telemetry, GitHub owns approved configuration and tests, NetBox owns infrastructure records, and ServiceNow owns its workflow data.
+> **Agents do not pass operational state to other agents. They contribute structured knowledge to a shared case.**
 
-The chart maintains the **evolving understanding of the environment**.
+The workspace becomes the persistent coordination layer. Agents can be specialized and largely stateless because continuity exists outside of any individual agent or conversation.
 
-[Read the Patient Chart architecture →](documentation/patient-chart.md)
+## Inspired by Patient Care
+
+This multi-agent orchestration architecture borrows principles from hospital and emergency-room operations.
+
+A patient may be treated by nurses, physicians, specialists, technicians, pharmacists, and other caregivers over hours or days. Those participants do not need to continuously communicate everything they know directly to every person who may become involved later.
+
+Instead, they contribute structured observations, measurements, assessments, interventions, and outcomes to a shared **patient chart**.
+
+```text
+Nurse ──────────┐
+                │
+Physician ──────┤
+                │
+Specialist ─────┤
+                ├────► PATIENT CHART ◄────► Current Understanding
+Technician ─────┤
+                │
+Lab ────────────┤
+                │
+Imaging ────────┘
+```
+
+The chart provides continuity.
+
+A specialist can enter the case, review the relevant history and current state, perform a specific task, contribute new information, and leave. Another specialist can continue the work later without requiring a direct handoff from everyone who participated before them.
+
+The same principle can be applied to AI agents.
+
+```text
+Specialist Agent ─────┐
+                      │
+Specialist Agent ─────┤
+                      │
+Specialist Agent ─────┼────► SHARED WORKSPACE
+                      │              │
+Specialist Agent ─────┤              ▼
+                      │        Current Case State
+Specialist Agent ─────┘              │
+                                     ▼
+                                  Analysis
+                                     │
+                                     ▼
+                              Next Objectives
+```
+
+Agents distribute the work. The workspace preserves the knowledge.
+
+## The Workspace as a Case Record
+
+The workspace is not intended to become a copy of every system the agents interact with.
+
+Authoritative systems continue to own their data. Agents retrieve that evidence when needed and contribute only the structured information required to advance the shared understanding of the case.
+
+This creates three distinct layers:
+
+```text
+AUTHORITATIVE SOURCES
+Raw evidence and system state
+          │
+          ▼
+SPECIALIST AGENTS
+Observe, compare, test, measure
+          │
+          ▼
+SHARED WORKSPACE
+Material observations and current state
+          │
+          ▼
+ANALYSIS
+Interpret evidence across domains
+          │
+          ▼
+OBJECTIVES
+Determine what should happen next
+```
+
+The workspace therefore acts as an **information compression and continuity layer between source systems and reasoning models**.
+
+Instead of repeatedly passing large amounts of raw data or conversational summaries between agents, specialists contribute structured information about what matters.
+
+## A Common Agent Pattern
+
+Most specialist agents can follow the same basic lifecycle:
+
+```text
+READ
+Relevant case state
+        │
+        ▼
+OBSERVE
+Query authoritative source
+        │
+        ▼
+COMPARE
+Current evidence vs known state
+        │
+        ▼
+MATERIAL CHANGE?
+    │           │
+   No          Yes
+    │           │
+  EXIT        WRITE
+                │
+                ▼
+              EXIT
+```
+
+This makes agent behavior predictable even when the agents use different tools, models, or areas of expertise.
+
+The communication contract is the **data schema**, not the reasoning process of the previous model.
+
+## Separation of Responsibilities
+
+The architecture deliberately separates several functions:
+
+**Evidence** — What authoritative systems report.
+
+**Observation** — What a specialist determines is materially relevant.
+
+**State** — What the case currently knows.
+
+**Assessment** — What the accumulated evidence appears to mean.
+
+**Plan** — What should be investigated or done next.
+
+**Action** — What an authorized specialist actually changes.
+
+This separation allows inexpensive or specialized models to perform continuous evidence gathering while higher-capability models are reserved for correlation, ambiguity, assessment, and planning.
+
+It also allows agents using different models to cooperate without requiring those models to reason identically.
+
+They only need to communicate through the same structured contract.
 
 ---
 
-# Capabilities
+# Network Operations Implementation
 
-The system is organized around several operational capabilities. Individual agents, skills, and tools implement these capabilities without requiring the rest of the system to understand their internal workflows.
+This repository applies the Patient Chart architecture to network and infrastructure operations.
+
+The shared case develops and maintains an understanding of the environment across operational health, compliance, infrastructure state, testing, change, incidents, and modernization.
+
+Individual agents, skills, and tools implement these capabilities without requiring the rest of the system to understand their internal workflows.
+
+[Read the full architecture →](documentation/patient-chart.md)
 
 ## State of the Environment
 
