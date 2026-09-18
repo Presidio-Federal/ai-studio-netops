@@ -1,106 +1,145 @@
 # AI Studio NetOps
 
-This fleet treats the Studio workspace as a **patient chart**: a
-shared case record, not a chain of agent-to-agent recaps.
+AI Studio NetOps is a multi-agent system for understanding, testing, changing, and evolving network infrastructure.
 
-Agents do not pass operational state to other agents. They
-contribute structured knowledge to the case. Continuity lives in
-the files and the schemas, not in the previous conversation.
+The architecture treats the Studio workspace as a **patient chart**: a persistent shared case record that allows specialized agents to contribute knowledge without relying on agent-to-agent conversation history.
 
-The architecture is in
-[Patient Chart Multi-Agent Architecture](documentation/patient-chart.md).
-Health is the first family that implements it in prompts and
-schemas: [Health Agents](documentation/health-agents.md).
+> **Agents distribute the work. The chart preserves the knowledge. Higher-level models concentrate the reasoning.**
 
-GitHub owns the network configuration. NetBox owns the
-infrastructure record — devices, interfaces, IPs, and cables. CML
-is the digital twin used to rebuild and test the environment.
+## Why the Patient Chart
 
-## Why the chart exists
+Network operations rarely follows a predictable sequence.
 
-A single task is usually manageable. Summarize a log. Open a
-ticket. Check an interface.
+Health checks, compliance analysis, testing, configuration changes, incidents, and infrastructure discovery can occur independently, at different times, and using different models.
 
-An end-to-end network process is different. Health, inventory,
-design, change, testing, compliance, and modernization happen in
-different conversations, on different days, and sometimes with
-different models. Continuity cannot depend on `Agent A → Agent B`
-or on copying Splunk, ThousandEyes, and device dumps into the
-workspace.
+Traditional multi-agent workflows often depend on handoffs:
 
-That is where I ran into the problems this repo is designed around.
+```text
+Agent A → Agent B → Agent C
+```
 
-- **The god agent.** One conversation collected, diagnosed, and
-  changed config. Context filled with tools it should never have
-  needed.
-- **Recap as state.** Each retelling drifted. Nobody could point
-  to a file and say what we knew at 14:00.
-- **Token burn.** Telemetry dumps and other agents’ instructions
-  rode along in every window.
-- **No clear owner.** Concurrent writes clobbered the diagnosis.
-- **Observation and action mixed.** A lab result was treated as a
-  diagnosis; a diagnosis was treated as approval to change
-  production.
-- **Silence looked like health.** No critical syslog did not mean
-  the WAN was healthy. Stale sat beside live without enough
-  context.
-- **The process could not resume.** When the conversation ended,
-  the case ended with it.
-- **Every prompt contained the whole hospital.** Specialists
-  carried everyone else’s instructions.
+That makes continuity dependent on execution order and requires each agent to reconstruct context from previous conversations or summaries.
 
-The chart is how I got out of that. The workspace has a catalog of
-files. Each file has an owner, a schema, and defined readers. A
-specialist writes what materially changed in its domain. An
-analyzer interprets those observations. Downstream agents act from
-the record.
+This architecture moves continuity into the workspace.
 
-A new conversation on every invoke is a feature. The prompt stays
-small. The durable context lives in the workspace. The catalog is
-`workspace-handoff`.
+Specialists inspect authoritative systems, compare what they find with what is already known, and record meaningful changes. Higher-level analysis uses that shared record to interpret the environment and determine what should happen next.
 
-## What you have to accept
+The workspace is not a copy of the underlying systems. Splunk owns its logs, ThousandEyes owns its telemetry, GitHub owns approved configuration and tests, NetBox owns infrastructure records, and ServiceNow owns its workflow data.
 
-This approach only works if the sources of truth stay
-authoritative.
+The chart maintains the **evolving understanding of the environment**.
 
-If someone changes a device outside the GitOps path, the next
-approved apply from GitHub may overwrite that change. If someone
-clicks changes into the lab by hand, the digital twin does not
-treat the lab as the source of truth. It is rebuilt from the
-approved inventory, NetBox data, and configuration sources.
+[Read the Patient Chart architecture →](documentation/patient-chart.md)
 
-The chart is only as current as its last visit. A stale note is
-useful history, not live truth. That is why the records include
-timestamps, freshness, status, and ownership.
+---
 
-Agents should not all be attached to every conversation. That
-recreates the god agent. Each agent gets the tools for its job.
-The workspace carries information between jobs.
+# Capabilities
 
-## What the fleet does
+The system is organized around several operational capabilities. Individual agents, skills, and tools implement these capabilities without requiring the rest of the system to understand their internal workflows.
 
-1. **Onboard** coordinates the initial inventory and source-of-truth process.
-2. **Network Sync** collects inventory and configuration evidence and runs the GitHub Actions path.
-3. **NetBox SoT** maintains the infrastructure record: devices, interfaces, IPs, and cables.
-4. **Digital Twin** builds or reconciles the CML environment from those approved sources.
-5. **Health Monitor / Device / ServiceNow** query one source, compare to the last visit, and write a structured observation when that plane has something to record.
-6. **Health Analyzer** interprets those observations as SOAP on `state/health.json`.
-7. **Network Ops** reads the chart and ships running-config through git.
-8. **Network Design** handles proposed changes and creates the testing handoff.
-9. **Test** proves the change and records the risk and result.
-10. **ServiceNow** owns ticket creation and updates.
-11. **Modernization** builds the roadmap from infrastructure, lifecycle, and support data.
+## State of the Environment
 
-## Agent families
+A maintained analysis of what the current environment looks like.
 
-| Family | What they do |
-|--------|----------------|
-| [Architecture](documentation/patient-chart.md) | Case record, schemas, material change, SOAP at analysis |
-| [Health Agents](documentation/health-agents.md) | Specialist lab slips + attending SOAP |
-| [SoT and Twin Agents](documentation/sot-and-twin-agents.md) | Onboard, Network Sync, NetBox SoT, Digital Twin |
-| [Network Ops](documentation/network-ops.md) | Read the chart, recommend, ship running-config through git |
-| [Change and Test Agents](documentation/change-and-test-agents.md) | Design handoff and Compliance Test risk/result |
-| [Compliance Agents](documentation/compliance-agents.md) | Intel gaps, author a check, run the suite |
-| [ServiceNow Agents](documentation/servicenow-agents.md) | Tickets and named-slice trends — not the health watch |
-| [Modernization Agents](documentation/modernization-agents.md) | Estate identity, lifecycle research, roadmap |
+The goal is not to continuously copy source-system data into the workspace. The system records material observations, changes, assessments, and current state so that other workflows have a concise and durable understanding of the environment.
+
+### Health
+
+Health combines observations from operational sources into a current assessment of the environment.
+
+Specialists compare live information with previous observations and record meaningful changes. A higher-level analyzer correlates those observations using a SOAP-inspired model to maintain an assessment and actionable objectives.
+
+**Question answered:**
+*What is happening in the environment, what changed, and what requires attention?*
+
+[Health architecture →](documentation/health-agents.md)
+
+### Compliance
+
+Compliance maintains both **coverage** and **posture**.
+
+Coverage determines whether the environment is testing the controls that are relevant to the infrastructure actually deployed. Posture determines whether those implemented checks currently pass.
+
+Published controls remain external, implemented checks live in Git, and detailed execution evidence remains with test results. The workspace maintains the meaningful compliance state and changes needed by higher-level analysis.
+
+**Questions answered:**
+*Are we testing the right things?*
+*Are the things we test currently passing?*
+
+[Compliance architecture →](documentation/compliance-agents.md)
+
+---
+
+## Source of Truth and Digital Twin
+
+Maintains the infrastructure model required to understand and safely reproduce the environment.
+
+GitHub owns approved network configuration. NetBox maintains infrastructure identity and relationships such as devices, interfaces, IP addresses, and cables. CML provides a digital twin constructed from those approved sources.
+
+The digital twin is a test environment, not an independent source of truth.
+
+**Question answered:**
+*What infrastructure exists, how is it connected, and can we reproduce it?*
+
+[SoT and Digital Twin architecture →](documentation/sot-and-twin-agents.md)
+
+---
+
+## Change and Validation
+
+Turns an intended infrastructure change into something that can be evaluated, tested, and safely applied.
+
+Proposed changes are developed against known environment state, validated using the available testing infrastructure, and applied through the Git-based configuration workflow.
+
+Testing produces evidence and risk information rather than silently authorizing production changes.
+
+**Question answered:**
+*Can we make this change, what does it affect, and what evidence do we have that it is safe?*
+
+[Change and testing architecture →](documentation/change-and-test-agents.md)
+
+[Network operations architecture →](documentation/network-ops.md)
+
+---
+
+## Incident and Workflow Integration
+
+Connects operational understanding with external workflow systems such as ServiceNow.
+
+Tickets remain authoritative in their source platform. Relevant incident and workflow information can contribute to the shared understanding of the environment without duplicating the external system in the workspace.
+
+**Question answered:**
+*What operational work is already underway, and how does it relate to the current environment?*
+
+[ServiceNow architecture →](documentation/servicenow-agents.md)
+
+---
+
+## Modernization
+
+Uses the accumulated understanding of the environment to support longer-term infrastructure decisions.
+
+Current infrastructure, lifecycle information, support status, topology, and other relevant evidence can be combined into modernization analysis and roadmap recommendations.
+
+**Question answered:**
+*Given what exists today, what should the environment become over time?*
+
+[Modernization architecture →](documentation/modernization-agents.md)
+
+---
+
+# Architectural Principles
+
+Across these capabilities, the same rules apply:
+
+1. **State belongs to the case, not the agent.**
+2. **Source systems remain authoritative.**
+3. **Schemas are the communication contract.**
+4. **Record meaningful change instead of copying source data.**
+5. **Separate evidence from interpretation.**
+6. **Keep detailed evidence outside reasoning context until it is needed.**
+7. **Use higher-capability models where correlation and interpretation add value.**
+8. **Do not make continuity dependent on agent execution order.**
+9. **Keep specialist responsibilities narrow.**
+10. **A new conversation must be able to resume from the shared record.**
+
+The result is a system in which agents can remain specialized and largely stateless while the platform maintains a persistent understanding of the infrastructure.
