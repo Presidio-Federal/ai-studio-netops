@@ -4,6 +4,9 @@
 Never prints control statements or guidance. Identifiers, titles, and mappings only.
 Overlap with existing tests comes from this run's coverage.json or the git
 input JSON — not a skill-bundled test list.
+
+`unresolved` filters the pinned title index against a git job-catalog,
+coverage.json, and intel.json. It does not judge estate applicability.
 """
 
 from __future__ import annotations
@@ -503,6 +506,174 @@ def list_family(family: str) -> dict[str, Any]:
     }
 
 
+DEFAULT_UNRESOLVED_LIMIT = 20
+NA_COVERAGE_STATUSES = {"not_applicable", "n/a", "na"}
+ACTIVE_CANDIDATE_STATUSES = {"proposed", "accepted"}
+SKIPPED_ID_RE = re.compile(r"\b([A-Z]{2}-\d+(?:\(\d+\))?)\b")
+
+
+def nist_id_from_value(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text:
+        return None
+    if ":" in text and not text.lower().startswith("http"):
+        text = text.split(":", 1)[1].strip()
+    return normalize_53(text)
+
+
+def catalog_covered_ids(catalog: dict[str, Any] | None) -> set[str]:
+    """NIST ids already mapped on a committed git job-catalog check (`nist:`)."""
+    data = catalog or {}
+    if isinstance(data.get("catalog"), dict):
+        data = data["catalog"]
+    ids: set[str] = set()
+    for suite in (data.get("suites") or {}).values():
+        if not isinstance(suite, dict):
+            continue
+        for check in suite.get("checks") or []:
+            if not isinstance(check, dict):
+                continue
+            for item in check.get("nist") or []:
+                nid = nist_id_from_value(item)
+                if nid:
+                    ids.add(nid)
+    return ids
+
+
+def coverage_row_ids(coverage: dict[str, Any] | None, statuses: set[str]) -> set[str]:
+    ids: set[str] = set()
+    for row in (coverage or {}).get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        status = str(row.get("status") or "").strip().lower().replace(" ", "_")
+        if status not in statuses:
+            continue
+        nid = nist_id_from_value(row.get("nist_id"))
+        if nid:
+            ids.add(nid)
+    return ids
+
+
+def coverage_not_applicable_ids(coverage: dict[str, Any] | None) -> set[str]:
+    """Controls coverage already recorded as not applicable to this estate."""
+    return coverage_row_ids(coverage, NA_COVERAGE_STATUSES)
+
+
+def coverage_covered_ids(coverage: dict[str, Any] | None) -> set[str]:
+    """Controls coverage already recorded as covered (catalog reconcile or prior review)."""
+    return coverage_row_ids(coverage, {"covered"})
+
+
+def intel_not_applicable_ids(intel: dict[str, Any] | None) -> set[str]:
+    """Control ids Intel already classified N/A on skipped_non_network."""
+    ids: set[str] = set()
+    for line in (intel or {}).get("skipped_non_network") or []:
+        for match in SKIPPED_ID_RE.finditer(str(line).upper()):
+            nid = normalize_53(match.group(1))
+            if nid:
+                ids.add(nid)
+    return ids
+
+
+def intel_candidate_ids(intel: dict[str, Any] | None) -> set[str]:
+    """NIST ids already proposed (or accepted) on the current intel result."""
+    ids: set[str] = set()
+    for cand in (intel or {}).get("candidates") or []:
+        if not isinstance(cand, dict):
+            continue
+        status = str(cand.get("status") or "proposed").strip().lower()
+        if status not in ACTIVE_CANDIDATE_STATUSES:
+            continue
+        nid = nist_id_from_value(cand.get("source_control"))
+        if nid:
+            ids.add(nid)
+        for item in cand.get("nist_sp_800_53") or []:
+            mapped = nist_id_from_value(item)
+            if mapped:
+                ids.add(mapped)
+    return ids
+
+
+def load_json_arg(path: Path | None, *, stdin_ok: bool = False) -> dict[str, Any]:
+    if path is None:
+        return {}
+    if stdin_ok and os.fspath(path) == "-":
+        data = json.load(sys.stdin)
+        return data if isinstance(data, dict) else {}
+    resolved = path.resolve()
+    if not resolved.is_file():
+        raise FileNotFoundError(f"File not found: {path}")
+    data = load_json(resolved)
+    return data if isinstance(data, dict) else {}
+
+
+def list_unresolved(
+    *,
+    catalog: dict[str, Any] | None = None,
+    coverage: dict[str, Any] | None = None,
+    intel: dict[str, Any] | None = None,
+    limit: int = DEFAULT_UNRESOLVED_LIMIT,
+    index: dict[str, Any] | None = None,
+    pin: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Deterministic unresolved NIST titles. No applicability ranking."""
+    if pin is None:
+        pin = load_json(REF / "oscal-pin.json")
+    if index is None:
+        index = load_json(REF / pin["local_index"])
+    if limit < 0:
+        return {
+            "ok": False,
+            "oscal_release": pin.get("release"),
+            "error": "--limit must be >= 0",
+            "unresolved_total": 0,
+            "returned": 0,
+            "limit": limit,
+            "controls": [],
+        }
+
+    covered = catalog_covered_ids(catalog) | coverage_covered_ids(coverage)
+    not_applicable = coverage_not_applicable_ids(coverage) | intel_not_applicable_ids(intel)
+    candidates = intel_candidate_ids(intel)
+
+    excluded = {"covered": 0, "not_applicable": 0, "intel_candidate": 0}
+    unresolved: list[dict[str, str]] = []
+    for control in index.get("controls") or []:
+        cid = nist_id_from_value(control.get("id"))
+        if not cid:
+            continue
+        if cid in covered:
+            excluded["covered"] += 1
+            continue
+        if cid in not_applicable:
+            excluded["not_applicable"] += 1
+            continue
+        if cid in candidates:
+            excluded["intel_candidate"] += 1
+            continue
+        unresolved.append(
+            {
+                "id": control.get("id") or cid,
+                "title": control.get("title") or cid,
+                "family": control.get("family") or "",
+            }
+        )
+
+    returned = unresolved[:limit]
+    return {
+        "ok": True,
+        "oscal_release": pin.get("release") or index.get("oscal_release"),
+        "catalog_version": index.get("catalog_version"),
+        "unresolved_total": len(unresolved),
+        "returned": len(returned),
+        "limit": limit,
+        "excluded": excluded,
+        "controls": returned,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -527,9 +698,54 @@ def main(argv: list[str] | None = None) -> int:
     fam = sub.add_parser("family", help="List pinned OSCAL titles in a network family")
     fam.add_argument("family", help="AC, AU, CM, IA, SC, or SI")
 
+    unres = sub.add_parser(
+        "unresolved",
+        help="Pinned NIST titles not covered in git, classified N/A, or an active intel candidate",
+    )
+    unres.add_argument(
+        "--limit",
+        type=int,
+        default=DEFAULT_UNRESOLVED_LIMIT,
+        help=f"Max controls to return (default {DEFAULT_UNRESOLVED_LIMIT})",
+    )
+    unres.add_argument(
+        "--catalog",
+        type=Path,
+        default=None,
+        help="Git catalog/job-catalog.json path, or - for stdin. Never a workspace copy in Studio.",
+    )
+    unres.add_argument(
+        "--coverage",
+        type=Path,
+        default=None,
+        help="Workspace compliance/coverage.json (not-applicable rows)",
+    )
+    unres.add_argument(
+        "--intel",
+        type=Path,
+        default=None,
+        help="Workspace compliance/intel.json (candidates + skipped_non_network)",
+    )
+
     args = parser.parse_args(argv)
     if args.cmd == "family":
         payload = list_family(args.family)
+    elif args.cmd == "unresolved":
+        try:
+            catalog = load_json_arg(args.catalog, stdin_ok=True)
+            coverage = load_json_arg(args.coverage)
+            intel = load_json_arg(args.intel)
+        except FileNotFoundError as exc:
+            payload = {"ok": False, "error": str(exc), "controls": []}
+        except json.JSONDecodeError as exc:
+            payload = {"ok": False, "error": f"Invalid JSON: {exc}", "controls": []}
+        else:
+            payload = list_unresolved(
+                catalog=catalog,
+                coverage=coverage,
+                intel=intel,
+                limit=args.limit,
+            )
     else:
         coverage = args.coverage.resolve() if args.coverage else None
         git_input = args.input.resolve() if args.input else None

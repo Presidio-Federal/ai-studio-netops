@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-18T00:00:00Z",
+  "source_agent": "compliance",
+  "status": "OK",
+  "headline": "fixture",
+  "next_action": "none",
+  "sources": [
+    {
+      "name": "fixture",
+      "url": "https://example.invalid/oscal",
+      "checked_at": "2026-09-18T00:00:00Z",
+      "ok": true
+    }
+  ],
+  "delta": {
+    "catalog_covered": 1,
+    "relevant_missing": 1,
+    "not_applicable": 0
+  },
+  "candidates": [
+    {
+      "id": "INTEL-0001",
+      "title": "Protect confidentiality of transmitted information",
+      "why_network": "WAN/edge encryption between peers.",
+      "suggested_assert": "config_contains for routing-protocol authentication or IPsec",
+      "priority": "high",
+      "status": "proposed",
+      "nist_sp_800_53": ["SC-8"],
+      "source_control": "nist-800-53:SC-8"
+    }
+  ],
+  "skipped_non_network": []
+}

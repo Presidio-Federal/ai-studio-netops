@@ -1,76 +1,60 @@
 ---
 name: compliance-intel
-version: "1.11.1"
-description: "v1.11.1 — Inventory is device kinds, not configs. Catalog is current checks. Fingerprints choose Intel work."
+version: "1.13.0"
+description: "v1.13.0 — Bounded unresolved NIST query. Inventory is device kinds. Catalog is current checks."
 ---
 
 # Compliance intel
 
 For the **Compliance** agent. Compare **published NIST titles** to
-**this network** and **tests on git `main`**. Fingerprints decide
-how much work this visit does. Reconcile open INTEL candidates
-against the live catalog every time.
+**this network** and **tests on git `main`**. Write the two catalog
+files. The prompt then hands Author and Test the ranked gaps.
 
 You do **not** run `test.yml`. You do **not** invent pass/fail for devices.
 You do **not** copy git into the workspace.
 
 ## Hard boundaries
 
-Write **only** these **workspace-relative** paths with built-in
-`write_file` (creates parents; never `mkdir`):
+Write **only** these catalog rows with built-in `write_file`
+(creates parents; never `mkdir`):
 
 - `compliance/coverage.json`
 - `compliance/intel.json`
-- `compliance/metadata.json`
 
-Do not use `Internal directory`, `/app/`, or `/shared_workspace/...`
-on built-in file tools. Do not write to `sessions/`, `skills/`,
-`scripts/`, `tool_results`, or a schedule scratch folder. Write
-ONLY to the main workspace catalog. Access denied with allowed
-`file_explorer`: retry once `file_explorer/<catalog row>`.
+File tools use catalog rows from `workspace-handoff`. Do not invent
+prefixes. Do not write to `sessions/`, `skills/`, `scripts/`,
+`tool_results`, or a schedule scratch folder. If it is not a
+`workspace-handoff` row for this agent, do not `write_file` it.
 
 Do **not** write `compliance/_git_input.json`, `prepare_*.py`, any `.py`,
 the matrix, the bridge, check files, `testing/`, `runs/`, or any other
-path. If it is not a `workspace-handoff` row for this agent, do not
-`write_file` it. Do not invent files.
+path.
 
-Do not `github_get_file` the matrix, bridge, or `inventory/configs/`.
+Do not `github_get_file` the matrix, bridge, or running-configs.
 The test list is `catalog/job-catalog.json` only. NIST titles come
-from `query_sources.py` (pinned OSCAL index + optional STIG Viewer
-HTTP). Running-configs are Author’s job.
+from `query_sources.py`. Running-configs are Author’s job.
 
 GitHub is read-only: `github_get_file` only. Never `github_run_action`.
 Never `github_put_file`.
 
-Do not create helper scripts. Do not scrape HTML. **No curl.** The query
-script performs HTTP. Never `--output`. No icons/emoji. Do not dump raw
-tool payloads.
+Do not create helper scripts. Do not scrape HTML. **No curl.** Never
+`--output`. No icons/emoji. Do not dump raw tool payloads.
 
-`execute_command` is only these scripts (stdout). Fingerprints first:
-
-```text
-python3 /skills/user/compliance-intel/scripts/fingerprint_inputs.py --estate /workspace/inventory/prod.json --prior /workspace/compliance/metadata.json --coverage /workspace/compliance/coverage.json --catalog -
-```
-
-Pass the `github_get_file` catalog JSON on stdin (`--catalog -`).
-Do not `write_file` that JSON. Omit `--estate` when `inventory/prod.json`
-is missing. Family queries **only** when stdout `work.framework_rescan`
-is true (or the fingerprint script is missing):
+`execute_command` is only this script. **Standard scan is one
+`unresolved` call** — not six `family` calls.
 
 ```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
-python3 /skills/user/compliance-intel/scripts/query_sources.py family AU
-python3 /skills/user/compliance-intel/scripts/query_sources.py family CM
-python3 /skills/user/compliance-intel/scripts/query_sources.py family IA
-python3 /skills/user/compliance-intel/scripts/query_sources.py family SC
-python3 /skills/user/compliance-intel/scripts/query_sources.py family SI
+python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
 ```
 
-`family` takes **one** letter. Never `family AC AU CM IA SC SI`.
+Stdin is the `github_get_file` catalog JSON. Do not `write_file` that
+catalog. Omit `--coverage` and/or `--intel` when that workspace file
+is missing. Stdout only. Do not redirect into a workspace file.
 
-Stdout only. Do not redirect into a workspace file from the shell.
-If `query_sources.py` is missing on a rescan: skip NIST, set
-`sources_status` `failed`. Never `Internal directory`. Never `/app/`.
+`family` and `lookup` are troubleshooting / named-control only. Never
+run `family` AC, AU, CM, IA, SC, SI on a scheduled or gaps visit.
+
+If that `.py` is missing: skip NIST, set `sources_status` `failed`.
 Never invent a path.
 
 ## CRITICAL RULES
@@ -78,35 +62,27 @@ Never invent a path.
 1. **Tests live in git.** One fetch:
    `github_get_file(path="catalog/job-catalog.json", ref="main")`.
    Use the MCP result in this turn. Never write that JSON to the workspace.
-2. **Fingerprints choose the visit.** Do not skim six families unless
-   `work.framework_rescan` is true (or coverage/metadata is missing).
-3. **Reconcile every visit.** Drop INTEL rows whose NIST ids are now
-   on a catalog check (`nist:`). Keep stable `INTEL-` ids for the rest.
-   Refill to cap 5 from remaining relevant gaps.
-4. **Relevance is this estate.** Read `inventory/prod.json` when it
+2. **Write every run** — coverage then intel (even if `candidates` is empty).
+3. **Relevance is this estate.** Read `inventory/prod.json` when it
    exists (platform, role, tags). Interpret the control. If it only
    applies to servers, endpoints, or SaaS and we have none of those,
-   put it on `skipped_non_network` with why. Do not propose it. Do
-   not use a family letter as the skip.
-5. **Primary map = NIST SP 800-53 Rev 5** — ids like `AC-17`, `SC-8`.
+   put it on `skipped_non_network` with why **and** a coverage row
+   `status: not_applicable`. Do not propose it. Do not use a family
+   letter as the skip.
+4. **Primary map = NIST SP 800-53 Rev 5** — ids like `AC-17`, `SC-8`.
    PCI / STIG are footnotes. Resolve 800-171 / STIG Viewer URLs **to**
    800-53 before a candidate.
-6. **No copyrighted control text** — your words; cite URL + date. Titles
+5. **No copyrighted control text** — your words; cite URL + date. Titles
    and identifiers are fine.
-7. **Delta, then rank.** Catalog `nist:` on a check is covered, not a
+6. **Delta, then rank.** Catalog `nist:` on a check is covered, not a
    gap. Candidates are relevant missing / partial controls only. Sort
    `critical` → `high` → `medium` → `low`. Cap 5. Fill `delta`.
-8. **status stays `proposed`.** Do not edit git tests.
-9. **Reuse `INTEL-` ids** when re-proposing the same theme; bump `run_id`.
+7. **status stays `proposed`.** Do not edit git tests.
+8. **Reuse `INTEL-` ids** when re-proposing the same theme; bump `run_id`.
    Missing intel on first run is normal.
-10. Do not invent gaps. Do not write zeros into coverage when the
-    source query failed.
-11. Paths: `workspace-handoff`. Produce: `references/workspace-contract.md`.
-12. Write coverage/intel only when that file changed this visit.
-    Write `compliance/metadata.json` from fingerprint stdout `persist`
-    after a successful evaluation (including a visit that only
-    reconciled). If nothing material changed, do not rewrite coverage
-    or intel; still report inputs unchanged.
+9. Do not invent gaps. Do not write zeros into coverage when the
+   source query failed.
+10. Paths: `workspace-handoff`. Produce: `references/workspace-contract.md`.
 
 ## Estate
 
@@ -120,33 +96,36 @@ not assume a device that is not in the file.
 
 | Script | When |
 |--------|------|
-| `fingerprint_inputs.py` | Every scheduled / gaps / implement visit |
-| `query_sources.py family AC` (AU CM IA SC SI) | Only if `work.framework_rescan` |
+| `query_sources.py unresolved --limit 20` | **Standard scan.** Bounded unresolved titles |
 | `query_sources.py lookup <id-or-url>` | They named a control or STIG Viewer URL |
+| `query_sources.py family AC` | Troubleshooting / they asked to skim one family |
 
 ```text
-python3 /skills/user/compliance-intel/scripts/fingerprint_inputs.py --estate /workspace/inventory/prod.json --prior /workspace/compliance/metadata.json --coverage /workspace/compliance/coverage.json --catalog -
-python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
+python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
 python3 /skills/user/compliance-intel/scripts/query_sources.py lookup AC-17
+python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
 ```
 
-After coverage exists, `lookup … --coverage /workspace/compliance/coverage.json`
-is allowed on **that command only**. If that `.py` is missing, skip
-it — do not invent `Internal directory` or a workspace copy of the
-script.
+The unresolved script reads coverage and intel **from those paths**.
+Do not paste the historical coverage file or the git catalog into
+chat. Evaluate only the returned `controls` list (plus current
+candidates and inventory).
+
+If that `.py` is missing, skip it — do not invent a workspace copy
+of the script.
 
 Do **not** run `build_coverage.py` in Studio. Do not pass git bodies as
 `--input`. That script is for a local repo checkout only.
 
-The skill ships a **pinned NIST OSCAL title index**. Fingerprints hash
-that index. Do not copy it into the workspace. It is the standard,
-not our test list.
+The skill ships a **pinned NIST OSCAL title index**. That is the standard,
+not our test list. Do not copy it into the workspace.
 
 | They give you | Command |
 |---------------|---------|
+| Scheduled / gaps / what’s missing | `unresolved --limit 20` |
 | `AC-17` / `nist-800-53:AC-17` | `lookup AC-17` |
 | `3.1.7` / 800-171 URL | `lookup 'https://www.stigviewer.com/controls/nist-800-171/3.1.7'` |
-| A family to skim | `family AC` (only on `framework_rescan` or they named the family) |
+| Skim one family (troubleshooting) | `family AC` |
 | No network | `lookup … --offline` |
 
 Optional `STIGVIEWER_TOKEN` / `SAMS_TOKEN` for the crosswalk API; otherwise
@@ -162,36 +141,55 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 ## Execution
 
 ```text
-1. READ     intel.json, coverage.json, metadata.json if present
-            (keep stable INTEL- ids)
+1. READ     intel.json if present (keep stable INTEL- ids)
 2. ESTATE   inventory/prod.json if present (kinds of devices only)
 3. FETCH    github_get_file catalog/job-catalog.json ref=main
-            (only git path; never inventory/configs)
-4. FINGER   fingerprint_inputs.py (catalog JSON on stdin)
-5. RECON    drop INTEL rows now covered by catalog nist:
-6. WORK     follow stdout work.* flags (table below)
-7. REFILL   candidates to cap 5 from remaining relevant gaps
-8. WRITE    coverage and/or intel if they changed
-            metadata.json from persist after a successful evaluation
-9. REPLY    Action + work kind + ranked candidates
+            (only git path; never running-configs)
+4. COVER    read_file coverage.json if present
+            (merge later; do not dump it into the reply)
+5. RECONCILE drop intel candidates whose nist ids are now on a
+            catalog check (nist:). Keep other proposed/accepted
+            candidates and their INTEL- ids. No duplicates.
+6. FULL?    if remaining active candidates = 5:
+            skip unresolved. Write coverage (catalog reconcile
+            only — keep existing rows) then intel. Reply.
+7. NIST     else one execute_command:
+            unresolved --limit 20 --catalog - [--coverage] [--intel]
+            stdin = catalog JSON. Do not write_file the catalog.
+8. JUDGE    each returned control against this estate
+            (applicability, priority, suggested_assert)
+9. MERGE    coverage is accumulated working state — do not rebuild
+            from six families. Upsert:
+            catalog nist: → covered
+            reviewed N/A → not_applicable
+            selected candidate → gap (or partial if tests exist)
+            keep untouched prior rows
+10. DRAFT   keep remaining candidates; add new ones up to cap 5;
+            rank critical → high → medium → low
+11. WRITE   write_file coverage.json then intel.json
+12. REPLY   Action + headline + ranked candidates
 ```
 
 Explain-only / last candidates: `read_file` intel.json. Do not
-fingerprint. Do not write. Do not invoke Author.
+re-query unless they asked for a new scan. Do not invoke Author.
 
-### Work flags (`fingerprint_inputs.py` stdout)
+### Coverage dispositions (reviewed controls)
 
-| Flag | Do |
-|------|----|
-| `reconcile_candidates` | Always on this path. Drop covered INTEL rows. |
-| `framework_rescan` | Six `family` calls. Rebuild coverage from titles + catalog + estate. |
-| `estate_rejudge` | Rejudge existing coverage rows and `skipped_non_network` vs prod.json. No family calls unless `framework_rescan`. |
-| `coverage_from_catalog` | Join catalog `nist:` onto coverage rows (`net_comp` / `live` / `static` / `status`). Do not re-skim NIST. Do not rejudge estate N/A. |
+Every control you reviewed this run must have a coverage row:
 
-First visit (missing prior or missing coverage): `framework_rescan`.
+| Judgment | `status` | Also |
+|----------|----------|------|
+| Catalog already tests it (`nist:`) | `covered` | Drop matching intel candidates |
+| Applies here; still need a check | `gap` or `partial` | Intel candidate if it ranks into the cap |
+| Does not apply to this estate | `not_applicable` | `skipped_non_network` line with why |
 
-All flags false after reconcile, queue still full: do not rewrite
-coverage or intel. Report inputs unchanged.
+A reviewed `not_applicable` or `covered` row is why `unresolved`
+will not return that id next time. `gap` without a candidate may
+still return — that is remaining work, not a skip.
+
+Do not require a six-family scan to write a valid coverage file.
+Preserve top-level fields from the schema (`version`, `updated_at`,
+`source_agent`, `rows`, `counts`). Recount `counts` from `rows`.
 
 ### Candidate quality bar
 
@@ -210,12 +208,16 @@ Each candidate **must** include:
 - `oscal_release` — pinned `v1.5.0`
 - `resolved_from` — `nist-800-171:3.1.7` when they started from 800-171
 
-List order is the rank. `skipped_non_network` names what you judged
-not applicable and why (e.g. `AC-19 portable device — no endpoints
-in prod.json`).
+List order is the rank. Cap **5**. Do not emit a sixth. Reuse the
+existing `INTEL-` id when the same control / theme is still a gap.
+
+`skipped_non_network` names what you judged not applicable and why
+(e.g. `AC-19 portable device — no endpoints in prod.json`). Keep
+prior N/A lines unless that id is now catalog-covered.
 
 `delta.catalog_covered` / `relevant_missing` / `not_applicable`
-must match coverage + candidates + skipped this run.
+must match coverage counts + candidates + skipped on the files
+you write.
 
 Good themes when inventory shows network gear and the catalog does
 not already cover them: mgmt-plane hardening, AAA, logging/NTP,
@@ -230,8 +232,6 @@ Fill from this skill:
 - [`examples/coverage.example.json`](examples/coverage.example.json)
 - [`schemas/compliance-intel.schema.json`](schemas/compliance-intel.schema.json)
 - [`examples/compliance-intel.example.json`](examples/compliance-intel.example.json)
-- [`schemas/compliance-metadata.schema.json`](schemas/compliance-metadata.schema.json)
-- [`examples/compliance-metadata.example.json`](examples/compliance-metadata.example.json)
 
 Intel envelope: `version`, `updated_at`, `source_agent`, `status`,
 `headline`, `next_action`, `sources`, `delta`, `candidates`.
@@ -239,31 +239,26 @@ Intel envelope: `version`, `updated_at`, `source_agent`, `status`,
 `status`: `OK` | `NO_CANDIDATES` | `SOURCES_DEGRADED`.
 `sources_status`: `ok` | `partial` | `failed`.
 
-Metadata is **not** the five-field envelope. Prefer stdout `persist`.
+Cite the pinned OSCAL index and the git catalog in `sources[]`.
+Do not invent STIG Viewer fetches you did not run.
 
 ## Reply format
 
 ```text
-Action: wrote_intel | reconciled | unchanged | no_new_candidates
-Work: framework_rescan | estate_rejudge | catalog_join | reconcile_only
-Changed: none | framework, estate, catalog
-Sources: git catalog + <NIST names>
+Action: wrote_intel | no_new_candidates
+Sources: git catalog + unresolved NIST
 Candidates: <n>
 Headline: <one line>
-File: compliance/intel.json
+File: intel catalog row
 Ranked:
 - INTEL-0001 <priority>: <title> → <NIST ids>
 ```
-
-`Work:` is the heaviest flag that ran (`framework_rescan` beats
-`estate_rejudge` beats `catalog_join` beats `reconcile_only`).
 
 ## Handoffs
 
 | Outcome | Next |
 |---------|------|
-| Ranked candidates after refill (default scan) | Prompt invokes **Compliance Author**, then **Compliance Test** |
-| Queue empty after reconcile | Do **not** invoke Author |
-| Report-only / intel-only / explain | Stop. No fingerprint write |
+| Ranked candidates (default scan) | Prompt invokes **Compliance Author**, then **Compliance Test** |
+| Report-only / intel-only | Stop after the two files |
 | User wants device score only | **Compliance Test** — `suites=compliance` |
 | Ticket from a live gap | **Observability** |

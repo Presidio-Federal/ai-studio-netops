@@ -5,18 +5,15 @@ apply to **this** network and are not in the catalog. Compliance
 Author writes a check into git. Compliance Test runs the suite and
 records risk.
 
-A default scan fingerprints the framework, estate, and git catalog,
-reconciles open INTEL candidates against git, does only the work
-those fingerprints require, then hands Author and Test the queue
-when it is not empty. “Report only” or “intel only” stops after
-reading or writing intel.
+A default scan writes coverage and intel, ranks the missing
+controls, then hands Author and Test the work. “Report only” or
+“intel only” stops after the two files.
 
 ```mermaid
 flowchart LR
   Estate[inventory/prod.json]
   Git[GitHub job catalog]
   NIST[Published NIST titles]
-  Meta[compliance/metadata.json]
   CI[Compliance]
   Cover[compliance/coverage.json]
   Intel[compliance/intel.json]
@@ -27,10 +24,8 @@ flowchart LR
   Estate --> CI
   Git --> CI
   NIST --> CI
-  Meta --> CI
   CI --> Cover
   CI --> Intel
-  CI --> Meta
   Intel --> CA
   CA --> Git
   CA --> CT
@@ -55,52 +50,35 @@ workspace. It does not read running-configs.
 
 It reads `inventory/prod.json` so it knows what *kinds* of things
 we have (network gear vs endpoints vs SaaS). That filter is why a
-laptop or server control is not a candidate. It stores input
-fingerprints in `compliance/metadata.json` so the next visit does
-not re-skim NIST when the pin, the estate, and the catalog have
-not changed.
+laptop or server control is not a candidate.
 
-Every scheduled visit still fetches the live catalog and
-**reconciles** `intel.json`: if an INTEL row is now mapped on a
-catalog check (`nist:`), drop it and refill the queue (cap 5) from
-gaps already on `coverage.json`.
-
-Then fingerprints choose the rest of the work:
-
-| What changed | What Intel does |
-|--------------|-----------------|
-| Framework (OSCAL pin/index) or first visit | Skim published titles. Rebuild coverage. |
-| Estate only | Rejudge applicability on existing coverage rows. No family skim. |
-| Catalog only | Join `nist:` tags onto coverage. Drop covered candidates. Refill. |
-| None | Reconcile only. Do not rewrite coverage/intel if the queue did not move. |
-
-It interprets each title it actually considers:
+It reads a **bounded unresolved** NIST title list (not every
+family on every visit) and then **interprets** each returned
+control:
 
 - Already mapped on a catalog check (`nist:`) — covered. Not a gap.
 - Applies to these routers / switches / WAN / mgmt plane — relevant
   missing. That is the delta.
 - Only makes sense for servers, endpoints, or SaaS, and we have
-  none — not applicable. Recorded on `skipped_non_network` with why.
+  none — not applicable. Recorded on coverage `not_applicable` and
+  `skipped_non_network` with why.
 
 A server-access control is not a candidate just because NIST
 published it.
 
 It writes:
 
-- `compliance/coverage.json` — covered / partial / gap for what
-  applies here (when coverage changed).
+- `compliance/coverage.json` — accumulated working state: covered /
+  partial / gap / not_applicable for controls already reviewed,
+  reconciled with catalog `nist:` tags. Not a six-family rebuild.
 - `compliance/intel.json` — up to five **proposed** candidates,
   sorted by criticality (`critical`, `high`, `medium`, `low`), plus
   `delta` (catalog covered vs relevant missing vs not applicable).
-- `compliance/metadata.json` — hashes of the three inputs from the
-  last successful evaluation. Not NIST. Not a catalog copy.
 
 It does not write checks and it does not run them. After a default
-scan with candidates still in the queue, it invokes Compliance
-Author (ranked list), waits, then Compliance Test
-(`suites=compliance`) and waits. If those agents are not attached,
-it names them and stops. An empty queue after reconcile does not
-invoke Author.
+scan with candidates, it invokes Compliance Author (ranked list),
+waits, then Compliance Test (`suites=compliance`) and waits. If
+those agents are not attached, it names them and stops.
 
 ## Compliance Author
 
@@ -142,7 +120,6 @@ Device score is this agent, not the intel scan.
 |------|--------|---------|
 | `compliance/coverage.json` | Compliance | Catalog vs NIST titles that apply here |
 | `compliance/intel.json` | Compliance | Ranked relevant gaps + skipped not-applicable |
-| `compliance/metadata.json` | Compliance | Input fingerprints from the last successful Intel visit |
 | `testing/<stamp>.json` | Compliance Test | This run, any suite |
 | `state/testing.json` | Compliance Test | Latest any-suite run |
 | `compliance/<stamp>.json` | Compliance Test | This run, compliance suite only |

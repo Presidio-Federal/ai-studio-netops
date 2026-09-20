@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "updated_at": "2026-09-18T00:00:00Z",
+  "source_agent": "compliance",
+  "status": "NO_CANDIDATES",
+  "headline": "fixture skipped",
+  "next_action": "none",
+  "sources": [
+    {
+      "name": "fixture",
+      "url": "https://example.invalid/oscal",
+      "checked_at": "2026-09-18T00:00:00Z",
+      "ok": true
+    }
+  ],
+  "candidates": [],
+  "skipped_non_network": [
+    "AC-11 session lock / portable device — no endpoints in prod.json"
+  ]
+}

@@ -1,9 +1,0 @@
-{
-  "jobs": [
-    {
-      "nist": ["CM-7"],
-      "id": "http-server-disabled"
-    }
-  ],
-  "version": 1
-}

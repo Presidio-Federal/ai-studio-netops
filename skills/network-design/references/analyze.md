@@ -31,8 +31,7 @@ Open each if it exists. Record every path in `read[]`. Do not
    Open a stamp only when `inspect_when` plus `source_ref`
    name a config you will recommend.
 7. `compliance/coverage.json`, `compliance/intel.json`,
-   `compliance/metadata.json`, `state/compliance.json` — gaps,
-   recommendations, Intel fingerprints, and device score.
+   `state/compliance.json` — gaps, recommendations, and device score.
 8. `state/testing.json` — last suite risk.
 9. `state/servicenow.json`, `servicenow/cases/active.json`.
    Trends stamp if `servicenow/metadata-trends.json`

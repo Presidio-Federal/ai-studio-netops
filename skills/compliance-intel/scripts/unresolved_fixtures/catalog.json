@@ -1,0 +1,14 @@
+{
+  "version": "fixture-1",
+  "suites": {
+    "compliance": {
+      "checks": [
+        {
+          "id": "aaa-authorization-configured",
+          "nist": ["AC-3"],
+          "platforms": ["iosxe"]
+        }
+      ]
+    }
+  }
+}

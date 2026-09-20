@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.45.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.45.0"
+description: "v1.46.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.46.1"
 ---
 
 # Workspace handoff
@@ -66,43 +66,18 @@ ThousandEyes, or Cisco. Do not write other agents’ state files.
 
 | Tool | Path |
 |------|------|
-| Built-in file tools | workspace-relative — `inventory/prod.yaml` |
-| `execute_command` | `/workspace/inventory/prod.yaml` |
+| Built-in file tools | catalog row from the table below |
+| `execute_command` | those same catalog files on the mount the file tool already has |
 | Skill files | skill-relative; scripts under `/skills/user/<skill>/...` |
 
-`write_file` creates parents. Never `mkdir`. Never `/workspace/` or
-`workspace/` on built-in tools. Never `/shared_workspace/` (including
-`/shared_workspace/HAI-ASSISTANTS-WAPSPACES/...`), `sessions/`, or
-`Internal directory`.
-
-**Exception — MiniMax scheduled / sandbox:** `read_file` /
-`write_file` may be the session sandbox. If Access denied and
-Allowed paths include `file_explorer`, retry **once** as
-`file_explorer/<catalog row>` (no leading slash, no UUID). Same
-catalog, not a new tree. Applies to Modernization Lifecycle
-(`file_explorer/state/lifecycle.json`,
-`file_explorer/lifecycle/items/<pid>.json` — `detail_ref`
-stays the catalog row), Compliance
-(`file_explorer/compliance/intel.json`), Ops ServiceNow
-Trends (`file_explorer/servicenow/metadata-trends.json`,
-`file_explorer/servicenow/trends/<stamp>.json`), and Network
-Ops (`file_explorer/inventory/prod.json`,
-`file_explorer/state/testing.json`,
-`file_explorer/state/network-ops.json`, and the other catalog
-rows it reads). If a Lifecycle
-item write still fails, still merge onto `state/lifecycle.json`
-(same prefix that worked).
+`write_file` creates parents. Never `mkdir`. Do not invent prefixes
+or a second tree.
 
 A scheduled invoke may list `automations/schedules/<name>/<timestamp>` as an
 allowed `dirPath`. That folder is empty scratch. It is **not** the workspace.
 Do not `get_folder_structure` / `lstat` it. Do not write observations there.
-Do not prefix catalog paths with it (`…/inventory/prod.json` is wrong;
-`inventory/prod.json` is right). Health visits write catalog paths
-only (`health/<source>/<stamp>.json` and merge `state/health.json`).
-Trends writes `servicenow/metadata-trends.json` and
-`servicenow/trends/<stamp>.json` the same way — never under the
-schedule folder. Open catalog names with built-in tools as written
-in the table below.
+Do not prefix catalog paths with it. Open catalog names with built-in tools
+as written in the table below.
 
 The workspace is not the git repo. Config text, the job catalog, and job
 logs stay in git or Actions. Read git with `github_get_file`. Never
@@ -172,9 +147,8 @@ one row pointing at the writer — not a new schema file here.
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
 | `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
 | `state/compliance.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
-| `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Built from `github_get_file` catalog + NIST titles — not a workspace copy of git. Not the five-field envelope |
+| `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Accumulated catalog `nist:` + reviewed dispositions (`covered` `partial` `gap` `unwired` `not_applicable`). Not a six-family dump. Not a workspace copy of git. Not the five-field envelope |
 | `compliance/intel.json` | result | Compliance | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
-| `compliance/metadata.json` | metadata | Compliance | `compliance-intel` `schemas/compliance-metadata.schema.json` | Writer schema. Fingerprints of framework, estate, and git catalog (`hash` plus framework `name` `version` `control_count` `source`). `last_evaluated` from the last successful Intel visit. **Not** the five-field envelope. Not NIST, inventory, or a catalog copy. |
 | `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, the ServiceNow desk, or a Network Ops work queue. |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | Human roadmap: hardware, software, configuration, compliance, timeline, warehouse. Written every completed design. Replace in full. Path is `roadmap_ref`. |
@@ -188,7 +162,7 @@ one row pointing at the writer — not a new schema file here.
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | Lab slip. One ServiceNow visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Ticket arrays optional. Find/get only. Never write `state/servicenow.json`. |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | Attending SOAP rollup. Envelope `status` is worst of complete/partial **thousandeyes, splunk, iosxe** — ServiceNow does not vote. Rely on `soap` (`subjective` `objective` `assessment` `plan`), `consults.<plane>` (derived from the latest stamp; `source_ref` is the citation), `freshness` (`current`\|`stale`\|`missing` from `checked_at` + 26h), `series` (`window` 10, `watermark`, `points[]` copied from visit `metrics`), `mode`, `dispatched[]`, `coverage`. Envelope `next_action` is `soap.plan` (named nurse visit, refer Ops/Design, or `none`) — not an inspect path. `updated_at` is write time. Visit writers do **not** write this file. |
 | `state/lifecycle.json` | state | Modernization Analysis **and** Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | Consolidated estate, one row per evidence product id (`device_type` / `node_definition` / serial PID as written — never hostname-to-SKU). Five-field envelope. Modernization Analysis writes identity, `guidance`, `assessment`, `plan` (cost + timeline), `selected_replacement` when the operator **names** a SKU, `recommendations[]` on a plan invoke, and `roadmap_ref`. Copies through research. Never overwrite higher `source.reliability` with lower unless the operator overrides. Modernization Lifecycle merges hardware EoX, software train, PSIRT, NVD, CCW onto matching `pid`; copies through identity, `guidance`, `roadmap_ref`, `recommendations[]`, and `selected_replacement`; `recommended_replacement` only from Cisco hardware EoX; family-only bulletin → `replacement_ask` / candidates on the **row**; `recommended_software` only from Cisco software EoX / PSIRT Software Checker. CCW prices `selected_replacement` if set, else Cisco `recommended_replacement`. Empty hardware EoX on a virtual PID is `research.eox` `unavailable`. Do not create this file if missing (Lifecycle stops `unknown`). Rely on `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current if `now < expires_at`. |
-| `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. MiniMax sandbox: `write_file` `file_explorer/lifecycle/items/<pid>.json` after Access denied. |
+| `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. |
 | `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
 | `servicenow/metadata-lab.json` | metadata | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-metadata-lab.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. Not `health/metadata-servicenow.json`. |
 | `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | Writer schema. Groups, categories, match terms, marker, `lookback_days` (default 14), `min_related_cases` (default 3), `last_visit_id` from the workspace file (not the prompt). Missing scope: ask or stop — do not invent. **Not** the five-field envelope. |
@@ -261,9 +235,6 @@ markdown: Modernization Analysis only, after operator answers. Do not
 write `state/modernization.json`.
 Do not `ls` `lifecycle/`. Open `detail_ref` from the table. Do not
 invent `vuln-report.json` or `inventory/lifecycle.json`.
-MiniMax Lifecycle: sandbox `write_file` may need
-`file_explorer/` + catalog row; `detail_ref` stays the catalog
-row.
 Modernization Analysis may **read** `state/health.json` for a plan invoke; it
 does not write it.
 
@@ -299,8 +270,6 @@ research merge).
 `state/testing.json` is the latest **any-suite** run. `state/compliance.json`
 is the latest **`suites` includes `compliance`** run — not a copy of a
 reachability/routing/path run.
-`compliance/metadata.json` is Compliance Intel fingerprints (**metadata**,
-not enveloped). Not `state/compliance.json`.
 
 Sync yaml is Sync's file. **Ops NetBox SoT reads `inventory/prod.json` only** for
 seed. Missing json **blocks bootstrap** (owner: Ops Network Sync) — alert and
@@ -349,7 +318,6 @@ file.
    catalog row. Stamp files: observation fields (`watch_id`
    `coverage.state` `metrics` `vs_prior`) — not envelope-block.
    `health/metadata-*.json`: lookup ids — not envelope-block.
-   `compliance/metadata.json`: Intel input fingerprints — not envelope-block.
 5. `source_refs` that start with `workspace/` or `/workspace/` → strip and
    read the remainder.
 6. Lifecycle: `state/lifecycle.json` is the estate table (envelope +

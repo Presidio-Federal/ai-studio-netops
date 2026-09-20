@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "coverage",
   "title": "compliance/coverage.json",
-  "description": "Join of applicable 800-53 ids to live and static tests for this estate, from git catalog/matrix/bridge. Written by Compliance. Not a run result.",
+  "description": "Accumulated working state: catalog nist: mappings plus controls Intel has reviewed. Written by Compliance. Not a run result. Not a full NIST dump.",
   "type": "object",
   "required": ["version", "updated_at", "source_agent", "rows", "counts"],
   "properties": {
@@ -21,7 +21,8 @@
         "covered": {"type": "integer"},
         "partial": {"type": "integer"},
         "gap": {"type": "integer"},
-        "unwired": {"type": "integer"}
+        "unwired": {"type": "integer"},
+        "not_applicable": {"type": "integer"}
       }
     },
     "rows": {
@@ -37,7 +38,10 @@
           "live": {"type": "array", "items": {"type": "string"}},
           "static": {"type": "array", "items": {"type": "string"}},
           "platforms": {"type": "array", "items": {"type": "string"}},
-          "status": {"type": "string", "enum": ["covered", "partial", "gap", "unwired"]},
+          "status": {
+            "type": "string",
+            "enum": ["covered", "partial", "gap", "unwired", "not_applicable"]
+          },
           "partial_why": {"type": ["string", "null"]},
           "suggested_assert": {"type": ["string", "null"]}
         }
