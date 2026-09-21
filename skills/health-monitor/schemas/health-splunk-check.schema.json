@@ -119,7 +119,7 @@
         "scope": { "type": "string", "minLength": 1, "description": "device:<name> for each device that logged. window only when no device logged anything but DHCP." },
         "name": {
           "type": ["string", "null"],
-          "description": "IOS hostname from the syslog body. Same spelling as inventory when that name exists. Null on a window row."
+          "description": "Inventory device name after collapsing the syslog host address and the parsed hostname onto one device. The host as logged only when inventory has no match. Null on a window row."
         },
         "bgp_adjchange": { "type": ["integer", "null"] },
         "link_updown": { "type": ["integer", "null"] },

@@ -95,10 +95,14 @@ window (`complete`, zeros allowed). MCP/timeout with no extract is
 `unavailable`: counts **null**, never `0`; do not advance the watermark.
 
 The first visit searches from the oldest event still stored, not
-`-24h`. `metrics` is one row per device that logged anything other
-than DHCP `NO_LEASE`. `name` is the IOS hostname in the message,
-or the event `host` when the message has no hostname. `scope` is
-`device:<name>`. Signal counts may be 0. `readings` include BGP
+`-24h`. Read `inventory/prod.json` and `inventory/infra-sot.json`
+before writing rows. One physical device is one row. Match the
+parsed hostname and the syslog host address to the same inventory
+`name` (`devices[].name`, `interfaces[].cidr`, or `access.*.host`).
+Sum the counts. Do not keep both the address and the hostname.
+`metrics` is one row per inventory device that logged anything other
+than DHCP `NO_LEASE`. `name` and `scope` are `device:<inventory name>`.
+Signal counts may be 0. `readings` include BGP
 neighbor up/down, interface up/down, config commits, and auth
 mnemonics such as `AUTH_PASSED`. Cap 64. `scope` `window` only
 when no such device logged. First visit: `delta` `first`,

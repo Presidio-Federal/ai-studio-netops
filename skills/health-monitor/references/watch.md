@@ -44,6 +44,9 @@ explicit `null` when not collected.
    (`health/metadata-splunk.json` or
    `health/metadata-thousandeyes.json`). Never
    `get_folder_structure`. Follow `references/metadata.md`.
+   On a Splunk visit also `read_file` `inventory/prod.json` and
+   `inventory/infra-sot.json` before any search. Those files are
+   how a syslog host and a parsed hostname become one device.
 2. If `last_visit_id` is set, `read_file`
    `health/<source>/<last_visit_id>.json` and compare.
 3. Pick stamp `YYYY-MM-DDTHH-MM-SSZ`. If that path exists, add 1
@@ -74,11 +77,18 @@ Empty successful window → `complete`, zeros allowed, advance
 watermark to `checked_at`. MCP/timeout → `unavailable`, null
 counts, **do not** advance the watermark.
 
-`metrics` one row per device that logged anything other than DHCP
-`NO_LEASE`. `name` is the IOS hostname in the message when the
-message has one, otherwise the event `host`. Same spelling as
-inventory when that name exists. `scope` and `keys` are
-`device:<name>`. Counts: `bgp_adjchange` (`BGP-5-ADJCHANGE`),
+`metrics` one row per inventory device that logged anything other
+than DHCP `NO_LEASE`. Collapse first. A parsed IOS hostname and a
+syslog `host` address are the same device when either one matches
+the same inventory record: `devices[].name` in `inventory/prod.json`,
+or `devices[].name` plus `interfaces[].cidr` in
+`inventory/infra-sot.json` (compare the address, ignore the prefix
+length), or `access.restconf.host` / `access.ssh.host` when that
+string is the syslog host. Sum that device's counts onto one row.
+`name`, `scope`, and `keys` use the inventory `name`. Do not emit
+a second row for the address. A host with no inventory match stays
+one row under the host as logged, and the note says inventory has
+no name for it. Counts: `bgp_adjchange` (`BGP-5-ADJCHANGE`),
 `link_updown` (`LINEPROTO-5-UPDOWN`), `config_i` (`CONFIG_I`).
 Those counts may be 0. The row still exists. `scope` `window` with
 `name` null is only when the search succeeded and no device logged

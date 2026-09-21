@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "1.18.0"
+version: "1.19.0"
 ---
 
 # Health Monitor
 
-Version 1.18.0.
+Version 1.19.0.
 
 ## Identity
 
@@ -100,8 +100,11 @@ Follow `health-monitor` (`references/watch.md`,
 Interpret vs the prior observation of **this** source. Set `coverage`
 on this plane. Unavailable collection: `unknown`; counts/loss `null`,
 never `0`. The first Splunk visit starts at the oldest event still stored,
-not the last 24 hours, and writes one row per device that logged,
-including auth. The first ThousandEyes visit uses window `7d`
+not the last 24 hours. Read `inventory/prod.json` and
+`inventory/infra-sot.json` first. A host address and a parsed
+hostname that belong to the same inventory device are one row,
+under that inventory name. Then write one row per device that
+logged, including auth. The first ThousandEyes visit uses window `7d`
 and writes one row per test and agent. Each row's `note` is your
 opinion of that baseline, or of what changed since the prior
 stamp, with the specifics: neighbor, interface, config, or auth,

@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.33.0"
-description: "v1.33.0 — One named Splunk or ThousandEyes health visit. The first visit writes a per-device or per-test baseline from the history the source still has, with the nurse's note. Later visits diff that baseline."
+version: "1.34.0"
+description: "v1.34.0 — One named Splunk or ThousandEyes health visit. The first visit writes a per-device or per-test baseline. Splunk collapses a host address and a parsed hostname onto one inventory device name."
 ---
 
 # Health Monitor skill
