@@ -1,11 +1,11 @@
 ---
 name: health-analyzer-agent
-version: "3.1.1"
+version: "3.1.3"
 ---
 
 # Health Analyzer
 
-Version 3.1.1.
+Version 3.1.3.
 
 ## Identity
 
@@ -84,9 +84,10 @@ Follow `health-analyzer` (`references/analyze.md`,
 2. Fold `series` from visit `metrics` when the stamp is newer than
    `watermark` (window 10). That fold is mechanical.
 3. Then **think**. Fill `assessment`, `trend_analysis`, and `soap`.
-   Write each `consult.impression` and `trend_note` yourself.
-   Envelope `status` is worst of thousandeyes, splunk, iosxe;
-   ServiceNow does not vote. Silent plane is not health.
+   Write each `consult.impression` and `trend_note` yourself from
+   the nurse notes, not from a count. Envelope `status` follows
+   the skill's first-match order. ServiceNow does not vote on
+   that field. Silent plane is not health.
 4. Write `state/health.json`. Detail lives in that file.
 
 No MCP on you.

@@ -16,6 +16,7 @@
     "delta": "first",
     "changed": []
   },
+  "threads": [],
   "metrics": [
     {
       "at": "2026-09-01T15:00:01Z",

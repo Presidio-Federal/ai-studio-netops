@@ -65,7 +65,11 @@ Write `headline`, `coverage`, `metrics` (one row per collected
 device `scope` `device:<name>`), `readings`, and `vs_prior`.
 `readings` is every admin-up interface and every BGP neighbor:
 `name` as `inventory/prod.json` writes it, `kind` `interface` or
-`bgp`, `subject` the interface name or neighbor `id`, `state`
+`bgp`, `subject` the interface name or neighbor `id`, `keys` every
+join key that payload contains (`device:<inventory name>` and
+`interface:<name>` when the interface is in the payload), `note`
+the nurse's opinion (oper state, errors, discards, flaps, or
+prefixes, and what moved since the prior stamp), `state`
 (`if-oper-state-ready` or `fsm-established` and the other oper
 values the device returned), plus `in_errors` / `in_discards` /
 `num_flaps` on interfaces and `prefixes_received` on neighbors.
@@ -78,7 +82,9 @@ There is no baseline until a prior stamp exists. First visit:
 visit: diff `readings` against that prior file by `name` + `kind`
 + `subject`. `changed` lists only what moved: the inventory name,
 the interface or neighbor, and the old state to the new state.
-`headline` is that diff. Do not copy a name from this skill. Keys on
+`headline` is the opinion across those notes. A sentence that only
+says unchanged is not a note: name the state, the errors, and the
+prefixes. Do not copy a name from this skill. Keys on
 each metric
 row: `oper_not_ready`, `bgp_not_established`, `in_errors`,
 `in_discards`, `num_flaps`. Null when that device was not

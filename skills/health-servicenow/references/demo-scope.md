@@ -28,10 +28,9 @@ Count open out-of-scope INC/CHG in `out_of_scope_open`. Do **not**
 put those numbers in `ticket_numbers`. Do not invent numbers.
 Headline may quote the count.
 
-## Consult vs counts
+## Threads
 
-`open_incidents`, `open_changes`, `open_p1p2`, `ticket_numbers`,
-and consult `status` use **in-scope** rows only. Empty successful
-in-scope set → consult `ok`, zeros allowed.
-
-`ticket_history.related_records` are in-scope numbers only.
+`threads`, `ticket_numbers`, and the counts use **in-scope** rows
+only. Each in-scope payload becomes one thread with every join key
+it contains. Empty successful in-scope set → `threads` `[]` and
+zeros allowed.

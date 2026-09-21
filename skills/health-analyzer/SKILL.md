@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "3.1.1"
-description: "v3.1.1 — Analyze and trend production network health from visit stamps already on disk. Write SOAP into state/health.json. Reasoner — not a collector, not a merger."
+version: "3.1.3"
+description: "v3.1.3 — Analyze and trend production network health from visit stamps already on disk. Use each nurse's note. Join planes that share a type:name key. Write SOAP into state/health.json."
 ---
 
 # Health Analyzer skill
@@ -11,7 +11,8 @@ collect telemetry. You read `health/<source>/<stamp>.json` and
 Splunk / ThousandEyes / ServiceNow metadata. You write
 `state/health.json` only.
 
-Collectors already measured. Your job is **SOAP on the chart**:
+Copy ServiceNow `threads` onto that consult. Planes that share a
+`type:name` key are one thread. Collectors already measured. Your job is **SOAP on the chart**:
 what they asked, what the lab slips measured, what is unhealthy,
 what changed, what contradicts what, and the next clinical step.
 Do not recommend SKUs. Do not write a git change or test plan.

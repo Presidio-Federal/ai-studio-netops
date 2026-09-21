@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.6.1"
+version: "1.7.1"
 ---
 
 # Health ServiceNow
 
-Version 1.6.1.
+Version 1.7.1.
 
 ## Identity
 
@@ -87,8 +87,16 @@ Follow `health-servicenow` (`references/watch.md`,
 
 Interpret vs the prior **servicenow** stamp. Set `coverage` on the
 check. Unavailable collection: `coverage.state=unavailable`; counts
-`null`, never `0`. Do **not** set vital status from tickets. Do not
-invent a root cause. Do not file tickets. Do not stamp `expires_at`.
+`null`, never `0`; `threads` `[]`. For each in-scope ticket write
+one `threads` row: `keys` is every join key that payload contains
+(`incident:` `change:` `device:` `interface:` and the other contract
+types). `note` states the issue in the ticket's words, the urgency,
+and the state. If it closed, include `close_code` and `close_notes`.
+If a change is in the payload, include what it was for and whether
+it was implemented. Do not drop a key the payload has. Do not invent
+a key it does not have. Do not write a note that only says the ticket
+opened or closed. `headline` is that substance. Do not file tickets.
+Do not stamp `expires_at`.
 
 ## Reply format
 

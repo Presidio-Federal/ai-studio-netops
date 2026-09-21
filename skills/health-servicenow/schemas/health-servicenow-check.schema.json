@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-servicenow-check/v2",
   "title": "health/servicenow/YYYY-MM-DDTHH-MM-SSZ.json",
-    "description": "ServiceNow lab slip (Kind observation). Ticket counts are not a network vital. Vitals + vs_prior + coverage. Optional ticket_numbers (cap 5) when a metric needs an id. No summary, incidents, changes, or recent arrays.",
+    "description": "ServiceNow lab slip (Kind observation). threads is the nurse's judgment, one row per in-scope ticket story. keys lists every join key that tool payload contained (incident: change: device: interface: and the other contract types). The note says what those keys mean together. Counts stay on metrics.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -16,6 +16,7 @@
     "window",
     "coverage",
     "metrics",
+    "threads",
     "vs_prior"
   ],
   "properties": {
@@ -42,6 +43,12 @@
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/metric_row" }
+    },
+    "threads": {
+      "type": "array",
+      "maxItems": 16,
+      "description": "One row per in-scope ticket story. Empty when this visit found none.",
+      "items": { "$ref": "#/$defs/thread" }
     },
     "open_incidents": { "type": ["integer", "null"] },
     "open_changes": { "type": ["integer", "null"] },
@@ -108,6 +115,28 @@
           "enum": ["complete", "unavailable", "not_requested", "partial"]
         },
         "detail": { "type": "string" }
+      }
+    },
+    "thread": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "note"],
+      "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "description": "Every join key in that tool payload. type:name. Do not invent a key. Do not drop one the payload contains.",
+          "items": {
+            "type": "string",
+            "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+"
+          }
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The nurse's note for the higher agent. Include the issue in the ticket's words (short_description, and description when it adds the fault), urgency, and state. If closed, include close_code and close_notes. If a change is in the payload, include what it was for (justification or its short_description) and whether it was implemented. Do not write a sentence that only says the ticket opened or closed."
+        }
       }
     },
     "metric_row": {

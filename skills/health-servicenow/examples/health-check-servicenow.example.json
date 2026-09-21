@@ -5,7 +5,7 @@
   "checked_at": "2026-09-01T15:00:00Z",
   "ok": true,
   "status": "ok",
-  "headline": "0 open lab INC / 0 open lab CHG / 0 P1P2; 2 recently closed; 14 shared-instance open ignored",
+  "headline": "BGP adjacency to an inventory device was down. It is resolved: the neighbor was restored and the change that restored the peer is implemented.",
   "window": "active + recent closed",
   "coverage": {
     "state": "complete",
@@ -13,9 +13,22 @@
   },
   "vs_prior": {
     "prior_watch_id": "2026-09-01T09-00-00Z",
-    "delta": "unchanged",
-    "changed": []
+    "delta": "better",
+    "changed": [
+      "incident:<number> was BGP adjacency down, now resolved: neighbor restored",
+      "change:<number> implemented: restore that BGP peer"
+    ]
   },
+  "threads": [
+    {
+      "keys": [
+        "incident:<number>",
+        "change:<number>",
+        "device:<inventory-name>"
+      ],
+      "note": "BGP adjacency to the inventory device was down. Urgency high. State resolved. Close code solved. Close notes: the neighbor was restored. Change justification: restore that BGP peer. Change state implemented."
+    }
+  ],
   "metrics": [
     {
       "at": "2026-09-01T15:00:00Z",

@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.30.0"
-description: "v1.30.0 — One named Splunk or ThousandEyes health visit. Write that plane’s lab slip (metrics + vs_prior) and metadata. Use when the invoke names Splunk or ThousandEyes. Do not collect the other source."
+version: "1.32.0"
+description: "v1.32.0 — One named Splunk or ThousandEyes health visit. Each row's note is the nurse's opinion of what changed since the last stamp, with the specifics. Use when the invoke names Splunk or ThousandEyes."
 ---
 
 # Health Monitor skill

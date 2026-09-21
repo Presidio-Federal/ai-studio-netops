@@ -21,12 +21,20 @@ Reply `Trend:` is `vs_prior.delta` vs the prior stamp of **this**
 source (`servicenow.last_visit_id`). First visit: `delta` `first`.
 
 The observation is a **lab slip**. Required: `headline`, `coverage`,
-`metrics`, `vs_prior`. The stamp has no `summary`, `incidents[]`,
-`changes[]`, or `recent[]`. When a metric needs a ticket id, write
-`ticket_numbers` (in-scope numbers only, cap 5). Omit it when the
-counts are enough.
-
-Envelope `headline` is this visit’s check headline.
+`metrics`, `threads`, `vs_prior`. `headline` is the judgment: what
+the in-scope tickets mean for the network. Each `threads` row is
+one story. `keys` lists every join key that tool payload contained
+(`incident:<number>`, `change:<number>`, `device:<inventory name>`,
+`interface:<name>`, and any other contract type that was in the
+payload). `note` is what the higher agent needs from that ticket:
+the issue in the ticket's words (`short_description`, plus
+`description` when it adds the fault), urgency, and state. If it
+closed, `close_code` and `close_notes`. If a change is in the
+payload, what it was for (`justification` or its
+`short_description`) and whether it was implemented. A sentence
+that only says the ticket opened or closed is not a note.
+`ticket_numbers` repeats the
+incident and change numbers on the threads. Counts stay on `metrics`.
 
 ## Shared order
 
@@ -40,8 +48,8 @@ Envelope `headline` is this visit’s check headline.
    `health/servicenow/<stamp>.json` exists, add 1 second. Never
    overwrite. That stamp is `watch_id` on this observation.
 3. Collect (`references/query.md`, `references/demo-scope.md`). Write
-   the lab slip (`headline`, `coverage`, `metrics`, `vs_prior`), then
-   `read_file`.
+   the lab slip (`headline`, `coverage`, `metrics`, `threads`,
+   `vs_prior`), then `read_file`.
 4. Re-read metadata, write this visit’s `last_visit_id` /
    `last_collected_at` when collection succeeded. Keep **at most
    10** stamps under `health/servicenow/`. Delete older stamp files
@@ -49,8 +57,10 @@ Envelope `headline` is this visit’s check headline.
    write `health-board.md`. Do not `execute_command`. Persist with
    `write_file` on catalog paths.
 
-`metrics` one row `scope` `lab`. Keys: `open_incidents`,
-`open_changes`, `open_p1p2`, `out_of_scope_open`.
+`metrics` is one count row, `scope` `lab`: `open_incidents`,
+`open_changes`, `open_p1p2`, `out_of_scope_open`. `threads` is the
+judgment, one row per in-scope story, with every join key from that
+payload.
 
 ## Call budget
 

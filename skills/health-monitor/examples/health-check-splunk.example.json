@@ -5,7 +5,7 @@
   "checked_at": "2026-08-30T18:45:00Z",
   "ok": true,
   "status": "ok",
-  "headline": "One BGP neighbor went Up since the prior stamp. No link or config change on the other devices.",
+  "headline": "A BGP neighbor came Up since the prior stamp. No interface went down and nobody committed config, so the adjacency recovered without a config change.",
   "window": "2026-08-30T04:03:20Z",
   "window_start": "2026-08-30T04:03:20Z",
   "window_end": "2026-08-30T18:45:00Z",
@@ -33,7 +33,9 @@
       "name": "<inventory-name>",
       "kind": "bgp",
       "subject": "neighbor <neighbor-id> Up",
-      "count": 1
+      "keys": ["device:<inventory-name>"],
+      "count": 1,
+      "note": "BGP neighbor went Up (0 to 1) since the prior stamp. No LINEPROTO up/down and no CONFIG_I on this device, so the session recovered and this window has no config commit."
     }
   ]
 }

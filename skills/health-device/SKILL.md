@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.8.0"
-description: "v1.8.0 — IOS-XE device health visit. GET-only RESTCONF. Write a lab slip at health/iosxe/<stamp>.json and last_visit_id on health/metadata-iosxe.json. Use when the invoke names the network device or IOS-XE health check."
+version: "1.8.2"
+description: "v1.8.2 — IOS-XE device health visit. GET-only RESTCONF. Each reading's note is the nurse's opinion of what changed since the last stamp, with oper state and counters."
 ---
 
 # Health Device skill

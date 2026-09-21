@@ -149,10 +149,17 @@ plus **your** read of that plane’s series:
 - `evidence_for` / `evidence_against` — **your** lists from this
   visit and series, including facts that weaken the impression
 - ServiceNow also: `collection_status` from `coverage.state`
-  (`complete` / `partial` / `unavailable`); `ticket_history` is
-  **your** read of in-scope tickets (pattern / summary), not a
-  paste of the visit headline;   `related_records` from `ticket_numbers` (cap 5);
-  `prior_resolution` if the stamps say so, else null
+  (`complete` / `partial` / `unavailable`); copy the stamp's
+  `threads` onto this consult. `ticket_history.summary` is your
+  read of those notes. `related_records` are the `incident:` and
+  `change:` keys from `threads`. `prior_resolution` if a thread
+  says the ticket closed, else null
+- Join planes that share a `type:name` key. A `device:` key on a
+  ServiceNow thread is the same thread as that `device:` key on a
+  Splunk or IOS-XE row.
+- Each nurse's `note` is her opinion of what changed since her
+  last stamp. Use those notes in `consult.impression` and in SOAP.
+  Do not reduce a note to a count.
 
 Null if there is no latest stamp. Do not invent measurements.
 

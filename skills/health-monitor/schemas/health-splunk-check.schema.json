@@ -129,12 +129,20 @@
     "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "kind", "subject", "count"],
+      "required": ["name", "kind", "subject", "count", "keys", "note"],
       "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "description": "Every join key in this tool payload. type:name.",
+          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+" }
+        },
         "name": { "type": "string", "minLength": 1 },
         "kind": { "type": "string", "enum": ["bgp", "link", "config"] },
         "subject": { "type": "string", "minLength": 1, "description": "The fact to diff next visit. BGP: neighbor and Up/Down. Link: interface and up/down. Config: who changed it, when the message says." },
-        "count": { "type": "integer", "minimum": 1 }
+        "count": { "type": "integer", "minimum": 1 },
+        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. What this signal did since the prior stamp, with the neighbor or interface and whether config was committed. A sentence that only says something changed is not a note." }
       }
     }
   }

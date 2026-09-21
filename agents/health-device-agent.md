@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.8.0"
+version: "1.8.2"
 ---
 
 # Health Device
 
-Version 1.8.0.
+Version 1.8.2.
 
 ## Identity
 
@@ -82,8 +82,12 @@ Follow `health-device` (`references/watch.md`,
 `references/iosxe.md`).
 
 Set `coverage` on this check. Unavailable collection: `unknown` for
-this plane; counts `null`, never `0`. Do not invent a root cause. Do
-not stamp `expires_at`.
+this plane; counts `null`, never `0`. Each reading's `note` is your
+opinion of what changed since the prior stamp: oper state, errors,
+discards, flaps, prefixes, and whether the neighbor is still
+established. `headline` is that opinion across the readings. A
+sentence that only says unchanged is not a note. Do not invent a
+root cause the device did not show. Do not stamp `expires_at`.
 
 ## Reply format
 

@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "1.16.0"
+version: "1.17.0"
 ---
 
 # Health Monitor
 
-Version 1.16.0.
+Version 1.17.0.
 
 ## Identity
 
@@ -99,9 +99,14 @@ Follow `health-monitor` (`references/watch.md`,
 
 Interpret vs the prior observation of **this** source. Set `coverage`
 on this plane. Unavailable collection: `unknown`; counts/loss `null`,
-never `0`. Plane `status` is this visit only. Do not invent a root
-cause. Do not call the other source. Do not stamp `expires_at`. Do
-not write `state/`.
+never `0`. Each row's `note` is your opinion of what changed since
+that prior stamp, with the specifics: neighbor or interface and
+whether config was committed, or loss, latency, jitter, and rounds.
+`headline` is that opinion across the rows. A sentence that only
+says something changed is not a note. Plane `status` is this visit
+only. Do not invent a root cause the data does not support. Do not
+call the other source. Do not stamp `expires_at`. Do not write
+`state/`.
 
 ## Reply format
 

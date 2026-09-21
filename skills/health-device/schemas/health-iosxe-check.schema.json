@@ -133,8 +133,15 @@
     "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "kind", "subject", "state"],
+      "required": ["name", "kind", "subject", "state", "keys", "note"],
       "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "description": "Every join key in this tool payload. type:name.",
+          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+" }
+        },
         "name": { "type": "string", "minLength": 1, "description": "Device name as inventory/prod.json writes it." },
         "kind": { "type": "string", "enum": ["interface", "bgp"] },
         "subject": { "type": "string", "minLength": 1, "description": "Interface name as the device reports it, or the BGP neighbor id." },
@@ -142,7 +149,8 @@
         "in_errors": { "type": ["integer", "null"] },
         "in_discards": { "type": ["integer", "null"] },
         "num_flaps": { "type": ["integer", "null"] },
-        "prefixes_received": { "type": ["integer", "null"] }
+        "prefixes_received": { "type": ["integer", "null"] },
+        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. Oper state, errors, discards, flaps, or prefixes, and what moved since the prior stamp. A sentence that only says unchanged is not a note." }
       }
     }
   }

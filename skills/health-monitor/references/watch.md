@@ -86,13 +86,22 @@ a signal.
 `readings` one row per device and subject this window (`kind`
 `bgp` | `link` | `config`). BGP subject is `neighbor <id> Up` or
 `Down`. Link subject is the interface and up or down. Cap 24.
+`keys` on each row is every join key that payload contains:
+`device:<inventory name>`, `interface:<name>` when the message
+names an interface, and any other contract type present. Write
+all of them. `note` on each row is the nurse's opinion for the
+higher agent: which neighbor or interface, Up or Down, and whether
+CONFIG_I means someone committed config. Say what changed since
+the prior stamp. A sentence that only says something changed is
+not a note.
 
 There is no baseline until a prior stamp exists. First visit:
 `delta` `first`, `changed` []. Store the rows anyway. Later
 visit: diff this visit's `metrics` and `readings` against that
 prior file. `changed` lists only what moved: the inventory name,
-the signal, and the old value to the new value. `headline` is that
-diff. Do not copy a name from this skill.
+the signal, and the old value to the new value. `headline` is the
+opinion across those notes: what recovered, what flapped, and
+whether config was committed. Do not copy a name from this skill.
 
 ## ThousandEyes visit
 
@@ -121,7 +130,9 @@ Observation
 and `alerts.firing` — not loss alone.
 
 `metrics` one row per test and agent. `scope` is
-`test:<testId>/<agentName>`. `name` is the API `testName`.
+`test:<testId>/<agentName>`. `keys` lists every join key that
+result contains, including `test:<testId>` and `device:<inventory
+name>` when the payload names an inventory device. `note` on each row is the nurse's opinion: loss, latency, jitter, ok and error rounds, and what moved since the prior stamp. If path-vis ran on this test, say where it failed. A sentence that only says loss rose is not a note. `name` is the API `testName`.
 `agent` is the result agent name. `server` is `serverIp`. Keys:
 `loss_pct` (mean on ok rounds), `latency_ms_avg`, `jitter_ms`,
 `ok_rounds`, `error_rounds`. `latency_ms_p95` is null unless this
@@ -130,7 +141,8 @@ visit measured p95. Do not store every round.
 First visit: `delta` `first`, `changed` []. Later visit: diff
 each `scope` against the prior stamp. `changed` is only what
 moved: the API test name and the old value to the new value.
-`headline` is that diff. Do not copy a name from this skill.
+`headline` is the opinion across those notes, quoting the rounds,
+loss, latency, and jitter. Do not copy a name from this skill.
 
 Do not collect another source. Set `last_visit_id` on TE metadata
 after a successful write of the stamp.

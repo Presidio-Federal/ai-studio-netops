@@ -20,8 +20,9 @@ match_terms, or the inventory lab title.
 Let `marker` be metadata `servicenow.marker`.
 
 1. `snow_find_incidents(search=<marker>, active_only=true)`
-2. `snow_find_changes(search=<marker>)` for open changes (skip closed
-   / cancelled / implemented when the payload says so)
+2. `snow_find_changes(search=<marker>)` for changes in this window,
+   including implemented and closed. A closed incident that names a
+   change is the story.
 3. For each metadata `match_terms[]` item, at most one extra find
    (`search=<term>`) if the marker find missed in-scope rows and
    budget remains.
@@ -35,29 +36,43 @@ Let `marker` be metadata `servicenow.marker`.
    resolved/closed in-scope rows, newest first, cap 10. Do not pull
    the instance history.
 
-`snow_get_incident` / `snow_get_change` only when an **in-scope** find
-row is missing number, state, or urgency needed to rank.
+`snow_get_incident` / `snow_get_change` when an in-scope find row is
+missing the number, `short_description`, `description`, state,
+urgency, `close_code`, `close_notes`, a device name, a related
+change number, or the change's `justification`. The note cannot
+be written without them.
 
-Do not dump tables. Rank in-scope rows in memory (High
-urgency/impact, then newest). When a metric needs a ticket id,
-write `ticket_numbers` (those numbers only, cap 5). Omit it when
-the counts are enough. The stamp has no `incidents[]`,
-`changes[]`, or `recent[]`.
+Do not copy the ServiceNow record onto the stamp. For each in-scope
+story write one `threads` row. `keys` is every contract join key
+that payload contains: `incident:<number>`, `change:<number>` when a
+change number is present, `device:<inventory name>` for each
+inventory device the text names, `interface:<name>` when an
+interface is named, and the same for `site` `service` `test`
+`control` `recommendation` when the payload has them. Write all of
+them. Do not invent a key the payload does not have. `note` carries
+the issue in the ticket's words, urgency, and state. When the
+ticket is closed, include `close_code` and `close_notes`. When a
+change is in the payload, include what it was for and whether it
+was implemented. Do not write a sentence that only says the ticket
+opened or closed. `ticket_numbers` lists those incident and change
+numbers. Cap 16 threads.
 
 ## Rank
 
 `status` is `ok` when find/get succeeded and `unknown` when
-coverage is `unavailable`. Open in-scope tickets do not set
-`status`. Record them on `metrics` and, when a count needs an id,
-`ticket_numbers`. An empty in-scope set is `ok` with zeros.
-Out-of-scope rows stay in `out_of_scope_open`. This plane does not
-vote on the health envelope.
+coverage is `unavailable`. Open tickets do not set `status`.
+Record counts on `metrics`. Record the judgment on `threads`.
+An empty in-scope set is `ok` with zeros and `threads` `[]`.
+Out-of-scope rows stay in `out_of_scope_open` and get no thread.
 
 `collection_status` is `complete` when find/get succeeded,
 `unavailable` on MCP/auth/timeout (counts `null`, never `0`).
 
-Observation `headline` quotes in-scope `open_incidents`,
-`open_changes`, `open_p1p2`, kept INC/CHG numbers, and
-`out_of_scope_open` — evidence, not SOAP.
+Observation `headline` is the same substance across `threads`:
+what was wrong, and what was done about it. Later visit:
+`vs_prior.changed` says what moved since `prior_watch_id`,
+including the issue and how the state changed. First visit:
+`delta` `first`, `changed` `[]`, and the threads still hold the
+issue, the state, and any close or change detail.
 
 Do not file or update a ticket.

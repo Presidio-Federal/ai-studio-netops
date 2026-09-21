@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
-version: "1.6.1"
-description: "v1.6.1 — Read-only ServiceNow health visit for this lab’s tickets. Write the lab slip and metadata. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+version: "1.7.1"
+description: "v1.7.1 — Read-only ServiceNow health visit. Each thread note states the issue, the state, and how it was closed or changed, plus every join key the payload contained. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill
@@ -43,7 +43,7 @@ run a validator. Persist with `write_file` on catalog paths.
 | Path | Kind | Envelope |
 |------|------|----------|
 | `health/metadata-servicenow.json` | metadata | Marker and match terms. **Not** five-field. |
-| `health/servicenow/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics` and `vs_prior`. |
+| `health/servicenow/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics`, `threads`, and `vs_prior`. |
 
 Use exactly: `references/watch.md`, `references/query.md`,
 `references/demo-scope.md`, `references/metadata.md`,

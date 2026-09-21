@@ -146,9 +146,18 @@
         "latency_ms_avg",
         "jitter_ms",
         "ok_rounds",
-        "error_rounds"
+        "error_rounds",
+        "keys",
+        "note"
       ],
       "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "description": "Every join key in this tool payload. type:name. test:<id> when the API returned a test id. device: when the payload names an inventory device.",
+          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+" }
+        },
         "at": { "type": "string", "minLength": 1 },
         "scope": { "type": "string", "minLength": 1, "description": "test:<testId>/<agentName>. Stable key for the next visit's diff." },
         "name": { "type": ["string", "null"], "description": "API testName. Null when that test returned no result." },
@@ -159,7 +168,8 @@
         "latency_ms_avg": { "type": ["number", "null"] },
         "jitter_ms": { "type": ["number", "null"] },
         "ok_rounds": { "type": ["integer", "null"] },
-        "error_rounds": { "type": ["integer", "null"] }
+        "error_rounds": { "type": ["integer", "null"] },
+        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. Loss, latency, jitter, ok and error rounds, and what moved since the prior stamp. Include the path-vis hop when this row is the worst test. A sentence that only says loss rose is not a note." }
       }
     }
   }
