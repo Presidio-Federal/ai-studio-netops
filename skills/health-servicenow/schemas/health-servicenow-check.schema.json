@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-servicenow-check/v2",
   "title": "health/servicenow/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "ServiceNow lab slip (Kind observation). Ticket counts are not a network vital. Vitals + vs_prior + coverage. Omit incidents[]/changes[] unless they add numbers not in metrics.",
+    "description": "ServiceNow lab slip (Kind observation). Ticket counts are not a network vital. Vitals + vs_prior + coverage. Optional ticket_numbers (cap 5) when a metric needs an id. No summary, incidents, changes, or recent arrays.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -27,13 +27,17 @@
     },
     "checked_at": { "type": "string", "minLength": 1 },
     "ok": { "type": ["boolean", "null"] },
-    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+    "status": { "type": "string", "enum": ["ok", "unknown"], "description": "Collection only. ok when find/get succeeded. unknown when coverage is unavailable. Open tickets do not set this." },
     "headline": { "type": "string", "minLength": 1 },
     "window": { "type": "string", "minLength": 1 },
     "prior_observation": { "type": ["string", "null"] },
-    "summary": { "type": "string" },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
+    "concerns": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/entity_ref" }
+    },
     "metrics": {
       "type": "array",
       "minItems": 1,
@@ -43,23 +47,39 @@
     "open_changes": { "type": ["integer", "null"] },
     "open_p1p2": { "type": ["integer", "null"] },
     "out_of_scope_open": { "type": ["integer", "null"] },
-    "incidents": {
+    "ticket_numbers": {
       "type": "array",
       "maxItems": 5,
-      "items": { "$ref": "#/$defs/ticket_row" }
-    },
-    "changes": {
-      "type": "array",
-      "maxItems": 5,
-      "items": { "$ref": "#/$defs/ticket_row" }
-    },
-    "recent": {
-      "type": "array",
-      "maxItems": 10,
-      "items": { "$ref": "#/$defs/ticket_row" }
+      "description": "In-scope ticket numbers when a metric needs an id. Omit when the counts are enough.",
+      "items": { "type": "string", "minLength": 1 }
     }
   },
   "$defs": {
+    "entity_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "device",
+            "interface",
+            "site",
+            "service",
+            "test",
+            "control",
+            "incident",
+            "change",
+            "recommendation"
+          ]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": ["string", "null"] },
+        "source_ref": { "type": ["string", "null"] }
+      }
+    },
     "vs_prior": {
       "type": "object",
       "additionalProperties": false,
@@ -108,27 +128,6 @@
         "open_changes": { "type": ["integer", "null"] },
         "open_p1p2": { "type": ["integer", "null"] },
         "out_of_scope_open": { "type": ["integer", "null"] }
-      }
-    },
-    "ticket_row": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["number"],
-      "properties": {
-        "number": { "type": "string", "minLength": 1 },
-        "sys_id": { "type": ["string", "null"] },
-        "state": { "type": ["string", "null"] },
-        "urgency": { "type": ["string", "null"] },
-        "impact": { "type": ["string", "null"] },
-        "short_description": { "type": ["string", "null"] },
-        "opened_at": { "type": ["string", "null"] },
-        "devices": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string" }
-        },
-        "scope": { "type": "string", "enum": ["demo", "out_of_scope"] },
-        "scope_reason": { "type": ["string", "null"] }
       }
     }
   }

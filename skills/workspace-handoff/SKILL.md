@@ -1,28 +1,27 @@
 ---
 name: workspace-handoff
-description: "v1.46.1 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.46.1"
+description: "v1.49.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
+version: "1.49.0"
 ---
 
 # Workspace handoff
 
 The shared workspace is the state. This skill is the catalog: which files
 exist, who writes each one, and which fields another agent may read.
-Each agent updates its **coordination** pages (`state`, `request`, `result`)
-with the common envelope (`headline` + `next_action`). Observations,
-metadata, and configuration use the writer schema only. Snapshots use the
-writer schema except `inventory/infra-sot.json`, which publishes the
-envelope.
+Coordination files (`state`, `request`, `result`) use the envelope.
+Observations, metadata, and configuration use the writer schema.
+Snapshots use the writer schema, except `inventory/infra-sot.json`,
+which publishes the envelope.
 
-**Writer skill** owns the write schema, examples, and validator. Load a
-schema only when you are that writer, from that skill. Never copy a write
-schema into this skill.
+The writer skill owns the schema, the example, and the procedure.
+Load a schema only when you are that writer. Do not copy a schema
+into this skill.
 
-**Details** go in that agent’s directory. **Summary** is `state/<name>.json`
-(one writer, except `state/lifecycle.json`: Modernization Analysis and
-Modernization Lifecycle merge). Health: per-plane metadata and
-observations, rollup `state/health.json` (Health Analyzer). Do not
-invent other health files.
+One writer per file. `state/lifecycle.json` is the exception:
+Modernization Analysis and Modernization Lifecycle both write it.
+Details live in that agent's directory. The summary is
+`state/<name>.json`. The health rollup is `state/health.json`
+(Health Analyzer).
 
 The file and the delegation are one act:
 
@@ -30,13 +29,12 @@ The file and the delegation are one act:
 2. If a subagent is attached and this file is their input, invoke them and wait.
 3. Never tell the operator to go run the next agent.
 
-**Exception — Health Analyzer:** if a health plane is stale or
-missing and that row’s Writer is attached, invoke the named visit
-for this workspace. `assess-now`: **do not wait**.
-`refresh-then-assess`: wait only for planes both stale and material
-to the question. Continue on files already on disk unless that mode
-waited. Record `dispatched[]` on `state/health.json`. Do not tell
-the operator to run the Writer.
+**Health Analyzer.** If a plane is clock-stale (`checked_at` + 26h) or
+missing, and that Writer is attached, invoke the task line. A stamp
+inside 26h is current, including `coverage` `unavailable`.
+`assess-now`: do not wait. `refresh-then-assess`: wait only for planes
+that are both stale and material. Record `dispatched[]` on
+`state/health.json`.
 
 | Plane | Writer | Task line |
 |-------|--------|-----------|
@@ -45,300 +43,148 @@ the operator to run the Writer.
 | `iosxe` | Health Device | `Run the network device health check only.` |
 | `servicenow` | Health ServiceNow | `Run the ServiceNow health check only.` |
 
-Splunk and ThousandEyes are separate invokes. Do not send an unnamed
-Health Monitor line.
+Splunk and ThousandEyes are separate invokes.
 
-**Exception — Modernization Analysis:** if any `state/lifecycle.json` row is
-missing EoX or expired and Modernization Lifecycle is attached,
-invoke `Run the Modernization Lifecycle check only.` and **do not
-wait**. Continue on files already on disk. Record `dispatched[]` on
-`state/lifecycle.json`. Do not tell the operator to run the collector.
+**Modernization Analysis.** If any `state/lifecycle.json` row is missing
+EoX or expired, and Modernization Lifecycle is attached, invoke
+`Run the Modernization Lifecycle check only.` and do not wait. Record
+`dispatched[]` on `state/lifecycle.json`.
 
-**Exception — Network Design:** reads the chart already on disk
-(inventory, health, lifecycle, compliance, tickets). Missing or
-stale is reduced coverage; still write `state/design.json` with
-all four layers. Warehouse **check** uses ServiceNow
-`snow_find_stockrooms` / `snow_find_assets`. Reserve / order /
-CHG only when they asked to coordinate. Do not collect Splunk,
-ThousandEyes, or Cisco. Do not write other agents’ state files.
+**Compliance.** Writing `compliance/intel.json` does not invoke
+Compliance Author. Invoke Author and wait when they name INTEL ids.
+Invoke Compliance Test and wait when they ask to run the suite.
 
-## Paths (once)
+**Network Design.** Read the chart already on disk. Missing or stale
+inputs are reduced coverage; still write `state/design.json`. Warehouse
+check uses this agent's ServiceNow tools. Do not collect Splunk,
+ThousandEyes, or Cisco. Do not write other agents' state files.
+
+## Paths
 
 | Tool | Path |
 |------|------|
-| Built-in file tools | catalog row from the table below |
-| `execute_command` | those same catalog files on the mount the file tool already has |
+| Built-in file tools | a catalog row, as written below |
+| `execute_command` | those same files on the mount the file tool already has |
 | Skill files | skill-relative; scripts under `/skills/user/<skill>/...` |
 
-`write_file` creates parents. Never `mkdir`. Do not invent prefixes
+`write_file` creates parents. Never `mkdir`. Do not invent a prefix
 or a second tree.
 
-A scheduled invoke may list `automations/schedules/<name>/<timestamp>` as an
-allowed `dirPath`. That folder is empty scratch. It is **not** the workspace.
-Do not `get_folder_structure` / `lstat` it. Do not write observations there.
-Do not prefix catalog paths with it. Open catalog names with built-in tools
-as written in the table below.
+A scheduled invoke may list `automations/schedules/<name>/<timestamp>`
+as an allowed `dirPath`. That folder is empty scratch. It is not the
+workspace. Do not list it, write there, or prefix a catalog path with it.
 
-The workspace is not the git repo. Config text, the job catalog, and job
-logs stay in git or Actions. Read git with `github_get_file`. Never
-`write_file` a copy of a git file into the workspace so a script can run.
+The workspace is not the git repo. Read git with `github_get_file`.
+Do not `write_file` a copy of a git file. `inventory/runtime/` is
+gitignored (CI runner only).
 
-**Write only catalog paths.** If a path is not a row in the table below for
-this agent, do not create it. Do not write helper scripts (`.py`), scratch
-dumps (`_git_input.json`), or `prepare_*` files. Do not invent files.
-Health: do not invent `health-board.md`. Compliance: do not invent matrix
-copies. `inventory/runtime/` is gitignored (CI runner only).
+Write only catalog paths. Do not write helper scripts, scratch dumps,
+or `prepare_*` files. Do not invent `health-board.md`,
+`lab-access.json`, `vuln-report.json`, `runs/`, `risk/`,
+`trend-analysis.json`, `remediation-request.json`, a root
+`compliance.json`, or extra `lifecycle/` and `design/` paths.
+Compliance Test writes `testing/YYYY-MM-DDTHH-MM-SSZ.json` only.
 
 ## Envelope
-
-Coordination artifacts use the common envelope when marked **state**,
-**request**, or **result** in the catalog. Observations, snapshots,
-metadata, and configuration follow their writer-owned schemas. Readers
-apply the envelope blocking rule only to **required coordination inputs**;
-otherwise they use catalog rely-on fields and report reduced coverage.
 
 ```json
 {
   "updated_at": "2026-08-20T17:00:00Z",
-  "source_agent": "ops-network-sync",
+  "source_agent": "<writer>",
   "status": "ok",
   "headline": "One line a human can read",
   "next_action": "What the next agent or human should do"
 }
 ```
 
-**Blocking (required coordination input only):** missing file, stale
-`updated_at`, or failed `status` blocks **that dependent action** — not
-the whole run. Alert the operator with artifact path, reason, owner
-(catalog Writer), and the next invoke. Continue independent work.
-Missing **optional** inputs → `partial` / `unknown` coverage (Health) or
-skip that step. Never infer missing workspace data from chat. Quote
-`headline` when present. Do not paste the file.
+Use this on **state**, **request**, and **result**, and on
+`inventory/infra-sot.json`. Apply the blocking rule only when that
+file is a required coordination input.
 
-`inventory/infra-sot.json` is a published **snapshot** that **does** carry
-this envelope (handoff from Ops NetBox SoT). Health check files under
-`health/thousandeyes/`, `health/splunk/`, `health/iosxe/`, and
-`health/servicenow/` are
-**observations** — not this envelope. `state/health.json` is the Health
-Analyzer **state** rollup. Nurses do not write `state/`.
+Missing file, stale `updated_at`, or failed `status` blocks that
+dependent action. Alert with the path, the reason, the catalog Writer,
+and the next invoke. Continue independent work. A missing optional
+input is reduced coverage. Do not infer workspace data from chat.
+Quote `headline`. Do not paste the file.
 
-Do not write `lab-access.json`, `vuln-report.json`, `runs/`,
-`risk/`, `trend-analysis.json`, `remediation-request.json`, or a
-root `compliance.json`. Compliance Test writes
-`testing/YYYY-MM-DDTHH-MM-SSZ.json` (e.g. `2026-08-21T19-56-18Z.json`);
-do not invent other files under `testing/`. Do not invent
-`lifecycle/` or `design/` paths other than the catalog rows below.
+Health stamps are observations. Nurses do not write `state/`.
+
+## Entity reference
+
+When a writer names a thing another agent joins on, use these fields.
+Writer schemas copy this shape. Do not copy the referenced object.
+Do not invent an id. Do not put topology, edges, or cause here.
+
+- `type` (required) — `device` `interface` `site` `service` `test` `control` `incident` `change` `recommendation`
+- `name` (required) — the spelling already in `inventory/prod.json` or `inventory/infra-sot.json`
+- `id` — the source-native id when the file you opened has one; otherwise null
+- `source_ref` — the catalog path or ticket id, not a payload
+
+Extend `type` only when a write cannot proceed with this list.
+Do not add a catalog file for entities.
 
 ## Catalog
 
-Writer owns the write schema. Reader uses **rely on** only. For catalog
-**state** / **request** / **result**, also the envelope. Catalog change =
-one row pointing at the writer — not a new schema file here.
+Reader uses **rely on**. Writer procedure stays in the writer skill.
+For **state**, **request**, and **result**, also use the envelope.
+
+Observation stamps are `YYYY-MM-DDTHH-MM-SSZ.json`, append-only.
+Open the prior stamp from that source's metadata `last_visit_id`.
+Do not list the directory. The writer keeps 10 and deletes older
+after the write.
 
 | File | Kind | Writer | Schema | Readers may rely on |
 |------|------|--------|--------|---------------------|
-| `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | Canonical accumulating inventory and published access snapshot (`network-access-inventory/v3`). Merge in place; extra keys allowed. Rely on `snapshot_id`, `collected_at` `published_at` `expires_at` (current iff now < `expires_at`; stale access is inspect-only), `status` `complete`\|`partial`, `coverage` (not `unavailable`; failed collect is not this file), documented device identity/access (`name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf`/`ssh` `source_metadata`). `next_action` is not on this file. |
-| `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`), `seed`, `parents.*.id`, `devices[].name` `id` `device_type` `software_version` (IOS-XE `version` or null), `interfaces[]` name/id/`cidr`, `cables[]` names+ids, `counts` |
-| `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | Replaceable projection (`network-sync-state/v2`). Envelope `status` is this operation only. Rely on `operation_id` `operation` `started_at` `completed_at`; `inventories.*.latest_attempt`; `inventories.*.current_snapshot` (`snapshot_id` must match the json file, `path`, freshness, `status`, `coverage`); workflow `result` `run_id` `html_url` `updated_at` (per-workflow result words; not the GitHub check); `gaps`; `next_action` string or JSON `null` — never `"none"`. Failed collect updates `latest_attempt` only. |
-| `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` (`bootstrap`\|`audit`\|`reconcile`; `refresh` records `audit`) `seed_match` `counts` `links[]` `details` |
-| `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` (`yes`\|`no`). Reset sets `config_sync` and `netbox` to `no`. Onboard is the only writer. |
-| `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope + scope in that schema |
+| `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | `snapshot_id` `collected_at` `published_at` `expires_at` (current iff now < `expires_at`) `status` `coverage` `name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf` `access.ssh` `source_metadata`. Missing prod.json blocks NetBox bootstrap. |
+| `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` `cables[]` `counts` |
+| `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
+| `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
+| `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
+| `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
 | `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` |
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
-| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` — **only** when `suites` includes `compliance` |
-| `state/compliance.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` — **only** a compliance-suite run |
-| `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | writer schema (`updated_at` `source_agent` `rows` `counts`). Accumulated catalog `nist:` + reviewed dispositions (`covered` `partial` `gap` `unwired` `not_applicable`). Not a six-family dump. Not a workspace copy of git. Not the five-field envelope |
-| `compliance/intel.json` | result | Compliance | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` (`catalog_covered` `relevant_missing` `not_applicable`), `candidates[]` sorted by `priority` (`critical`\|`high`\|`medium`\|`low`), `skipped_non_network`, `why_network`. Authoring input. |
-| `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope + ticket slot (ServiceNow) |
-| `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment`, four arrays `hardware[]` `software[]` `configuration[]` `compliance[]`, `timeline[]`, `warehouse`, `asks[]` (`why` + `question`), `answers`, `horizon`, `coverage`, `read[]`, `roadmap_ref`. Status `asking` when asks remain. Do not treat this file as health, lifecycle, the ServiceNow desk, or a Network Ops work queue. |
-| `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | Human roadmap: hardware, software, configuration, compliance, timeline, warehouse. Written every completed design. Replace in full. Path is `roadmap_ref`. |
-| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` (`recommend`\|`implement`), `finding` (`source` `kind` `missing_config`\|`test_bug`\|`other`), `change` (`devices[]` `peer` `files[]` `summary`), `git` (`ref` `commit_sha`), `ci` (`workflow` `ref` `run_id` `result`), `pr`. GitOps change this invoke. Not Design’s roadmap. |
-| `health/metadata-splunk.json` | metadata | Health Monitor (Splunk visit) | `health-monitor` `schemas/health-metadata-splunk.schema.json` | Writer schema. Splunk `index` / `sourcetype` / `collected_through` / `last_visit_id` from the workspace file (not from the skill or prompt). **Not** the five-field envelope. |
-| `health/metadata-thousandeyes.json` | metadata | Health Monitor (TE visit) | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | Writer schema. TE `account_id`, `tests[]`, `last_visit_id` from the API / workspace file (not from the skill or prompt). **Not** the five-field envelope. |
-| `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. |
-| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | Lab slip. One TE visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Omit `tests[]` except standing-order `path_summary` on the worst test. |
-| `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | Lab slip. One Splunk visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Do not dump `by_mnemonic` / `samples`. |
-| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | Lab slip. One device visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Omit `devices[]` trees. PAT `port` from `inventory/prod.json` `access.restconf.port`. |
-| `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | Lab slip. One ServiceNow visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. Required `headline` `coverage` `metrics[]` `vs_prior`. Ticket arrays optional. Find/get only. Never write `state/servicenow.json`. |
-| `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | Attending SOAP rollup. Envelope `status` is worst of complete/partial **thousandeyes, splunk, iosxe** — ServiceNow does not vote. Rely on `soap` (`subjective` `objective` `assessment` `plan`), `consults.<plane>` (derived from the latest stamp; `source_ref` is the citation), `freshness` (`current`\|`stale`\|`missing` from `checked_at` + 26h), `series` (`window` 10, `watermark`, `points[]` copied from visit `metrics`), `mode`, `dispatched[]`, `coverage`. Envelope `next_action` is `soap.plan` (named nurse visit, refer Ops/Design, or `none`) — not an inspect path. `updated_at` is write time. Visit writers do **not** write this file. |
-| `state/lifecycle.json` | state | Modernization Analysis **and** Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | Consolidated estate, one row per evidence product id (`device_type` / `node_definition` / serial PID as written — never hostname-to-SKU). Five-field envelope. Modernization Analysis writes identity, `guidance`, `assessment`, `plan` (cost + timeline), `selected_replacement` when the operator **names** a SKU, `recommendations[]` on a plan invoke, and `roadmap_ref`. Copies through research. Never overwrite higher `source.reliability` with lower unless the operator overrides. Modernization Lifecycle merges hardware EoX, software train, PSIRT, NVD, CCW onto matching `pid`; copies through identity, `guidance`, `roadmap_ref`, `recommendations[]`, and `selected_replacement`; `recommended_replacement` only from Cisco hardware EoX; family-only bulletin → `replacement_ask` / candidates on the **row**; `recommended_software` only from Cisco software EoX / PSIRT Software Checker. CCW prices `selected_replacement` if set, else Cisco `recommended_replacement`. Empty hardware EoX on a virtual PID is `research.eox` `unavailable`. Do not create this file if missing (Lifecycle stops `unknown`). Rely on `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current if `now < expires_at`. |
-| `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | Per-PID Cisco dump. Replace when that PID is collected. Rely on `eox` `replacement` (`sku` Cisco-only; `family` `candidates` `ask`; costs after CCW) `recommended_software` `psirts` `vulnerabilities` `expires_at`. Do **not** store `selected_replacement` here. Path is `items[].detail_ref`. Do not `ls` `lifecycle/`. |
-| `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | Human-readable sequence (order, stage, deploy, schedule, cutover). Written only after `guidance.answers` is non-empty on a plan invoke. Replace in full. Path is `roadmap_ref`. Not a second JSON plan. Lifecycle does not write this file. |
-| `servicenow/metadata-lab.json` | metadata | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-metadata-lab.schema.json` | Writer schema. `servicenow.marker` / `match_terms` / `last_visit_id` from the workspace file. Missing marker: ask or stop — do not invent. **Not** the five-field envelope. Not `health/metadata-servicenow.json`. |
-| `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | Writer schema. Groups, categories, match terms, marker, `lookback_days` (default 14), `min_related_cases` (default 3), `last_visit_id` from the workspace file (not the prompt). Missing scope: ask or stop — do not invent. **Not** the five-field envelope. |
-| `servicenow/trends/<stamp>.json` | observation | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-trend.schema.json` | One trends visit writes **one** new file. Never overwrite. At most **10** stamps; writer deletes older after write. `clusters[]` `metrics[]` required. Find/get + knowledge read only. Never write `state/servicenow.json` or `health/`. |
-| `state/servicenow.json` | state | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history[]` `trend` |
-| `servicenow/cases/active.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases + `devices[]` |
+| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` — only when `suites` includes `compliance` |
+| `state/compliance.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` — only a compliance-suite run |
+| `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | `updated_at` `source_agent` `rows` `counts` |
+| `compliance/intel.json` | result | Compliance | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` `candidates[]` `skipped_non_network` `why_network` |
+| `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope, ticket slot |
+| `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment` `hardware[]` `software[]` `configuration[]` `compliance[]` `timeline[]` `warehouse` `asks[]` `answers` `horizon` `coverage` `read[]` `roadmap_ref` |
+| `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
+| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `finding` `change` `git` `ci` `pr` |
+| `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` |
+| `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `tests[]` `last_visit_id` |
+| `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `last_visit_id` |
+| `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at`. RESTCONF port stays on `inventory/prod.json`. |
+| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `coverage` `metrics` `vs_prior` `alerts` `path_summary` |
+| `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `coverage` `metrics` `readings` `vs_prior` |
+| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `coverage` `metrics` `readings` `vs_prior` `concerns` |
+| `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `coverage` `metrics` `vs_prior` `ticket_numbers` |
+| `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched`. `next_action` is `soap.plan`. |
+| `state/lifecycle.json` | state | Modernization Analysis and Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | envelope, `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current iff now < `expires_at`. |
+| `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | `eox` `replacement` `recommended_software` `psirts` `vulnerabilities` `expires_at`. Path is `items[].detail_ref`. |
+| `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | path is `roadmap_ref` |
+| `servicenow/metadata-lab.json` | metadata | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-metadata-lab.schema.json` | `marker` `match_terms` `last_visit_id` |
+| `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | `groups` `categories` `match_terms` `marker` `lookback_days` `min_related_cases` `last_visit_id` |
+| `servicenow/trends/<stamp>.json` | observation | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-trend.schema.json` | `clusters` `metrics` |
+| `state/servicenow.json` | state | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history` `trend` |
+| `servicenow/cases/active.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases, `devices[]` |
 | `servicenow/cases/index.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-index.schema.json` | numbers this agent has touched |
-| `servicenow/requests/**` | request | Ops ServiceNow Operator (queue) | `ops-snow-mcp` `schemas/servicenow-request.schema.json` | **Not** the five-field envelope. `servicenow-request/v1`: `request_id` `created_at` `requested_by` `operation` `correlation_id` `idempotency_key` `source_refs` `authorization` `record`. Pending file the operator named. |
+| `servicenow/requests/**` | request | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-request.schema.json` | `request_id` `created_at` `requested_by` `operation` `correlation_id` `idempotency_key` `source_refs` `authorization` `record` |
 
-## Health layout
+## Writing
 
-Lookup: `health/metadata-splunk.json`,
-`health/metadata-thousandeyes.json`,
-`health/metadata-servicenow.json` (**metadata**, not enveloped).
-Dated visits under `health/thousandeyes/`, `health/splunk/`
-(Health Monitor), `health/iosxe/` (Health Device), and
-`health/servicenow/` (Health ServiceNow)
-(`YYYY-MM-DDTHH-MM-SSZ.json`) (**observation**). At most **10**
-stamps per source directory; that writer deletes older files after
-a new write. Rollup:
-`state/health.json` (**state**, Health
-Analyzer only). Do not write `health-board.md`. Keep these lowercase
-paths. Timestamped observations are never overwritten. `watch_id`
-matches **this visit’s** new observation.
-
-On `state/health.json`, readers may use the envelope, `soap`,
-`consults`, `freshness`, `series`, `coverage`, `mode`,
-`dispatched[]`, and `next_action` (`soap.plan`). Envelope `status`
-is vital worst-of (not ServiceNow).
-**Current** when `freshness.<plane>.state` is `current`. **Stale**
-when `stale`. **Missing** when `missing`. `updated_at` is write time.
-Write schema lives in `health-analyzer`. Do not load a visit writer’s
-skill to read the rollup.
-`health/thousandeyes|splunk/<stamp>.json` are Health Monitor observations.
-`health/iosxe/<stamp>.json` is Health Device.
-`health/servicenow/<stamp>.json` is Health ServiceNow.
-IOS-XE PAT is `inventory/prod.json` `access.restconf.port`, not
-metadata.
-
-Visit writers persist with `write_file` on their catalog rows (same as
-before). They do not merge the rollup.
-
-## ServiceNow ops layout
-
-Lookup: `servicenow/metadata-lab.json` (Ops ServiceNow Operator)
-and `servicenow/metadata-trends.json` (Ops ServiceNow Trends)
-(**metadata**, not enveloped). Live groups, categories, match
-terms, and markers live in those files — not in the prompt.
-
-Trends visits: `servicenow/trends/<stamp>.json` (**observation**).
-Never overwrite. At most **10** stamps; that writer deletes older
-after a new write. Do not write trends under `health/`.
-
-Operator board: `state/servicenow.json` (**state**),
-`servicenow/cases/active.json`, `servicenow/cases/index.json`,
-and the request queue. Health ServiceNow never writes these.
-Operator never writes `health/servicenow/<stamp>.json`.
-
-## Lifecycle layout
-
-Primary table: `state/lifecycle.json` (**state**, Modernization
-Analysis identity + `guidance` + `assessment` + `plan` +
-`selected_replacement` + recommendations
-+ Modernization Lifecycle research merge). The operator SKU
-lives **only** on the table row. Headline, `next_action`,
-`guidance`, `assessment`, `plan`, `recommendations[]`, and
-`lifecycle/roadmap.md` **are** the plan. Details: `lifecycle/items/<pid>.json`
-(**observation**, Cisco facts; not the operator pick). Roadmap
-markdown: Modernization Analysis only, after operator answers. Do not
-write `state/modernization.json`.
-Do not `ls` `lifecycle/`. Open `detail_ref` from the table. Do not
-invent `vuln-report.json` or `inventory/lifecycle.json`.
-Modernization Analysis may **read** `state/health.json` for a plan invoke; it
-does not write it.
-
-## Design layout
-
-Primary program: `state/design.json` (**state**, Network Design
-only). Four layers (`hardware[]` `software[]` `configuration[]`
-`compliance[]`), `timeline[]`, `warehouse`, `assessment`,
-`horizon`. Human sequence: `design/roadmap.md` (**observation**,
-path is `roadmap_ref`). Design **reads** health, lifecycle,
-compliance, inventory, and tickets; it checks ServiceNow
-warehouse itself. It does not write those other state files
-and does not rewrite `lifecycle/roadmap.md`.
-Do not invent extra `design/` paths.
-
-## Ops layout
-
-Primary: `state/network-ops.json` (**state**, Network Ops only).
-This invoke’s finding, git `dev` commit, apply run, and PR.
-Network Ops **reads** testing, compliance, health, inventory, and
-Design as awareness. It does not write those files. Config text
-stays in git (`github_get_file` / `github_put_file` `ref=dev`).
-Pipeline Monitor does not write the workspace.
-
-`testing/YYYY-MM-DDTHH-MM-SSZ.json` and `compliance/YYYY-MM-DDTHH-MM-SSZ.json`
-are append-only. Other files
-are replaced in full except Sync yaml (merge). One writer per `state/` file
-except `state/lifecycle.json` (Modernization Analysis identity; Modernization Lifecycle
-research merge).
-`state/health.json` is Health Analyzer only.
-`state/design.json` is Network Design only.
-`state/network-ops.json` is Network Ops only.
-`state/testing.json` is the latest **any-suite** run. `state/compliance.json`
-is the latest **`suites` includes `compliance`** run — not a copy of a
-reachability/routing/path run.
-
-Sync yaml is Sync's file. **Ops NetBox SoT reads `inventory/prod.json` only** for
-seed. Missing json **blocks bootstrap** (owner: Ops Network Sync) — alert and
-continue anything that does not need seed. It writes `inventory/infra-sot.json`
-(enveloped snapshot) and `state/netbox.json` (summary). Do not open yaml for
-that agent. Do not put NetBox ids in prod.json. Do not write Sync state from
-NetBox.
-
-**Onboard** writes `state/workspace.json` only. Reset flips `config_sync`
-and `netbox` to `no`. Other agents may read planes; they do not write this
-file.
-
-## Writing (you are the writer)
-
-1. Paths and catalog: this skill. Write **only** rows you own. Never invent
-   a path so a script has an input file.
-2. Field list: **your** skill schema — not another writer's, not this skill.
-   Fill from the example in that skill (or this skill’s leftover examples).
-3. `write_file`, read back, validate with your skill script if present.
-4. If this file is a handoff to an attached subagent, invoke them now.
-   Health Analyzer: named health visits are **not** a wait-for-handoff
-   in `assess-now`; invoke and continue (see exception above).
-   `refresh-then-assess` may wait for material stale planes only.
-   Modernization Analysis: named Modernization Lifecycle visits are **not** a
-   wait-for-handoff; invoke and continue.
-   Network Design: not a wait-for-handoff; write from files
-   already on disk. Warehouse check is this agent’s MCP.
-   Network Ops: after a `dev` commit, invoke Pipeline Monitor
-   and **wait**; then merge or stop.
+1. Write only catalog rows you own.
+2. Fill fields from your skill schema.
+3. `write_file`, read back, validate with your skill script when it has one.
+4. If this file is input for an attached subagent, invoke them now.
+   Health Analyzer and Modernization Analysis do not wait.
+   Network Design writes from files already on disk.
+   Network Ops: after a `dev` commit, invoke Pipeline Monitor and wait.
+   Compliance: writing `compliance/intel.json` stops. Invoke Author only when they name INTEL ids.
 
 ## Reading
 
-1. Open the catalog path. Classify **Kind**.
-2. Required **state** / **request** / **result** (and enveloped
-   `inventory/infra-sot.json` when that snap is required for the action):
-   missing, stale, or failed envelope → block **that action**, alert
-   (artifact, reason, owner, next invoke), continue independent work.
-   Optional missing → reduced coverage / skip that step. Never invent from
-   chat.
-3. **observation** / **snapshot** (except infra-sot envelope) /
-   **metadata** / **configuration**: rely-on fields only. Do not apply the
-   five-field stop rule.
-4. Health: `state/health.json` is the analyzer SOAP rollup (envelope +
-   `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched[]`
-   `next_action`). Current vs stale vs missing as in the Health
-   catalog row. Stamp files: observation fields (`watch_id`
-   `coverage.state` `metrics` `vs_prior`) — not envelope-block.
-   `health/metadata-*.json`: lookup ids — not envelope-block.
-5. `source_refs` that start with `workspace/` or `/workspace/` → strip and
-   read the remainder.
-6. Lifecycle: `state/lifecycle.json` is the estate table (envelope +
-   `items[]` + `guidance` + `recommendations[]`). Current per row when
-   `now < expires_at`. Details: `items[].detail_ref` →
-   `lifecycle/items/<pid>.json`. Plan markdown: `roadmap_ref` →
-   `lifecycle/roadmap.md`. Do not `ls` `lifecycle/`. Group by
-   evidence product id, not hostname. Headline, `next_action`,
-   `guidance`, `assessment`, `plan`, `recommendations[]`, and
-   the roadmap markdown are the plan. Modernization Analysis may read health state for a plan;
-   missing health is optional.
-7. Design: `state/design.json` is the roadmap (envelope +
-   four layers + `timeline` + `warehouse`). Plan markdown:
-   `roadmap_ref` → `design/roadmap.md`. Network Design may
-   read health, lifecycle, compliance, inventory, tickets;
-   missing inputs are optional (reduced coverage). Warehouse
-   facts come from its own `snow_find_*` calls. It does not
-   write those other files. Network Ops does not treat
-   `configuration[]` as a work queue.
-8. Network Ops: `state/network-ops.json` is this change (envelope
-   + `finding` `change` `git` `ci` `pr`). Network Ops may read
-   testing, compliance, health, inventory, and Design; missing
-   is reduced coverage. Config text is git, not a workspace
-   file. Pipeline Monitor writes nothing.
+1. Open the catalog path. Use its Kind.
+2. A required **state**, **request**, or **result** (and `inventory/infra-sot.json` when that snap is required): missing, stale, or failed envelope blocks that action. Alert and continue independent work. Optional missing is reduced coverage.
+3. An **observation**, **snapshot** (except infra-sot), **metadata**, or **configuration** file: rely-on fields only.
+4. A `source_ref` that starts with `workspace/` or `/workspace/`: strip that prefix and read the remainder.

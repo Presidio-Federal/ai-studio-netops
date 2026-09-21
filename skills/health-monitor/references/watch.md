@@ -29,12 +29,11 @@ required: compare to the prior stamp of **this** source
 `first`, `changed` [].
 
 The observation is a **lab slip**, not a MCP dump. Required:
-`headline`, `coverage`, `metrics`, `vs_prior`. Do not write
-`summary` that restates `metrics`. Do not write `tests[]`,
-`by_mnemonic`, `samples`, `top_hosts`, or `buckets` unless a
-standing-order follow-up produced **one** extra fact (TE:
-`tests[]` with only the worst test’s `path_summary` after
-path-vis). Splunk F2 samples stay off the stamp.
+`headline`, `coverage`, `metrics`, `vs_prior`. The stamp has no
+`summary`, `tests[]`, `by_mnemonic`, `samples`, `top_hosts`, or
+`buckets`. Splunk F2 samples stay off the stamp. After
+standing-order path-vis, write `path_summary` for the worst test
+only (`test_id`, `test_name`, `hops`, `last_error_hop`).
 
 Required `metrics` on the observation: same keys every visit;
 explicit `null` when not collected.
@@ -75,8 +74,25 @@ Empty successful window → `complete`, zeros allowed, advance
 watermark to `checked_at`. MCP/timeout → `unavailable`, null
 counts, **do not** advance the watermark.
 
-`metrics` one row `scope` `window`. Keys: `event_count`,
-`critical_error_count`, `flap_count`, `unique_hosts`.
+`metrics` one row per device that logged a signal. `name` is the
+IOS hostname in the message, the same spelling as
+inventory when that name exists. `scope` is `device:<name>`. Keys:
+`bgp_adjchange` (`BGP-5-ADJCHANGE`), `link_updown`
+(`LINEPROTO-5-UPDOWN`), `config_i` (`CONFIG_I`). A window with
+none of those is one row `scope` `window`, `name` null, counts 0.
+Do not use total event count as the vital. DHCP `NO_LEASE` is not
+a signal.
+
+`readings` one row per device and subject this window (`kind`
+`bgp` | `link` | `config`). BGP subject is `neighbor <id> Up` or
+`Down`. Link subject is the interface and up or down. Cap 24.
+
+There is no baseline until a prior stamp exists. First visit:
+`delta` `first`, `changed` []. Store the rows anyway. Later
+visit: diff this visit's `metrics` and `readings` against that
+prior file. `changed` lists only what moved: the inventory name,
+the signal, and the old value to the new value. `headline` is that
+diff. Do not copy a name from this skill.
 
 ## ThousandEyes visit
 
@@ -97,15 +113,24 @@ No 24h windows. No listing tests when metadata already has ids. No
 `te_raw_api_call`. Do not create tests.
 
 Plane `degraded` when: loss ≥ 5% on an ok round, **or** error
-rounds dominate, **or** one direction has zero ok rounds. First
-visit: record the numbers; empty history is not `ok`. Observation
+rounds dominate, **or** one direction has zero ok rounds. A first
+visit with healthy rounds is `ok` and `delta` `first`. Record the
+numbers. Do not set `unknown` because there is no prior stamp.
+Observation
 `headline` must quote rounds, loss, latency, jitter, error types,
 and `alerts.firing` — not loss alone.
 
-`metrics` one row per test `scope` `test:<id>`. Keys: `loss_pct`,
-`latency_ms_p95` (null unless this visit measured p95 — do not
-invent from avg), `latency_ms_avg`, `jitter_ms`, `ok_rounds`,
-`error_rounds`.
+`metrics` one row per test and agent. `scope` is
+`test:<testId>/<agentName>`. `name` is the API `testName`.
+`agent` is the result agent name. `server` is `serverIp`. Keys:
+`loss_pct` (mean on ok rounds), `latency_ms_avg`, `jitter_ms`,
+`ok_rounds`, `error_rounds`. `latency_ms_p95` is null unless this
+visit measured p95. Do not store every round.
+
+First visit: `delta` `first`, `changed` []. Later visit: diff
+each `scope` against the prior stamp. `changed` is only what
+moved: the API test name and the old value to the new value.
+`headline` is that diff. Do not copy a name from this skill.
 
 Do not collect another source. Set `last_visit_id` on TE metadata
 after a successful write of the stamp.

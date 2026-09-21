@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-splunk-check/v2",
   "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "Splunk lab slip (Kind observation). Vitals + vs_prior + coverage. Not a dump of the SPL result. metrics keys required every visit; null when not collected.",
+    "description": "Splunk lab slip (Kind observation). One metrics row per device (ios hostname) for BGP ADJCHANGE, LINEPROTO UPDOWN, and CONFIG_I. readings are the subject lines the next visit diffs. vs_prior.changed is that diff; empty on the first visit. No window-wide event census and no raw syslog.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -35,97 +35,56 @@
     "query_profile": { "type": "string" },
     "scope": { "type": "string" },
     "prior_observation": { "type": ["string", "null"] },
-    "summary": { "type": "string" },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
+    "concerns": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/entity_ref" }
+    },
     "metrics": {
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/metric_row" }
     },
-    "event_count": { "type": ["integer", "null"] },
-    "parsed_count": { "type": ["integer", "null"] },
-    "critical_error_count": { "type": ["integer", "null"] },
-    "flap_count": { "type": ["integer", "null"] },
-    "unique_hosts": { "type": ["integer", "null"] },
-    "first_event_at": { "type": ["string", "null"] },
-    "last_event_at": { "type": ["string", "null"] },
-    "by_severity": {
+    "readings": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["sev", "count"],
-        "properties": {
-          "sev": { "type": "integer" },
-          "count": { "type": "integer" }
-        }
-      }
-    },
-    "by_mnemonic": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["mnemonic", "count"],
-        "properties": {
-          "facility": { "type": ["string", "null"] },
-          "mnemonic": { "type": "string" },
-          "sev": { "type": ["integer", "null"] },
-          "count": { "type": "integer" },
-          "hosts": { "type": "array", "items": { "type": "string" } }
-        }
-      }
-    },
-    "top_hosts": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["host", "count"],
-        "properties": {
-          "host": { "type": "string" },
-          "count": { "type": "integer" },
-          "last_seen": { "type": ["string", "null"] },
-          "ios_hostname": { "type": ["string", "null"] }
-        }
-      }
-    },
-    "buckets": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["bucket", "count"],
-        "properties": {
-          "bucket": { "type": "string" },
-          "count": { "type": "integer" },
-          "hosts": { "type": ["integer", "null"] }
-        }
-      }
-    },
-    "samples": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["at", "host", "message"],
-        "properties": {
-          "at": { "type": "string" },
-          "host": { "type": "string" },
-          "mnemonic": { "type": ["string", "null"] },
-          "sev": { "type": ["integer", "null"] },
-          "message": { "type": "string" }
-        }
-      }
+      "maxItems": 24,
+      "description": "One subject line per device and signal this window. The next visit diffs these against the prior stamp. Omit raw syslog.",
+      "items": { "$ref": "#/$defs/reading" }
     }
   },
   "$defs": {
+    "entity_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "device",
+            "interface",
+            "site",
+            "service",
+            "test",
+            "control",
+            "incident",
+            "change",
+            "recommendation"
+          ]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": ["string", "null"] },
+        "source_ref": { "type": ["string", "null"] }
+      }
+    },
     "vs_prior": {
       "type": "object",
       "additionalProperties": false,
       "required": ["prior_watch_id", "delta", "changed"],
-      "description": "This visit vs the last stamp of this source. Not a MCP dump.",
+      "description": "Diff against the prior stamp of this source. First visit: prior_watch_id null, delta first, changed []. Later visits: changed lists only what moved.",
       "properties": {
         "prior_watch_id": { "type": ["string", "null"] },
         "delta": {
@@ -154,21 +113,28 @@
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "at",
-        "scope",
-        "event_count",
-        "critical_error_count",
-        "flap_count",
-        "unique_hosts"
-      ],
+      "required": ["at", "scope", "name", "bgp_adjchange", "link_updown", "config_i"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "minLength": 1 },
-        "event_count": { "type": ["integer", "null"] },
-        "critical_error_count": { "type": ["integer", "null"] },
-        "flap_count": { "type": ["integer", "null"] },
-        "unique_hosts": { "type": ["integer", "null"] }
+        "scope": { "type": "string", "minLength": 1, "description": "device:<ios hostname> or window when no device logged a signal." },
+        "name": {
+          "type": ["string", "null"],
+          "description": "IOS hostname from the syslog body. Same spelling as inventory when that name exists. Null on a window row."
+        },
+        "bgp_adjchange": { "type": ["integer", "null"] },
+        "link_updown": { "type": ["integer", "null"] },
+        "config_i": { "type": ["integer", "null"] }
+      }
+    },
+    "reading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "subject", "count"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["bgp", "link", "config"] },
+        "subject": { "type": "string", "minLength": 1, "description": "The fact to diff next visit. BGP: neighbor and Up/Down. Link: interface and up/down. Config: who changed it, when the message says." },
+        "count": { "type": "integer", "minimum": 1 }
       }
     }
   }

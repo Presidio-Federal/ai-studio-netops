@@ -6,8 +6,9 @@ Author writes a check into git. Compliance Test runs the suite and
 records risk.
 
 A default scan writes coverage and intel, ranks the missing
-controls, then hands Author and Test the work. “Report only” or
-“intel only” stops after the two files.
+controls, and **stops**. The operator names which INTEL ids to
+write. Then Compliance Author commits those checks. Compliance
+Test runs the suite when asked.
 
 ```mermaid
 flowchart LR
@@ -26,10 +27,9 @@ flowchart LR
   NIST --> CI
   CI --> Cover
   CI --> Intel
-  Intel --> CA
+  Intel -.->|operator names INTEL ids| CA
   CA --> Git
-  CA --> CT
-  CI --> CT
+  CA -.->|when asked to run| CT
   CT --> Testing
   CT --> CompRun
 ```
@@ -38,7 +38,7 @@ flowchart LR
 
 | Agent | Role |
 |-------|------|
-| Compliance | Newly published controls vs this estate and the catalog. Keep the delta. Rank what we still need. Delegate Author, then Test. |
+| Compliance | Newly published controls vs this estate and the catalog. Keep the delta. Rank what we still need. Stop until the operator names INTEL ids. |
 | Compliance Author | Turn ranked intel into checks in git and update the catalog. Do not run the suite. |
 | Compliance Test | Trigger `test.yml`, read the job-log marker, write the run files and a risk call. |
 
@@ -76,9 +76,9 @@ It writes:
   `delta` (catalog covered vs relevant missing vs not applicable).
 
 It does not write checks and it does not run them. After a default
-scan with candidates, it invokes Compliance Author (ranked list),
-waits, then Compliance Test (`suites=compliance`) and waits. If
-those agents are not attached, it names them and stops.
+scan it **stops**. Ranked candidates wait for the operator. It
+invokes Compliance Author only when they name INTEL ids, and
+Compliance Test only when they ask to run the suite.
 
 ## Compliance Author
 
@@ -90,9 +90,10 @@ implements the named INTEL row against that estate — it does not
 add sibling checks for protocols that are not in config, and it
 does not write a test that passes because the protocol is absent.
 
-It does not run `test.yml`. After the commit, Compliance invokes
-Test. A device fail on that later run is a finding — Author does
-not edit the check to make it pass.
+It does not run `test.yml`. It commits on existing git `dev`
+(`github_put_file ref=dev`). It does not create a branch and it
+does not write `main`. A device fail on a later Test run is a
+finding — Author does not edit the check to make it pass.
 
 ## Compliance Test
 

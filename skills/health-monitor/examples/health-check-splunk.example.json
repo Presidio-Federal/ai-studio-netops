@@ -5,24 +5,35 @@
   "checked_at": "2026-08-30T18:45:00Z",
   "ok": true,
   "status": "ok",
-  "headline": "37 new syslog events, 7 hosts; CONFIG_I + DMI sync; 0 flaps",
+  "headline": "One BGP neighbor went Up since the prior stamp. No link or config change on the other devices.",
   "window": "2026-08-30T04:03:20Z",
   "window_start": "2026-08-30T04:03:20Z",
   "window_end": "2026-08-30T18:45:00Z",
   "coverage": { "state": "complete" },
   "vs_prior": {
     "prior_watch_id": "2026-08-30T04-03-20Z",
-    "delta": "unchanged",
-    "changed": []
+    "delta": "worse",
+    "changed": [
+      "<inventory-name> bgp neighbor <neighbor-id> Up 0 → 1",
+      "<inventory-name> bgp_adjchange 0 → 1"
+    ]
   },
   "metrics": [
     {
       "at": "2026-08-30T18:45:00Z",
-      "scope": "window",
-      "event_count": 37,
-      "critical_error_count": 0,
-      "flap_count": 0,
-      "unique_hosts": 7
+      "scope": "device:<inventory-name>",
+      "name": "<inventory-name>",
+      "bgp_adjchange": 1,
+      "link_updown": 0,
+      "config_i": 0
+    }
+  ],
+  "readings": [
+    {
+      "name": "<inventory-name>",
+      "kind": "bgp",
+      "subject": "neighbor <neighbor-id> Up",
+      "count": 1
     }
   ]
 }

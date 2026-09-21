@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-state/v5",
   "title": "state/health.json",
-  "description": "Health Analyzer SOAP rollup (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). series points copied from visit metrics. soap is S/O/A/P; plan is a forward step (named nurse visit, refer Ops/Design, or none) — not an inspect path for a stamp already read. assessment and trend_analysis are this agent's verdict — not pasted visit headlines."
+  "description": "Health Analyzer SOAP rollup (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). series points copied from visit metrics. soap is S/O/A/P; plan is a forward step (named nurse visit, refer Ops/Design, or none) — not an inspect path for a stamp already read. assessment and trend_analysis are this agent's verdict — not pasted visit headlines.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -31,7 +31,7 @@
     "status": {
       "type": "string",
       "enum": ["ok", "degraded", "unknown", "partial", "stale_chart"],
-      "description": "Vital rollup: worst of current complete/partial thousandeyes, splunk, iosxe. unknown if no vital plane is readable. stale_chart if a material vital plane is stale. partial if a vital plane is missing or not_requested."
+      "description": "First match. ServiceNow does not vote. unknown when no vital slip is usable. stale_chart when a vital plane is clock-stale or this invoke dispatched one. degraded when a current vital consult is degraded. partial when a vital plane is missing or its coverage is unavailable while another vital slip is usable. ok otherwise."
     },
     "headline": {
       "type": "string",

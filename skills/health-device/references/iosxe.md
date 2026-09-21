@@ -62,8 +62,24 @@ Map oper enums to counts (`if-state-up` / `if-oper-state-ready`
 `up`/`down`.
 
 Write `headline`, `coverage`, `metrics` (one row per collected
-device `scope` `device:<name>`), `vs_prior`. Do **not** write
-`devices[]` interface, BGP, or ACL trees. Keys on each metric
+device `scope` `device:<name>`), `readings`, and `vs_prior`.
+`readings` is every admin-up interface and every BGP neighbor:
+`name` as `inventory/prod.json` writes it, `kind` `interface` or
+`bgp`, `subject` the interface name or neighbor `id`, `state`
+(`if-oper-state-ready` or `fsm-established` and the other oper
+values the device returned), plus `in_errors` / `in_discards` /
+`num_flaps` on interfaces and `prefixes_received` on neighbors.
+Omit admin-down idle interfaces. Cap 64. Add `concerns` only when
+a metric on that device is non-zero. The stamp has no `devices[]`
+tree.
+
+There is no baseline until a prior stamp exists. First visit:
+`delta` `first`, `changed` []. Store `readings` anyway. Later
+visit: diff `readings` against that prior file by `name` + `kind`
++ `subject`. `changed` lists only what moved: the inventory name,
+the interface or neighbor, and the old state to the new state.
+`headline` is that diff. Do not copy a name from this skill. Keys on
+each metric
 row: `oper_not_ready`, `bgp_not_established`, `in_errors`,
 `in_discards`, `num_flaps`. Null when that device was not
 collected.
@@ -84,11 +100,8 @@ stamp.
 on a non-idle interface, **or** BGP `state` ≠ `fsm-established`, **or**
 `in_errors` / `out_errors` / `num_flaps` > 0 on a ranked up interface.
 Idle shutdown ports do not count. Missing `acls` or count 0 does not
-degrade.
-
-TE loss with all ranked ports ready and errors/flaps 0: this **plane**
-may be `ok` (no local L1/L2 fault). The **board** stays degraded if TE
-is. Do not call ThousandEyes or Splunk.
+degrade. This plane’s `status` is these readings only. Do not call
+ThousandEyes or Splunk.
 
 Some GETs fail, others succeed → `partial`. All fail or no PAT →
 `unknown` / `unavailable`, null facts, never zeros.

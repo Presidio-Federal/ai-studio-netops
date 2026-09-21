@@ -20,10 +20,11 @@
     {
       "at": "2026-08-19T17:38:00Z",
       "scope": "window",
-      "event_count": null,
-      "critical_error_count": null,
-      "flap_count": null,
-      "unique_hosts": null
+      "name": null,
+      "bgp_adjchange": null,
+      "link_updown": null,
+      "config_i": null
     }
-  ]
+  ],
+  "readings": []
 }

@@ -38,20 +38,20 @@ Let `marker` be metadata `servicenow.marker`.
 `snow_get_incident` / `snow_get_change` only when an **in-scope** find
 row is missing number, state, or urgency needed to rank.
 
-Do not dump tables. Cap `incidents[]` and `changes[]` at 5 each
-(worst first among **in-scope** rows: High urgency/impact, then
-newest). Cap `recent[]` at 10 in-scope rows.
-
-Each kept row: `scope` `demo` and `scope_reason`
-(`marker` | `match_term` | `inventory_label` | `lab_title`).
+Do not dump tables. Rank in-scope rows in memory (High
+urgency/impact, then newest). When a metric needs a ticket id,
+write `ticket_numbers` (those numbers only, cap 5). Omit it when
+the counts are enough. The stamp has no `incidents[]`,
+`changes[]`, or `recent[]`.
 
 ## Rank
 
-Consult `status` may be `degraded` when any **in-scope** open INC/CHG
-exists, **or** any kept in-scope open record has urgency or impact
-High (`1`). Empty successful in-scope set is consult `ok` with zeros
-allowed. Out-of-scope open rows do not degrade this consult. That
-consult `status` **does not vote** on envelope `status`.
+`status` is `ok` when find/get succeeded and `unknown` when
+coverage is `unavailable`. Open in-scope tickets do not set
+`status`. Record them on `metrics` and, when a count needs an id,
+`ticket_numbers`. An empty in-scope set is `ok` with zeros.
+Out-of-scope rows stay in `out_of_scope_open`. This plane does not
+vote on the health envelope.
 
 `collection_status` is `complete` when find/get succeeded,
 `unavailable` on MCP/auth/timeout (counts `null`, never `0`).

@@ -3,8 +3,8 @@
   "updated_at": "2026-09-09T12:00:00Z",
   "source_agent": "health-analyzer",
   "status": "degraded",
-  "headline": "Unhealthy is the WAN path, not the lab syslog or the boxes.",
-  "next_action": "Network Ops: path or config, not a down box.",
+  "headline": "One path's loss rose. Device readings and syslog signals did not move.",
+  "next_action": "Network Ops: the path whose loss rose, not a down device.",
   "mode": "assess-now",
   "analyzed_at": "2026-09-09T12:00:00Z",
   "coverage": {
@@ -41,10 +41,10 @@
       "observed_at": "2026-08-14T16:05:00Z",
       "status": "degraded",
       "trend": "worse",
-      "trend_note": "path-b flipped from ok rounds to 30/30 errors vs the prior TE stamp; path-a did not.",
-      "impression": "Path-b is the unhealthy test; path-a does not share that failure.",
-      "evidence_for": ["test t2 30 error rounds, 0 ok", "vs_prior: ok_rounds 12 → 0"],
-      "evidence_against": ["test t1 completed with 0% loss"],
+      "trend_note": "One test's loss rose against the prior stamp. The other test did not.",
+      "impression": "One test is the unhealthy path. The other test does not share that failure.",
+      "evidence_for": ["loss_pct rose on one test", "vs_prior records that delta"],
+      "evidence_against": ["the other test completed with no loss"],
       "source_ref": "health/thousandeyes/2026-08-14T16-05-00Z.json",
       "inspect_when": "Open when per-round error types are needed."
     },
@@ -53,9 +53,9 @@
       "observed_at": "2026-08-30T18:45:00Z",
       "status": "ok",
       "trend": "unchanged",
-      "trend_note": "Volume is present, flaps are not; vs_prior unchanged.",
-      "impression": "Syslog is busy with config-sync and is not showing flaps or critical errors.",
-      "evidence_for": ["37 events across 7 hosts", "0 flaps", "0 critical"],
+      "trend_note": "Signal counts did not move against the prior stamp.",
+      "impression": "Syslog signals did not change. This plane does not explain the path loss.",
+      "evidence_for": ["bgp_adjchange, link_updown, and config_i unchanged"],
       "evidence_against": [],
       "source_ref": "health/splunk/2026-08-30T18-45-00Z.json",
       "inspect_when": "Open when mnemonic samples are needed."
@@ -65,8 +65,8 @@
       "observed_at": "2026-08-31T16:00:00Z",
       "status": "ok",
       "trend": "unchanged",
-      "trend_note": "Ranked wan/edge still oper-ready; vs_prior unchanged.",
-      "impression": "Ranked wan/edge is oper-ready and BGP is established — this plane does not explain the path errors.",
+      "trend_note": "Interface and BGP readings unchanged against the prior stamp.",
+      "impression": "Admin-up interfaces are ready and BGP is established. This plane does not explain the path loss.",
       "evidence_for": ["0 oper-not-ready", "0 bgp_not_established"],
       "evidence_against": [],
       "source_ref": "health/iosxe/2026-08-31T16-00-00Z.json",
@@ -81,13 +81,15 @@
       "points": [
         {
           "at": "2026-08-14T16:05:00Z",
-          "scope": "test:t2",
-          "loss_pct": null,
+          "scope": "test:<test-id>/<agent-name>",
+          "name": "<test-name>",
+          "agent": "<agent-name>",
+          "loss_pct": 16.0,
           "latency_ms_p95": null,
-          "latency_ms_avg": null,
-          "jitter_ms": null,
-          "ok_rounds": 0,
-          "error_rounds": 30
+          "latency_ms_avg": 1.0,
+          "jitter_ms": 0.5,
+          "ok_rounds": 31,
+          "error_rounds": 0
         }
       ]
     },
@@ -97,11 +99,11 @@
       "points": [
         {
           "at": "2026-08-30T18:45:00Z",
-          "scope": "window",
-          "event_count": 37,
-          "critical_error_count": 0,
-          "flap_count": 0,
-          "unique_hosts": 7
+          "scope": "device:<inventory-name>",
+          "name": "<inventory-name>",
+          "bgp_adjchange": 1,
+          "link_updown": 0,
+          "config_i": 0
         }
       ]
     },
@@ -111,7 +113,7 @@
       "points": [
         {
           "at": "2026-08-31T16:00:00Z",
-          "scope": "device:wan-1",
+          "scope": "device:<inventory-name>",
           "oper_not_ready": 0,
           "bgp_not_established": 0,
           "in_errors": 0,
@@ -128,27 +130,27 @@
   },
   "assessment": {
     "unhealthy": [
-      "thousandeyes path-b (test t2): 30/30 error rounds this visit"
+      "one test loss_pct rose against the prior stamp"
     ],
     "healthy": [
-      "thousandeyes path-a: 0% loss",
-      "splunk: 0 flaps, 0 critical across 7 hosts",
-      "iosxe: ranked wan/edge oper-ready, BGP established"
+      "the other test's loss did not move",
+      "syslog signal counts did not move",
+      "admin-up interfaces ready, BGP neighbors still established"
     ],
     "contradictions": [
-      "WAN path-b failed; device plane and syslog are quiet — not the same fault on this chart"
+      "Path loss rose; device interface and BGP readings did not change"
     ],
-    "opinion": "Unhealthy is the WAN path, not the lab syslog or the boxes."
+    "opinion": "One path's loss rose. Device readings and syslog signals did not move."
   },
   "trend_analysis": {
-    "narrative": "TE path-b flipped from ok rounds to all errors vs prior stamp; Splunk and IOS-XE stayed quiet.",
-    "flips": ["was path-stable on TE, now path-b all errors"]
+    "narrative": "One test's loss_pct moved against the prior stamp. Device readings and syslog signals did not.",
+    "flips": ["one path was lower loss, now higher"]
   },
   "soap": {
     "subjective": "Scheduled assess-now.",
-    "objective": "TE path-b 30/30 error rounds (worse vs prior); path-a 0% loss. Splunk 37 events / 7 hosts / 0 flaps. IOS-XE ranked wan/edge oper-ready, BGP established. ServiceNow not requested. Vital planes current.",
-    "assessment": "Unhealthy is the WAN path, not the lab syslog or the boxes.",
-    "plan": "Network Ops: path or config, not a down box."
+    "objective": "One test's loss_pct rose against the prior stamp. Syslog signal counts did not move. Interface and BGP readings unchanged. ServiceNow not requested.",
+    "assessment": "One path's loss rose. Device readings and syslog signals did not move.",
+    "plan": "Network Ops: the path whose loss rose, not a down device."
   },
   "dispatched": [],
   "read": [

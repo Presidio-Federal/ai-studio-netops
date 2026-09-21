@@ -10,8 +10,7 @@
     "last_visit_id": "2026-08-14T16-05-00Z",
     "last_collected_at": "2026-08-14T16:05:00Z",
     "tests": [
-      { "test_id": "t1", "test_name": "path-a" },
-      { "test_id": "t2", "test_name": "path-b" }
+      { "test_id": "<test-id>", "test_name": "<test-name>" }
     ]
   },
   "provenance": { "thousandeyes": "discovered" }

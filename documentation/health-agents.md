@@ -72,9 +72,12 @@ freshness and the series honest. Skip-write on no change is the
 architecture target (`Write or Exit`); it is not the Health skill
 behavior yet.
 
-Failed query (empty, 0 rows, tool error): still write
-`unavailable` with null counts — never `0`. Do not treat silence
-as health.
+A successful Splunk search with no BGP ADJCHANGE, LINEPROTO
+UPDOWN, or CONFIG_I is a quiet window: `complete`, signal counts
+0, `readings` [], and the watermark advances to `checked_at`. A
+tool error or an unusable payload is `unavailable`, null counts,
+and the watermark stays put. ThousandEyes with an empty alert
+list means no rule is bound, not a healthy path.
 
 ## Who writes what
 
@@ -91,9 +94,10 @@ overwrites a visit stamp. Stamps are append-only (keep ten).
 [Network Design](change-and-test-agents.md) read the chart. They
 do not collect these planes.
 
-Live lookup ids and the Splunk watermark live in metadata, not in
-the prompt. IOS-XE PAT lives on `inventory/prod.json` — there is
-no `health/metadata-iosxe.json`.
+Live lookup ids, the Splunk watermark, and each plane’s
+`last_visit_id` live in metadata, not in the prompt. IOS-XE PAT
+lives on `inventory/prod.json`. `health/metadata-iosxe.json` holds
+only `last_visit_id` and `last_collected_at`.
 
 ## Health Monitor
 
@@ -110,9 +114,8 @@ loss / error rounds: one path-vis on the worst direction.
 
 Device plane only. GET interfaces, BGP, and counters. ACL GET only
 when a ranked up port is dropping. Rank from `inventory/prod.json`.
-Prior stamp comes from `state/health.json`
-`consults.iosxe.source_ref` (no directory list). Does not change
-config.
+Prior stamp is `health/metadata-iosxe.json` `last_visit_id`
+(no directory list). Does not change config.
 
 ## Health ServiceNow
 

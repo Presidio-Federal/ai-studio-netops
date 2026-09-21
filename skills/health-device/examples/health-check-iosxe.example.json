@@ -5,7 +5,7 @@
   "checked_at": "2026-08-31T16:00:00Z",
   "ok": true,
   "status": "ok",
-  "headline": "edge-1 + wan-1: 0 oper-not-ready, BGP all fsm-established, 0 errors/flaps",
+  "headline": "Unchanged since the prior stamp: admin-up interfaces still ready, BGP neighbors still established.",
   "window": "live",
   "coverage": {
     "state": "complete",
@@ -19,21 +19,34 @@
   "metrics": [
     {
       "at": "2026-08-31T16:00:00Z",
-      "scope": "device:wan-1",
+      "scope": "device:<inventory-name>",
       "oper_not_ready": 0,
       "bgp_not_established": 0,
       "in_errors": 0,
       "in_discards": 0,
       "num_flaps": 0
+    }
+  ],
+  "readings": [
+    {
+      "name": "<inventory-name>",
+      "kind": "interface",
+      "subject": "<interface>",
+      "state": "if-oper-state-ready",
+      "in_errors": 0,
+      "in_discards": 0,
+      "num_flaps": 0,
+      "prefixes_received": null
     },
     {
-      "at": "2026-08-31T16:00:00Z",
-      "scope": "device:edge-1",
-      "oper_not_ready": 0,
-      "bgp_not_established": 0,
-      "in_errors": 0,
-      "in_discards": 0,
-      "num_flaps": 0
+      "name": "<inventory-name>",
+      "kind": "bgp",
+      "subject": "<neighbor-id>",
+      "state": "fsm-established",
+      "in_errors": null,
+      "in_discards": null,
+      "num_flaps": null,
+      "prefixes_received": 3
     }
   ]
 }

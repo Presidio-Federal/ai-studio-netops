@@ -1,14 +1,15 @@
 ---
 name: compliance-intel
-version: "1.13.0"
-description: "v1.13.0 — Bounded unresolved NIST query. Inventory is device kinds. Catalog is current checks."
+version: "1.14.0"
+description: "v1.14.0 — Bounded unresolved NIST query. Write the delta and stop. Operator names which INTEL ids to write."
 ---
 
 # Compliance intel
 
 For the **Compliance** agent. Compare **published NIST titles** to
 **this network** and **tests on git `main`**. Write the two catalog
-files. The prompt then hands Author and Test the ranked gaps.
+files. Ranked candidates wait for the operator. Do not invoke
+Author or Test on a scan.
 
 You do **not** run `test.yml`. You do **not** invent pass/fail for devices.
 You do **not** copy git into the workspace.
@@ -167,7 +168,8 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 10. DRAFT   keep remaining candidates; add new ones up to cap 5;
             rank critical → high → medium → low
 11. WRITE   write_file coverage.json then intel.json
-12. REPLY   Action + headline + ranked candidates
+12. REPLY   Action + headline + ranked candidates. Stop.
+            Do not invoke Author or Test.
 ```
 
 Explain-only / last candidates: `read_file` intel.json. Do not
@@ -258,7 +260,7 @@ Ranked:
 
 | Outcome | Next |
 |---------|------|
-| Ranked candidates (default scan) | Prompt invokes **Compliance Author**, then **Compliance Test** |
-| Report-only / intel-only | Stop after the two files |
+| Ranked candidates (default scan) | Stop. Operator names INTEL ids to write |
+| They named INTEL ids to write | Prompt invokes **Compliance Author** for those ids only |
 | User wants device score only | **Compliance Test** — `suites=compliance` |
 | Ticket from a live gap | **Observability** |

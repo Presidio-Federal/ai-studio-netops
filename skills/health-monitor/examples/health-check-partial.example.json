@@ -5,11 +5,11 @@
   "checked_at": "2026-08-19T12:00:00Z",
   "ok": true,
   "status": "degraded",
-  "headline": "path-a 14.5% mean loss; path-b result missing",
+  "headline": "First ThousandEyes visit. One test returned mean loss over its rounds. The other test returned no result.",
   "window": "1h",
   "coverage": {
     "state": "partial",
-    "detail": "only test t1 network results; t2 timed out"
+    "detail": "one metadata test returned network results; the other timed out"
   },
   "vs_prior": {
     "prior_watch_id": null,
@@ -19,7 +19,10 @@
   "metrics": [
     {
       "at": "2026-08-19T12:00:00Z",
-      "scope": "test:t1",
+      "scope": "test:<test-id>/<agent-name>",
+      "name": "<test-name>",
+      "agent": "<agent-name>",
+      "server": "<server>",
       "loss_pct": 14.5,
       "latency_ms_p95": null,
       "latency_ms_avg": 12.0,
@@ -29,7 +32,9 @@
     },
     {
       "at": "2026-08-19T12:00:00Z",
-      "scope": "test:t2",
+      "scope": "test:<test-id>/<agent-name>",
+      "name": "<test-name>",
+      "agent": null,
       "loss_pct": null,
       "latency_ms_p95": null,
       "latency_ms_avg": null,

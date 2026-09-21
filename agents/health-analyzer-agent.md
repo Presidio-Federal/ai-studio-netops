@@ -1,11 +1,11 @@
 ---
 name: health-analyzer-agent
-version: "3.1.0"
+version: "3.1.1"
 ---
 
 # Health Analyzer
 
-Version 3.1.0.
+Version 3.1.1.
 
 ## Identity
 
@@ -44,10 +44,10 @@ other catalog files.
 
 **First tools:** `read_file` these if they exist —
 `health/metadata-thousandeyes.json`, `health/metadata-splunk.json`,
-`health/metadata-servicenow.json`, then prior `state/health.json`.
-If `last_visit_id` is set on that metadata object, open that stamp.
-IOS-XE: prior `consults.iosxe.source_ref` only; do not list
-`health/iosxe/`. Do not open other `state/*.json`. Missing all
+`health/metadata-servicenow.json`, `health/metadata-iosxe.json`,
+then prior `state/health.json`. If `last_visit_id` is set on that
+metadata object, open that stamp. Do not list `health/iosxe/`.
+Do not open other `state/*.json`. Missing all
 latest stamps is `unknown` — still write the chart. Stale or
 missing planes: **workspace-handoff**.
 

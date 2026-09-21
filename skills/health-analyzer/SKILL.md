@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "3.1.0"
-description: "v3.1.0 — Analyze and trend production network health from visit stamps already on disk. Write SOAP into state/health.json. Reasoner — not a collector, not a merger."
+version: "3.1.1"
+description: "v3.1.1 — Analyze and trend production network health from visit stamps already on disk. Write SOAP into state/health.json. Reasoner — not a collector, not a merger."
 ---
 
 # Health Analyzer skill
@@ -60,14 +60,16 @@ Do **not** call `get_folder_structure`. Do **not** list
 
 **First tools:** `read_file` these if they exist —
 `health/metadata-thousandeyes.json`, `health/metadata-splunk.json`,
-`health/metadata-servicenow.json`, then prior `state/health.json`.
-If a metadata `last_visit_id` is set, then that stamp. IOS-XE: use
-prior `consults.iosxe.source_ref` if present; do not list
-`health/iosxe/`. Do not open other `state/*.json`.
+`health/metadata-servicenow.json`, `health/metadata-iosxe.json`,
+then prior `state/health.json`. If a metadata `last_visit_id` is
+set, then that stamp. Do not list `health/iosxe/`. Do not open
+other `state/*.json`.
 
 ## State machine
 
-READ_METADATA → READ_LATEST_STAMPS → READ_PRIOR_CHART → FOLD_SERIES
+READ_METADATA → READ_STAMP (that plane’s `last_visit_id`) →
+READ_PRIOR_CHART (series; iosxe `source_ref` only when
+`health/metadata-iosxe.json` has no `last_visit_id`) → FOLD_SERIES
 → DISPATCH_STALE (mode, via workspace-handoff) → SYNTHESIZE →
 WRITE_CHART → READ_BACK → STOP
 

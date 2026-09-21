@@ -5,45 +5,47 @@
   "checked_at": "2026-08-14T16:05:00Z",
   "ok": true,
   "status": "degraded",
-  "headline": "path-b 30/30 errored (source IP); path-a 1 ok 0% loss 1ms / 0.49ms jitter; alerts 0",
+  "headline": "One test's loss rose since the prior stamp. The other test did not.",
   "window": "1h",
   "coverage": { "state": "complete" },
   "vs_prior": {
     "prior_watch_id": "2026-08-14T15-00-00Z",
     "delta": "worse",
-    "changed": ["test:t2 ok_rounds 12 → 0", "test:t2 error_rounds 0 → 30"]
+    "changed": ["<test-name> loss_pct 4 → 16"]
   },
   "metrics": [
     {
       "at": "2026-08-14T16:05:00Z",
-      "scope": "test:t1",
-      "loss_pct": 0.0,
+      "scope": "test:<test-id>/<agent-name>",
+      "name": "<test-name>",
+      "agent": "<agent-name>",
+      "server": "<server>",
+      "loss_pct": 16.0,
       "latency_ms_p95": null,
       "latency_ms_avg": 1.0,
-      "jitter_ms": 0.49,
-      "ok_rounds": 1,
+      "jitter_ms": 0.5,
+      "ok_rounds": 31,
       "error_rounds": 0
     },
     {
       "at": "2026-08-14T16:05:00Z",
-      "scope": "test:t2",
-      "loss_pct": null,
+      "scope": "test:<test-id>/<agent-name>",
+      "name": "<test-name>",
+      "agent": "<agent-name>",
+      "server": "<server>",
+      "loss_pct": 0.0,
       "latency_ms_p95": null,
-      "latency_ms_avg": null,
-      "jitter_ms": null,
-      "ok_rounds": 0,
-      "error_rounds": 30
+      "latency_ms_avg": 1.0,
+      "jitter_ms": 0.4,
+      "ok_rounds": 31,
+      "error_rounds": 0
     }
   ],
   "alerts": { "firing": 0, "items": [] },
-  "tests": [
-    {
-      "test_id": "t2",
-      "test_name": "path-b",
-      "path_summary": {
-        "hops": 4,
-        "last_error_hop": "Cannot use the selected source IP (192.0.2.1)"
-      }
-    }
-  ]
+  "path_summary": {
+    "test_id": "<test-id>",
+    "test_name": "<test-name>",
+    "hops": 4,
+    "last_error_hop": "<hop>"
+  }
 }

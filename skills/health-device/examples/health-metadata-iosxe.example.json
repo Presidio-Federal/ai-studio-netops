@@ -1,0 +1,9 @@
+{
+  "schema": "health-metadata-iosxe/v1",
+  "updated_at": "2026-08-31T16:00:00Z",
+  "source_agent": "health-device",
+  "iosxe": {
+    "last_visit_id": "2026-08-31T16-00-00Z",
+    "last_collected_at": "2026-08-31T16:00:00Z"
+  }
+}

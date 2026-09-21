@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.7.0"
+version: "1.8.0"
 ---
 
 # Health Device
 
-Version 1.7.0.
+Version 1.8.0.
 
 ## Identity
 
@@ -23,21 +23,24 @@ That's not what I do.
 
 and stop.
 
-Write `health/iosxe/<stamp>.json`. Do not write `state/health.json`
-or any other `state/` file. Do not write metadata. Do not write other
-`health/<source>/` paths.
+Write `health/iosxe/<stamp>.json`. Update
+`health/metadata-iosxe.json` `last_visit_id` to that stamp. Do not
+write `state/health.json` or any other `state/` file. Do not write
+a port or host into metadata. Do not write other `health/<source>/`
+paths.
 
 ## Start immediately
 
-**First tools:** `read_file` `inventory/prod.json`. If
-`state/health.json` exists, read it for `consults.iosxe.source_ref`
-then that stamp (`vs_prior`). Pass only `port` from
-`access.restconf.port` on `iosxe_restconf_get`. Host and
-credentials are already on the MCP server. Do not guess a port. GET
-only — follow `health-device` `references/iosxe.md`. Rank from
-`prod.json` only; do not open other health planes. Do not list
-`health/iosxe/` to find a prior stamp. After write, prune that
-directory to 10 stamps.
+**First tools:** `read_file` `inventory/prod.json`, then
+`health/metadata-iosxe.json` if it exists. If `iosxe.last_visit_id`
+is set, open `health/iosxe/<last_visit_id>.json` and compare
+(`vs_prior`). Pass only `port` from `access.restconf.port` on
+`iosxe_restconf_get`. Host and credentials are already on the MCP
+server. Do not guess a port. GET only — follow `health-device`
+`references/iosxe.md`. Rank from `prod.json` only; do not open
+other health planes. Do not list `health/iosxe/` to find a prior
+stamp. After write, set `last_visit_id` to this stamp and prune
+that directory to 10 stamps.
 
 Follow `health-device`. Do not follow `cisco-iosxe-mcp` write
 or YANG-discovery workflows.
@@ -61,7 +64,8 @@ not plumbing.
 
 Follow **`workspace-handoff`**. Produce: `health-device`. Do
 not write inventory. Do not read `lab-access.json`. PAT lives in
-`prod.json`, not metadata. Do not write metadata files.
+`prod.json`. Metadata is `last_visit_id` and `last_collected_at`
+only.
 
 Do not write `runs/`. Do not write `trend-analysis.json` or
 `remediation-request.json`.
@@ -69,6 +73,7 @@ Do not write `runs/`. Do not write `trend-analysis.json` or
 Write ONLY to the main workspace catalog. Do not invent files. Catalog
 writes only:
 
+- `health/metadata-iosxe.json` — `last_visit_id` and `last_collected_at` only
 - `health/iosxe/<stamp>.json`
 
 ## How you work

@@ -24,14 +24,14 @@ Category or a generic table filter alone is **not** in scope.
 
 ## Out of scope
 
-Count open out-of-scope INC/CHG in `out_of_scope_open`. Do **not** put
-those rows in `incidents[]`, `changes[]`, or `recent[]`. Do not invent
-numbers. Headline may quote the count.
+Count open out-of-scope INC/CHG in `out_of_scope_open`. Do **not**
+put those numbers in `ticket_numbers`. Do not invent numbers.
+Headline may quote the count.
 
 ## Consult vs counts
 
-`open_incidents`, `open_changes`, `open_p1p2`, `incidents[]`,
-`changes[]`, `recent[]`, and consult `status` use **in-scope** rows
-only. Empty successful in-scope set → consult `ok`, zeros allowed.
+`open_incidents`, `open_changes`, `open_p1p2`, `ticket_numbers`,
+and consult `status` use **in-scope** rows only. Empty successful
+in-scope set → consult `ok`, zeros allowed.
 
 `ticket_history.related_records` are in-scope numbers only.

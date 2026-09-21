@@ -1,7 +1,7 @@
 ---
 name: compliance-test-authoring
-version: "1.4.5"
-description: "v1.4.5 — Judge applicable from git configs. Named INTEL row only. Do not run test.yml."
+version: "1.5.0"
+description: "v1.5.0 — Judge applicable from git configs. Named INTEL row only. Put on existing git dev. Do not run test.yml."
 ---
 
 # Compliance test authoring
@@ -28,11 +28,15 @@ Do not poll runs.
    [`references/static-rules.md`](references/static-rules.md).
 5. **Static** if committed config can answer. **Live** if you need
    device state (BGP up, ping, NTP sync). Both if they asked configured *and* working.
-6. Push to `main` (GitHub contents — not a config PR):
+6. Commit on existing git **`dev`** (GitHub contents — not a
+   new branch, not a config PR, not `main`):
    - live: `tests/live/checks/<suite>/<id>.yml` (stem = `id`)
    - static: append `tests/static/schemas/<group>/rules.yml`
    - add the id to `catalog/job-catalog.json` (include `nist:` when the check has NIST ids)
    - wire `tests/compliance/matrix/test-bridge.yml` if it is a `NET-COMP` rule
+   `github_get_file` those paths `ref=dev`, then `github_put_file`
+   `ref=dev` with that `sha`. Never `github_create_branch`. `main`
+   is blocked.
 7. Stop. Invoke Compliance Test to run the new check, or tell the operator to.
 
 Do not write YAML to the workspace. Do not invent an `assert` / `type` outside

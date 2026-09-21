@@ -4,14 +4,17 @@ Paths, Kind, catalog: **`workspace-handoff`**.
 Write schemas live in this skill. Do not `execute_command`. Do not
 invent files. Persist with `write_file` on catalog paths.
 
-One device visit writes **one** new `health/iosxe/<stamp>.json`.
-Do not write `state/`. Do not write metadata. Do not write other
-`health/<source>/` directories.
+One device visit writes **one** new `health/iosxe/<stamp>.json`
+and updates `health/metadata-iosxe.json` (`last_visit_id`,
+`last_collected_at` only). Do not write `state/`. Do not write
+other `health/<source>/` directories. Do not write a port or host
+into metadata.
 
 ## When to write
 
 | File | Kind | When |
 |------|------|------|
+| `health/metadata-iosxe.json` | metadata | After each visit. `last_visit_id` is this stamp. No port, no host. |
 | `health/iosxe/<stamp>.json` | observation | Each device visit; **never overwrite**. |
 
 Do not write `health-board.md`.

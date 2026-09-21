@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.6.0"
+version: "1.6.1"
 ---
 
 # Health ServiceNow
 
-Version 1.6.0.
+Version 1.6.1.
 
 ## Identity
 
@@ -99,7 +99,7 @@ After a completed visit:
 
 ```text
 Visit: servicenow
-Result: <ok | degraded | unknown>
+Result: <ok | unknown>
 Coverage: <complete|partial|unavailable>
 Wrote: health/servicenow/<stamp>.json
 Trend: <vs_prior.delta>

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-iosxe-check/v2",
   "title": "health/iosxe/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "IOS-XE lab slip (Kind observation). Vitals + vs_prior + coverage. Omit devices[] interface trees; metrics are the vitals. Null when not collected.",
+    "description": "IOS-XE lab slip (Kind observation). metrics are per-device counts. readings are each admin-up interface and each BGP neighbor (name, subject, state). The next visit diffs readings. vs_prior.changed is only what moved; empty on the first visit. No RESTCONF body.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -31,44 +31,58 @@
     "headline": { "type": "string", "minLength": 1 },
     "window": { "type": "string", "minLength": 1 },
     "prior_observation": { "type": ["string", "null"] },
-    "summary": { "type": "string" },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
+    "concerns": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "One device entity-ref when a metric on that device is non-zero. Omit healthy devices.",
+      "items": { "$ref": "#/$defs/entity_ref" }
+    },
     "metrics": {
       "type": "array",
       "minItems": 1,
       "items": { "$ref": "#/$defs/metric_row" }
     },
-    "skipped_reason": { "type": ["string", "null"] },
-    "devices": {
+    "readings": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["name"],
-        "properties": {
-          "name": { "type": "string" },
-          "why": { "type": "string" },
-          "yang_paths": { "type": "array", "items": { "type": "string" } },
-          "interfaces": {
-            "type": "array",
-            "items": { "$ref": "#/$defs/interface_row" }
-          },
-          "bgp_neighbors": {
-            "type": "array",
-            "items": { "$ref": "#/$defs/bgp_neighbor" }
-          },
-          "acls": { "$ref": "#/$defs/acls" }
-        }
-      }
-    }
+      "maxItems": 64,
+      "description": "Admin-up interfaces and BGP neighbors measured this visit. Same name spelling as inventory. The next visit diffs state, errors, and prefixes. Omit admin-down idle interfaces.",
+      "items": { "$ref": "#/$defs/reading" }
+    },
+    "skipped_reason": { "type": ["string", "null"] }
   },
   "$defs": {
+    "entity_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "device",
+            "interface",
+            "site",
+            "service",
+            "test",
+            "control",
+            "incident",
+            "change",
+            "recommendation"
+          ]
+        },
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": ["string", "null"] },
+        "source_ref": { "type": ["string", "null"] }
+      }
+    },
     "vs_prior": {
       "type": "object",
       "additionalProperties": false,
       "required": ["prior_watch_id", "delta", "changed"],
-      "description": "This visit vs the last stamp of this source (chart source_ref, no directory list). Not a RESTCONF dump.",
+      "description": "Diff against the prior IOS-XE stamp. First visit: prior_watch_id null, delta first, changed []. Later visits: changed lists only readings that moved.",
       "properties": {
         "prior_watch_id": { "type": ["string", "null"] },
         "delta": {
@@ -116,66 +130,19 @@
         "num_flaps": { "type": ["integer", "null"] }
       }
     },
-    "counter": { "type": ["integer", "string", "null"] },
-    "interface_row": {
+    "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name"],
+      "required": ["name", "kind", "subject", "state"],
       "properties": {
-        "name": { "type": "string" },
-        "description": { "type": ["string", "null"] },
-        "ipv4": { "type": ["string", "null"] },
-        "admin_status": { "type": ["string", "null"] },
-        "oper_status": { "type": ["string", "null"] },
-        "in_errors": { "$ref": "#/$defs/counter" },
-        "out_errors": { "$ref": "#/$defs/counter" },
-        "in_discards": { "$ref": "#/$defs/counter" },
-        "in_crc_errors": { "$ref": "#/$defs/counter" },
-        "num_flaps": { "$ref": "#/$defs/counter" },
-        "rx_kbps": { "$ref": "#/$defs/counter" },
-        "tx_kbps": { "$ref": "#/$defs/counter" }
-      }
-    },
-    "bgp_neighbor": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "state"],
-      "properties": {
-        "id": { "type": "string" },
-        "state": { "type": "string" },
-        "as": { "type": ["integer", "string", "null"] },
-        "up_time": { "type": ["string", "null"] },
-        "prefixes_received": { "$ref": "#/$defs/counter" },
-        "input_queue": { "$ref": "#/$defs/counter" },
-        "output_queue": { "$ref": "#/$defs/counter" },
-        "session_state": { "type": ["string", "null"] },
-        "link": { "type": ["string", "null"] },
-        "installed_prefixes": { "$ref": "#/$defs/counter" },
-        "connection_state": { "type": ["string", "null"] },
-        "reset_reason": { "type": ["string", "null"] },
-        "total_dropped": { "$ref": "#/$defs/counter" },
-        "local_host": { "type": ["string", "null"] },
-        "foreign_host": { "type": ["string", "null"] },
-        "notifications": { "$ref": "#/$defs/counter" }
-      }
-    },
-    "acls": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["count"],
-      "properties": {
-        "count": { "type": "integer" },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "properties": {
-              "name": { "type": "string" },
-              "match_counter": { "$ref": "#/$defs/counter" }
-            }
-          }
-        }
+        "name": { "type": "string", "minLength": 1, "description": "Device name as inventory/prod.json writes it." },
+        "kind": { "type": "string", "enum": ["interface", "bgp"] },
+        "subject": { "type": "string", "minLength": 1, "description": "Interface name as the device reports it, or the BGP neighbor id." },
+        "state": { "type": ["string", "null"] },
+        "in_errors": { "type": ["integer", "null"] },
+        "in_discards": { "type": ["integer", "null"] },
+        "num_flaps": { "type": ["integer", "null"] },
+        "prefixes_received": { "type": ["integer", "null"] }
       }
     }
   }

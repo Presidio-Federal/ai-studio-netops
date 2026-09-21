@@ -13,16 +13,18 @@ only `That's not what I do.` and stop.
 The observation file is **this visit’s plane**. Do not write
 `state/`. Do not write `consult`. Do not read other planes.
 
-Tickets do not vote on vitals. Ticket volume does not set
-`degraded`. A failed collection (`coverage.state=unavailable`)
-sets this plane `unknown`; it does not speak for other planes.
+Tickets do not vote on vitals. `status` is `ok` or `unknown`.
+Ticket volume does not set `status`. A failed collection
+(`coverage.state=unavailable`) sets this plane `unknown`; it does
+not speak for other planes.
 Reply `Trend:` is `vs_prior.delta` vs the prior stamp of **this**
 source (`servicenow.last_visit_id`). First visit: `delta` `first`.
 
 The observation is a **lab slip**. Required: `headline`, `coverage`,
-`metrics`, `vs_prior`. Do not write `summary` that restates
-`metrics`. Do not write `incidents[]` / `changes[]` / `recent[]`
-unless a number in `metrics` needs a ticket id — cap 5.
+`metrics`, `vs_prior`. The stamp has no `summary`, `incidents[]`,
+`changes[]`, or `recent[]`. When a metric needs a ticket id, write
+`ticket_numbers` (in-scope numbers only, cap 5). Omit it when the
+counts are enough.
 
 Envelope `headline` is this visit’s check headline.
 

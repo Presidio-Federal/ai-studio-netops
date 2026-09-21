@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
-version: "1.6.0"
-description: "v1.6.0 — Read-only ServiceNow health visit for this lab’s tickets. Write the lab slip and metadata. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+version: "1.6.1"
+description: "v1.6.1 — Read-only ServiceNow health visit for this lab’s tickets. Write the lab slip and metadata. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill

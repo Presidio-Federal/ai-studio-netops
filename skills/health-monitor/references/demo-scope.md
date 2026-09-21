@@ -39,11 +39,11 @@ index=<index> sourcetype=<sourcetype>
 | stats count as event_count, dc(host) as hosts, min(_time) as first_event, max(_time) as last_event by sev_key
 ```
 
-`event_count` on the check is the **sum of B2 rows** (includes unparsed).
-It must match B1 when B1 succeeded. `parsed_count` is total minus unparsed.
+B1 and B2 are for coverage only. They do not become `metrics`.
+`metrics` are the per-device signal counts in `references/watch.md`.
 
-**B3 — every host.** Cap `top_hosts` at 10 in the file after a full
-`stats by host`.
+**B3 — every host.** Use the IOS hostname in the message as `name`
+on the device row. Do not write a host list on the stamp.
 
 ```
 index=<index> sourcetype=<sourcetype>
@@ -52,10 +52,10 @@ index=<index> sourcetype=<sourcetype>
 | sort -count
 ```
 
-**B4 — facility × mnemonic × sev.** `head 25` **after** `stats`. Write
-`facility` and `mnemonic` (`cisco_mn`) separately — never store facility
-in `mnemonic`. `hosts` on `by_mnemonic` is a string array of IPs, or
-**omit** the field. Never put `host_count` in `hosts`.
+**B4 — facility × mnemonic × sev.** `head 25` **after** `stats`. Use
+facility and mnemonic in the headline when they explain the window.
+Do not write `by_mnemonic` on the stamp. Never store facility inside
+the mnemonic token.
 
 ```
 index=<index> sourcetype=<sourcetype>
@@ -94,10 +94,16 @@ that bucket. Samples never set `event_count` or `flap_count`.
 window (`complete`, zeros allowed). MCP/timeout with no extract is
 `unavailable`: counts **null**, never `0`; do not advance the watermark.
 
-Write the **lab slip**: `headline`, `coverage`, `metrics` (one
-row `scope` `window`), `vs_prior`. Do **not** write `by_mnemonic`,
-`top_hosts`, `buckets`, `samples`, or a `summary` that restates
-metrics. F2 is for your judgment of `headline` / `status` only.
+Write the **lab slip** from the prior stamp of this source when
+`last_visit_id` is set. `metrics` one row per device for
+`BGP-5-ADJCHANGE`, `LINEPROTO-5-UPDOWN`, and `CONFIG_I`. `name`
+is the IOS hostname in the message. `readings` are the subject
+lines (neighbor id and Up/Down, interface and up/down). Cap 24.
+First visit: `delta` `first`, `changed` []. Later visit:
+`changed` is only the diff against that prior file. `headline`
+is that diff. The stamp has no `by_mnemonic`, `top_hosts`,
+`buckets`, `samples`, or `summary`. DHCP `NO_LEASE` is not a
+signal row. F2 is for the subject line, not a sample dump.
 
 Severity alone does not set `degraded`. SSH-NO_MATCH is a finding.
 
@@ -131,11 +137,14 @@ resolving metadata. Forbidden: agent listing on a healthy extract,
   if `INTERNAL_ERROR` dominates
 
 Write the **lab slip**: `headline`, `coverage`, `metrics` (one row
-per test `scope` `test:<id>`), `vs_prior`, `alerts.firing`. Do
-**not** write a `tests[]` dump of every round. After standing-order
-path-vis, you may add `tests[]` with **only** the worst test’s
-`test_id`, `test_name`, and `path_summary` (`hops`,
-`last_error_hop`). Cap; do not dump hops.
+per test and agent, `scope` `test:<testId>/<agentName>`, `name`
+from `testName`), `vs_prior`, `alerts.firing`. Do not store every
+round. First visit: `delta` `first`, `changed` []. Later visit:
+`changed` is only the diff of `loss_pct`, latency, jitter, and
+rounds against the prior stamp. `headline` is that diff. After
+standing-order path-vis, write `path_summary` for the worst test
+only (`test_id`, `test_name`, `hops`, `last_error_hop`). Do not
+dump hops.
 
 Vitals on `metrics[]` come from each network result:
 
@@ -162,7 +171,9 @@ a failed round. Check `ok: true` (collector answered) and plane
 
 Plane **degraded:** loss >= 5% on any recent ok round, **or** a
 majority of rounds have `errorType`, **or** one direction has zero ok
-rounds. First visit: record the numbers; do not treat empty as `ok`.
+rounds. A first visit with healthy rounds is `ok` and `delta`
+`first`. Record the numbers. Do not set `unknown` because there
+is no prior stamp.
 
 Headline must include rounds, loss, latency, jitter, error types, and
 `alerts.firing` — not loss alone.
