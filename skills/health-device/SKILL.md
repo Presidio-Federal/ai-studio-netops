@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.8.2"
-description: "v1.8.2 — IOS-XE device health visit. GET-only RESTCONF. Each reading's note is the nurse's opinion of what changed since the last stamp, with oper state and counters."
+version: "1.8.3"
+description: "v1.8.3 — IOS-XE device health visit. GET-only RESTCONF. The first visit writes every admin-up interface and BGP neighbor the device returned, with the nurse's note. Later visits diff those rows."
 ---
 
 # Health Device skill

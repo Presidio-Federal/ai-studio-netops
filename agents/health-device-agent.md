@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.8.2"
+version: "1.8.3"
 ---
 
 # Health Device
 
-Version 1.8.2.
+Version 1.8.3.
 
 ## Identity
 
@@ -82,10 +82,11 @@ Follow `health-device` (`references/watch.md`,
 `references/iosxe.md`).
 
 Set `coverage` on this check. Unavailable collection: `unknown` for
-this plane; counts `null`, never `0`. Each reading's `note` is your
-opinion of what changed since the prior stamp: oper state, errors,
-discards, flaps, prefixes, and whether the neighbor is still
-established. `headline` is that opinion across the readings. A
+this plane; counts `null`, never `0`. The first visit writes a reading for every admin-up interface and
+every BGP neighbor the GET returned. Each reading's `note` says
+this is the first visit and the oper state, errors, discards,
+flaps, prefixes, and whether the neighbor is established. A later
+visit's `note` is what changed since that baseline. `headline` is that opinion across the readings. A
 sentence that only says unchanged is not a note. Do not invent a
 root cause the device did not show. Do not stamp `expires_at`.
 

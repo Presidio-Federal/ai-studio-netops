@@ -73,7 +73,11 @@ prefixes, and what moved since the prior stamp), `state`
 (`if-oper-state-ready` or `fsm-established` and the other oper
 values the device returned), plus `in_errors` / `in_discards` /
 `num_flaps` on interfaces and `prefixes_received` on neighbors.
-Omit admin-down idle interfaces. Cap 64. Add `concerns` only when
+Omit admin-down idle interfaces. Cap 64. The first visit writes
+every admin-up interface and every BGP neighbor the GET returned.
+`readings` is empty only when that GET returned none. Each `note`
+says this is the first visit and the state, errors, discards,
+flaps, or prefixes. A later visit diffs those rows. Add `concerns` only when
 a metric on that device is non-zero. The stamp has no `devices[]`
 tree.
 

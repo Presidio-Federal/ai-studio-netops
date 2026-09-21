@@ -74,30 +74,36 @@ Empty successful window → `complete`, zeros allowed, advance
 watermark to `checked_at`. MCP/timeout → `unavailable`, null
 counts, **do not** advance the watermark.
 
-`metrics` one row per device that logged a signal. `name` is the
-IOS hostname in the message, the same spelling as
-inventory when that name exists. `scope` is `device:<name>`. Keys:
-`bgp_adjchange` (`BGP-5-ADJCHANGE`), `link_updown`
-(`LINEPROTO-5-UPDOWN`), `config_i` (`CONFIG_I`). A window with
-none of those is one row `scope` `window`, `name` null, counts 0.
-Do not use total event count as the vital. DHCP `NO_LEASE` is not
-a signal.
+`metrics` one row per device that logged anything other than DHCP
+`NO_LEASE`. `name` is the IOS hostname in the message when the
+message has one, otherwise the event `host`. Same spelling as
+inventory when that name exists. `scope` and `keys` are
+`device:<name>`. Counts: `bgp_adjchange` (`BGP-5-ADJCHANGE`),
+`link_updown` (`LINEPROTO-5-UPDOWN`), `config_i` (`CONFIG_I`).
+Those counts may be 0. The row still exists. `scope` `window` with
+`name` null is only when the search succeeded and no device logged
+anything but DHCP. Do not use total event count as the vital.
 
-`readings` one row per device and subject this window (`kind`
-`bgp` | `link` | `config`). BGP subject is `neighbor <id> Up` or
-`Down`. Link subject is the interface and up or down. Cap 24.
+`readings` one row per device and subject (`kind` `bgp` | `link`
+| `config` | `auth`). BGP subject is `neighbor <id> Up` or `Down`.
+Link subject is the interface and up or down. Config subject is
+who changed it. Auth subject is the mnemonic, including
+`AUTH_PASSED`. Cap 64. A device that logged `AUTH_PASSED` and no
+BGP still gets a reading. DHCP `NO_LEASE` is not a reading.
 `keys` on each row is every join key that payload contains:
 `device:<inventory name>`, `interface:<name>` when the message
 names an interface, and any other contract type present. Write
-all of them. `note` on each row is the nurse's opinion for the
-higher agent: which neighbor or interface, Up or Down, and whether
-CONFIG_I means someone committed config. Say what changed since
-the prior stamp. A sentence that only says something changed is
-not a note.
+all of them. `note` on each row is the nurse's opinion for the higher agent.
+First visit: what this device did in the history just read,
+including a neighbor change, a link change, a config commit, or
+an auth mnemonic. Later visit: what changed since the prior
+stamp. A sentence that only says the window was quiet is not a
+note.
 
-There is no baseline until a prior stamp exists. First visit:
-`delta` `first`, `changed` []. Store the rows anyway. Later
-visit: diff this visit's `metrics` and `readings` against that
+The first visit is the baseline. `delta` `first`, `changed` [].
+The rows are that baseline: every device, what it did, and the
+note. Do not write an empty `readings` array when any device
+logged. Later visit: diff this visit's `metrics` and `readings` against that
 prior file. `changed` lists only what moved: the inventory name,
 the signal, and the old value to the new value. `headline` is the
 opinion across those notes: what recovered, what flapped, and
@@ -105,20 +111,25 @@ whether config was committed. Do not copy a name from this skill.
 
 ## ThousandEyes visit
 
-Window `1h` from `health/metadata-thousandeyes.json`. Baseline:
+First visit (no `last_visit_id`): `te_get_test_results` window
+`7d`. If the tool rejects it, `24h`, then the metadata window.
+Later visits: window from `health/metadata-thousandeyes.json` or
+`1h`. Baseline:
 `te_get_test_results` `result_type=network` for each metadata test,
-then `te_list_alerts(state="trigger", window="1h")`. Empty alerts
-means no rule bound, not a healthy path.
+then `te_list_alerts(state="trigger", window=<that same window>)`.
+Empty alerts means no rule bound, not a healthy path. Every test
+and agent is a row, including a test that returned no result.
 
 Follow-up when any test has loss ≥ 5%, majority `errorType`, or
-zero ok rounds: one `path-vis` `window=1h` on the worst direction;
+zero ok rounds: one `path-vis` on the same window as the results,
+on the worst direction;
 one `te_get_alert` if firing; one `te_agents_get_agents` with
 `agent_types` (e.g. `["enterprise"]`) if `INTERNAL_ERROR`
 dominates. Listing agents without `agent_types` is rejected. MCP
 `ok: true` plus per-round errors is a failed path, not a failed
 tool.
 
-No 24h windows. No listing tests when metadata already has ids. No
+Later visits do not use a 24h window. No listing tests when metadata already has ids. No
 `te_raw_api_call`. Do not create tests.
 
 Plane `degraded` when: loss ≥ 5% on an ok round, **or** error

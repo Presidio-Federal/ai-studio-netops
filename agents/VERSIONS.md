@@ -9,7 +9,7 @@ Deployed model is **MiniMax** unless noted.
 | Network Design | 3.2.1 | MiniMax |
 | Compliance | 1.7.0 | MiniMax |
 | Compliance Test | 1.1.3 | MiniMax |
-| Health Monitor | 1.17.0 | MiniMax |
-| Health Device | 1.8.2 | MiniMax |
+| Health Monitor | 1.18.0 | MiniMax |
+| Health Device | 1.8.3 | MiniMax |
 | Health ServiceNow | 1.7.1 | MiniMax |
 | Health Analyzer | 3.1.3 | MiniMax |

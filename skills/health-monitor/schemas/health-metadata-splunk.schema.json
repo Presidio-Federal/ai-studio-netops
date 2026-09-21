@@ -19,7 +19,7 @@
         "dashboard_id": { "type": ["string", "null"] },
         "bootstrap_earliest": {
           "type": "string",
-          "description": "First-visit lookback when collected_through is absent. Default -24h if unset."
+          "description": "Ignored on the first visit when the value is -24h. The first visit starts at the oldest event still in the index."
         },
         "collected_through": {
           "type": ["string", "null"],

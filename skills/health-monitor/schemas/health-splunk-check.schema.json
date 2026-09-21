@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-splunk-check/v2",
   "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
-    "description": "Splunk lab slip (Kind observation). One metrics row per device (ios hostname) for BGP ADJCHANGE, LINEPROTO UPDOWN, and CONFIG_I. readings are the subject lines the next visit diffs. vs_prior.changed is that diff; empty on the first visit. No window-wide event census and no raw syslog.",
+    "description": "Splunk lab slip (Kind observation). The first visit is the baseline: one metrics row per device that logged, plus readings for BGP, link, config, and auth. Later visits diff those rows. No window-wide event census and no raw syslog.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -49,7 +49,7 @@
     },
     "readings": {
       "type": "array",
-      "maxItems": 24,
+      "maxItems": 64,
       "description": "One subject line per device and signal this window. The next visit diffs these against the prior stamp. Omit raw syslog.",
       "items": { "$ref": "#/$defs/reading" }
     }
@@ -116,7 +116,7 @@
       "required": ["at", "scope", "name", "bgp_adjchange", "link_updown", "config_i"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "minLength": 1, "description": "device:<ios hostname> or window when no device logged a signal." },
+        "scope": { "type": "string", "minLength": 1, "description": "device:<name> for each device that logged. window only when no device logged anything but DHCP." },
         "name": {
           "type": ["string", "null"],
           "description": "IOS hostname from the syslog body. Same spelling as inventory when that name exists. Null on a window row."
@@ -139,8 +139,8 @@
           "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+" }
         },
         "name": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "enum": ["bgp", "link", "config"] },
-        "subject": { "type": "string", "minLength": 1, "description": "The fact to diff next visit. BGP: neighbor and Up/Down. Link: interface and up/down. Config: who changed it, when the message says." },
+        "kind": { "type": "string", "enum": ["bgp", "link", "config", "auth"] },
+        "subject": { "type": "string", "minLength": 1, "description": "The fact to diff next visit. BGP: neighbor and Up/Down. Link: interface and up/down. Config: who changed it. Auth: the mnemonic, including AUTH_PASSED." },
         "count": { "type": "integer", "minimum": 1 },
         "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. What this signal did since the prior stamp, with the neighbor or interface and whether config was committed. A sentence that only says something changed is not a note." }
       }

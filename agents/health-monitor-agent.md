@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "1.17.0"
+version: "1.18.0"
 ---
 
 # Health Monitor
 
-Version 1.17.0.
+Version 1.18.0.
 
 ## Identity
 
@@ -99,9 +99,13 @@ Follow `health-monitor` (`references/watch.md`,
 
 Interpret vs the prior observation of **this** source. Set `coverage`
 on this plane. Unavailable collection: `unknown`; counts/loss `null`,
-never `0`. Each row's `note` is your opinion of what changed since
-that prior stamp, with the specifics: neighbor or interface and
-whether config was committed, or loss, latency, jitter, and rounds.
+never `0`. The first Splunk visit starts at the oldest event still stored,
+not the last 24 hours, and writes one row per device that logged,
+including auth. The first ThousandEyes visit uses window `7d`
+and writes one row per test and agent. Each row's `note` is your
+opinion of that baseline, or of what changed since the prior
+stamp, with the specifics: neighbor, interface, config, or auth,
+or loss, latency, jitter, and rounds.
 `headline` is that opinion across the rows. A sentence that only
 says something changed is not a note. Plane `status` is this visit
 only. Do not invent a root cause the data does not support. Do not

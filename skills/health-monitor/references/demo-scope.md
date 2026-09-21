@@ -85,25 +85,30 @@ Do not classify all `DMI` as auth. `SYNC_*` is NETCONF config-sync.
 `flap_count` = link + routing bucket counts. Never set `flap_count`
 from a sample.
 
-**F2 — only if** a bucket is interesting (link, routing, resource, or
-auth that is not routine SSH-NO_MATCH): (a) host×mnemonic for routing
-or link only, `head 20`; or (b) up to 5 truncated `_raw` samples from
-that bucket. Samples never set `event_count` or `flap_count`.
+**F2 — always** for any link, routing, config, or auth bucket,
+including `AUTH_PASSED`: host × mnemonic, `head 20`. Samples are
+not required. Samples never set a count. SSH-NO_MATCH is a finding
+on that device's note. It does not set `degraded` by itself.
 
 **Zero rows:** B1 returning 0 after a successful search is an empty
 window (`complete`, zeros allowed). MCP/timeout with no extract is
 `unavailable`: counts **null**, never `0`; do not advance the watermark.
 
-Write the **lab slip** from the prior stamp of this source when
-`last_visit_id` is set. `metrics` one row per device for
-`BGP-5-ADJCHANGE`, `LINEPROTO-5-UPDOWN`, and `CONFIG_I`. `name`
-is the IOS hostname in the message. `readings` are the subject
-lines (neighbor id and Up/Down, interface and up/down). Cap 24.
-First visit: `delta` `first`, `changed` []. Later visit:
-`changed` is only the diff against that prior file. `headline`
-is that diff. The stamp has no `by_mnemonic`, `top_hosts`,
-`buckets`, `samples`, or `summary`. DHCP `NO_LEASE` is not a
-signal row. F2 is for the subject line, not a sample dump.
+The first visit searches from the oldest event still stored, not
+`-24h`. `metrics` is one row per device that logged anything other
+than DHCP `NO_LEASE`. `name` is the IOS hostname in the message,
+or the event `host` when the message has no hostname. `scope` is
+`device:<name>`. Signal counts may be 0. `readings` include BGP
+neighbor up/down, interface up/down, config commits, and auth
+mnemonics such as `AUTH_PASSED`. Cap 64. `scope` `window` only
+when no such device logged. First visit: `delta` `first`,
+`changed` [], and the rows are the baseline. Later visit:
+`changed` is the diff against the prior stamp. `headline` is the
+nurse's opinion of that baseline or that diff. The stamp has no
+`by_mnemonic`, `top_hosts`, `buckets`, `samples`, or `summary`.
+F2 supplies the subject line for link, routing, config, and auth.
+It is not a sample dump. Do not advance `collected_through` until
+those device rows are written.
 
 Severity alone does not set `degraded`. SSH-NO_MATCH is a finding.
 
@@ -114,14 +119,19 @@ Use on a **ThousandEyes visit** only. Do not call Splunk or IOS-XE.
 `aid` and `tests[].test_id` come from `health/metadata-thousandeyes.json` — not from
 this file. If they are missing, resolve per `references/metadata.md`
 and write metadata before collecting. Write `test_name` from the TE
-result. Window from metadata or `1h`. Never `24h`.
+result. First visit window is `7d` (then `24h` if rejected, then
+the metadata window). Later visits use the metadata window or
+`1h`.
 
 **Baseline (always):**
 
 1. `te_get_test_results` for each metadata test (`result_type="network"`,
-   window from metadata or `1h`)
-2. `te_list_alerts(state="trigger", window="1h")` — always. Empty means
-   no rule is bound, not that the path is healthy.
+   the first-visit window or the later-visit window above). One
+   metrics row per test and agent, including a test that returned
+   no result. The note says the loss, latency, jitter, and rounds,
+   or that the direction is unknown.
+2. `te_list_alerts(state="trigger", window=<that same window>)` —
+   always. Empty means no rule is bound, not that the path is healthy.
 
 Listing (`te_tests_get_tests`, `te_manage_account_groups`) only when
 resolving metadata. Forbidden: agent listing on a healthy extract,

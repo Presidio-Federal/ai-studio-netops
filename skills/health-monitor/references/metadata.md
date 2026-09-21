@@ -21,13 +21,19 @@ Do not collect another health source. Do not copy PAT into metadata.
 
 ## Splunk window
 
-- No `collected_through`: `earliest_time` = `bootstrap_earliest` if
-  set, else `-24h`. `latest_time` = `now`.
-- After a **successful** Splunk collection: set `collected_through`
+- No `collected_through`: this is the baseline visit. Do not use
+  `-24h` and do not use `bootstrap_earliest` when that value is
+  `-24h`. One search, `stats min(_time) as oldest` on the metadata
+  index and sourcetype, finds the oldest event still stored.
+  `earliest_time` is that time. `latest_time` is `now`. If that
+  search fails, stop. Do not substitute `-24h`. Do not advance
+  the watermark.
+- After the baseline rows are on the stamp: set `collected_through`
   to `last_event_at` when events exist, else this visit’s
   `checked_at`. Set `last_visit_id` and `last_collected_at`. Never
-  move `collected_through` backward. Re-read metadata before writing
-  it.
+  move `collected_through` backward. Do not advance it when the
+  stamp has no device row and the search did return devices.
+  Re-read metadata before writing it.
 - Later Splunk visits: `earliest_time` = `collected_through`. Collect
   newly arrived data — not another rolling 24h.
 - Failed MCP: do **not** advance the watermark. Empty successful
@@ -36,8 +42,10 @@ Do not collect another health source. Do not copy PAT into metadata.
 Pass the window as MCP `earliest_time` / `latest_time`. Do not put
 `earliest=` in SPL.
 
-ThousandEyes window is `thousandeyes.window` or `1h`. Not a Splunk
-watermark.
+ThousandEyes later visits use `thousandeyes.window` or `1h`. The
+first ThousandEyes visit (no `last_visit_id`) uses `7d`. If that
+window is rejected, use `24h`. If that is rejected, use the
+metadata window. Not a Splunk watermark.
 
 ## Resolve — incomplete for this visit only
 

@@ -68,8 +68,10 @@ BGP neighbor list.
 
 Plane `degraded` when admin-up/oper-not-ready (non-idle), BGP not
 `fsm-established`, or errors/flaps on a ranked up port. No ACL GET
-when nothing is dropping; ACL 204 is zero ACLs, not failure. Headline
-names devices, oper-not-ready, BGP, errors — not “interfaces checked.”
+when nothing is dropping; ACL 204 is zero ACLs, not failure. The first visit writes a reading for every admin-up interface and
+every BGP neighbor the GET returned. Do not write empty `readings`
+when the GET returned them. Headline names the oper state, BGP
+state, errors, and prefixes — not “interfaces checked.”
 
 `metrics` one row per collected device `scope` `device:<name>`.
 Keys: `oper_not_ready`, `bgp_not_established`, `in_errors`,

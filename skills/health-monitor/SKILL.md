@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.32.0"
-description: "v1.32.0 — One named Splunk or ThousandEyes health visit. Each row's note is the nurse's opinion of what changed since the last stamp, with the specifics. Use when the invoke names Splunk or ThousandEyes."
+version: "1.33.0"
+description: "v1.33.0 — One named Splunk or ThousandEyes health visit. The first visit writes a per-device or per-test baseline from the history the source still has, with the nurse's note. Later visits diff that baseline."
 ---
 
 # Health Monitor skill
@@ -25,8 +25,9 @@ Do not write `state/`. You interpret this source vs its last stamp
 ## Hard boundaries
 
 Do not search Splunk `index=*`. Do not `stats` by `severity` or
-`log_level`. Do not build dashboards. Do not use `te_raw_api_call` or
-24h TE windows. Do not write `runs/`, `inventory/`, `state/`,
+`log_level`. Do not build dashboards. Do not use `te_raw_api_call`.
+A later ThousandEyes visit does not use a 24h window. The first
+ThousandEyes visit uses `7d`. Do not write `runs/`, `inventory/`, `state/`,
 `trend-analysis.json`, `remediation-request.json`,
 `state/network-sync.json`, other `health/<source>/` directories, or
 `health-board.md`. Do not invent files. Do not invent measurements.
