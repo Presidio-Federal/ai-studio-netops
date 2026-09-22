@@ -6,8 +6,9 @@ A general architecture for coordinating specialized AI agents through a persiste
 
 Traditional multi-agent systems often treat orchestration as a sequence of handoffs:
 
-```text
-Agent A → Agent B → Agent C → Agent D
+```mermaid
+flowchart LR
+    AgentA[Agent A] --> AgentB[Agent B] --> AgentC[Agent C] --> AgentD[Agent D]
 ```
 
 Each agent receives context from the previous agent, performs its task, and passes its understanding forward.
@@ -28,18 +29,15 @@ A patient may be treated by nurses, physicians, specialists, technicians, pharma
 
 Instead, they contribute structured observations, measurements, assessments, interventions, and outcomes to a shared **patient chart**.
 
-```text
-Nurse ──────────┐
-                │
-Physician ──────┤
-                │
-Specialist ─────┤
-                ├────► PATIENT CHART ◄────► Current Understanding
-Technician ─────┤
-                │
-Lab ────────────┤
-                │
-Imaging ────────┘
+```mermaid
+flowchart LR
+    Nurse[Nurse] --> Chart[(Patient Chart)]
+    Physician[Physician] --> Chart
+    Specialist[Specialist] --> Chart
+    Technician[Technician] --> Chart
+    Lab[Lab] --> Chart
+    Imaging[Imaging] --> Chart
+    Chart <--> Understanding[Current Understanding]
 ```
 
 The chart provides continuity.
@@ -48,21 +46,16 @@ A specialist can enter the case, review the relevant history and current state, 
 
 The same principle can be applied to AI agents.
 
-```text
-Specialist Agent ─────┐
-                      │
-Specialist Agent ─────┤
-                      │
-Specialist Agent ─────┼────► SHARED WORKSPACE
-                      │              │
-Specialist Agent ─────┤              ▼
-                      │        Current Case State
-Specialist Agent ─────┘              │
-                                     ▼
-                                  Analysis
-                                     │
-                                     ▼
-                              Next Objectives
+```mermaid
+flowchart LR
+    Agent1[Specialist Agent] --> Workspace[(Shared Workspace)]
+    Agent2[Specialist Agent] --> Workspace
+    Agent3[Specialist Agent] --> Workspace
+    Agent4[Specialist Agent] --> Workspace
+    Agent5[Specialist Agent] --> Workspace
+    Workspace --> State[Current Case State]
+    State --> Analysis
+    Analysis --> Objectives[Next Objectives]
 ```
 
 Agents distribute the work. The workspace preserves the knowledge.
@@ -75,25 +68,15 @@ Authoritative systems continue to own their data. Agents retrieve that evidence 
 
 This creates three distinct layers:
 
-```text
-AUTHORITATIVE SOURCES
-Raw evidence and system state
-          │
-          ▼
-SPECIALIST AGENTS
-Observe, compare, test, measure
-          │
-          ▼
-SHARED WORKSPACE
-Material observations and current state
-          │
-          ▼
-ANALYSIS
-Interpret evidence across domains
-          │
-          ▼
-OBJECTIVES
-Determine what should happen next
+```mermaid
+flowchart TB
+    Sources["Authoritative Sources<br/>Raw evidence and system state"]
+    Specialists["Specialist Agents<br/>Observe, compare, test, measure"]
+    Workspace["Shared Workspace<br/>Material observations and current state"]
+    Analysis["Analysis<br/>Interpret evidence across domains"]
+    Objectives["Objectives<br/>Determine what should happen next"]
+
+    Sources --> Specialists --> Workspace --> Analysis --> Objectives
 ```
 
 The workspace therefore acts as an **information compression and continuity layer between source systems and reasoning models**.
@@ -104,27 +87,18 @@ Instead of repeatedly passing large amounts of raw data or conversational summar
 
 Most specialist agents can follow the same basic lifecycle:
 
-```text
-READ
-Relevant case state
-        │
-        ▼
-OBSERVE
-Query authoritative source
-        │
-        ▼
-COMPARE
-Current evidence vs known state
-        │
-        ▼
-MATERIAL CHANGE?
-    │           │
-   No          Yes
-    │           │
-  EXIT        WRITE
-                │
-                ▼
-              EXIT
+```mermaid
+flowchart TB
+    Read["Read<br/>Relevant case state"]
+    Observe["Observe<br/>Query authoritative source"]
+    Compare["Compare<br/>Current evidence vs known state"]
+    Changed{"Material change?"}
+    Write[Write]
+    Exit([Exit])
+
+    Read --> Observe --> Compare --> Changed
+    Changed -- No --> Exit
+    Changed -- Yes --> Write --> Exit
 ```
 
 This makes agent behavior predictable even when the agents use different tools, models, or areas of expertise.

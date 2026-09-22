@@ -35,23 +35,16 @@ everyone else’s job.
 
 ## Specialist loop
 
-```text
-READ CASE          metadata + last stamp for this plane
-    │
-    ▼
-QUERY SOURCE       Splunk or TE or IOS-XE or ServiceNow — one only
-    │
-    ▼
-COMPARE            vs_prior against last_visit_id (IOS-XE: chart source_ref)
-    │
-    ▼
-DETECT CHANGE      delta first | unchanged | worse | better
-    │
-    ▼
-WRITE LAB SLIP     headline, coverage, metrics, vs_prior
-    │
-    ▼
-EXIT
+```mermaid
+flowchart TB
+    Read["Read Case<br/>Metadata + last stamp for this plane"]
+    Query["Query Source<br/>Splunk, TE, IOS-XE, or ServiceNow — one only"]
+    Compare["Compare<br/>vs_prior against last_visit_id<br/>(IOS-XE: chart source_ref)"]
+    Detect["Detect Change<br/>delta first · unchanged · worse · better"]
+    Write["Write Lab Slip<br/>headline · coverage · metrics · vs_prior"]
+    Exit([Exit])
+
+    Read --> Query --> Compare --> Detect --> Write --> Exit
 ```
 
 Skills own tools, thresholds, and the schema. The prompt stays

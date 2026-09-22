@@ -31,8 +31,9 @@ or on one agent successfully transferring its context to another.
 
 A traditional multi-agent workflow often assumes:
 
-```text
-Agent A → Agent B → Agent C
+```mermaid
+flowchart LR
+    AgentA[Agent A] --> AgentB[Agent B] --> AgentC[Agent C]
 ```
 
 State is carried through the execution path. If the sequence
@@ -147,8 +148,9 @@ Instead, they answer a more useful question:
 
 The standard specialist interaction becomes:
 
-```text
-Read → Query → Compare → Detect Significance → Write or Exit
+```mermaid
+flowchart LR
+    Read --> Query --> Compare --> Significance[Detect Significance] --> Decision{Write or Exit}
 ```
 
 If nothing meaningful has changed, the agent does not need to add
@@ -184,25 +186,18 @@ evolve while maintaining the original evidence and its provenance.
 
 Specialist agents follow a common operational pattern:
 
-```text
-READ CASE
-    │
-    ▼
-QUERY AUTHORITATIVE SOURCE
-    │
-    ▼
-COMPARE WITH PRIOR KNOWLEDGE
-    │
-    ▼
-DETECT MATERIAL CHANGE
-    │
-    ├──── No Change ────► EXIT
-    │
-    ▼
-WRITE STRUCTURED OBSERVATION
-    │
-    ▼
-EXIT
+```mermaid
+flowchart TB
+    Read[Read Case]
+    Query[Query Authoritative Source]
+    Compare[Compare with Prior Knowledge]
+    Change{Material Change?}
+    Write[Write Structured Observation]
+    Exit([Exit])
+
+    Read --> Query --> Compare --> Change
+    Change -- No --> Exit
+    Change -- Yes --> Write --> Exit
 ```
 
 This pattern allows prompts to remain relatively consistent across
@@ -256,8 +251,9 @@ observations and assessments remain available.
 
 This creates three useful histories:
 
-```text
-What happened → What was observed → What the system believed
+```mermaid
+flowchart LR
+    Happened[What happened] --> Observed[What was observed] --> Believed[What the system believed]
 ```
 
 ## Analysis and SOAP
@@ -303,28 +299,20 @@ agents that are authorized to act.
 
 ## The Analysis Loop
 
-```text
-                 FRONTIER ANALYZER
-                       SOAP
-                         │
-                         ▼
-                 ACTIONABLE OBJECTIVES
-                         │
-                         ▼
-                  SPECIALIST AGENTS
-                         │
-              Read → Query → Compare
-                         │
-                 Material Change?
-                    │         │
-                   No        Yes
-                    │         │
-                   Exit       ▼
-                         PATIENT CHART
-                              │
-                         New Evidence
-                              │
-                              └──────► ANALYZER
+```mermaid
+flowchart TB
+    Analyzer["Frontier Analyzer<br/>SOAP"]
+    Objectives[Actionable Objectives]
+    Specialists[Specialist Agents]
+    Work[Read → Query → Compare]
+    Change{Material Change?}
+    Exit([Exit])
+    Chart[(Patient Chart)]
+    Evidence[New Evidence]
+
+    Analyzer --> Objectives --> Specialists --> Work --> Change
+    Change -- No --> Exit
+    Change -- Yes --> Chart --> Evidence --> Analyzer
 ```
 
 The frontier model is therefore used primarily where higher-order
