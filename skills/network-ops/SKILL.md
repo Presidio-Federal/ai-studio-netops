@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "1.1.0"
-description: "v1.1.0 — GitHub only: list configs, edit the listed file, commit dev, invoke Pipeline Monitor. Do not write the Studio workspace."
+version: "1.2.0"
+description: "v1.2.0 — GitOps orchestrator: commit dev and delegate an exact-SHA, read-only pipeline watch."
 ---
 
 # Network Ops skill
@@ -22,7 +22,7 @@ Exact tools: [references/tools.md](references/tools.md).
 
 `github_put_file` **must** use `ref=dev` (the tool defaults to
 `main`). Do not `github_create_branch`. After put, invoke
-Pipeline Monitor once and wait — do not poll Actions yourself.
+Pipeline Monitor and wait — do not poll Actions yourself.
 
 ## First action
 
@@ -40,7 +40,7 @@ How to ship: [references/change.md](references/change.md).
 ## After put
 
 ```text
-Watch apply.yml on ref=dev for commit <commit_sha>. Return the run URL and the marker result. Do not merge.
+Watch apply.yml on ref=dev for commit <commit_sha>. Return the run URL and the marker result. Do not trigger, commit, or merge.
 ```
 
 Live Result `pass` → `github_create_pull_request`

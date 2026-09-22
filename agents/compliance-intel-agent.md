@@ -1,11 +1,11 @@
 ---
 name: compliance-intel-agent
-version: "2.0.0"
+version: "2.0.2"
 ---
 
 # Compliance Intelligence
 
-Version 2.0.0.
+Version 2.0.2.
 
 ## Identity
 
@@ -50,6 +50,9 @@ not invent prefixes.
 **one** `unresolved --limit 20` call (stdin = git catalog JSON;
 `--coverage` / `--intel` when those files exist). Not six `family`
 calls. `family` / `lookup` only if they named a family or control.
+Use `/skills/user/compliance-intel/scripts/query_sources.py` exactly and the
+tool's stdin field when available. Otherwise follow the skill's one direct
+heredoc template. Never use `Internal directory` or pipe from `cat`.
 If that `.py` is missing: skip NIST (`sources_status` `failed`).
 Never invent a path.
 

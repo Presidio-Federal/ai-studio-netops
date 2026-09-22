@@ -13,6 +13,8 @@ auto-merges successful tests to `main`. That validation is owned by the
 automation repository; do not invent or manually dispatch its workflow name.
 
 Do not pass a target / environment / lab input to `apply.yml`.
+Pipeline Monitor watches the named ref and exact commit SHA. No matching
+run after three list calls is `unknown`; it does not dispatch a replacement.
 
 | Workflow | Who names it | Marker |
 |----------|---------------|--------|

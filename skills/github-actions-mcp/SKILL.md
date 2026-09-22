@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.1.0"
-description: "v4.1.0 — Separate git refs, workflow triggers, and target environments. Judge job-log markers, not green checks."
+version: "4.2.0"
+description: "v4.2.0 — Read-only exact-SHA pipeline watches; only an explicit ad-hoc test owner may trigger."
 ---
 
 # GitHub Actions skill
@@ -19,8 +19,8 @@ Workflows and markers: [references/workflows.md](references/workflows.md).
 | Intent | How |
 |--------|-----|
 | Watch / poll a named workflow for a commit | list runs on that ref → get run → job logs → marker |
-| No run yet for that commit | `github_run_action` **once** on that ref, then list |
-| Ad-hoc `test.yml` | Compliance Test owns the extract files. You may watch. |
+| No run yet for a watched commit | List up to three times, then `unknown`; watcher never triggers |
+| Explicit ad-hoc `test.yml` | Compliance Test may trigger once, then watch exact run |
 | Candidate test push | Automation validates `compliance`; do not manually substitute an ad-hoc run |
 
 ## Hard boundaries
@@ -35,18 +35,17 @@ Workflows and markers: [references/workflows.md](references/workflows.md).
 - Do not commit. Do not merge. Do not `github_put_file`.
 - Do not invent a run id. Do not sleep-script; call
   `github_get_action_run` again until `completed`.
+- Pipeline Monitor is read-only and never calls `github_run_action`.
 
 ## Watch
 
-Need workflow, git ref, and commit sha. Missing sha: read
-`state/network-ops.json` `git.commit_sha` once (Access denied →
-`file_explorer/state/network-ops.json`). Still missing:
-`unknown` — do not pick the newest run.
+Need workflow, git ref, and commit sha. Missing any input: `unknown`.
+Do not read a workspace fallback or pick the newest run.
 
 1. `github_list_action_runs(workflow=<file>, branch=<ref>, limit=5)`
 2. Pick the run whose `sha` matches the asked commit. If none,
-   `github_run_action(workflow=<file>, ref=<ref>)` once, then list
-   again. Still none → `unknown`.
+   repeat step 1 up to three list calls total. Still none → `unknown`;
+   do not trigger.
 3. `github_get_action_run(run_id=...)` until `status=completed`.
 4. `github_get_action_job_logs` on the job that printed the marker
    (`tail_lines=200`).

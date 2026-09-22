@@ -8,7 +8,9 @@ prefixes. `write_file` creates parents. Never `mkdir`.
 
 `execute_command` is the query script (stdout). Job catalog is
 `github_get_file` — do not `write_file` it. Pass that JSON on
-stdin to `unresolved --catalog -`.
+stdin to `unresolved --catalog -`. Use the tool's stdin field when present;
+otherwise use one direct heredoc on the Python command. Do not pipe from
+`cat` or write a scratch file.
 
 Every completed intel run writes **only**:
 
@@ -33,9 +35,11 @@ Git `catalog/job-catalog.json` is read with `github_get_file`. Do not
 
 ```text
 github_get_file(path="catalog/job-catalog.json", ref="main")
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
+python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json
 ```
 
-No `--output`. Never `find`. Do not run six `family` calls on a standard scan.
+`Internal directory` is never a script path. Built-in file tools use
+workspace-relative paths; `execute_command` uses `/workspace/...`. No
+`--output`. Never `find`. Do not run six `family` calls on a standard scan.
 
 Do not write `testing/`, `risk/`, `runs/`, a root `compliance.json`, or `.py`.

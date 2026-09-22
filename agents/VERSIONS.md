@@ -4,11 +4,11 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 1.1.0 | MiniMax |
-| Pipeline Monitor | 1.0.2 | MiniMax |
+| Network Ops | 1.2.0 | Frontier (operator-selected; GitOps orchestration risk) |
+| Pipeline Monitor | 1.1.0 | MiniMax |
 | Network Design | 3.2.1 | MiniMax |
 | Compliance | 1.0.0 | MiniMax |
-| Compliance Intelligence | 2.0.0 | MiniMax |
+| Compliance Intelligence | 2.0.2 | MiniMax |
 | Compliance Author | 1.2.0 | MiniMax |
 | Compliance Test | 1.3.0 | MiniMax |
 | Health Monitor | 1.19.0 | MiniMax |

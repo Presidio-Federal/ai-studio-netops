@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.17.0"
-description: "v1.17.0 — Bounded NIST scan with current state plus append-only Intelligence visits for longitudinal compliance analysis."
+version: "1.18.1"
+description: "v1.18.1 — Fixed sandbox path with direct-stdin or exact-heredoc bounded NIST scan."
 ---
 
 # Compliance intel
@@ -47,12 +47,22 @@ Do not create helper scripts. Do not scrape HTML. **No curl.** Never
 `unresolved` call** — not six `family` calls.
 
 ```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
+python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json
 ```
 
-Stdin is the `github_get_file` catalog JSON. Do not `write_file` that
-catalog. Omit `--coverage` and/or `--intel` when that workspace file
-is missing. Stdout only. Do not redirect into a workspace file.
+Pass the `github_get_file` catalog JSON on stdin. If `execute_command` has a
+stdin field, use it. Otherwise use exactly one direct heredoc on the Python
+command (not `cat | python`):
+
+```text
+python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json <<'CATALOG_JSON'
+<catalog JSON>
+CATALOG_JSON
+```
+
+Never use `Internal directory` as a path. Do not `write_file` the catalog.
+Omit `--coverage` and/or `--intel` when that workspace file is missing.
+Stdout only. Do not redirect into a workspace file.
 
 `family` and `lookup` are troubleshooting / named-control only. Never
 run `family` AC, AU, CM, IA, SC, SI on a scheduled or gaps visit.
@@ -108,12 +118,13 @@ not assume a device that is not in the file.
 | `query_sources.py family AC` | Troubleshooting / they asked to skim one family |
 
 ```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
+python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json
 python3 /skills/user/compliance-intel/scripts/query_sources.py lookup AC-17
 python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
 ```
 
-The unresolved script reads coverage and intel **from those paths**.
+The unresolved script reads coverage and intel from `/workspace`. Built-in
+file tools still use workspace-relative catalog paths without `/workspace/`.
 Do not paste the historical coverage file or the git catalog into
 chat. Evaluate only the returned `controls` list (plus current
 candidates and inventory).
