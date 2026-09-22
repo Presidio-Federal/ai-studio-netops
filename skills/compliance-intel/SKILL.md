@@ -1,12 +1,12 @@
 ---
 name: compliance-intel
-version: "1.14.0"
-description: "v1.14.0 — Bounded unresolved NIST query. Write the delta and stop. Operator names which INTEL ids to write."
+version: "1.17.0"
+description: "v1.17.0 — Bounded NIST scan with current state plus append-only Intelligence visits for longitudinal compliance analysis."
 ---
 
 # Compliance intel
 
-For the **Compliance** agent. Compare **published NIST titles** to
+For **Compliance Intelligence**. Compare **published NIST titles** to
 **this network** and **tests on git `main`**. Write the two catalog
 files. Ranked candidates wait for the operator. Do not invoke
 Author or Test on a scan.
@@ -21,6 +21,8 @@ Write **only** these catalog rows with built-in `write_file`
 
 - `compliance/coverage.json`
 - `compliance/intel.json`
+- `compliance/intel/<stamp>.json`
+- `compliance/metadata-intel.json`
 
 File tools use catalog rows from `workspace-handoff`. Do not invent
 prefixes. Do not write to `sessions/`, `skills/`, `scripts/`,
@@ -63,7 +65,8 @@ Never invent a path.
 1. **Tests live in git.** One fetch:
    `github_get_file(path="catalog/job-catalog.json", ref="main")`.
    Use the MCP result in this turn. Never write that JSON to the workspace.
-2. **Write every run** — coverage then intel (even if `candidates` is empty).
+2. **Write every run** — coverage, append-only Intel stamp, current intel,
+   then metadata (even if `candidates` is empty).
 3. **Relevance is this estate.** Read `inventory/prod.json` when it
    exists (platform, role, tags). Interpret the control. If it only
    applies to servers, endpoints, or SaaS and we have none of those,
@@ -77,13 +80,16 @@ Never invent a path.
    and identifiers are fine.
 6. **Delta, then rank.** Catalog `nist:` on a check is covered, not a
    gap. Candidates are relevant missing / partial controls only. Sort
-   `critical` → `high` → `medium` → `low`. Cap 5. Fill `delta`.
+   `critical` → `high` → `medium` → `low`. Cap 10. Fill `delta`.
 7. **status stays `proposed`.** Do not edit git tests.
 8. **Reuse `INTEL-` ids** when re-proposing the same theme; bump `run_id`.
    Missing intel on first run is normal.
 9. Do not invent gaps. Do not write zeros into coverage when the
    source query failed.
 10. Paths: `workspace-handoff`. Produce: `references/workspace-contract.md`.
+11. Every coverage row and candidate carries all supported
+    `workspace-handoff` `type:name` keys. Use exact source names with no
+    whitespace after `:`. Never infer a device or other relationship.
 
 ## Estate
 
@@ -115,9 +121,6 @@ candidates and inventory).
 If that `.py` is missing, skip it — do not invent a workspace copy
 of the script.
 
-Do **not** run `build_coverage.py` in Studio. Do not pass git bodies as
-`--input`. That script is for a local repo checkout only.
-
 The skill ships a **pinned NIST OSCAL title index**. That is the standard,
 not our test list. Do not copy it into the workspace.
 
@@ -142,7 +145,8 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 ## Execution
 
 ```text
-1. READ     intel.json if present (keep stable INTEL- ids)
+1. READ     metadata-intel.json and its latest Intel stamp if present;
+            read intel.json if present (keep stable INTEL- ids)
 2. ESTATE   inventory/prod.json if present (kinds of devices only)
 3. FETCH    github_get_file catalog/job-catalog.json ref=main
             (only git path; never running-configs)
@@ -151,7 +155,7 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 5. RECONCILE drop intel candidates whose nist ids are now on a
             catalog check (nist:). Keep other proposed/accepted
             candidates and their INTEL- ids. No duplicates.
-6. FULL?    if remaining active candidates = 5:
+6. FULL?    if remaining active candidates = 10:
             skip unresolved. Write coverage (catalog reconcile
             only — keep existing rows) then intel. Reply.
 7. NIST     else one execute_command:
@@ -165,9 +169,12 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
             reviewed N/A → not_applicable
             selected candidate → gap (or partial if tests exist)
             keep untouched prior rows
-10. DRAFT   keep remaining candidates; add new ones up to cap 5;
+10. DRAFT   keep remaining candidates; add new ones up to cap 10;
             rank critical → high → medium → low
-11. WRITE   write_file coverage.json then intel.json
+11. WRITE   coverage.json; intel/<stamp>.json; intel.json; metadata-intel.json.
+            The stamp and current intel have the same evidence. Set
+            vs_prior.prior_visit_id from metadata, compare stable metrics and
+            candidate ids, keep 10 stamps, and never list the directory.
 12. REPLY   Action + headline + ranked candidates. Stop.
             Do not invoke Author or Test.
 ```
@@ -178,6 +185,11 @@ re-query unless they asked for a new scan. Do not invoke Author.
 ### Coverage dispositions (reviewed controls)
 
 Every control you reviewed this run must have a coverage row:
+
+Each row's `keys` starts with `control:<nist_id>`. Add
+`test:<NET-COMP-id>`, `test:<live-id>`, and `test:<static-id>` for every
+identifier already present in that row's catalog mappings. Do not add a
+device key; coverage is control-to-test knowledge, not device evidence.
 
 | Judgment | `status` | Also |
 |----------|----------|------|
@@ -197,6 +209,8 @@ Preserve top-level fields from the schema (`version`, `updated_at`,
 
 Each candidate **must** include:
 
+- `keys` — `recommendation:<INTEL-id>`, every `control:<NIST-id>`, and
+  `test:<existing-id>` when `maps_to_existing` is not `none`
 - `why_network` — why this control applies to **these** devices
 - `priority` — `critical` | `high` | `medium` | `low` (impact if we
   do not test it on this estate)
@@ -210,7 +224,7 @@ Each candidate **must** include:
 - `oscal_release` — pinned `v1.5.0`
 - `resolved_from` — `nist-800-171:3.1.7` when they started from 800-171
 
-List order is the rank. Cap **5**. Do not emit a sixth. Reuse the
+List order is the rank. Cap **10**. Do not emit an eleventh. Reuse the
 existing `INTEL-` id when the same control / theme is still a gap.
 
 `skipped_non_network` names what you judged not applicable and why
@@ -234,6 +248,10 @@ Fill from this skill:
 - [`examples/coverage.example.json`](examples/coverage.example.json)
 - [`schemas/compliance-intel.schema.json`](schemas/compliance-intel.schema.json)
 - [`examples/compliance-intel.example.json`](examples/compliance-intel.example.json)
+- [`schemas/compliance-intel-visit.schema.json`](schemas/compliance-intel-visit.schema.json)
+- [`examples/compliance-intel-visit.example.json`](examples/compliance-intel-visit.example.json)
+- [`schemas/compliance-intel-metadata.schema.json`](schemas/compliance-intel-metadata.schema.json)
+- [`examples/compliance-intel-metadata.example.json`](examples/compliance-intel-metadata.example.json)
 
 Intel envelope: `version`, `updated_at`, `source_agent`, `status`,
 `headline`, `next_action`, `sources`, `delta`, `candidates`.
@@ -260,7 +278,6 @@ Ranked:
 
 | Outcome | Next |
 |---------|------|
-| Ranked candidates (default scan) | Stop. Operator names INTEL ids to write |
-| They named INTEL ids to write | Prompt invokes **Compliance Author** for those ids only |
-| User wants device score only | **Compliance Test** — `suites=compliance` |
-| Ticket from a live gap | **Observability** |
+| Any completed scan | Write chart files and stop |
+| Ranked candidates | Primary Compliance and the operator interpret them later |
+| Test posture or remediation | Not this specialist; consumers read the chart files |

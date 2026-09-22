@@ -2,7 +2,9 @@
 
 Paths, envelope, catalog: **`workspace-handoff`**.
 Write schemas live in this skill (`schemas/testing-run.schema.json`,
-`schemas/testing-state.schema.json`). Readers use catalog rely-on;
+`schemas/testing-state.schema.json`,
+`schemas/compliance-test-visit.schema.json`, and
+`schemas/compliance-test-metadata.schema.json`). Readers use catalog rely-on;
 they do not load a second copy from workspace-handoff.
 
 ## When to write
@@ -15,11 +17,20 @@ Every live or static run writes both:
 
 Also write **only when** `scope.suites` includes `compliance`:
 
-- `compliance/YYYY-MM-DDTHH-MM-SSZ.json` — same extract; never overwrite
-- `state/compliance.json` — replace; `latest` is that compliance path
+- `compliance/testing/YYYY-MM-DDTHH-MM-SSZ.json` — append-only
+  compliance visit with stable metrics and `vs_prior`
+- `compliance/metadata-testing.json` — replace after the visit; points to it
 
-Do not overwrite `state/compliance.json` from reachability, routing, or
-path runs. Do not write `risk/` or a root `compliance.json`.
+Each detailed `ran` and `not_applicable` row includes canonical
+`test:<check-id>` and exact `device:<inventory-name>` keys. A report
+`suite/check-id` maps to the catalog's `check-id`. Include `control:<id>` only
+when source evidence provides the mapping. Metadata points to the detailed
+compliance visit.
+
+Read prior metadata and its latest stamp before a compliance run. Write the
+new visit before advancing metadata. Keep ten stamps without listing the
+directory. Do not write `state/compliance.json`; Compliance Analyzer owns
+that chart. Do not write `risk/` or a root `compliance.json`.
 
 Read-only (handoff rely-on): `test-request.json`, inventory json,
 `state/network-sync.json`, `state/health.json` if they asked to test what
@@ -34,11 +45,10 @@ python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /wor
 python3 /skills/user/compliance-test-runner/scripts/validate_testing.py state /workspace/state/testing.json
 ```
 
-If this run included `compliance`, also validate:
+If this run included `compliance`, also validate its visit:
 
 ```text
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/compliance/2026-08-16T23-10-00Z.json
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py state /workspace/state/compliance.json
+python3 /skills/user/compliance-test-runner/scripts/validate_testing.py compliance /workspace/compliance/testing/2026-08-16T23-10-00Z.json
 ```
 
 Skip if script missing. Never `find /`.

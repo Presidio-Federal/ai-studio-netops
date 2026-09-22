@@ -63,7 +63,7 @@
         "relevant_missing": {
           "type": "integer",
           "minimum": 0,
-          "description": "Applies to this estate and is not covered. Should match candidates length this run (capped at 5)."
+          "description": "Applies to this estate and is not covered. Should match candidates length this run (capped at 10)."
         },
         "not_applicable": {
           "type": "integer",
@@ -74,13 +74,24 @@
     },
     "candidates": {
       "type": "array",
-      "maxItems": 5,
-      "description": "Capped at 5. Empty is valid and means status NO_CANDIDATES.",
+      "maxItems": 10,
+      "description": "Persistent ranked backlog capped at 10. Empty is valid and means status NO_CANDIDATES.",
       "items": {
         "type": "object",
-        "required": ["id", "title", "why_network", "suggested_assert", "priority", "status"],
+        "required": ["id", "title", "why_network", "suggested_assert", "priority", "status", "keys"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
+          "keys": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 16,
+            "uniqueItems": true,
+            "description": "Every workspace-handoff type:name key supported by this candidate. Include its recommendation id and control ids; do not invent devices.",
+            "items": {
+              "type": "string",
+              "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+            }
+          },
           "title": {"type": "string", "minLength": 1},
           "summary": {"type": "string"},
           "why_network": {

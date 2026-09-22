@@ -1,11 +1,16 @@
-# Workflows and refs
+# Workflows, refs, and environments
 
-Git branches are config data. CML labs are topologies.
+Git refs select repository content. Workflow inputs select the environment
+when the workflow supports that choice. CML labs are environments.
 
 | Git ref | Means | `apply.yml` |
 |---------|-------|-------------|
 | `dev` | Proposed configs | CI — apply this commit to the Dev lab, live tests, restore the lab from `origin/main`. Does not rewrite git `dev`. |
 | `main` | Prod SoT | CD — apply to Prod lab, then Dev lab (no restore), then git `dev` catches up. |
+
+Git `compliance` holds candidate tests. Automation validates pushes there and
+auto-merges successful tests to `main`. That validation is owned by the
+automation repository; do not invent or manually dispatch its workflow name.
 
 Do not pass a target / environment / lab input to `apply.yml`.
 
@@ -13,6 +18,9 @@ Do not pass a target / environment / lab input to `apply.yml`.
 |----------|---------------|--------|
 | `apply.yml` | Pipeline Monitor (GitOps) | `# Network test report` |
 | `test.yml` | Compliance Test (ad-hoc suite) | `# Network test report` |
+
+For `test.yml`, the requested and authorized workflow inputs choose Dev or
+Production. The git ref does not identify the target environment.
 
 Do not name `sync-dev.yml`, `reconcile-dev.yml`, `gitops-dev.yml`,
 or `apply-branch-to-dev.yml`. Those are retired.

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "updated_at": "2026-08-17T16:21:39Z",
-  "source_agent": "compliance",
+  "source_agent": "compliance-intel",
   "oscal_release": "v1.5.0",
   "platforms": ["iosxe", "cat9kv"],
   "counts": {
@@ -14,6 +14,7 @@
   "rows": [
     {
       "nist_id": "AC-3",
+      "keys": ["control:AC-3", "test:NET-COMP-0004", "test:aaa-authorization-configured"],
       "family_id": "AC",
       "title": "Access Enforcement",
       "net_comp": ["NET-COMP-0004"],
@@ -26,6 +27,7 @@
     },
     {
       "nist_id": "AC-4",
+      "keys": ["control:AC-4", "test:NET-COMP-0005"],
       "family_id": "AC",
       "title": "Information Flow Enforcement",
       "net_comp": ["NET-COMP-0005"],
@@ -38,6 +40,7 @@
     },
     {
       "nist_id": "AC-19",
+      "keys": ["control:AC-19"],
       "family_id": "AC",
       "title": "Access Control for Mobile Devices",
       "net_comp": [],

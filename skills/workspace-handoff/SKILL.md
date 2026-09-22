@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.50.0 — Shared workspace catalog: which files exist, who writes each one, and which fields another agent may read. Attach on every agent that reads or writes the workspace."
-version: "1.50.0"
+description: "v1.52.0 — Compliance Intelligence and Test visits feed an independent SOAP chart at state/compliance.json."
+version: "1.52.0"
 ---
 
 # Workspace handoff
@@ -50,9 +50,18 @@ EoX or expired, and Modernization Lifecycle is attached, invoke
 `Run the Modernization Lifecycle check only.` and do not wait. Record
 `dispatched[]` on `state/lifecycle.json`.
 
-**Compliance.** Writing `compliance/intel.json` does not invoke
-Compliance Author. Invoke Author and wait when they name INTEL ids.
-Invoke Compliance Test and wait when they ask to run the suite.
+**Compliance Analyzer.** Intel and Testing evidence is current for 24 hours.
+`assess-now` dispatches stale attached specialists without waiting.
+`refresh-then-assess` waits only for stale material planes, then rereads
+metadata. Record dispatches on `state/compliance.json`.
+
+| Plane | Writer | Task line |
+|-------|--------|-----------|
+| `intel` | Compliance Intelligence | `Run the compliance intelligence scan only.` |
+| `testing` | Compliance Test | `Run the compliance suite only on the Dev twin.` |
+
+Writing Intel evidence does not invoke Author. Only operator-selected
+`INTEL-*` ids authorize Compliance Author.
 
 **Network Design.** Read the chart already on disk. Missing or stale
 inputs are reduced coverage; still write `state/design.json`. Warehouse
@@ -83,7 +92,8 @@ or `prepare_*` files. Do not invent `health-board.md`,
 `lab-access.json`, `vuln-report.json`, `runs/`, `risk/`,
 `trend-analysis.json`, `remediation-request.json`, a root
 `compliance.json`, or extra `lifecycle/` and `design/` paths.
-Compliance Test writes `testing/YYYY-MM-DDTHH-MM-SSZ.json` only.
+Compliance Test writes general testing rows and, for compliance suites, its
+cataloged compliance-testing visit and metadata only.
 
 ## Envelope
 
@@ -143,12 +153,15 @@ after the write.
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
 | `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
-| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` |
+| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
-| `compliance/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results` — only when `suites` includes `compliance` |
-| `state/compliance.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` — only a compliance-suite run |
-| `compliance/coverage.json` | snapshot | Compliance | `compliance-intel` `schemas/coverage.schema.json` | `updated_at` `source_agent` `rows` `counts` |
-| `compliance/intel.json` | result | Compliance | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` `candidates[]` `skipped_non_network` `why_network` |
+| `compliance/metadata-testing.json` | metadata | Compliance Test | `compliance-test-runner` `schemas/compliance-test-metadata.schema.json` | `last_visit_id` `last_collected_at` |
+| `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results` row `keys` `risk` |
+| `state/compliance.json` | state | Compliance | `compliance-analyzer` `schemas/compliance-state.schema.json` | envelope, `mode` `freshness` `consults` `series` `scores` `findings` `assessment` `trend_analysis` `soap` `dispatched`; `next_action` is `soap.plan` |
+| `compliance/coverage.json` | snapshot | Compliance Intelligence | `compliance-intel` `schemas/coverage.schema.json` | `updated_at` `source_agent` `rows` `counts`, row `keys` |
+| `compliance/intel.json` | result | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` `candidates[]` `skipped_non_network` `why_network`, candidate `keys` |
+| `compliance/metadata-intel.json` | metadata | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel-metadata.schema.json` | `last_visit_id` `last_collected_at` |
+| `compliance/intel/<stamp>.json` | observation | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` `metrics` `candidates[].keys` `vs_prior` |
 | `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope, ticket slot |
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment` `hardware[]` `software[]` `configuration[]` `compliance[]` `timeline[]` `warehouse` `asks[]` `answers` `horizon` `coverage` `read[]` `roadmap_ref` |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
@@ -182,7 +195,9 @@ after the write.
    Health Analyzer and Modernization Analysis do not wait.
    Network Design writes from files already on disk.
    Network Ops: after a `dev` commit, invoke Pipeline Monitor and wait.
-   Compliance: writing `compliance/intel.json` stops. Invoke Author only when they name INTEL ids.
+   Compliance Intelligence writes its files and stops. Compliance Analyzer
+   writes only `state/compliance.json`. Invoke Author only for
+   operator-selected INTEL ids.
 
 ## Reading
 

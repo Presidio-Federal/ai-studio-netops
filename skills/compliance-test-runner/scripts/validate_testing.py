@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate testing/YYYY-MM-DDTHH-MM-SSZ.json, state/testing.json, and compliance copies. Never contacts GitHub."""
+"""Validate testing state/run files and append-only compliance visits. Never contacts GitHub."""
 
 from __future__ import annotations
 
@@ -16,16 +16,20 @@ STATE_STATUSES = {"PASS", "FAIL", "MIXED", "UNKNOWN", "running"}
 RISK_LEVELS = {"LOW", "MEDIUM", "HIGH", "UNKNOWN"}
 PUSH = {"proceed", "proceed_with_caution", "do_not_push", "unknown"}
 CHECK_STATUSES = {"PASS", "FAIL", "ERROR", "SKIP"}
+KEY_RE = re.compile(
+    r"^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+)
 UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$"
 )
 HOST_ABS_RE = re.compile(r"^([A-Za-z]:[\\/]|/Users/|/home/|/tmp/|/var/|/etc/)")
 RUN_PATH_RE = re.compile(
-    r"^(testing|compliance)/("
+    r"^testing/("
     r"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"  # 2026-08-21T19-56-18Z
     r"|\d{8}T\d{6}Z"  # legacy 20260825T172855Z
     r")\.json$"
 )
+VISIT_ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$")
 
 RUN_REQUIRED = [
     "version",
@@ -49,6 +53,23 @@ STATE_REQUIRED = [
     "run",
     "risk",
     "latest",
+]
+COMPLIANCE_REQUIRED = [
+    "schema",
+    "visit_id",
+    "checked_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "github_run_id",
+    "github_run_url",
+    "environment",
+    "scope",
+    "results",
+    "risk",
+    "metrics",
+    "vs_prior",
 ]
 
 
@@ -120,7 +141,7 @@ def validate_run_path(value: Any, name: str, errors: Errors) -> None:
     if not RUN_PATH_RE.match(path):
         errors.add(
             f"{name} must match testing/YYYY-MM-DDTHH-MM-SSZ.json "
-            f"or compliance/YYYY-MM-DDTHH-MM-SSZ.json (e.g. 2026-08-21T19-56-18Z.json)"
+            f"(e.g. testing/2026-08-21T19-56-18Z.json)"
         )
 
 
@@ -138,6 +159,25 @@ def validate_risk_block(risk: dict[str, Any], errors: Errors, require_why: bool)
         why = risk.get("why")
         if not isinstance(why, list) or not why:
             errors.add("risk.why must be a non-empty array of evidence strings")
+
+
+def validate_result_keys(item: dict[str, Any], name: str, errors: Errors) -> None:
+    keys = item.get("keys")
+    if not isinstance(keys, list) or len(keys) < 2:
+        errors.add(f"{name}.keys must contain at least test and device keys")
+        return
+    if len(keys) != len(set(keys)):
+        errors.add(f"{name}.keys must not contain duplicates")
+    for key in keys:
+        if not isinstance(key, str) or not KEY_RE.match(key):
+            errors.add(f"{name}.keys has invalid type:name key: {key}")
+    check = item.get("check")
+    device = item.get("device")
+    check_id = check.rsplit("/", 1)[-1] if isinstance(check, str) else None
+    if check_id and f"test:{check_id}" not in keys:
+        errors.add(f"{name}.keys missing canonical test:{check_id}")
+    if isinstance(device, str) and f"device:{device}" not in keys:
+        errors.add(f"{name}.keys missing device:{device}")
 
 
 def validate_run(data: Any, errors: Errors) -> None:
@@ -174,6 +214,12 @@ def validate_run(data: Any, errors: Errors) -> None:
                 continue
             if item.get("status") not in CHECK_STATUSES:
                 errors.add(f"results.ran.status must be one of {sorted(CHECK_STATUSES)}")
+            validate_result_keys(item, "results.ran entry", errors)
+        for item in results.get("not_applicable") or []:
+            if not isinstance(item, dict):
+                errors.add("results.not_applicable entries must be objects")
+                continue
+            validate_result_keys(item, "results.not_applicable entry", errors)
     if obj.get("status") == "PASS" and (results or {}).get("gaps"):
         errors.add("status PASS cannot have a non-empty results.gaps list")
     risk = require_object(obj.get("risk"), "risk", errors) if "risk" in obj else None
@@ -182,18 +228,63 @@ def validate_run(data: Any, errors: Errors) -> None:
     if "local_path" in obj:
         validate_run_path(obj.get("local_path"), "local_path", errors)
         local = normalize_workspace_path(str(obj.get("local_path") or ""))
-        suites = (scope or {}).get("suites") if isinstance(scope, dict) else None
-        suite_list = suites if isinstance(suites, list) else []
-        if local.startswith("compliance/") and "compliance" not in suite_list:
-            errors.add("compliance/<UTC>.json requires scope.suites to include compliance")
+        if local.startswith("compliance/"):
+            errors.add("general testing run local_path must stay under testing/")
 
 
-def _suites(obj: dict[str, Any]) -> list[Any]:
-    run = obj.get("run")
-    if not isinstance(run, dict):
-        return []
-    suites = run.get("suites")
-    return suites if isinstance(suites, list) else []
+def validate_compliance(data: Any, errors: Errors) -> None:
+    obj = require_object(data, "compliance visit", errors)
+    if obj is None:
+        return
+    require_fields(obj, COMPLIANCE_REQUIRED, "compliance visit", errors)
+    if obj.get("schema") != "compliance-test-visit/v1":
+        errors.add("compliance visit schema must be compliance-test-visit/v1")
+    if obj.get("source_agent") != SOURCE_AGENT:
+        errors.add(f"source_agent must be {SOURCE_AGENT}")
+    visit_id = obj.get("visit_id")
+    if not isinstance(visit_id, str) or not VISIT_ID_RE.match(visit_id):
+        errors.add("visit_id must be YYYY-MM-DDTHH-MM-SSZ")
+    if "checked_at" in obj:
+        validate_utc(obj.get("checked_at"), "checked_at", errors)
+    if obj.get("status") not in RUN_STATUSES:
+        errors.add(f"status must be one of {sorted(RUN_STATUSES)}")
+    scope = require_object(obj.get("scope"), "scope", errors) if "scope" in obj else None
+    suites = (scope or {}).get("suites")
+    if not isinstance(suites, list) or "compliance" not in suites:
+        errors.add("compliance visit scope.suites must include compliance")
+    results = require_object(obj.get("results"), "results", errors) if "results" in obj else None
+    if results is not None:
+        counts = require_object(results.get("counts_ran"), "results.counts_ran", errors)
+        if counts is not None:
+            for field in ("pass", "fail", "error", "skip"):
+                if not isinstance(counts.get(field), int):
+                    errors.add(f"results.counts_ran.{field} must be an integer")
+        for bucket in ("ran", "not_applicable"):
+            for item in results.get(bucket) or []:
+                if not isinstance(item, dict):
+                    errors.add(f"results.{bucket} entries must be objects")
+                    continue
+                validate_result_keys(item, f"results.{bucket} entry", errors)
+    metrics = require_object(obj.get("metrics"), "metrics", errors) if "metrics" in obj else None
+    if metrics is not None:
+        for field in (
+            "pass",
+            "fail",
+            "error",
+            "skip",
+            "not_applicable",
+            "verified_tests",
+            "failing_tests",
+            "skipped_tests",
+        ):
+            if not isinstance(metrics.get(field), int):
+                errors.add(f"metrics.{field} must be an integer")
+    prior = require_object(obj.get("vs_prior"), "vs_prior", errors) if "vs_prior" in obj else None
+    if prior is not None and prior.get("delta") not in {"first", "unchanged", "worse", "better", "mixed"}:
+        errors.add("vs_prior.delta is invalid")
+    risk = require_object(obj.get("risk"), "risk", errors) if "risk" in obj else None
+    if risk is not None:
+        validate_risk_block(risk, errors, require_why=True)
 
 
 def validate_state(data: Any, errors: Errors, file_path: str = "") -> None:
@@ -216,24 +307,16 @@ def validate_state(data: Any, errors: Errors, file_path: str = "") -> None:
     risk = require_object(obj.get("risk"), "risk", errors) if "risk" in obj else None
     if risk is not None:
         validate_risk_block(risk, errors, require_why=False)
-    suites = _suites(obj)
     latest = normalize_workspace_path(str(obj.get("latest") or ""))
     path_norm = file_path.replace("\\", "/")
-    is_compliance_state = path_norm.endswith("state/compliance.json")
     is_testing_state = path_norm.endswith("state/testing.json")
-    if is_compliance_state and "compliance" not in suites:
-        errors.add("state/compliance.json requires run.suites to include compliance")
-    if latest.startswith("compliance/") and "compliance" not in suites:
-        errors.add("latest under compliance/ requires run.suites to include compliance")
-    if is_compliance_state and latest and not latest.startswith("compliance/"):
-        errors.add("state/compliance.json latest must be compliance/<UTC>.json")
     if is_testing_state and latest.startswith("compliance/"):
         errors.add("state/testing.json latest must be testing/<UTC>.json")
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3 or argv[1] not in {"run", "state"}:
-        print("usage: validate_testing.py run|state <file>", file=sys.stderr)
+    if len(argv) != 3 or argv[1] not in {"run", "state", "compliance"}:
+        print("usage: validate_testing.py run|state|compliance <file>", file=sys.stderr)
         return 2
     kind, path = argv[1], argv[2]
     errors = Errors()
@@ -241,6 +324,8 @@ def main(argv: list[str]) -> int:
     if data is not None:
         if kind == "run":
             validate_run(data, errors)
+        elif kind == "compliance":
+            validate_compliance(data, errors)
         else:
             validate_state(data, errors, file_path=path)
     if errors.ok():

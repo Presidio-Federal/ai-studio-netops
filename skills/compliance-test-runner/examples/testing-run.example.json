@@ -22,18 +22,19 @@
     "counts_ran": { "pass": 8, "fail": 0, "error": 0, "skip": 1 },
     "counts_na": 0,
     "ran": [
-      { "status": "PASS", "check": "reachability/device_reachable", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "reachability/edge_ios_xe", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "reachability/hostname_in_config", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "routing/bgp_neighbors_up", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "routing/bgp-receiving-prefixes", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "path/branch_to_cloud_ping", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "path/branch_to_dc_ping", "device": "AI-CLOUD-EDGE" },
-      { "status": "PASS", "check": "path/branch_to_hq_ping", "device": "AI-CLOUD-EDGE" },
+      { "status": "PASS", "check": "reachability/device_reachable", "device": "AI-CLOUD-EDGE", "keys": ["test:device_reachable", "device:AI-CLOUD-EDGE"] },
+      { "status": "PASS", "check": "reachability/edge_ios_xe", "device": "AI-CLOUD-EDGE", "keys": ["test:edge_ios_xe", "device:AI-CLOUD-EDGE"] },
+      { "status": "PASS", "check": "reachability/hostname_in_config", "device": "AI-CLOUD-EDGE", "keys": ["test:hostname_in_config", "device:AI-CLOUD-EDGE"] },
+      { "status": "PASS", "check": "routing/bgp_neighbors_up", "device": "AI-CLOUD-EDGE", "keys": ["test:bgp_neighbors_up", "device:AI-CLOUD-EDGE"] },
+      { "status": "PASS", "check": "routing/bgp-receiving-prefixes", "device": "AI-CLOUD-EDGE", "keys": ["test:bgp-receiving-prefixes", "device:AI-CLOUD-EDGE", "control:CM-6"] },
+      { "status": "PASS", "check": "path/branch_to_cloud_ping", "device": "AI-CLOUD-EDGE", "keys": ["test:branch_to_cloud_ping", "device:AI-CLOUD-EDGE"] },
+      { "status": "PASS", "check": "path/branch_to_dc_ping", "device": "AI-CLOUD-EDGE", "keys": ["test:branch_to_dc_ping", "device:AI-CLOUD-EDGE"] },
+      { "status": "PASS", "check": "path/branch_to_hq_ping", "device": "AI-CLOUD-EDGE", "keys": ["test:branch_to_hq_ping", "device:AI-CLOUD-EDGE"] },
       {
         "status": "SKIP",
         "check": "routing/edge-wan-ebgp-established",
         "device": "AI-CLOUD-EDGE",
+        "keys": ["test:edge-wan-ebgp-established", "device:AI-CLOUD-EDGE"],
         "detail": "No 'edge_wan_bgp' entry for AI-CLOUD-EDGE — add it to tests/live/relationships/edge_wan_bgp.yml to enable this check."
       }
     ],

@@ -1,0 +1,285 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compliance-state/v1",
+  "title": "state/compliance.json",
+  "description": "Compliance Analyzer SOAP rollup. Tested posture and framework coverage remain separate scores.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "mode",
+    "analyzed_at",
+    "coverage",
+    "freshness",
+    "consults",
+    "series",
+    "scores",
+    "findings",
+    "assessment",
+    "trend_analysis",
+    "soap",
+    "dispatched",
+    "read"
+  ],
+  "properties": {
+    "schema": {"type": "string", "const": "compliance-state/v1"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "const": "compliance"},
+    "status": {
+      "type": "string",
+      "enum": ["ok", "degraded", "partial", "stale_chart", "unknown"]
+    },
+    "headline": {"type": "string", "minLength": 1},
+    "next_action": {"type": "string", "minLength": 1},
+    "mode": {"type": "string", "enum": ["assess-now", "refresh-then-assess"]},
+    "analyzed_at": {"type": "string", "format": "date-time"},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intel", "testing"],
+      "properties": {
+        "intel": {"$ref": "#/$defs/coverage_state"},
+        "testing": {"$ref": "#/$defs/coverage_state"}
+      }
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intel", "testing"],
+      "properties": {
+        "intel": {"$ref": "#/$defs/freshness"},
+        "testing": {"$ref": "#/$defs/freshness"}
+      }
+    },
+    "consults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intel", "testing"],
+      "properties": {
+        "intel": {"$ref": "#/$defs/consult"},
+        "testing": {"$ref": "#/$defs/consult"}
+      }
+    },
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intel", "testing"],
+      "properties": {
+        "intel": {"$ref": "#/$defs/series"},
+        "testing": {"$ref": "#/$defs/series"}
+      }
+    },
+    "scores": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tested_posture", "framework_coverage"],
+      "properties": {
+        "tested_posture": {"$ref": "#/$defs/tested_score"},
+        "framework_coverage": {"$ref": "#/$defs/framework_score"}
+      }
+    },
+    "findings": {
+      "type": "array",
+      "maxItems": 20,
+      "items": {"$ref": "#/$defs/finding"}
+    },
+    "assessment": {"$ref": "#/$defs/assessment"},
+    "trend_analysis": {"$ref": "#/$defs/trend"},
+    "soap": {"$ref": "#/$defs/soap"},
+    "dispatched": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["plane", "agent", "invoked_at"],
+        "properties": {
+          "plane": {"type": "string", "enum": ["intel", "testing"]},
+          "agent": {"type": "string", "minLength": 1},
+          "invoked_at": {"type": "string", "format": "date-time"}
+        }
+      }
+    },
+    "read": {
+      "type": "array",
+      "maxItems": 30,
+      "items": {"type": "string", "minLength": 1}
+    }
+  },
+  "$defs": {
+    "coverage_state": {
+      "type": "string",
+      "enum": ["complete", "partial", "unavailable", "not_requested"]
+    },
+    "freshness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "observed_at", "ttl_hours"],
+      "properties": {
+        "state": {"type": "string", "enum": ["current", "stale", "missing"]},
+        "observed_at": {"type": ["string", "null"], "format": "date-time"},
+        "ttl_hours": {"type": "integer", "const": 24}
+      }
+    },
+    "consult": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": [
+        "visit_id",
+        "observed_at",
+        "status",
+        "trend",
+        "trend_note",
+        "impression",
+        "evidence_for",
+        "evidence_against",
+        "source_ref"
+      ],
+      "properties": {
+        "visit_id": {"type": "string", "minLength": 1},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "status": {"type": "string", "enum": ["ok", "degraded", "partial", "unknown"]},
+        "trend": {"type": "string", "enum": ["first", "unchanged", "worse", "better", "mixed"]},
+        "trend_note": {"type": "string", "minLength": 1},
+        "impression": {"type": "string", "minLength": 1},
+        "evidence_for": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
+        "evidence_against": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
+        "source_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window", "watermark", "points"],
+      "properties": {
+        "window": {"type": "integer", "const": 10},
+        "watermark": {"type": ["string", "null"]},
+        "points": {
+          "type": "array",
+          "maxItems": 10,
+          "items": {
+            "type": "object",
+            "required": ["at", "scope"],
+            "properties": {
+              "at": {"type": "string", "format": "date-time"},
+              "scope": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "tested_score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "percent",
+        "verified_tests",
+        "failing_tests",
+        "skipped_tests",
+        "not_applicable_tests",
+        "denominator",
+        "method"
+      ],
+      "properties": {
+        "percent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "verified_tests": {"type": "integer", "minimum": 0},
+        "failing_tests": {"type": "integer", "minimum": 0},
+        "skipped_tests": {"type": "integer", "minimum": 0},
+        "not_applicable_tests": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 0},
+        "method": {
+          "type": "string",
+          "const": "verified_tests / (verified_tests + failing_tests); SKIP and N/A excluded"
+        }
+      }
+    },
+    "framework_score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "percent",
+        "covered",
+        "partial",
+        "gap",
+        "unwired",
+        "not_applicable",
+        "denominator",
+        "method"
+      ],
+      "properties": {
+        "percent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "covered": {"type": "integer", "minimum": 0},
+        "partial": {"type": "integer", "minimum": 0},
+        "gap": {"type": "integer", "minimum": 0},
+        "unwired": {"type": "integer", "minimum": 0},
+        "not_applicable": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 0},
+        "method": {
+          "type": "string",
+          "const": "covered / (covered + partial + gap + unwired); not_applicable excluded"
+        }
+      }
+    },
+    "keys": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 16,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+      }
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "severity", "summary", "keys", "source_refs", "next_owner"],
+      "properties": {
+        "kind": {"type": "string", "enum": ["missing_control", "test_failure", "evidence_gap"]},
+        "severity": {"type": "string", "enum": ["low", "medium", "high", "critical", "unknown"]},
+        "summary": {"type": "string", "minLength": 1},
+        "keys": {"$ref": "#/$defs/keys"},
+        "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "next_owner": {"type": "string", "enum": ["Compliance Author", "Compliance Test", "Network Ops", "operator"]}
+      }
+    },
+    "assessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["noncompliant", "compliant", "gaps", "contradictions", "opinion"],
+      "properties": {
+        "noncompliant": {"type": "array", "maxItems": 10, "items": {"type": "string"}},
+        "compliant": {"type": "array", "maxItems": 10, "items": {"type": "string"}},
+        "gaps": {"type": "array", "maxItems": 10, "items": {"type": "string"}},
+        "contradictions": {"type": "array", "maxItems": 10, "items": {"type": "string"}},
+        "opinion": {"type": "string", "minLength": 1}
+      }
+    },
+    "trend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["narrative", "flips"],
+      "properties": {
+        "narrative": {"type": "string", "minLength": 1},
+        "flips": {"type": "array", "maxItems": 10, "items": {"type": "string"}}
+      }
+    },
+    "soap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["subjective", "objective", "assessment", "plan"],
+      "properties": {
+        "subjective": {"type": "string", "minLength": 1},
+        "objective": {"type": "string", "minLength": 1},
+        "assessment": {"type": "string", "minLength": 1},
+        "plan": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

@@ -23,6 +23,9 @@ tag groups from `references/scope.md` **before** you trigger.
 
 ## Trigger
 
+This repository contract dispatches the published workflow definition from
+`main`. That ref does not choose the lab; the `environment` input does.
+
 ```text
 github_run_action(workflow="test.yml", ref="main", inputs={...})
 github_list_action_runs(workflow="test.yml", limit=5)
@@ -70,10 +73,29 @@ you wrote.
 
 1. Always: `testing/YYYY-MM-DDTHH-MM-SSZ.json` then `state/testing.json`
    (`latest` = that testing path).
-2. If `scope.suites` includes `compliance`: also
-   `compliance/YYYY-MM-DDTHH-MM-SSZ.json` then `state/compliance.json`
-   (`latest` = that compliance path).
-   Same extract. Do not update compliance files otherwise.
+2. If `scope.suites` includes `compliance`: read
+   `compliance/metadata-testing.json` and its latest visit when present.
+   Write `compliance/testing/YYYY-MM-DDTHH-MM-SSZ.json` with stable metrics
+   and `vs_prior`, then replace `compliance/metadata-testing.json`.
+   Do not write `state/compliance.json`; Compliance Analyzer owns it.
+
+For compliance visit metrics, group rows by canonical `test:<check-id>`:
+
+- any FAIL/ERROR → failing test
+- otherwise at least one PASS → verified test
+- otherwise at least one SKIP → skipped test
+- N/A-only tests are counted only in `not_applicable`
+
+Compare those metrics and keyed result statuses with the prior visit for
+`vs_prior.delta` and `changed[]`. Do not compare prose headlines.
+
+For every `results.ran[]` and `results.not_applicable[]` row:
+
+- `keys` includes `test:<check-id>` and exact `device:<device>`; when the
+  report says `suite/check-id`, use the final `check-id` so it joins catalog
+  and coverage rows
+- add `control:<id>` only when the report or published catalog maps it
+- never add a key for an entity absent from the evidence
 
 ## Catalog
 

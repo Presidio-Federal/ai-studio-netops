@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compliance-test-metadata/v1",
+  "title": "compliance/metadata-testing.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "source_agent", "last_visit_id", "last_collected_at"],
+  "properties": {
+    "schema": {"type": "string", "const": "compliance-test-metadata/v1"},
+    "source_agent": {"type": "string", "const": "compliance-test"},
+    "last_visit_id": {
+      "type": ["string", "null"],
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "last_collected_at": {"type": ["string", "null"], "format": "date-time"}
+  }
+}

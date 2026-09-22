@@ -1,0 +1,67 @@
+{
+  "schema": "compliance-test-visit/v1",
+  "visit_id": "2026-09-22T14-30-00Z",
+  "checked_at": "2026-09-22T14:30:00Z",
+  "source_agent": "compliance-test",
+  "status": "MIXED",
+  "headline": "One compliance check failed and one passed on WAN-01",
+  "next_action": "Network Ops reviews the failed control on WAN-01",
+  "github_run_id": "32038499244",
+  "github_run_url": "https://github.com/example-org/network-sot/actions/runs/32038499244",
+  "environment": {
+    "live_lab": "prod",
+    "lab_role": "production",
+    "note": "Production evidence"
+  },
+  "scope": {
+    "devices_requested": ["WAN-01"],
+    "devices_scanned": ["WAN-01"],
+    "suites": ["compliance"],
+    "tags": []
+  },
+  "results": {
+    "counts_ran": {"pass": 1, "fail": 1, "error": 0, "skip": 0},
+    "counts_na": 0,
+    "ran": [
+      {
+        "status": "PASS",
+        "check": "compliance/ssh-v2",
+        "device": "WAN-01",
+        "keys": ["test:ssh-v2", "device:WAN-01", "control:SC-8"]
+      },
+      {
+        "status": "FAIL",
+        "check": "compliance/aaa-authorization",
+        "device": "WAN-01",
+        "keys": ["test:aaa-authorization", "device:WAN-01", "control:AC-3"],
+        "detail": "Required authorization configuration was absent"
+      }
+    ],
+    "not_applicable": [],
+    "gaps": []
+  },
+  "risk": {
+    "level": "HIGH",
+    "push_to_prod": "do_not_push",
+    "verdict": "A mapped compliance check failed on production evidence",
+    "why": ["aaa-authorization failed on WAN-01"],
+    "blast_radius": "WAN-01"
+  },
+  "metrics": {
+    "at": "2026-09-22T14:30:00Z",
+    "scope": "suite:compliance",
+    "pass": 1,
+    "fail": 1,
+    "error": 0,
+    "skip": 0,
+    "not_applicable": 0,
+    "verified_tests": 1,
+    "failing_tests": 1,
+    "skipped_tests": 0
+  },
+  "vs_prior": {
+    "prior_visit_id": null,
+    "delta": "first",
+    "changed": []
+  }
+}

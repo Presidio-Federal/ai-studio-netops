@@ -29,9 +29,20 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["nist_id", "status"],
+        "required": ["nist_id", "status", "keys"],
         "properties": {
           "nist_id": {"type": "string"},
+          "keys": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 32,
+            "uniqueItems": true,
+            "description": "The control key plus every mapped test key present on this row. Exact source-native names; no inferred entities.",
+            "items": {
+              "type": "string",
+              "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+            }
+          },
           "family_id": {"type": "string"},
           "title": {"type": "string"},
           "net_comp": {"type": "array", "items": {"type": "string"}},

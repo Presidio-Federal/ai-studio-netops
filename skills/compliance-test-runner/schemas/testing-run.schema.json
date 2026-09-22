@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compliance-run/v1",
-  "title": "testing/YYYY-MM-DDTHH-MM-SSZ.json (and compliance/… when suites includes compliance)",
-  "description": "One live or static run extract. Default path is testing/YYYY-MM-DDTHH-MM-SSZ.json (e.g. 2026-08-21T19-56-18Z.json). Copy under compliance/ only when scope.suites includes compliance. Do not write risk/.",
+  "title": "testing/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "One general live or static run extract under testing/. Compliance history uses the dedicated compliance-test-visit schema.",
   "type": "object",
   "required": [
     "version",
@@ -68,11 +68,22 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["status", "check", "device"],
+            "required": ["status", "check", "device", "keys"],
             "properties": {
               "status": { "type": "string", "enum": ["PASS", "FAIL", "ERROR", "SKIP"] },
               "check": { "type": "string" },
               "device": { "type": "string" },
+              "keys": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 16,
+                "uniqueItems": true,
+                "description": "Canonical test:<check-id> and exact device key, plus control keys only when the report or published catalog maps them. Strip a known suite/ prefix from the report check for the test key.",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+                }
+              },
               "detail": { "type": "string" }
             }
           }
@@ -81,10 +92,21 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["check", "device", "reason"],
+            "required": ["check", "device", "reason", "keys"],
             "properties": {
               "check": { "type": "string" },
               "device": { "type": "string" },
+              "keys": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 16,
+                "uniqueItems": true,
+                "description": "Canonical test:<check-id> and exact device key, plus source-supported control keys.",
+                "items": {
+                  "type": "string",
+                  "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+                }
+              },
               "reason": { "type": "string" }
             }
           }

@@ -27,7 +27,7 @@ from typing import Any
 SKILL_ROOT = Path(__file__).resolve().parents[1]
 REF = SKILL_ROOT / "references"
 STIGVIEWER = "https://www.stigviewer.com"
-UA = "cml-ai-automation-compliance-intel/1.3 (+compliance-intel)"
+UA = "compliance-intel/1.0"
 NETWORK_FAMILIES = {"AC", "AU", "CM", "IA", "SC", "SI"}
 URL_RE = re.compile(
     r"stigviewer\.com/controls/(nist-800-53|nist-800-171)/([^/?#]+)",

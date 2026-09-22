@@ -1,0 +1,39 @@
+{
+  "schema": "compliance-intel-visit/v1",
+  "visit_id": "2026-09-22T14-00-00Z",
+  "checked_at": "2026-09-22T14:00:00Z",
+  "source_agent": "compliance-intel",
+  "status": "ok",
+  "headline": "17 controls covered; 2 ranked relevant gaps remain",
+  "coverage": {
+    "state": "complete",
+    "detail": "Published catalog and pinned NIST title index were available"
+  },
+  "metrics": {
+    "at": "2026-09-22T14:00:00Z",
+    "scope": "framework:nist-800-53-rev5",
+    "catalog_covered": 17,
+    "relevant_missing": 2,
+    "not_applicable": 2,
+    "candidate_count": 2
+  },
+  "candidates": [
+    {
+      "id": "INTEL-0001",
+      "priority": "high",
+      "status": "proposed",
+      "keys": ["recommendation:INTEL-0001", "control:SC-8"]
+    },
+    {
+      "id": "INTEL-0002",
+      "priority": "medium",
+      "status": "proposed",
+      "keys": ["recommendation:INTEL-0002", "control:AC-17"]
+    }
+  ],
+  "vs_prior": {
+    "prior_visit_id": null,
+    "delta": "first",
+    "changed": []
+  }
+}

@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.5.3"
-description: "v1.5.3 — Run extracts use YYYY-MM-DDTHH-MM-SSZ.json (same as Health). testing/ always; compliance/ only when suites includes compliance."
+version: "1.7.0"
+description: "v1.7.0 — General testing state plus append-only compliance visits for independent posture analysis."
 ---
 
 # Compliance test runner skill
@@ -40,8 +40,19 @@ Skill resources — use exactly:
 - `references/run.md`
 - `schemas/testing-run.schema.json`
 - `schemas/testing-state.schema.json`
+- `schemas/compliance-test-visit.schema.json`
+- `schemas/compliance-test-metadata.schema.json`
 - `examples/testing-run.example.json`
 - `examples/testing-state.example.json`
+- `examples/compliance-test-visit.example.json`
+- `examples/compliance-test-metadata.example.json`
+
+Every `results.ran[]` and `results.not_applicable[]` row carries `keys`:
+`test:<check-id>` and exact `device:<inventory-name>`. The report may render
+the check as `suite/check-id`; use the final `check-id` so it joins the
+catalog and coverage rows. Add `control:<id>` only when the report or
+published catalog supplies that mapping. No whitespace after `:`. Do not
+infer entities.
 
 `execute_command` only after `write_file`:
 
@@ -56,7 +67,8 @@ If missing: `/skills/global/compliance-test-runner/scripts/validate_testing.py`.
 
 ## State machine
 
-READ_INVENTORY → TRIGGER → LIST_RUN → POLL → READ_MARKER → WRITE_RUN → WRITE_STATE → VALIDATE → STOP
+READ_INVENTORY → TRIGGER → LIST_RUN → POLL → READ_MARKER → WRITE_RUN →
+WRITE_TESTING_STATE → WRITE_COMPLIANCE_VISIT_IF_SCOPED → VALIDATE → STOP
 
 Never skip READ_INVENTORY. Never invent or prefix a hostname (`WAN-01` stays
 `WAN-01`). `test-request.json` is optional. Missing → continue.

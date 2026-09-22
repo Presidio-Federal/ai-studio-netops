@@ -1,131 +1,123 @@
-# Compliance Agents
+# Compliance Agents — the patient chart
 
-Three jobs, three agents. Compliance decides what published rules
-apply to **this** network and are not in the catalog. Compliance
-Author writes a check into git. Compliance Test runs the suite and
-records risk.
+Compliance uses the same patient-chart pattern as Health. Independent
+specialists produce structured evidence. The primary Compliance agent reads
+their files and writes SOAP to `state/compliance.json`.
 
-A default scan writes coverage and intel, ranks the missing
-controls, and **stops**. The operator names which INTEL ids to
-write. Then Compliance Author commits those checks. Compliance
-Test runs the suite when asked.
+## Roles
+
+- **Compliance Intelligence** compares the published Git catalog with a
+  bounded NIST title set, judges relevance to the estate, and writes current
+  coverage/intel plus an append-only visit.
+- **Compliance Author** converts only operator-selected `INTEL-*`
+  recommendations into checks on git `compliance`.
+- **Compliance Test** executes suites and writes general testing state. A
+  compliance-suite run also writes an append-only compliance-testing visit.
+- **Compliance** is the attending analyzer. It queries no source and runs no
+  test. It trends Intelligence and Test visits, keeps two scores, and writes
+  `state/compliance.json`.
+
+Agents collaborate through files, not chat awareness.
 
 ```mermaid
 flowchart LR
-  Estate[inventory/prod.json]
-  Git[GitHub job catalog]
-  NIST[Published NIST titles]
-  CI[Compliance]
-  Cover[compliance/coverage.json]
-  Intel[compliance/intel.json]
-  CA[Compliance Author]
-  CT[Compliance Test]
-  Testing[testing stamp plus state/testing.json]
-  CompRun[compliance stamp plus state/compliance.json]
-  Estate --> CI
-  Git --> CI
-  NIST --> CI
-  CI --> Cover
-  CI --> Intel
-  Intel -.->|operator names INTEL ids| CA
-  CA --> Git
-  CA -.->|when asked to run| CT
-  CT --> Testing
-  CT --> CompRun
+  Catalog[PublishedCatalog]
+  NIST[PinnedNISTTitles]
+  Estate[Inventory]
+  IntelAgent[ComplianceIntelligence]
+  IntelVisit[ComplianceIntelVisit]
+  Author[ComplianceAuthor]
+  TestAgent[ComplianceTest]
+  TestVisit[ComplianceTestingVisit]
+  Analyzer[ComplianceAnalyzer]
+  State[StateCompliance]
+  Ops[NetworkOps]
+
+  Catalog --> IntelAgent
+  NIST --> IntelAgent
+  Estate --> IntelAgent
+  IntelAgent --> IntelVisit
+  IntelVisit -.->|"operator selects INTEL id"| Author
+  Author --> Catalog
+  Catalog --> TestAgent
+  TestAgent --> TestVisit
+  IntelVisit --> Analyzer
+  TestVisit --> Analyzer
+  Analyzer --> State
+  State -.->|"proven failures"| Ops
 ```
 
-## Agents
+## Evidence files
 
-| Agent | Role |
-|-------|------|
-| Compliance | Newly published controls vs this estate and the catalog. Keep the delta. Rank what we still need. Stop until the operator names INTEL ids. |
-| Compliance Author | Turn ranked intel into checks in git and update the catalog. Do not run the suite. |
-| Compliance Test | Trigger `test.yml`, read the job-log marker, write the run files and a risk call. |
+Compliance Intelligence writes:
 
-## Compliance
+- `compliance/coverage.json` — current accumulated control coverage
+- `compliance/intel.json` — current ranked recommendation backlog, capped at
+  ten
+- `compliance/intel/<stamp>.json` — append-only visit metrics and change
+- `compliance/metadata-intel.json` — latest Intel visit pointer
 
-Reads the job catalog from GitHub (`catalog/job-catalog.json`).
-That is the checks we already run. It does not copy git into the
-workspace. It does not read running-configs.
+Compliance Test writes:
 
-It reads `inventory/prod.json` so it knows what *kinds* of things
-we have (network gear vs endpoints vs SaaS). That filter is why a
-laptop or server control is not a candidate.
+- `testing/<stamp>.json` and `state/testing.json` for every run
+- `compliance/testing/<stamp>.json` for compliance-suite evidence
+- `compliance/metadata-testing.json` as the latest compliance-test pointer
 
-It reads a **bounded unresolved** NIST title list (not every
-family on every visit) and then **interprets** each returned
-control:
+Compliance Analyzer writes:
 
-- Already mapped on a catalog check (`nist:`) — covered. Not a gap.
-- Applies to these routers / switches / WAN / mgmt plane — relevant
-  missing. That is the delta.
-- Only makes sense for servers, endpoints, or SaaS, and we have
-  none — not applicable. Recorded on coverage `not_applicable` and
-  `skipped_non_network` with why.
+- `state/compliance.json` only
 
-A server-access control is not a candidate just because NIST
-published it.
+Each evidence plane keeps ten stamps. Metadata provides `last_visit_id`; no
+agent lists directories. Relationship keys such as `control:AC-3`,
+`test:aaa-authorization`, and `device:WAN-01` let later readers join the
+evidence.
 
-It writes:
+## Intelligence loop
 
-- `compliance/coverage.json` — accumulated working state: covered /
-  partial / gap / not_applicable for controls already reviewed,
-  reconciled with catalog `nist:` tags. Not a six-family rebuild.
-- `compliance/intel.json` — up to five **proposed** candidates,
-  sorted by criticality (`critical`, `high`, `medium`, `low`), plus
-  `delta` (catalog covered vs relevant missing vs not applicable).
+The Intelligence script processes the pinned NIST index inside Python and
+returns at most twenty unresolved titles. The model never receives the full
+framework.
 
-It does not write checks and it does not run them. After a default
-scan it **stops**. Ranked candidates wait for the operator. It
-invokes Compliance Author only when they name INTEL ids, and
-Compliance Test only when they ask to run the suite.
+The agent removes controls already covered, already classified not
+applicable, or already active recommendations. It interprets the remaining
+titles against inventory and maintains up to ten ranked recommendations.
+It does not author tests, run tests, score posture, or invoke another agent.
 
-## Compliance Author
+## Test evidence
 
-Workspace is input (`compliance/intel.json` or a sentence). Checks
-live in git. Before it writes a check it reads inventory and a
-committed running-config from git (`inventory/configs/`).
-**Applicable** is what those files show this estate runs. It
-implements the named INTEL row against that estate — it does not
-add sibling checks for protocols that are not in config, and it
-does not write a test that passes because the protocol is absent.
+Compliance Test judges the `# Network test report`, not the GitHub green
+check. Every detailed row carries canonical test and exact device keys plus
+source-supported control keys.
 
-It does not run `test.yml`. It commits on existing git `dev`
-(`github_put_file ref=dev`). It does not create a branch and it
-does not write `main`. A device fail on a later Test run is a
-finding — Author does not edit the check to make it pass.
+A compliance visit records stable metrics and `vs_prior`. PASS/FAIL/ERROR
+ran. N/A is excluded. SKIP is an evidence gap. A Dev result remains proposal
+evidence rather than production proof.
 
-## Compliance Test
+## Compliance SOAP
 
-The runner for every suite, not only compliance. Default lab is
-the Dev twin. A Dev pass is not production evidence.
+The analyzer reads both metadata pointers, latest visits, current coverage
+and intel, and its prior chart. Evidence is stale after 24 hours.
 
-It reads hostnames from inventory, triggers `test.yml`, waits, and
-judges from `# Network test report` in the job log — not the green
-check. It never invents a hostname.
+It keeps two independent scores:
 
-Default suites are reachability, routing, and path. A compliance
-/ NIST / posture ask is `suites=compliance` only. Those two are
-not mixed.
+- **Tested posture**:
+  `verified_tests / (verified_tests + failing_tests)`. SKIP and N/A are
+  excluded and reported separately.
+- **Framework coverage**:
+  `covered / (covered + partial + gap + unwired)`. Not-applicable controls
+  are excluded; no partial credit is invented.
 
-Every run writes `testing/<stamp>.json` and `state/testing.json`.
-It also writes `compliance/<stamp>.json` and `state/compliance.json`
-**only** when the run included the compliance suite. A
-reachability run does not overwrite those files.
+It folds the last ten visits per plane into series, creates structured
+findings with keys and evidence refs, and writes assessment, trend, and SOAP.
 
-Device score is this agent, not the intel scan.
+Plans route work without performing it:
 
-## What is whose file
+- stale framework evidence → Compliance Intelligence
+- stale test evidence → Compliance Test
+- selected missing control → Compliance Author
+- proven test failure on a device/control → Network Ops
+- no material next step → `none`
 
-| File | Writer | Meaning |
-|------|--------|---------|
-| `compliance/coverage.json` | Compliance | Catalog vs NIST titles that apply here |
-| `compliance/intel.json` | Compliance | Ranked relevant gaps + skipped not-applicable |
-| `testing/<stamp>.json` | Compliance Test | This run, any suite |
-| `state/testing.json` | Compliance Test | Latest any-suite run |
-| `compliance/<stamp>.json` | Compliance Test | This run, compliance suite only |
-| `state/compliance.json` | Compliance Test | Latest compliance-suite run |
-
-Candidates are findings, not a plan. [Network Design](change-and-test-agents.md)
-sequences ranked gaps into dated steps. [Network Ops](network-ops.md)
-implements a running-config fix through git.
+The analyzer does not write tests, run workflows, or change configuration.
+Network Ops can later consume `state/compliance.json` as a current,
+interpreted chart rather than reconstructing posture from individual runs.

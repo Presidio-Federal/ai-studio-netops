@@ -1,0 +1,156 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compliance-test-visit/v1",
+  "title": "compliance/testing/<stamp>.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "visit_id",
+    "checked_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "github_run_id",
+    "github_run_url",
+    "environment",
+    "scope",
+    "results",
+    "risk",
+    "metrics",
+    "vs_prior"
+  ],
+  "properties": {
+    "schema": {"type": "string", "const": "compliance-test-visit/v1"},
+    "visit_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "checked_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "const": "compliance-test"},
+    "status": {"type": "string", "enum": ["PASS", "FAIL", "MIXED", "UNKNOWN"]},
+    "headline": {"type": "string", "minLength": 1},
+    "next_action": {"type": "string", "minLength": 1},
+    "github_run_id": {"type": "string", "minLength": 1},
+    "github_run_url": {"type": "string", "minLength": 1},
+    "environment": {
+      "type": "object",
+      "required": ["live_lab", "lab_role"],
+      "properties": {
+        "live_lab": {"type": "string", "enum": ["dev", "prod"]},
+        "lab_role": {"type": "string", "enum": ["digital_twin", "production"]},
+        "note": {"type": "string"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "required": ["devices_scanned", "suites"],
+      "properties": {
+        "devices_requested": {"type": "array", "items": {"type": "string"}},
+        "devices_scanned": {"type": "array", "items": {"type": "string"}},
+        "suites": {"type": "array", "contains": {"const": "compliance"}},
+        "tags": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "results": {
+      "type": "object",
+      "required": ["counts_ran", "ran", "not_applicable", "gaps"],
+      "properties": {
+        "counts_ran": {
+          "type": "object",
+          "required": ["pass", "fail", "error", "skip"],
+          "properties": {
+            "pass": {"type": "integer", "minimum": 0},
+            "fail": {"type": "integer", "minimum": 0},
+            "error": {"type": "integer", "minimum": 0},
+            "skip": {"type": "integer", "minimum": 0}
+          }
+        },
+        "counts_na": {"type": "integer", "minimum": 0},
+        "ran": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/result_row"}
+        },
+        "not_applicable": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/na_row"}
+        },
+        "gaps": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "risk": {
+      "type": "object",
+      "required": ["level", "push_to_prod", "verdict", "why"],
+      "properties": {
+        "level": {"type": "string", "enum": ["LOW", "MEDIUM", "HIGH", "UNKNOWN"]},
+        "push_to_prod": {"type": "string"},
+        "verdict": {"type": "string", "minLength": 1},
+        "why": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "blast_radius": {"type": "string"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "pass", "fail", "error", "skip", "not_applicable", "verified_tests", "failing_tests", "skipped_tests"],
+      "properties": {
+        "at": {"type": "string", "format": "date-time"},
+        "scope": {"type": "string", "const": "suite:compliance"},
+        "pass": {"type": "integer", "minimum": 0},
+        "fail": {"type": "integer", "minimum": 0},
+        "error": {"type": "integer", "minimum": 0},
+        "skip": {"type": "integer", "minimum": 0},
+        "not_applicable": {"type": "integer", "minimum": 0},
+        "verified_tests": {"type": "integer", "minimum": 0},
+        "failing_tests": {"type": "integer", "minimum": 0},
+        "skipped_tests": {"type": "integer", "minimum": 0}
+      }
+    },
+    "vs_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior_visit_id", "delta", "changed"],
+      "properties": {
+        "prior_visit_id": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+        },
+        "delta": {"type": "string", "enum": ["first", "unchanged", "worse", "better", "mixed"]},
+        "changed": {"type": "array", "maxItems": 20, "items": {"type": "string"}}
+      }
+    }
+  },
+  "$defs": {
+    "keys": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+      }
+    },
+    "result_row": {
+      "type": "object",
+      "required": ["status", "check", "device", "keys"],
+      "properties": {
+        "status": {"type": "string", "enum": ["PASS", "FAIL", "ERROR", "SKIP"]},
+        "check": {"type": "string"},
+        "device": {"type": "string"},
+        "keys": {"$ref": "#/$defs/keys"},
+        "detail": {"type": "string"}
+      }
+    },
+    "na_row": {
+      "type": "object",
+      "required": ["check", "device", "reason", "keys"],
+      "properties": {
+        "check": {"type": "string"},
+        "device": {"type": "string"},
+        "reason": {"type": "string"},
+        "keys": {"$ref": "#/$defs/keys"}
+      }
+    }
+  }
+}

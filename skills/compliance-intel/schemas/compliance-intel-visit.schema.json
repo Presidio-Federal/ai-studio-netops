@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "compliance-intel-visit/v1",
+  "title": "compliance/intel/<stamp>.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "visit_id",
+    "checked_at",
+    "source_agent",
+    "status",
+    "headline",
+    "coverage",
+    "metrics",
+    "candidates",
+    "vs_prior"
+  ],
+  "properties": {
+    "schema": {"type": "string", "const": "compliance-intel-visit/v1"},
+    "visit_id": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    },
+    "checked_at": {"type": "string", "format": "date-time"},
+    "source_agent": {"type": "string", "const": "compliance-intel"},
+    "status": {"type": "string", "enum": ["ok", "partial", "failed"]},
+    "headline": {"type": "string", "minLength": 1},
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": {"type": "string", "enum": ["complete", "partial", "unavailable"]},
+        "detail": {"type": "string"}
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "catalog_covered", "relevant_missing", "not_applicable", "candidate_count"],
+      "properties": {
+        "at": {"type": "string", "format": "date-time"},
+        "scope": {"type": "string", "const": "framework:nist-800-53-rev5"},
+        "catalog_covered": {"type": "integer", "minimum": 0},
+        "relevant_missing": {"type": "integer", "minimum": 0},
+        "not_applicable": {"type": "integer", "minimum": 0},
+        "candidate_count": {"type": "integer", "minimum": 0, "maximum": 10}
+      }
+    },
+    "candidates": {
+      "type": "array",
+      "maxItems": 10,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "priority", "status", "keys"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^INTEL-[0-9]+$"},
+          "priority": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+          "status": {"type": "string", "enum": ["proposed", "accepted", "rejected", "authored"]},
+          "keys": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+            }
+          }
+        }
+      }
+    },
+    "vs_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior_visit_id", "delta", "changed"],
+      "properties": {
+        "prior_visit_id": {
+          "type": ["string", "null"],
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+        },
+        "delta": {"type": "string", "enum": ["first", "unchanged", "worse", "better", "mixed"]},
+        "changed": {
+          "type": "array",
+          "maxItems": 20,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

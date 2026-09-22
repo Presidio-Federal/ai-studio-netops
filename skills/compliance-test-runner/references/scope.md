@@ -64,9 +64,6 @@ Do **not** pass as test selectors:
 - `tag:simulate` (Digital Twin topology)
 - `synced:*` / `sot:*` (stamps)
 
-`AI-CLOUD-EDGE` and `CLOUD-EDGE` are the same node. Send either. The
-workflow matches both to the topology label.
-
 | They say | You do |
 |----------|--------|
 | One hostname (`WAN-01`) | Find that exact `name` in inventory. `devices=WAN-01`. No `AI-WAN-01`. Missing → stop, list real names |

@@ -1,0 +1,150 @@
+{
+  "schema": "compliance-state/v1",
+  "updated_at": "2026-09-22T15:00:00Z",
+  "source_agent": "compliance",
+  "status": "degraded",
+  "headline": "Tested posture is 50%; framework coverage is 85%; AC-3 failed on WAN-01",
+  "next_action": "Network Ops: remediate the AC-3 authorization finding on WAN-01.",
+  "mode": "assess-now",
+  "analyzed_at": "2026-09-22T15:00:00Z",
+  "coverage": {
+    "intel": "complete",
+    "testing": "complete"
+  },
+  "freshness": {
+    "intel": {
+      "state": "current",
+      "observed_at": "2026-09-22T14:00:00Z",
+      "ttl_hours": 24
+    },
+    "testing": {
+      "state": "current",
+      "observed_at": "2026-09-22T14:30:00Z",
+      "ttl_hours": 24
+    }
+  },
+  "consults": {
+    "intel": {
+      "visit_id": "2026-09-22T14-00-00Z",
+      "observed_at": "2026-09-22T14:00:00Z",
+      "status": "partial",
+      "trend": "first",
+      "trend_note": "This is the first intelligence baseline; two relevant controls remain.",
+      "impression": "Published tests cover most reviewed controls, with two ranked gaps.",
+      "evidence_for": ["17 controls covered", "2 relevant gaps"],
+      "evidence_against": [],
+      "source_ref": "compliance/intel/2026-09-22T14-00-00Z.json"
+    },
+    "testing": {
+      "visit_id": "2026-09-22T14-30-00Z",
+      "observed_at": "2026-09-22T14:30:00Z",
+      "status": "degraded",
+      "trend": "first",
+      "trend_note": "This is the first compliance-test baseline; one test passed and one failed.",
+      "impression": "AC-3 authorization failed on WAN-01 while SC-8 passed.",
+      "evidence_for": ["aaa-authorization failed on WAN-01"],
+      "evidence_against": ["ssh-v2 passed on WAN-01"],
+      "source_ref": "compliance/testing/2026-09-22T14-30-00Z.json"
+    }
+  },
+  "series": {
+    "intel": {
+      "window": 10,
+      "watermark": "2026-09-22T14-00-00Z",
+      "points": [
+        {
+          "at": "2026-09-22T14:00:00Z",
+          "scope": "framework:nist-800-53-rev5",
+          "catalog_covered": 17,
+          "relevant_missing": 2,
+          "not_applicable": 2,
+          "candidate_count": 2
+        }
+      ]
+    },
+    "testing": {
+      "window": 10,
+      "watermark": "2026-09-22T14-30-00Z",
+      "points": [
+        {
+          "at": "2026-09-22T14:30:00Z",
+          "scope": "suite:compliance",
+          "pass": 1,
+          "fail": 1,
+          "error": 0,
+          "skip": 0,
+          "not_applicable": 0,
+          "verified_tests": 1,
+          "failing_tests": 1,
+          "skipped_tests": 0
+        }
+      ]
+    }
+  },
+  "scores": {
+    "tested_posture": {
+      "percent": 50,
+      "verified_tests": 1,
+      "failing_tests": 1,
+      "skipped_tests": 0,
+      "not_applicable_tests": 0,
+      "denominator": 2,
+      "method": "verified_tests / (verified_tests + failing_tests); SKIP and N/A excluded"
+    },
+    "framework_coverage": {
+      "percent": 85,
+      "covered": 17,
+      "partial": 1,
+      "gap": 2,
+      "unwired": 0,
+      "not_applicable": 2,
+      "denominator": 20,
+      "method": "covered / (covered + partial + gap + unwired); not_applicable excluded"
+    }
+  },
+  "findings": [
+    {
+      "kind": "test_failure",
+      "severity": "high",
+      "summary": "AAA authorization control AC-3 failed on WAN-01",
+      "keys": ["control:AC-3", "test:aaa-authorization", "device:WAN-01"],
+      "source_refs": ["compliance/testing/2026-09-22T14-30-00Z.json"],
+      "next_owner": "Network Ops"
+    },
+    {
+      "kind": "missing_control",
+      "severity": "high",
+      "summary": "SC-7 remains a ranked control without complete test coverage",
+      "keys": ["control:SC-7", "recommendation:INTEL-0001"],
+      "source_refs": ["compliance/intel/2026-09-22T14-00-00Z.json"],
+      "next_owner": "operator"
+    }
+  ],
+  "assessment": {
+    "noncompliant": ["AC-3 authorization failed on WAN-01"],
+    "compliant": ["SC-8 SSH transport check passed on WAN-01"],
+    "gaps": ["Two relevant framework gaps remain"],
+    "contradictions": [],
+    "opinion": "Tested posture is 50%; framework coverage is 85%; AC-3 failed on WAN-01."
+  },
+  "trend_analysis": {
+    "narrative": "First combined compliance baseline; trend direction is not yet available.",
+    "flips": []
+  },
+  "soap": {
+    "subjective": "Scheduled assess-now.",
+    "objective": "Current intelligence found 17 covered and 2 missing controls. Production compliance testing verified one test and failed one.",
+    "assessment": "Tested posture is 50%; framework coverage is 85%; AC-3 failed on WAN-01.",
+    "plan": "Network Ops: remediate the AC-3 authorization finding on WAN-01."
+  },
+  "dispatched": [],
+  "read": [
+    "compliance/metadata-intel.json",
+    "compliance/intel/2026-09-22T14-00-00Z.json",
+    "compliance/metadata-testing.json",
+    "compliance/testing/2026-09-22T14-30-00Z.json",
+    "compliance/coverage.json",
+    "compliance/intel.json",
+    "state/compliance.json"
+  ]
+}
