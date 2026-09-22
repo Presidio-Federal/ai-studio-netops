@@ -19,6 +19,7 @@ flowchart LR
   end
   ND[Network Design]
   Ops[Network Ops]
+  GitOps[GitHub GitOps Change]
   SNOW[ServiceNow warehouse]
   DesignState[state/design.json]
   OpsState[state/network-ops.json]
@@ -32,6 +33,7 @@ flowchart LR
   Comp --> Ops
   Inv --> Ops
   DesignState --> Ops
+  Ops --> GitOps
   Ops --> OpsState
 ```
 
@@ -40,7 +42,8 @@ flowchart LR
 | Agent | Role |
 |-------|-------|
 | Network Design | Hardware (order because EoS), software (patch because PSIRT), long-horizon configuration and compliance. Warehouse check; reserve/REQ/CHG when they coordinate. Writes `state/design.json` and `design/roadmap.md`. |
-| Network Ops | Operate: specific config from SoT + evidence → git `dev` → GitOps → merge `main`. Writes `state/network-ops.json`. |
+| Network Ops | Frontier decision maker: exact bounded prescription → local GitOps worker → merge `main` on live pass. |
+| GitHub GitOps Change | Local worker: read/edit full configs, put `dev`, poll exact `apply.yml` run, return compact evidence. |
 | Pipeline Monitor | Watch `apply.yml` / `test.yml` by git ref. Marker, not the green check. Writes nothing. |
 | Compliance Author | Turns compliance intel or a named ask into a check in git. |
 | Compliance Test | Triggers `test.yml`, records risk, writes the timestamped result. |

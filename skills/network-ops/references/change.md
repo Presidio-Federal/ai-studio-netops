@@ -1,17 +1,20 @@
-# Change from SoT
+# Delegate and ship
 
-Configs are GitHub files. List the configs directory, get the
-listed path, put `ref=dev`. Do not write the Studio workspace.
+Network Ops decides the change without loading config bodies. GitHub GitOps
+Change performs all config discovery, full-file edits, `dev` puts, and
+`apply.yml` polling.
 
-## Named edit
+## Handoff
 
-`github_list_files` `ref=dev`. Use `entries[].path` for the
-hostname in the ask. `github_get_file` that path. Change only
-the named text. `github_put_file` the full file `ref=dev` with
-`sha` from get.
+Invoke the worker once with exact targets or one deterministic hostname rule,
+operation, exact lines, scope, placement, and preservation constraints. Do
+not include a config body.
 
-## After the commit
+The invocation's final response is the next input. Do not query task/subagent
+status, poll GitHub, or re-invoke the worker.
 
-Invoke Pipeline Monitor with that `commit_sha`. Do not poll
-Actions yourself. Merge `dev` → `main` only if live Result is
-`pass`. Static fail is not a merge block. Do not delete `dev`.
+## Ship
+
+Worker Result `pass` → create `dev` → `main` PR and merge with
+`merge_method=merge`. Do not delete `dev`. Any other result → no PR and no
+merge.

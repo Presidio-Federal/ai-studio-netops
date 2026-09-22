@@ -1,53 +1,51 @@
 ---
 name: network-ops
-version: "1.2.0"
-description: "v1.2.0 — GitOps orchestrator: commit dev and delegate an exact-SHA, read-only pipeline watch."
+version: "2.0.0"
+description: "v2.0.0 — Frontier orchestrator delegates config I/O and pipeline polling to one local GitOps worker, then merges on pass."
 ---
 
 # Network Ops skill
 
-GitHub is the config SoT. You do not `write_file`. You do not
-`read_file`. You do not `execute_command`.
+GitHub is the config SoT. Network Ops decides the exact change but never loads
+large config bodies. GitHub GitOps Change owns config I/O, `dev` puts, and
+Actions polling.
 
 ## Route
 
 | Intent | How |
 |--------|-----|
-| Change / fix / implement | List, get, put `ref=dev`, invoke Pipeline Monitor, merge if live pass. |
+| Change / fix / implement | Send one bounded prescription to GitHub GitOps Change; merge on its final live pass. |
 | Check bug | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. |
 | Run a suite with no config change | Compliance Test. |
 
 Exact tools: [references/tools.md](references/tools.md).
 
-`github_put_file` **must** use `ref=dev` (the tool defaults to
-`main`). Do not `github_create_branch`. After put, invoke
-Pipeline Monitor and wait — do not poll Actions yourself.
+Do not call config file or Actions tools. Do not query subagent status. Invoke
+GitHub GitOps Change once and treat its final response as the next input.
 
-## First action
+## Prescription
 
-1. `github_list_files(path="inventory/configs", ref="dev")`.
-2. Match the hostname from the ask to `entries[]` `name`. Use
-   that entry’s `path`.
-3. `github_get_file` that `path` `ref=dev`. Keep `content` and
-   `sha`.
-4. Change only the named text. `github_put_file` the same path
-   `ref=dev` with that `sha`.
-5. Invoke Pipeline Monitor with `commit_sha` from put.
+Send only:
 
-How to ship: [references/change.md](references/change.md).
+- exact hostnames, or one deterministic hostname selection rule
+- `ensure_present`, `ensure_absent`, or `replace`
+- exact config lines
+- exact scope and placement
+- preserve-unrelated-content constraints
 
-## After put
+Never send a full config. Missing exact syntax, scope, placement, or
+deterministic targets → `blocked`.
 
-```text
-Watch apply.yml on ref=dev for commit <commit_sha>. Return the run URL and the marker result. Do not trigger, commit, or merge.
-```
+How to delegate and ship: [references/change.md](references/change.md).
 
-Live Result `pass` → `github_create_pull_request`
+## After worker result
+
+Result `pass` → `github_create_pull_request`
 (`source_branch=dev`, `target_branch=main`) then
 `github_merge_pull_request` (`merge_method=merge`). Do not
-delete `dev`. Static fail is not a merge block. Missing marker
-is `unknown` — do not merge.
+delete `dev`. Result `fail`, `unknown`, `no_change`, `blocked`,
+or `failed` → do not create or merge a PR.
 
 ## Reference routing
 

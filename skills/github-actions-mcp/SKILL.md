@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.2.0"
-description: "v4.2.0 — Read-only exact-SHA pipeline watches; only an explicit ad-hoc test owner may trigger."
+version: "4.2.1"
+description: "v4.2.1 — Read-only exact-SHA pipeline watches; only an explicit ad-hoc test owner may trigger."
 ---
 
 # GitHub Actions skill

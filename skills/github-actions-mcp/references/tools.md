@@ -9,4 +9,4 @@ Exact names. Do not invent tools.
 | `github_get_action_run` | Poll until `status` is `completed`. Returns jobs (need `id` for logs). |
 | `github_get_action_job_logs` | Read the marker. `tail_lines=200`. |
 
-Network Ops owns `github_list_files` / `github_get_file` / `github_put_file` / PR merge.
+GitHub GitOps Change owns config list/get/put. Network Ops owns PR merge.

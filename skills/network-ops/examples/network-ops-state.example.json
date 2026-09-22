@@ -4,7 +4,7 @@
   "source_agent": "network-ops",
   "status": "committed",
   "headline": "Add WAN NTP peers to five edges that have no ntp stanza in git",
-  "next_action": "Wait for apply.yml on dev; merge if live pass",
+  "next_action": "Consume GitHub GitOps Change's final result; merge on live pass",
   "mode": "implement",
   "finding": {
     "source": "operator",
