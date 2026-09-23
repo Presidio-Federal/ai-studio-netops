@@ -1,30 +1,33 @@
 ---
 name: network-ops
-version: "2.2.0"
-description: "v2.2.0 — Decide from bounded config evidence, delegate commits, and gate merges on Pipeline Monitor."
+version: "2.3.0"
+description: "v2.3.0 — Read workspace and GitHub configs, decide exact changes, and delegate mechanical commits."
 ---
 
 # Network Ops skill
 
-GitHub is the config SoT. Network Ops decides the exact change but never loads
-large config bodies. GitHub GitOps Change returns bounded inspection evidence
-or performs exact `dev` puts. Pipeline Monitor owns Actions polling. Network
-Ops owns `state/network-ops.json`.
+GitHub is the config SoT. Network Ops reads relevant workspace evidence and
+target/peer configs directly, then decides the exact change. GitHub GitOps
+Change performs only exact full-file edits and `dev` puts. Pipeline Monitor
+owns Actions polling. Network Ops owns `state/network-ops.json`.
 
 ## Route
 
 | Intent | How |
 |--------|-----|
-| Change with missing syntax/evidence | GitOps Change `inspect` → decide → GitOps Change `apply`. |
-| Change with exact evidence | GitOps Change `apply` directly. |
+| Change / fix / implement | Read workspace evidence + target/peer Git configs → decide → GitOps Change commit. |
 | Check bug | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. |
 | Run a suite with no config change | Compliance Test. |
 
 Exact tools: [references/tools.md](references/tools.md).
 
-Do not call config file or Actions tools. Do not query subagent status. Treat
-each attached agent's final response as the next input.
+Network Ops may call `github_list_files` and `github_get_file` for config
+discovery. It never calls `github_put_file` or Actions tools. Do not query
+subagent status. Treat each attached agent's final response as the next input.
+Invoke attached agents synchronously and wait in the same run; never launch
+background/autonomous work. Waiting on one invocation is not polling. Use the
+exact registered identifier exposed for the attached agent.
 
 ## Prescription
 
@@ -36,11 +39,11 @@ Send only:
 - exact scope and placement
 - preserve-unrelated-content constraints
 
-Never send a full config. If those details are missing, first invoke GitOps
-Change with `Mode: inspect`, exact targets/question, and an exact or
-deterministic peer rule. It returns only relevant lines, scope, placement, and
-consensus. Network Ops decides; the worker does not choose policy. Inspection
-that remains ambiguous → `blocked`.
+Never send a full config to the worker. Read the relevant workspace state and
+detailed visit, list `inventory/configs` on `dev`, then get only the target and
+relevant passing/canonical peer paths returned by that listing. Verify the
+finding and derive exact lines, scope, and placement. Ambiguous evidence →
+`blocked`; do not ask the operator for lines already available in Git.
 
 How to delegate and ship: [references/change.md](references/change.md).
 

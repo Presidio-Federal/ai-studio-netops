@@ -1,24 +1,18 @@
 ---
 name: github-gitops-change
-version: "1.2.0"
-description: "v1.2.0 — Inspect configs compactly or commit an exact prescription without polling Actions."
+version: "1.3.0"
+description: "v1.3.0 — Mechanically apply an exact Network Ops prescription without polling Actions."
 ---
 
 # GitHub GitOps Change
 
-Mechanical config work only. Network Ops owns the decision and PR merge;
-Pipeline Monitor owns Actions. This skill returns bounded evidence in
-`inspect` mode or performs surgical `dev` puts in `apply` mode.
+Mechanical config work only. Network Ops owns config discovery, comparison,
+the decision, and PR merge. Pipeline Monitor owns Actions. This skill performs
+surgical `dev` puts from an exact prescription.
 
 ## Contract
 
-`inspect` requires targets or one deterministic target rule, the exact feature
-question, and an exact peer or deterministic peer-selection rule when
-comparison is needed. It reads only resolved configs and returns at most 30
-relevant lines per device with scope, placement, and consensus. It never
-writes git/workspace or recommends policy.
-
-`apply` requires:
+Require:
 
 - `Targets`: exact hostnames, or one deterministic hostname rule
 - `Operation`: `ensure_present`, `ensure_absent`, or `replace`
@@ -31,9 +25,7 @@ Ambiguous or incomplete prescription → `blocked` before any write.
 
 ## State machine
 
-Inspect: `VALIDATE → LIST → GET_BOUNDED → REPORT_EVIDENCE`
-
-Apply: `VALIDATE → LIST → PREFLIGHT_ALL → GET_ALL → EDIT → PUT_CHANGED → WRITE_OPERATION → REPORT`
+`VALIDATE → LIST → PREFLIGHT_ALL → GET_ALL → EDIT → PUT_CHANGED → WRITE_OPERATION → REPORT`
 
 - List `inventory/configs` on `dev`; use only returned paths.
 - Preflight all targets before the first put.
@@ -43,7 +35,7 @@ Apply: `VALIDATE → LIST → PREFLIGHT_ALL → GET_ALL → EDIT → PUT_CHANGED
 - Return the final put SHA as `submitted`; it contains all prior puts on `dev`.
 - Never call Actions tools, create a PR, or merge.
 - Never return config bodies or full diffs.
-- For every terminal apply result, write exactly one operation-run record
+- For every terminal result, write exactly one operation-run record
   under `operational/runs/`, including blocked and no-change outcomes.
 - A successful put records `status=ok`, `result=submitted`, and null workflow
   fields; Pipeline Monitor writes the later watch result.

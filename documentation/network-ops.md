@@ -1,9 +1,10 @@
 # Network Ops
 
 The frontier-model operator. Reads the chart and names a bounded,
-exact running-config change. When exact syntax is missing, it asks the local
-GitHub GitOps Change worker for bounded target/peer evidence. That worker also
-owns full-file GitHub writes. Pipeline Monitor owns pipeline polling.
+exact running-config change. It reads relevant target and passing-peer configs
+from GitHub directly to verify the finding and derive exact syntax. The local
+GitHub GitOps Change worker owns full-file GitHub writes. Pipeline Monitor owns
+pipeline polling.
 
 Evidence is the work queue: `state/testing.json`,
 `state/compliance.json`, `state/health.json`. Design
@@ -17,9 +18,9 @@ returns the exact SHA. Network Ops invokes Pipeline Monitor once for that SHA;
 it never polls subagent status. Live pass → Ops opens `dev` → `main` and
 merges (merge commit; do not delete `dev`).
 
-Config bodies remain in the local worker context and git. Only bounded,
-feature-specific evidence enters the frontier model's context. GitOps Change
-and Pipeline Monitor each write one concise relationship-ready
+Network Ops may load the few relevant config bodies into its reasoning context
+but never copies them into workspace state or its reply. GitOps Change and
+Pipeline Monitor each write one concise relationship-ready
 `operational/runs/<stamp>.json`; Network Ops then replaces
 `state/network-ops.json` with the current change, commit, CI, PR, and
 entity-key summary.

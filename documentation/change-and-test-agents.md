@@ -43,7 +43,7 @@ flowchart LR
 |-------|-------|
 | Network Design | Hardware (order because EoS), software (patch because PSIRT), long-horizon configuration and compliance. Warehouse check; reserve/REQ/CHG when they coordinate. Writes `state/design.json` and `design/roadmap.md`. |
 | Network Ops | Frontier decision maker: exact bounded prescription → local GitOps worker → merge `main` on live pass → replace concise `state/network-ops.json`. |
-| GitHub GitOps Change | Local worker: inspect full configs but return bounded evidence, or apply an exact prescription to `dev`; never poll Actions. |
+| GitHub GitOps Change | Local worker: mechanically apply Network Ops' exact prescription to `dev`; never decide policy or poll Actions. |
 | Pipeline Monitor | Watch `apply.yml` / `test.yml` by git ref, judge the marker, and write one concise `operational/runs/<stamp>.json`. |
 | Compliance Author | Turns compliance intel or a named ask into a verified catalog, check/rule, bridge, and matrix chain in git. |
 | Compliance Test | Triggers `test.yml`, records risk, writes `operational/testing/<stamp>.json` and current `state/testing.json`. |

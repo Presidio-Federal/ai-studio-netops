@@ -1,13 +1,6 @@
 # Bounded config change
 
-## Inspect
-
-When Network Ops lacks exact syntax, read the resolved targets and only the
-deterministically selected peers. Return the exact relevant feature lines,
-their scope/placement, and whether peers agree. Cap evidence at 30 lines per
-device. Never return full configs, write files, or choose policy.
-
-## Apply preflight
+## Preflight
 
 List `inventory/configs` on `dev`. Resolve every requested hostname or
 deterministic hostname rule against that response. Do not guess a path,

@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.55.0 — Network Ops records separate GitOps submission and Pipeline Monitor evidence."
-version: "1.55.0"
+description: "v1.56.0 — Network Ops reads evidence directly, then waits for GitOps and Pipeline Monitor results."
+version: "1.56.0"
 ---
 
 # Workspace handoff
@@ -214,10 +214,12 @@ after the write.
 4. If this file is input for an attached subagent, invoke them now.
    Health Analyzer and Modernization Analysis do not wait.
    Network Design writes from files already on disk.
-   Network Ops may invoke GitHub GitOps Change once for bounded inspection,
-   then once to apply. It invokes Pipeline Monitor once for the submitted SHA,
-   never polls subagent status, creates/merges the PR on live pass, then
-   replaces `state/network-ops.json`.
+   Network Ops reads workspace and relevant Git configs directly, invokes
+   GitHub GitOps Change once to apply, then invokes Pipeline Monitor once for
+   the submitted SHA.
+   Each invocation is synchronous: wait for its final response without polling
+   status or launching background work. Create/merge the PR on live pass, then
+   replace `state/network-ops.json`.
    Compliance Intelligence writes its files and stops. Compliance Analyzer
    writes only `state/compliance.json`. Invoke Author only for
    operator-selected INTEL ids.

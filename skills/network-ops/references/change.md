@@ -1,19 +1,20 @@
 # Delegate and ship
 
-Network Ops decides the change without loading config bodies. GitHub GitOps
-Change performs bounded config inspection, full-file edits, and `dev` puts.
-Pipeline Monitor owns `apply.yml` polling.
+Network Ops reads relevant target/peer config bodies and decides the change.
+GitHub GitOps Change performs full-file edits and `dev` puts. Pipeline Monitor
+owns `apply.yml` polling.
 
 ## Handoff
 
-When exact syntax is missing, invoke GitOps Change in `inspect` mode with
-exact targets/question and an exact or deterministic peer rule. Decide from
-its bounded evidence. Then invoke it in `apply` mode with exact targets,
+Read the relevant workspace state and detailed visit. List
+`inventory/configs` on `dev`, then get only the returned paths for the target
+and relevant passing/canonical peer. Verify the finding and derive exact
+syntax, scope, and placement. Invoke GitOps Change with exact targets,
 operation, lines, scope, placement, and preservation constraints. Do not
 include a config body.
 
-Each invocation's final response is the next input. Do not query
-task/subagent status.
+Invoke each attached agent synchronously and wait for its final response in
+the same run. Do not launch background work or query task/subagent status.
 
 ## Ship
 
