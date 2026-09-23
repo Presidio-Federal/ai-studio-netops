@@ -23,15 +23,20 @@ Let `marker` be metadata `servicenow.marker`.
 2. `snow_find_changes(search=<marker>)` for changes in this window,
    including implemented and closed. A closed incident that names a
    change is the story.
-3. For each metadata `match_terms[]` item, at most one extra find
-   (`search=<term>`) if the marker find missed in-scope rows and
+3. Then each `inventory/prod.json` `devices[].name` that is not
+   already on a kept row: `snow_find_incidents(search=<name>,
+   active_only=true)` while the find/get budget remains. A hit that
+   names that inventory device is in scope. Do not change `marker`
+   to the device name. Zero marker hits do not skip this step.
+4. For each metadata `match_terms[]` item, at most one extra find
+   (`search=<term>`) if those finds missed in-scope rows and
    budget remains.
-4. If find is still empty or the tool errors: one `snow_query_table`
+5. If find is still empty or the tool errors: one `snow_query_table`
    on `incident` with `short_descriptionLIKE<marker>` (or
    `descriptionLIKE<marker>`) and `sysparm_limit` ≤ 50. Then at most
    one `change_request` query the same way. Do not query by category
    alone.
-5. Recent (correlation, in-scope only):
+6. Recent (correlation, in-scope only):
    `snow_find_incidents(search=<marker>, active_only=false)` and keep
    resolved/closed in-scope rows, newest first, cap 10. Do not pull
    the instance history.

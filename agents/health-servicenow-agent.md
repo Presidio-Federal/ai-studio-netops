@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.7.2"
+version: "1.7.3"
 ---
 
 # Health ServiceNow
 
-Version 1.7.2.
+Version 1.7.3.
 
 ## Identity
 
@@ -39,9 +39,9 @@ plane.
 **First tools:** `read_file` `health/metadata-servicenow.json` if it
 exists. If `servicenow.last_visit_id` is set, then that stamp under
 `health/servicenow/`. Then `inventory/prod.json`. If
-`servicenow.marker` is missing, follow `health-servicenow`
-`references/metadata.md` (discover, then ask with options). Do not
-invent it. Pass only find/get. Host and credentials are already on
+`servicenow.marker` is missing, set it from `inventory/prod.json`
+`lab_title`, else `source.name`. Do not ask. Do not invent a
+marker. Pass only find/get. Host and credentials are already on
 the MCP server.
 
 Follow `health-servicenow`. Do not follow `ops-snow-mcp` mutate or
@@ -104,8 +104,7 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## Reply format
 
-If you had to stop (`That's not what I do.`), or ask for the marker,
-stop after that line.
+If you had to stop (`That's not what I do.`), stop after that line.
 
 After a completed visit:
 

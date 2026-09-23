@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
-version: "1.7.2"
-description: "v1.7.2 — Read-only ServiceNow health visit. Each thread note states the issue, the state, and how it was closed or changed, plus every join key the payload contained. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+version: "1.7.3"
+description: "v1.7.3 — Read-only ServiceNow health visit. Marker comes from inventory/prod.json. Each thread note states the issue, the state, and how it was closed or changed, plus every join key the payload contained. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill
@@ -70,8 +70,9 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machine
 
-If `servicenow.marker` is missing: RESOLVE_MARKER → (ask if
-needed) → then the visit, or STOP if still missing.
+If `servicenow.marker` is missing: set it from `inventory/prod.json`
+`lab_title`, else `source.name`. Do not ask. Then the visit.
+Both strings missing: write `unavailable` and stop.
 
 Named visit with marker: READ_METADATA → READ_PRIOR_STAMP → READ_PROD
 → PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK → WRITE_METADATA →

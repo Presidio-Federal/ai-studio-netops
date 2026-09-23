@@ -10,7 +10,8 @@ their files and writes SOAP to `state/compliance.json`.
   bounded NIST title set, judges relevance to the estate, and writes current
   coverage/intel plus an append-only visit.
 - **Compliance Author** converts only operator-selected `INTEL-*`
-  recommendations into checks on git `compliance`.
+  recommendations into complete check/rule → bridge → `NET-COMP-*` chains on
+  git `compliance`, with the catalog coverage claim written last.
 - **Compliance Test** executes suites and writes general testing state. A
   compliance-suite run also writes an append-only compliance-testing visit.
 - **Compliance** is the attending analyzer. It queries no source and runs no
@@ -85,6 +86,12 @@ The agent removes controls already covered, already classified not
 applicable, or already active recommendations. It interprets the remaining
 titles against inventory and maintains up to ten ranked recommendations.
 It does not author tests, run tests, score posture, or invoke another agent.
+
+The published catalog is a token-efficient coverage index only because
+publication requires every cataloged compliance implementation to resolve
+through `test-bridge.yml` to an existing `NET-COMP-*` matrix rule. A runnable
+but unwired live/static check is not covered and must not publish a catalog
+NIST claim.
 
 ## Test evidence
 

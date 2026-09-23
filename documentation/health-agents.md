@@ -118,8 +118,9 @@ Prior stamp is `health/metadata-iosxe.json` `last_visit_id`
 
 ## Health ServiceNow
 
-Tickets for **this lab**, scoped by a workspace marker and
-inventory labels. Shared-instance rows are out of scope. Open
+Tickets for **this lab**. The marker is `inventory/prod.json`
+`lab_title`, else `source.name`. Inventory device names are in
+scope without a question. Shared-instance rows are out of scope. Open
 in-scope tickets do not degrade vital status. Filing cases is
 [Ops ServiceNow Operator](servicenow-agents.md).
 

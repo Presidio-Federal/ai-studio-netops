@@ -18,33 +18,27 @@ This visit needs `servicenow.marker`.
 Do not collect Splunk, ThousandEyes, or IOS-XE. Do not copy PAT into
 metadata.
 
-## Resolve — incomplete marker only
+## Resolve — missing marker only
 
-Workspace first (this metadata). Then discover. Then, if you cannot
-uniquely tell which customer/lab string to use, **ask** and show
-options. Write the choice. Do not invent a marker.
+Do not ask. A schedule has no one to answer. Do not list options.
+Do not treat a device name and the lab title as competing markers.
 
-If `servicenow.marker` is missing:
+If `servicenow.marker` is already set, keep it.
 
-1. One bounded find (`snow_find_incidents` active, then changes if
-   needed). Use inventory `name` / lab title from `prod.json` only
-   as search hints — not as invented markers.
-2. From those rows plus inventory labels, build a short options
-   list (candidate marker strings, device names, lab title).
-3. Human: ask which option is this lab. Write `servicenow.marker`
-   (`provenance: user` or `discovered` if exactly one fit).
-4. No human and still not unique: stop. Do not invent it.
+If it is missing, set it from `inventory/prod.json` and write
+metadata before any ServiceNow call:
 
-```text
-Need: text that identifies this lab’s tickets.
-Options:
-- <from find / inventory>
-Which?
-```
+1. `lab_title` when that string is non-empty.
+2. Else `source.name`.
 
-Optional `match_terms[]` only if they named extra strings.
+`provenance.servicenow` is `discovered`. Do not invent a third
+string. A device `name` is not the marker. Zero hits on the lab
+title is a collect result, not a reason to stop.
 
-Do not create tickets.
+`prod.json` missing both `lab_title` and `source.name`: do not
+invent a marker. Write the observation `unavailable` and stop.
+
+Do not create tickets. Do not put device names into `match_terms`.
 
 ## Write metadata
 

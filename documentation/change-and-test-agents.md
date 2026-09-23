@@ -45,7 +45,7 @@ flowchart LR
 | Network Ops | Frontier decision maker: exact bounded prescription → local GitOps worker → merge `main` on live pass → replace concise `state/network-ops.json`. |
 | GitHub GitOps Change | Local worker: read/edit full configs, put `dev`, poll exact `apply.yml` run, return compact evidence and write one `operational/runs/<stamp>.json`. |
 | Pipeline Monitor | Watch `apply.yml` / `test.yml` by git ref, judge the marker, and write one concise `operational/runs/<stamp>.json`. |
-| Compliance Author | Turns compliance intel or a named ask into a check in git. |
+| Compliance Author | Turns compliance intel or a named ask into a complete check/rule, bridge, matrix, and catalog chain in git. |
 | Compliance Test | Triggers `test.yml`, records risk, writes `operational/testing/<stamp>.json` and current `state/testing.json`. |
 
 Every structured workspace write carries top-level `keys`, with nested

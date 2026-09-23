@@ -52,7 +52,22 @@ is not a test.
 | `on.tags` | yes | device roles from `test_groups`. **This is the selector** |
 | `expect` | depends | required by `genie_parser`, thresholds and matches |
 | `parser` | for `genie_parser` | from `genie_parsers` |
-| `nist` / `stig` | optional | control ids; required to wire into the bridge |
+| `nist` / `stig` | optional | control ids; a catalog NIST coverage claim requires a bridge mapping to an existing `NET-COMP-*` rule |
+
+## Compliance bridge
+
+A live check running successfully does not count in the compliance report by
+itself. For every authored live id intended to contribute to compliance:
+
+1. Read the existing matrix and `tests/compliance/matrix/test-bridge.yml` from
+   `ref=compliance`.
+2. Reuse a `NET-COMP-*` rule only when it expresses the same requirement;
+   otherwise add the smallest rule in the existing matrix shape.
+3. Add the exact live check id to the bridge mapping for that rule.
+4. Add the catalog NIST claim only after that chain exists.
+
+Do not assume matching NIST labels create the relationship. The bridge is the
+explicit relationship.
 
 ## Choosing the assert
 

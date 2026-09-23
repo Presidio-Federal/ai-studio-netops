@@ -38,6 +38,21 @@ rules:
 | `platforms` | yes | rule is skipped on other platforms |
 | `nist` / `stig` | optional | control ids |
 
+## Compliance bridge
+
+A static rule does not count in the compliance report merely because it has
+`nist:` tags. For every authored static id intended to contribute:
+
+1. Read the existing matrix and `tests/compliance/matrix/test-bridge.yml` from
+   `ref=compliance`.
+2. Reuse a `NET-COMP-*` rule only when it states the same requirement;
+   otherwise add the smallest rule in the existing matrix shape.
+3. Add the exact static rule id to the bridge mapping for that rule.
+4. Publish any catalog NIST claim only after that chain exists.
+
+Live and static checks may map to different `NET-COMP-*` rules when they prove
+different controls. Never force their NIST lists to match.
+
 ## Rule types
 
 | `type` | Passes when |
