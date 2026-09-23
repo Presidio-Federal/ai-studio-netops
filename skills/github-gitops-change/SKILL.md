@@ -1,7 +1,7 @@
 ---
 name: github-gitops-change
 version: "1.1.1"
-description: "Apply a bounded config prescription, poll apply.yml, and write canonical workspace entity keys."
+description: "v1.1.1 — Apply a bounded config prescription, poll apply.yml, and write canonical workspace entity keys."
 ---
 
 # GitHub GitOps Change

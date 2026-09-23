@@ -1,7 +1,7 @@
 ---
 name: compliance-analyzer
 version: "1.0.1"
-description: "Analyze and trend compliance intelligence and test visits. Keep tested posture separate from framework coverage. Write SOAP to state/compliance.json."
+description: "v1.0.1 — Analyze and trend compliance intelligence and test visits. Keep tested posture separate from framework coverage. Write SOAP to state/compliance.json."
 ---
 
 # Compliance Analyzer
