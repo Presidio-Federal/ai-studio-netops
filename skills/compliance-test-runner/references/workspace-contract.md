@@ -38,20 +38,9 @@ health flagged, `compliance/intel.json`, `compliance/coverage.json`.
 
 Scope: `references/scope.md`. Trigger/extract: `references/run.md`.
 
-## After write
-
-```text
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/operational/testing/2026-08-16T23-10-00Z.json
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py state /workspace/state/testing.json
-```
-
-If this run included `compliance`, also validate its visit:
-
-```text
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py compliance /workspace/compliance/testing/2026-08-16T23-10-00Z.json
-```
-
-Skip if script missing. Never `find /`.
+Write each record directly with the built-in workspace file tool. Never create
+or run a helper script, use Code Execution or `execute_command`, invoke a
+shell, or write through `Internal directory`.
 
 ## Canonical top-level keys
 

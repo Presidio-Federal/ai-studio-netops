@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.0.1 | MiniMax |
 | Compliance Intelligence | 2.0.3 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.4.1 | MiniMax |
+| Compliance Test | 1.4.2 | MiniMax |
 | Health Monitor | 1.19.1 | MiniMax |
 | Health Device | 1.8.4 | MiniMax |
 | Health ServiceNow | 1.7.3 | MiniMax |

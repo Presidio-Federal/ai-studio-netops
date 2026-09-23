@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.8.1"
-description: "v1.8.1 — General test history under operational/testing plus append-only compliance visits."
+version: "1.8.2"
+description: "v1.8.2 — Write test and compliance evidence directly without Code Execution."
 ---
 
 # Compliance test runner skill
@@ -26,6 +26,10 @@ Do not call `actions_run_trigger`, `get_file_contents`, or
 
 Do not write `runs/`, `servicenow/`, `inventory/`, `risk/`, or `lab-access.json`.
 Do not invent a run id. Do not treat a green job as a pass.
+Write every JSON record directly with the built-in workspace file tool. Never
+use Code Execution, `execute_command`, helper/build scripts, shell commands,
+or `Internal directory`. Do not generate or transform workspace records
+indirectly.
 
 Default lab is **dev**. A Dev pass is not production evidence.
 
@@ -54,17 +58,6 @@ catalog and coverage rows. Add `control:<id>` only when the report or
 published catalog supplies that mapping. No whitespace after `:`. Do not
 infer entities.
 
-`execute_command` only after `write_file`:
-
-```text
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/operational/testing/2026-08-16T23-10-00Z.json
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py state /workspace/state/testing.json
-```
-
-If missing: `/skills/global/compliance-test-runner/scripts/validate_testing.py`. If
-`/skills` is empty, skip validate. Never `find /`. Never
-`python3 Internal directory ...`.
-
 ## Canonical top-level keys
 
 Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
@@ -72,7 +65,7 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 ## State machine
 
 READ_INVENTORY → TRIGGER → LIST_RUN → POLL → READ_MARKER → WRITE_RUN →
-WRITE_TESTING_STATE → WRITE_COMPLIANCE_VISIT_IF_SCOPED → VALIDATE → STOP
+WRITE_TESTING_STATE → WRITE_COMPLIANCE_VISIT_IF_SCOPED → STOP
 
 Never skip READ_INVENTORY. Never invent or prefix a hostname (`WAN-01` stays
 `WAN-01`). `test-request.json` is optional. Missing → continue.

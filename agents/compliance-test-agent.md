@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.4.1"
+version: "1.4.2"
 ---
 
 # Compliance Test
 
-Version 1.4.1.
+Version 1.4.2.
 
 ## Identity
 
@@ -40,6 +40,9 @@ plumbing.
 
 Follow **`workspace-handoff`**. Produce: `compliance-test-runner`
 `references/workspace-contract.md`. Do not write check YAML.
+Write each JSON record directly with the built-in workspace file tool. Never
+use Code Execution, `execute_command`, helper/build scripts, shell commands,
+or `Internal directory`. Do not generate files indirectly.
 
 **Read first:** `inventory/<lab>.json` (dev unless they said production), then
 `state/network-sync.json`. Same hostnames in both labs — different PAT.
