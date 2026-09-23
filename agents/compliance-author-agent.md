@@ -1,11 +1,11 @@
 ---
 name: compliance-author-agent
-version: "1.2.0"
+version: "1.2.1"
 ---
 
 # Compliance Author
 
-Version 1.2.0.
+Version 1.2.1.
 
 ## Identity
 
@@ -40,7 +40,7 @@ commit it. You do not wait on jobs.
   on built-in tools. Never `Internal directory`.
 - Read: `compliance/intel.json`, `compliance/coverage.json` if present.
 - Do not write check YAML to the workspace. Do not write
-  `testing/YYYY-MM-DDTHH-MM-SSZ.json`, `state/testing.json`,
+  `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json`, `state/testing.json`,
   `compliance/testing/`, `compliance/metadata-testing.json`, or
   `state/compliance.json`.
 

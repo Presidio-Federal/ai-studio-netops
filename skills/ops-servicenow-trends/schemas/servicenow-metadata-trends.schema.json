@@ -5,9 +5,14 @@
   "description": "Trends lookup (Kind metadata). Groups, categories, match terms, marker. Not the five-field envelope. Live values live here, not in the prompt.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "updated_at", "source_agent", "servicenow"],
+  "required": ["schema", "keys", "updated_at", "source_agent", "servicenow"],
   "properties": {
     "schema": { "type": "string", "const": "servicenow-metadata-trends/v1" },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
+    },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "ops-servicenow-trends" },
     "servicenow": {

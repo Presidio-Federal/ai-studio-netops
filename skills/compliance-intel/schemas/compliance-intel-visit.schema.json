@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "keys",
     "schema",
     "visit_id",
     "checked_at",
@@ -17,6 +18,11 @@
     "vs_prior"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": {"type": "string", "const": "compliance-intel-visit/v1"},
     "visit_id": {
       "type": "string",
@@ -61,11 +67,11 @@
           "status": {"type": "string", "enum": ["proposed", "accepted", "rejected", "authored"]},
           "keys": {
             "type": "array",
-            "minItems": 2,
+            "minItems": 1,
             "uniqueItems": true,
             "items": {
               "type": "string",
-              "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+              "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
             }
           }
         }

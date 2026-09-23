@@ -5,8 +5,13 @@
   "description": "IOS-XE visit pointer (Kind metadata). Health Device only. last_visit_id is the previous stamp. No port, no host, no credentials. RESTCONF port stays on inventory/prod.json. Not the five-field envelope.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "updated_at", "source_agent", "iosxe"],
+  "required": ["keys", "schema", "updated_at", "source_agent", "iosxe"],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": { "type": "string", "const": "health-metadata-iosxe/v1" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-device" },

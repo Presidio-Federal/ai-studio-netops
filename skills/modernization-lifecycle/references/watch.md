@@ -134,6 +134,8 @@ For each PID collected:
    `file_explorer/` form after Access denied). Safe filename:
    letters, digits, `.` `_` `-` only. If that write still fails:
    merge onto the estate anyway; Gaps the detail file.
+   Set top-level `keys` to the deduplicated `device:<name>`
+   union from that item file's `devices`, or `[]`.
 2. Re-read `state/lifecycle.json` (same prefix that worked).
    Merge **this PID’s** research onto the matching row. Keep
    `quantity` `devices` `summary` `source` `pid_source`
@@ -150,4 +152,6 @@ For each PID collected:
    `source_agent` `modernization-lifecycle`. Recount `coverage`
    (`with_software` = rows with `recommended_software` or
    `end_of_software_support`).
+   Recompute top-level `keys` as the deduplicated
+   `device:<name>` union from all `items[].devices`, or `[]`.
    `write_file` the full object. Do not drop other PIDs.

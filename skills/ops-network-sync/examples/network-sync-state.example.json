@@ -94,5 +94,6 @@
   "gaps": [
     "AI-BRANCH-01-SW: no pat:*:443 or pat:*:22 — agent_access false"
   ],
-  "next_action": null
+  "next_action": null,
+  "keys": []
 }

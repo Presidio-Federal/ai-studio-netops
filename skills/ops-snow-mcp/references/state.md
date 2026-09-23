@@ -51,6 +51,8 @@ off the board.
     - `servicenow/cases/index.json` (all touched)
     - `state/servicenow.json` (`servicenow-state/v1`)
     - `servicenow/metadata-lab.json` (last-visit when find/get succeeded)
+    Recompute each file's top-level `keys` from its explicit
+    typed case numbers and device arrays. Metadata uses `[]`.
 12. Validate. Read back. Stop.
 
 ## `state/servicenow.json`

@@ -1,5 +1,9 @@
 {
   "schema": "servicenow-request/v1",
+  "keys": [
+    "device:AI-BRANCH-03",
+    "device:cloud-edge"
+  ],
   "request_id": "req-chg-wan-peer-20260812-001",
   "created_at": "2026-08-12T18:20:00Z",
   "requested_by": "network-design-agent",

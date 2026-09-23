@@ -19,7 +19,8 @@
     "cables",
     "counts",
     "gaps",
-    "netbox_pushed_at"
+    "netbox_pushed_at",
+    "keys"
   ],
   "properties": {
     "schema": { "type": "string", "const": "infra-sot/v1" },
@@ -65,6 +66,14 @@
     "netbox_pushed_at": {
       "type": ["string", "null"],
       "description": "Last successful NetBox write. Null if snap exists but push has not succeeded."
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
     }
   },
   "$defs": {

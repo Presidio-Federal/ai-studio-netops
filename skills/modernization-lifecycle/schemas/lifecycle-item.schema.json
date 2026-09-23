@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "required": [
     "schema",
+    "keys",
     "pid",
     "updated_at",
     "expires_at",
@@ -21,6 +22,11 @@
   ],
   "properties": {
     "schema": { "type": "string", "const": "lifecycle-item/v1" },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
+    },
     "pid": { "type": "string", "minLength": 1 },
     "updated_at": { "type": "string", "minLength": 1 },
     "expires_at": { "type": "string", "minLength": 1 },

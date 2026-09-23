@@ -1,7 +1,7 @@
 ---
 name: github-gitops-change
-version: "1.0.0"
-description: "Apply a bounded config prescription to git dev, then poll the exact apply.yml run. Large configs stay in the local worker."
+version: "1.1.1"
+description: "Apply a bounded config prescription, poll apply.yml, and write canonical workspace entity keys."
 ---
 
 # GitHub GitOps Change
@@ -25,7 +25,7 @@ Ambiguous or incomplete prescription → `blocked` before any write.
 
 ## State machine
 
-`VALIDATE → LIST → PREFLIGHT_ALL → GET_ALL → EDIT → PUT_CHANGED → WATCH_FINAL → REPORT`
+`VALIDATE → LIST → PREFLIGHT_ALL → GET_ALL → EDIT → PUT_CHANGED → WATCH_FINAL → WRITE_OPERATION → REPORT`
 
 - List `inventory/configs` on `dev`; use only returned paths.
 - Preflight all targets before the first put.
@@ -35,6 +35,13 @@ Ambiguous or incomplete prescription → `blocked` before any write.
 - Watch only the final put's SHA; it contains all prior puts on `dev`.
 - Never trigger `apply.yml`, create a PR, or merge.
 - Never return config bodies or full diffs.
+- For every terminal result, write exactly one operation-run record under
+  `operational/runs/`, including blocked and no-change outcomes.
+- Set top-level `keys` to the deduplicated union of exact structured entity
+  keys, or `[]`; never infer from prose. Allowed prefixes are
+  `device|interface|site|service|test|control|incident|change`. Use `site:`
+  for location and `interface:<device>/<interface>` when the device is known.
+  Keep nested `keys`.
 
 Exact edit flow: [references/change.md](references/change.md).
 Exact tools: [references/tools.md](references/tools.md).

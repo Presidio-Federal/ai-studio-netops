@@ -42,11 +42,15 @@ flowchart LR
 | Agent | Role |
 |-------|-------|
 | Network Design | Hardware (order because EoS), software (patch because PSIRT), long-horizon configuration and compliance. Warehouse check; reserve/REQ/CHG when they coordinate. Writes `state/design.json` and `design/roadmap.md`. |
-| Network Ops | Frontier decision maker: exact bounded prescription → local GitOps worker → merge `main` on live pass. |
-| GitHub GitOps Change | Local worker: read/edit full configs, put `dev`, poll exact `apply.yml` run, return compact evidence. |
-| Pipeline Monitor | Watch `apply.yml` / `test.yml` by git ref. Marker, not the green check. Writes nothing. |
+| Network Ops | Frontier decision maker: exact bounded prescription → local GitOps worker → merge `main` on live pass → replace concise `state/network-ops.json`. |
+| GitHub GitOps Change | Local worker: read/edit full configs, put `dev`, poll exact `apply.yml` run, return compact evidence and write one `operational/runs/<stamp>.json`. |
+| Pipeline Monitor | Watch `apply.yml` / `test.yml` by git ref, judge the marker, and write one concise `operational/runs/<stamp>.json`. |
 | Compliance Author | Turns compliance intel or a named ask into a check in git. |
-| Compliance Test | Triggers `test.yml`, records risk, writes the timestamped result. |
+| Compliance Test | Triggers `test.yml`, records risk, writes `operational/testing/<stamp>.json` and current `state/testing.json`. |
+
+Every structured workspace write carries top-level `keys`, with nested
+data-point keys retained. Recommendations and plans remain agent outputs;
+only stable operational identities participate in relationship joins.
 
 ## What the roadmap looks like
 

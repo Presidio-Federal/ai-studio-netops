@@ -95,5 +95,11 @@
       }
     }
   ],
-  "links": []
+  "links": [],
+  "keys": [
+    "device:AI-BRANCH-01",
+    "device:AI-BRANCH-01-SW",
+    "device:WAN-04",
+    "site:example-lab-prod"
+  ]
 }

@@ -1,6 +1,6 @@
 ---
 name: compliance-analyzer
-version: "1.0.0"
+version: "1.0.1"
 description: "Analyze and trend compliance intelligence and test visits. Keep tested posture separate from framework coverage. Write SOAP to state/compliance.json."
 ---
 
@@ -47,6 +47,10 @@ or at least 24 hours old.
   files already read.
 - `refresh-then-assess`: wait only for stale material planes, reread their
   metadata and latest stamps, then assess.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## Output
 

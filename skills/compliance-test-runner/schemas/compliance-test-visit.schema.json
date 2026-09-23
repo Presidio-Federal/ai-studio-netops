@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "keys",
     "schema",
     "visit_id",
     "checked_at",
@@ -22,6 +23,11 @@
     "vs_prior"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": {"type": "string", "const": "compliance-test-visit/v1"},
     "visit_id": {
       "type": "string",
@@ -128,7 +134,7 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
       }
     },
     "result_row": {

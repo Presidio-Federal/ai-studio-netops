@@ -58,6 +58,12 @@ a change is `vs_prior.changed` (for example `test:t2 ok_rounds 12 →
 Standing-order follow-up (TE path-vis on loss/errors) stays on
 **this** visit. A Splunk finding does not authorize an IOS-XE GET.
 
+Every structured health write also carries top-level `keys`: the
+deduplicated union of source-supported device, qualified interface, site,
+service, test, incident, and change identities in that record. Nested
+readings and threads retain their own keys. Unavailable or entity-free writes
+use `keys: []`; agents never infer identities from prose.
+
 **What a named visit still does today.** A completed collection
 still writes a lab slip, including `delta: unchanged` and
 `changed: []`. That is thinner than a telemetry dump, and it keeps

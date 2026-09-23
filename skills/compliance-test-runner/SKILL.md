@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.7.0"
-description: "v1.7.0 — General testing state plus append-only compliance visits for independent posture analysis."
+version: "1.8.1"
+description: "v1.8.1 — General test history under operational/testing plus append-only compliance visits."
 ---
 
 # Compliance test runner skill
@@ -57,13 +57,17 @@ infer entities.
 `execute_command` only after `write_file`:
 
 ```text
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/testing/2026-08-16T23-10-00Z.json
+python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/operational/testing/2026-08-16T23-10-00Z.json
 python3 /skills/user/compliance-test-runner/scripts/validate_testing.py state /workspace/state/testing.json
 ```
 
 If missing: `/skills/global/compliance-test-runner/scripts/validate_testing.py`. If
 `/skills` is empty, skip validate. Never `find /`. Never
 `python3 Internal directory ...`.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 

@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "required": [
     "schema",
+    "keys",
     "updated_at",
     "source_agent",
     "status",
@@ -23,6 +24,11 @@
   ],
   "properties": {
     "schema": { "type": "string", "const": "lifecycle-estate/v2" },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
+    },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": {
       "type": "string",

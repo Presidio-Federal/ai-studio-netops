@@ -17,6 +17,9 @@ MODES = {"bootstrap", "audit", "reconcile"}
 UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$"
 )
+KEY_RE = re.compile(
+    r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+)
 
 SNAP_REQUIRED = [
     "schema",
@@ -33,6 +36,7 @@ SNAP_REQUIRED = [
     "counts",
     "gaps",
     "netbox_pushed_at",
+    "keys",
 ]
 STATE_REQUIRED = [
     "schema",
@@ -52,6 +56,7 @@ STATE_REQUIRED = [
     "gaps",
     "details",
     "netbox_pushed_at",
+    "keys",
 ]
 COUNT_KEYS = ("devices", "interfaces", "ip_addresses", "cables")
 
@@ -116,6 +121,18 @@ def validate_counts(value: Any, name: str, errors: Errors) -> None:
             errors.add(f"{name}.{key} must be an integer >= 0")
 
 
+def validate_keys(value: Any, name: str, errors: Errors) -> set[str]:
+    if not isinstance(value, list):
+        errors.add(f"{name} must be an array")
+        return set()
+    if len(value) != len(set(value)):
+        errors.add(f"{name} must not contain duplicates")
+    for key in value:
+        if not isinstance(key, str) or not KEY_RE.match(key):
+            errors.add(f"{name} contains invalid key: {key}")
+    return {key for key in value if isinstance(key, str)}
+
+
 def validate_snap(data: Any, errors: Errors) -> None:
     obj = require_object(data, "snap", errors)
     if obj is None:
@@ -137,6 +154,23 @@ def validate_snap(data: Any, errors: Errors) -> None:
         errors.add("gaps must be an array")
     if "counts" in obj:
         validate_counts(obj.get("counts"), "counts", errors)
+    actual_keys = validate_keys(obj.get("keys"), "keys", errors)
+    expected_keys: set[str] = set()
+    parents = obj.get("parents")
+    if isinstance(parents, dict) and isinstance(parents.get("site"), dict):
+        site = parents["site"].get("slug")
+        if isinstance(site, str):
+            expected_keys.add(f"site:{site}")
+    for device in obj.get("devices", []) if isinstance(obj.get("devices"), list) else []:
+        if not isinstance(device, dict) or not isinstance(device.get("name"), str):
+            continue
+        device_name = device["name"]
+        expected_keys.add(f"device:{device_name}")
+        for interface in device.get("interfaces", []) if isinstance(device.get("interfaces"), list) else []:
+            if isinstance(interface, dict) and isinstance(interface.get("name"), str):
+                expected_keys.add(f"interface:{device_name}/{interface['name']}")
+    if actual_keys != expected_keys:
+        errors.add("keys must equal the deduplicated union of site, devices, and device-qualified interfaces")
 
 
 def validate_state(data: Any, errors: Errors) -> None:
@@ -185,6 +219,22 @@ def validate_state(data: Any, errors: Errors) -> None:
             errors.add("links length must equal counts.cables")
     if obj.get("next_action") is not None and not isinstance(obj.get("next_action"), str):
         errors.add("next_action must be a string or null")
+    actual_keys = validate_keys(obj.get("keys"), "keys", errors)
+    expected_keys: set[str] = set()
+    if isinstance(obj.get("site"), str):
+        expected_keys.add(f"site:{obj['site']}")
+    for link in obj.get("links", []) if isinstance(obj.get("links"), list) else []:
+        if not isinstance(link, dict):
+            continue
+        for side in ("a", "b"):
+            device = link.get(f"{side}_device")
+            interface = link.get(f"{side}_interface")
+            if isinstance(device, str):
+                expected_keys.add(f"device:{device}")
+                if isinstance(interface, str):
+                    expected_keys.add(f"interface:{device}/{interface}")
+    if actual_keys != expected_keys:
+        errors.add("keys must equal the deduplicated union of site and linked devices/interfaces")
 
 
 def main(argv: list[str]) -> int:

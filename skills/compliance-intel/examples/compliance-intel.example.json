@@ -1,4 +1,5 @@
 {
+  "keys": ["control:SC-8", "control:SC-7", "control:CM-6", "test:NET-COMP-0010", "control:AC-17", "control:CM-7", "test:NET-COMP-0002"],
   "version": 1,
   "run_id": "2026-08-07T22:00:00Z",
   "updated_at": "2026-08-07T22:00:00+00:00",
@@ -36,7 +37,7 @@
   "candidates": [
     {
       "id": "INTEL-0001",
-      "keys": ["recommendation:INTEL-0001", "control:SC-8", "control:SC-7", "control:CM-6", "test:NET-COMP-0010"],
+      "keys": ["control:SC-8", "control:SC-7", "control:CM-6", "test:NET-COMP-0010"],
       "title": "Require BGP neighbor authentication on WAN eBGP",
       "summary": "Unauthenticated eBGP peers remain a route-injection risk on edge/WAN. Lab already checks adjacency up; it does not assert password/TCP-AO.",
       "why_network": "Directly affects WAN/edge routing protocol security between peers.",
@@ -55,7 +56,7 @@
     },
     {
       "id": "INTEL-0002",
-      "keys": ["recommendation:INTEL-0002", "control:AC-17", "control:CM-7", "control:SC-8", "test:NET-COMP-0002"],
+      "keys": ["control:AC-17", "control:CM-7", "control:SC-8", "test:NET-COMP-0002"],
       "title": "Disable cleartext HTTP device management",
       "summary": "Management plane should not expose ip http server on IOS-XE edges.",
       "why_network": "Router/switch administrative access path — not application security.",

@@ -26,5 +26,15 @@
     "lab": "example-lab-dev",
     "nodes": ["AI-BRANCH-03", "AI-BRANCH-03-SW"],
     "proposal_tag": "tag:patch"
-  }
+  },
+  "keys": [
+    "device:AI-BRANCH-03",
+    "device:AI-BRANCH-03-SW",
+    "device:WAN-04",
+    "test:branch_to_hq_ping",
+    "test:device_reachable",
+    "test:edge-wan-ebgp-established",
+    "test:edge_ios_xe",
+    "test:wan-edge-ebgp-established"
+  ]
 }

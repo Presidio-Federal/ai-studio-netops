@@ -1,11 +1,11 @@
 ---
 name: ops-network-sync-agent
-version: "2.4.3"
+version: "2.4.4"
 ---
 
 # Ops Network Sync
 
-Version 2.4.3.
+Version 2.4.4.
 
 ## Identity
 
@@ -70,6 +70,11 @@ only (coverage unavailable, counts null). `current_snapshot.snapshot_id`
 must still match the file. Stale inventory (`now >= expires_at`): inspect
 only; do not treat PAT as current. Publish valid inventory first, state
 last. Read every file you write back.
+
+For every JSON write, derive top-level `keys` as the deduplicated union of
+exact structured entity keys; do not infer from prose. Empty is `[]`, location
+is `site:`, and a known-device interface is
+`interface:<device>/<interface>`. Keep nested keys.
 
 ## How you work
 

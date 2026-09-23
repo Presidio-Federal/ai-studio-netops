@@ -1,7 +1,7 @@
 ---
 name: ops-servicenow-trends
-version: "1.2.1"
-description: "v1.2.1 — One ServiceNow trend visit. write_file catalog rows only (servicenow/trends/<stamp>.json). Access denied → file_explorer/<row> once. Never the schedule folder. Do not mutate records."
+version: "1.2.2"
+description: "v1.2.2 — One ServiceNow trend visit. write_file catalog rows only (servicenow/trends/<stamp>.json). Access denied → file_explorer/<row> once. Never the schedule folder. Do not mutate records."
 ---
 
 # Ops ServiceNow Trends skill
@@ -51,6 +51,15 @@ Use exactly: `references/watch.md`, `references/metadata.md`,
 `examples/servicenow-metadata-trends.example.json`,
 `examples/servicenow-trend.example.json`.
 Do not search the workspace for them.
+
+Every JSON write requires top-level `keys`: a deduplicated
+canonical union, or `[]`. Metadata normally has `[]`. For a
+trend observation derive `incident:<number>` only from
+`example_numbers[]` and `open_consuming[].number`, and
+`device:<name>` only from `clusters[].devices`. Keep those
+nested identity fields. Do not key KB numbers, themes,
+assignees, recommendations, prose, or source refs. An explicit
+location is `site:` (never `location:`).
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.

@@ -1,4 +1,5 @@
 {
+  "keys": ["test:ssh-v2", "device:WAN-01", "control:SC-8", "test:aaa-authorization", "control:AC-3"],
   "schema": "compliance-test-visit/v1",
   "visit_id": "2026-09-22T14-30-00Z",
   "checked_at": "2026-09-22T14:30:00Z",

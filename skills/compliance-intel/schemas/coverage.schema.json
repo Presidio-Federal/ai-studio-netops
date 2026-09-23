@@ -4,8 +4,13 @@
   "title": "compliance/coverage.json",
   "description": "Accumulated working state: catalog nist: mappings plus controls Intel has reviewed. Written by Compliance. Not a run result. Not a full NIST dump.",
   "type": "object",
-  "required": ["version", "updated_at", "source_agent", "rows", "counts"],
+  "required": ["keys", "version", "updated_at", "source_agent", "rows", "counts"],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "version": {"type": "integer", "const": 1},
     "updated_at": {"type": "string"},
     "source_agent": {"type": "string"},
@@ -40,7 +45,7 @@
             "description": "The control key plus every mapped test key present on this row. Exact source-native names; no inferred entities.",
             "items": {
               "type": "string",
-              "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+              "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
             }
           },
           "family_id": {"type": "string"},

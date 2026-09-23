@@ -1,7 +1,7 @@
 ---
 name: modernization-lifecycle
-version: "1.4.0"
-description: "v1.4.0 — Fill missing or stale Cisco research on state/lifecycle.json. Copy through Analysis assessment and plan. Do not invent SKUs."
+version: "1.4.1"
+description: "v1.4.1 — Fill missing or stale Cisco research on state/lifecycle.json. Copy through Analysis assessment and plan. Do not invent SKUs."
 ---
 
 # Modernization Lifecycle skill
@@ -42,6 +42,14 @@ Use exactly: `references/watch.md`, `references/tools.md`,
 `schemas/lifecycle-item.schema.json`,
 `examples/lifecycle-estate.example.json`,
 `examples/lifecycle-item.example.json`.
+
+Every structured JSON write requires top-level `keys`: an
+array with unique canonical values. For both the estate and
+item file, write the deduplicated `device:<name>` union from
+their nested `devices` fields, or `[]`. Keep nested identity
+fields. Do not put PIDs, recommendation IDs, replacement SKUs, or anything
+inferred from prose in `keys`. Continue preserving and enriching
+recommendations in their existing fields.
 
 Copy research onto matching `pid` only. Keep identity
 (`quantity` `devices` `summary` `source` `pid_source`

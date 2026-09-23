@@ -1,7 +1,7 @@
 ---
 name: modernization-analysis
-version: "2.0.0"
-description: "v2.0.0 — Ingest estate identity with ranked confidence. Analyze lifecycle data into a modernization plan with cost and timelines. Reasoner — not a Cisco collector."
+version: "2.0.1"
+description: "v2.0.1 — Ingest estate identity with ranked confidence. Analyze lifecycle data into a modernization plan with cost and timelines. Reasoner — not a Cisco collector."
 ---
 
 # Modernization Analysis skill
@@ -42,6 +42,14 @@ Use exactly: `references/analyze.md`, `references/evidence.md`,
 
 The examples are **shape only**. Fill values from workspace
 files and what they said.
+
+Every structured JSON write requires top-level `keys`: an
+array with unique canonical values. For `state/lifecycle.json`,
+write the deduplicated `device:<name>` union from
+`items[].devices`, or `[]`. Keep nested identity fields. Do not
+put recommendation IDs, PIDs, roadmap refs, replacement SKUs, or anything
+inferred from prose in `keys`. Continue writing recommendations as required;
+only their use as relationship keys is prohibited.
 
 **First tool:** `read_file` `state/lifecycle.json`. Then
 `inventory/infra-sot.json` if present. Then

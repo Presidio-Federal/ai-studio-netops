@@ -1,4 +1,5 @@
 {
+  "keys": ["device:<inventory-name>", "interface:<interface>"],
   "schema": "health-iosxe-check/v2",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-00Z",

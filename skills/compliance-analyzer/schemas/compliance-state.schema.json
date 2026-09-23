@@ -6,6 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "keys",
     "schema",
     "updated_at",
     "source_agent",
@@ -27,6 +28,11 @@
     "read"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": {"type": "string", "const": "compliance-state/v1"},
     "updated_at": {"type": "string", "format": "date-time"},
     "source_agent": {"type": "string", "const": "compliance"},
@@ -233,7 +239,7 @@
       "uniqueItems": true,
       "items": {
         "type": "string",
-        "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
       }
     },
     "finding": {

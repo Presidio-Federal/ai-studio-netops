@@ -31,3 +31,10 @@ cumulative proposal.
 No changes → `no_change`. Otherwise watch `apply.yml`, branch `dev`, for that
 exact final SHA through completion. Never dispatch the workflow. Return the
 run URL and one `# Network test report` marker line, never the full log.
+
+The operation record's top-level `keys` is the deduplicated union derived only
+from structured entities, or `[]`; never infer from config text, marker text,
+headlines, or summaries. Allowed prefixes are
+`device|interface|site|service|test|control|incident|change`. Location is
+`site:`; a known-device interface is `interface:<device>/<interface>`. Keep
+nested keys.

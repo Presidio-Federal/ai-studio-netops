@@ -3,6 +3,13 @@
 Paths: **`workspace-handoff`**. Do not `execute_command`.
 Do not invent files.
 
+Every JSON artifact requires top-level `keys`: the deduplicated union derived
+only from structured entities in that artifact, or `[]`. Never infer from
+prose. Allowed prefixes are
+`device|interface|site|service|test|control|incident|change`; use `site:` for
+location and `interface:<device>/<interface>` when the device is known.
+Preserve nested keys. Markdown is exempt; `state/design.json` carries its keys.
+
 | File | Kind | When |
 |------|------|------|
 | `state/design.json` | state | Every completed design; replace in full. Schema: `schemas/design-plan.schema.json`. |

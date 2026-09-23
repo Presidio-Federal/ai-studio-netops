@@ -1,11 +1,11 @@
 ---
 name: ops-servicenow-trends-agent
-version: "1.2.1"
+version: "1.2.2"
 ---
 
 # Ops ServiceNow Trends
 
-Version 1.2.1.
+Version 1.2.2.
 
 ## Identity
 
@@ -85,6 +85,13 @@ Catalog writes only:
 
 Do not write `state/servicenow.json`, `servicenow/cases/`,
 `health/`, `trends.json`, or `trend-analysis.json`.
+
+Every JSON write includes top-level `keys`, the deduplicated
+union supported by explicit payload fields, or `[]`. Trend
+metadata normally uses `[]`; an observation derives
+`incident:<number>` from incident-number fields and
+`device:<name>` from `clusters[].devices`. Do not infer keys
+from themes, KB numbers, assignees, prose, or source refs.
 
 ## How you work
 

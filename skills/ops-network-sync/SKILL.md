@@ -1,7 +1,7 @@
 ---
 name: ops-network-sync
-version: "1.8.2"
-description: "v1.8.2 — Onboard parent: run named collect or sync-prod; do not invoke NetBox SoT."
+version: "1.8.3"
+description: "v1.8.3 — Onboard parent with canonical top-level workspace entity keys."
 ---
 
 # Ops Network Sync skill
@@ -144,6 +144,12 @@ else `lab-<utc-date>`.
 
 Paths and catalog: **`workspace-handoff`**. When/how: `references/workspace-contract.md`.
 Write schemas in this skill. Do not load other writers' schemas.
+
+Every JSON write includes top-level `keys`: the deduplicated union of exact
+entity keys supported by structured fields in that artifact, or `[]`. Do not
+infer keys from prose. Use only `device|interface|site|service|test|control|incident|change`;
+locations use `site:`. When a device is known, interfaces are
+`interface:<device>/<interface>`. Keep any nested `keys`.
 
 Skill resources — use exactly:
 

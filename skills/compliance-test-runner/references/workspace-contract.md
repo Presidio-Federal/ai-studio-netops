@@ -11,8 +11,8 @@ they do not load a second copy from workspace-handoff.
 
 Every live or static run writes both:
 
-- `testing/YYYY-MM-DDTHH-MM-SSZ.json` — this run; never overwrite
-  (e.g. `testing/2026-08-21T19-56-18Z.json`)
+- `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` — this run; never overwrite
+  (e.g. `operational/testing/2026-08-21T19-56-18Z.json`)
 - `state/testing.json` — replace; `latest` is that testing path
 
 Also write **only when** `scope.suites` includes `compliance`:
@@ -41,7 +41,7 @@ Scope: `references/scope.md`. Trigger/extract: `references/run.md`.
 ## After write
 
 ```text
-python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/testing/2026-08-16T23-10-00Z.json
+python3 /skills/user/compliance-test-runner/scripts/validate_testing.py run /workspace/operational/testing/2026-08-16T23-10-00Z.json
 python3 /skills/user/compliance-test-runner/scripts/validate_testing.py state /workspace/state/testing.json
 ```
 
@@ -52,3 +52,7 @@ python3 /skills/user/compliance-test-runner/scripts/validate_testing.py complian
 ```
 
 Skip if script missing. Never `find /`.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.

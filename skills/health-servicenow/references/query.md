@@ -48,7 +48,7 @@ that payload contains: `incident:<number>`, `change:<number>` when a
 change number is present, `device:<inventory name>` for each
 inventory device the text names, `interface:<name>` when an
 interface is named, and the same for `site` `service` `test`
-`control` `recommendation` when the payload has them. Write all of
+`control` when the payload has it. Recommendation identifiers stay in ordinary `id` or `source_ref` fields. Write all of
 them. Do not invent a key the payload does not have. `note` carries
 the issue in the ticket's words, urgency, and state. When the
 ticket is closed, include `close_code` and `close_notes`. When a

@@ -22,7 +22,8 @@
     "links",
     "gaps",
     "details",
-    "netbox_pushed_at"
+    "netbox_pushed_at",
+    "keys"
   ],
   "properties": {
     "schema": { "type": "string", "const": "netbox-state/v1" },
@@ -75,6 +76,14 @@
       "type": "string",
       "const": "inventory/infra-sot.json"
     },
-    "netbox_pushed_at": { "type": ["string", "null"] }
+    "netbox_pushed_at": { "type": ["string", "null"] },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
+    }
   }
 }

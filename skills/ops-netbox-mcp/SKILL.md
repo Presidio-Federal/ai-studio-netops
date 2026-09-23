@@ -1,8 +1,9 @@
 ---
 name: ops-netbox-mcp
-version: "1.17.1"
+version: "1.17.2"
 description: >-
-  v1.17.1 — GET iosxe_get_platform_and_yang for software_version on
+  v1.17.2 — Canonical top-level workspace keys plus GET
+  iosxe_get_platform_and_yang for software_version on
   infra-sot devices. device_type stays node_definition. Onboard /
   populate / bootstrap runs bootstrap even when snap ok (create
   missing). refresh stays audit. Details inventory/infra-sot.json.
@@ -21,6 +22,13 @@ Workspace: read **`inventory/prod.json`** (seed). Write
 **`inventory/infra-sot.json`** (ids) and **`state/netbox.json`** (summary).
 Never write `state/network-sync.json`. Paths: **`workspace-handoff`**.
 Missing json → stop (Ops Network Sync).
+
+Every JSON write includes top-level `keys`: the deduplicated union of exact
+entity keys supported by structured fields in that artifact, or `[]`. Do not
+infer from prose. Use `site:` for location and
+`interface:<device>/<interface>` whenever the device is known. Allowed
+prefixes are `device|interface|site|service|test|control|incident|change`.
+Keep any nested `keys`.
 
 [references/modes.md](references/modes.md) picks **bootstrap** / **audit** /
 **reconcile**. [references/populate.md](references/populate.md) is the

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "network-ops-state",
+  "$id": "network-ops-state/v2",
   "title": "state/network-ops.json",
   "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke.",
   "type": "object",
@@ -11,10 +11,15 @@
     "status",
     "headline",
     "next_action",
-    "mode"
+    "mode",
+    "change",
+    "git",
+    "ci",
+    "pr",
+    "keys"
   ],
   "properties": {
-    "schema": { "type": "string", "const": "network-ops-state/v1" },
+    "schema": { "type": "string", "const": "network-ops-state/v2" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "network-ops" },
     "status": {
@@ -24,12 +29,14 @@
         "committed",
         "ci_failed",
         "merged",
+        "no_change",
+        "unknown",
         "blocked",
         "failed"
       ]
     },
-    "headline": { "type": "string", "minLength": 1 },
-    "next_action": { "type": ["string", "null"] },
+    "headline": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "next_action": { "type": ["string", "null"], "maxLength": 500 },
     "mode": { "type": "string", "enum": ["recommend", "implement"] },
     "finding": {
       "type": "object",
@@ -48,7 +55,11 @@
         "devices": { "type": "array", "items": { "type": "string" } },
         "peer": { "type": ["string", "null"] },
         "files": { "type": "array", "items": { "type": "string" } },
-        "summary": { "type": "string" }
+        "summary": { "type": "string", "maxLength": 1000 },
+        "operational_ref": {
+          "type": ["string", "null"],
+          "description": "Workspace-relative operational/runs/<stamp>.json returned by the worker."
+        }
       }
     },
     "git": {
@@ -69,7 +80,8 @@
         "result": {
           "type": ["string", "null"],
           "enum": ["pass", "fail", "unknown", "running", null]
-        }
+        },
+        "marker": { "type": ["string", "null"], "maxLength": 500 }
       }
     },
     "pr": {
@@ -78,6 +90,14 @@
         "number": { "type": ["integer", "null"] },
         "html_url": { "type": ["string", "null"] },
         "merged": { "type": ["boolean", "null"] }
+      }
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
       }
     }
   }

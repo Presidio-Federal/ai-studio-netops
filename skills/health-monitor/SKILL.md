@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.34.0"
-description: "v1.34.0 — One named Splunk or ThousandEyes health visit. The first visit writes a per-device or per-test baseline. Splunk collapses a host address and a parsed hostname onto one inventory device name."
+version: "1.34.1"
+description: "v1.34.1 — One named Splunk or ThousandEyes health visit. The first visit writes a per-device or per-test baseline. Splunk collapses a host address and a parsed hostname onto one inventory device name."
 ---
 
 # Health Monitor skill
@@ -74,6 +74,10 @@ stamp under `health/splunk/`.
 that stamp under `health/thousandeyes/`.
 
 Never overwrite a timestamped file.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 

@@ -5,9 +5,14 @@
   "description": "Every case this agent has touched. Use find/get for older detail — do not sync the instance.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "updated_at", "source_agent", "cases"],
+  "required": ["schema", "keys", "updated_at", "source_agent", "cases"],
   "properties": {
     "schema": { "type": "string", "const": "servicenow-cases-index/v1" },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
+    },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "servicenow" },
     "cases": {

@@ -6,6 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "keys",
     "schema",
     "source",
     "watch_id",
@@ -20,6 +21,11 @@
     "vs_prior"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": { "type": "string", "const": "health-servicenow-check/v2" },
     "source": { "type": "string", "const": "servicenow" },
     "watch_id": {
@@ -78,8 +84,7 @@
             "test",
             "control",
             "incident",
-            "change",
-            "recommendation"
+            "change"
           ]
         },
         "name": { "type": "string", "minLength": 1 },
@@ -129,7 +134,7 @@
           "description": "Every join key in that tool payload. type:name. Do not invent a key. Do not drop one the payload contains.",
           "items": {
             "type": "string",
-            "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+"
+            "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
           }
         },
         "note": {

@@ -27,4 +27,17 @@ Do not write `state/servicenow.json`, `servicenow/cases/`,
 `health/`, `trends.json`, or `trend-analysis.json`. Do not
 write under `automations/schedules/`.
 
+## Canonical keys
+
+Every JSON write has required top-level `keys`: an array,
+unique, empty allowed. Values match exactly
+`^(device|interface|site|service|test|control|incident|change):[^ ].*$`.
+Metadata has `[]` unless explicit entity fields are added.
+For a trend observation, write the deduplicated union of
+`incident:<number>` from `clusters[].example_numbers` and
+`clusters[].open_consuming[].number`, plus `device:<name>`
+from `clusters[].devices`. Keep the nested fields. Never key KB
+numbers, themes, assignees, recommendations, prose, or source
+refs. Explicit locations use `site:`; never infer one.
+
 Visit steps: `references/watch.md`.

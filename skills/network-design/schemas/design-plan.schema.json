@@ -25,7 +25,8 @@
     "warehouse",
     "asks",
     "answers",
-    "roadmap_ref"
+    "roadmap_ref",
+    "keys"
   ],
   "properties": {
     "schema": { "type": "string", "const": "design-plan/v2" },
@@ -83,6 +84,14 @@
     },
     "roadmap_ref": {
       "type": ["string", "null"]
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
     }
   },
   "$defs": {

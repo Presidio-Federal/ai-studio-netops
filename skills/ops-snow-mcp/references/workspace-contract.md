@@ -24,6 +24,25 @@ under `automations/schedules/`.
 Device names on a case must match inventory labels in
 `inventory/prod.json`.
 
+## Canonical keys
+
+Every structured JSON write has required top-level `keys`: an
+array, unique, empty allowed. Values match exactly
+`^(device|interface|site|service|test|control|incident|change):[^ ].*$`.
+Write the deduplicated union supported by explicit payload
+identity fields. Derive `device:` from device fields and
+`incident:` / `change:` only from a typed record number.
+Explicit locations use `site:`. Keep nested identity fields.
+Never derive keys from request IDs, correlation IDs, prose,
+recommendation IDs, source refs, or guessed identities.
+
+For metadata with no entity identity, write `[]`. Requests use
+`record.affected_devices` plus a non-null typed `record.number`.
+Results use their typed `record.number`. Active/index use each
+typed case number and `devices`. State uses `open.devices` and
+typed `last_record`; history device arrays contribute to the
+union, but untyped `history[].record` does not.
+
 ## Queue (mutations)
 
 1. At most one request per invoke unless they asked otherwise.

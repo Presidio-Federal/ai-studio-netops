@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.2.1"
-description: "v4.2.1 — Read-only exact-SHA pipeline watches; only an explicit ad-hoc test owner may trigger."
+version: "4.3.1"
+description: "v4.3.1 — Exact-SHA watches with canonical top-level workspace entity keys."
 ---
 
 # GitHub Actions skill
@@ -36,6 +36,24 @@ Workflows and markers: [references/workflows.md](references/workflows.md).
 - Do not invent a run id. Do not sleep-script; call
   `github_get_action_run` again until `completed`.
 - Pipeline Monitor is read-only and never calls `github_run_action`.
+
+## Operations record
+
+After a terminal watch result, Pipeline Monitor and GitHub GitOps Change write
+exactly one concise `operational/runs/YYYY-MM-DDTHH-MM-SSZ.json`. Follow
+`schemas/operation-run.schema.json` and
+`examples/operation-run.example.json`.
+
+Write the result, run URL, one marker line, commit SHA, and top-level `keys`
+equal to the deduplicated union of exact keys supported by structured fields,
+or `[]`; never infer from prose. Allowed prefixes are
+`device|interface|site|service|test|control|incident|change`. Location is
+`site:`. When a device is known, use `interface:<device>/<interface>`. Keep
+any nested `keys`.
+GitOps Change may also write changed paths and a one-line change summary.
+Never write config bodies, patches, or full logs. Do not write root `runs/`.
+Map result to envelope status: `pass` → `ok`; `fail` / `failed` → `failed`;
+`blocked`, `unknown`, and `no_change` keep the same word.
 
 ## Watch
 

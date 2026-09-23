@@ -6,6 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "keys",
     "schema",
     "updated_at",
     "source_agent",
@@ -25,6 +26,11 @@
     "read"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": { "type": "string", "const": "health-state/v5" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-analyzer" },

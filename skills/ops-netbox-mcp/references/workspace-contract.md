@@ -3,6 +3,13 @@
 Paths, envelope, catalog: **`workspace-handoff`**.
 Write schemas live in this skill.
 
+All JSON artifacts require top-level `keys`. Derive the deduplicated union
+only from structured entities in that artifact; never parse prose or invent a
+key. Empty is `[]`. Allowed prefixes are
+`device|interface|site|service|test|control|incident|change`; location is
+`site:` and known-device interfaces are
+`interface:<device>/<interface>`. Preserve nested keys.
+
 ## When to write
 
 | File | When |

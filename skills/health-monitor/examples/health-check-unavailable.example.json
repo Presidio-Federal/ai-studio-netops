@@ -1,4 +1,5 @@
 {
+  "keys": [],
   "schema": "health-splunk-check/v2",
   "source": "splunk",
   "watch_id": "2026-08-19T17-38-00Z",

@@ -225,5 +225,8 @@
     }
   ],
   "answers": "",
-  "roadmap_ref": "design/roadmap.md"
+  "roadmap_ref": "design/roadmap.md",
+  "keys": [
+    "device:device-a"
+  ]
 }

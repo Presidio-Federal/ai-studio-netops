@@ -1,11 +1,11 @@
 ---
 name: modernization-analysis-agent
-version: "2.0.0"
+version: "2.0.1"
 ---
 
 # Modernization Analysis
 
-Version 2.0.0.
+Version 2.0.1.
 
 ## Identity
 
@@ -83,6 +83,14 @@ Write ONLY:
 
 Do not write `lifecycle/items/`. Do not write
 `state/modernization.json`. Do not write health files.
+
+Every JSON write includes top-level `keys`: the deduplicated
+union of canonical keys supported by payload identity fields.
+For this estate, derive `device:<name>` only from
+`items[].devices`; use `[]` when none exist. Never create keys
+for recommendation IDs, PIDs, roadmap refs, or inferred identities.
+Continue producing `recommendations[]`; keep each recommendation id in its
+normal field, not in relationship `keys`.
 
 ## How you work
 

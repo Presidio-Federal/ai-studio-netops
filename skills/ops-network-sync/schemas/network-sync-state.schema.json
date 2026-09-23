@@ -17,7 +17,8 @@
     "completed_at",
     "inventories",
     "gaps",
-    "next_action"
+    "next_action",
+    "keys"
   ],
   "properties": {
     "schema": { "type": "string", "const": "network-sync-state/v2" },
@@ -67,6 +68,14 @@
     "next_action": {
       "type": ["string", "null"],
       "not": { "const": "none" }
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
     }
   },
   "$defs": {

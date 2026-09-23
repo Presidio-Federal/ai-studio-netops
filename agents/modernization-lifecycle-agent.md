@@ -1,11 +1,11 @@
 ---
 name: modernization-lifecycle-agent
-version: "1.4.0"
+version: "1.4.1"
 ---
 
 # Modernization Lifecycle
 
-Version 1.4.0.
+Version 1.4.1.
 
 ## Identity
 
@@ -65,6 +65,14 @@ Catalog rows (what you write, and what you put in `detail_ref`):
   rows, stamp `updated_at`. Keep `guidance` `assessment` `plan`
   `roadmap_ref` `recommendations` `goals`. Do not create this
   file if missing.
+
+Every JSON write includes top-level `keys`: the deduplicated
+union of `device:<name>` values supported by its nested
+`devices` fields, or `[]`. Preserve estate keys while identity
+is unchanged; recompute after every full write. Never create
+keys for recommendation IDs, PIDs, replacement SKUs, or
+inferred identities. Continue preserving and enriching recommendations;
+their ids stay in recommendation fields, not relationship `keys`.
 
 **Sandbox `write_file` / `read_file`:** this MiniMax tool is not
 the interactive workspace root. If Access denied lists allowed

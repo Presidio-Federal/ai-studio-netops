@@ -249,6 +249,30 @@ where appropriate, and references to underlying evidence.
 The chart should generally be append-oriented so that previous
 observations and assessments remain available.
 
+### Relationship keys
+
+Every structured JSON record carries a top-level `keys` array. Keys are
+stable, source-supported identities that another record can share:
+
+- `device:<inventory-name>`
+- `interface:<device>/<interface>`
+- `site:<name>` (the canonical location category)
+- `service:<name>`
+- `test:<id>`
+- `control:<id>`
+- `incident:<number>`
+- `change:<number>`
+
+Nested data points retain their own keys; the top-level array is their
+deduplicated union plus entities explicitly named by the record. When no
+supported entity is present, the record writes `keys: []`. Agents never infer
+a key from prose. Agents continue making recommendations; recommendation ids,
+findings, product ids, and source refs remain ordinary fields rather than
+relationship keys.
+
+The future relationship map joins records by `(timestamp, catalog path,
+shared keys[])`. It references evidence rather than copying payloads.
+
 This creates three useful histories:
 
 ```mermaid

@@ -1,4 +1,5 @@
 {
+  "keys": ["device:<inventory-name>"],
   "schema": "health-splunk-check/v2",
   "source": "splunk",
   "watch_id": "2026-08-30T18-45-00Z",

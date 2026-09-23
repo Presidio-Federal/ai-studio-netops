@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.52.0 — Compliance Intelligence and Test visits feed an independent SOAP chart at state/compliance.json."
-version: "1.52.0"
+description: "v1.54.0 — Every structured workspace record carries canonical source-supported relationship keys."
+version: "1.54.0"
 ---
 
 # Workspace handoff
@@ -89,7 +89,7 @@ gitignored (CI runner only).
 
 Write only catalog paths. Do not write helper scripts, scratch dumps,
 or `prepare_*` files. Do not invent `health-board.md`,
-`lab-access.json`, `vuln-report.json`, `runs/`, `risk/`,
+`lab-access.json`, `vuln-report.json`, a root `runs/`, `risk/`,
 `trend-analysis.json`, `remediation-request.json`, a root
 `compliance.json`, or extra `lifecycle/` and `design/` paths.
 Compliance Test writes general testing rows and, for compliance suites, its
@@ -121,16 +121,33 @@ Health stamps are observations. Nurses do not write `state/`.
 
 ## Entity reference
 
+Every structured JSON catalog record requires a top-level `keys` array.
+It is the deduplicated union of every source-supported entity in that record
+and its nested rows. Write `keys: []` when the source identifies none. Keep
+nested row `keys` so each data point remains independently joinable.
+The externally owned, currently absent Onboard contract for
+`state/workspace.json` is deferred.
+
 When a writer names a thing another agent joins on, use these fields.
 Writer schemas copy this shape. Do not copy the referenced object.
 Do not invent an id. Do not put topology, edges, or cause here.
 
-- `type` (required) — `device` `interface` `site` `service` `test` `control` `incident` `change` `recommendation`
+- `type` (required) — `device` `interface` `site` `service` `test` `control` `incident` `change`
 - `name` (required) — the spelling already in `inventory/prod.json` or `inventory/infra-sot.json`, or the ticket number or API id the tool returned
 - `id` — the source-native id when the file you opened has one; otherwise null
 - `source_ref` — the catalog path or ticket id, not a payload
 
-The join key is `type:name`. When a tool payload contains several of these, write every one on that row's `keys`. A later file joins by sharing the same string. Do not invent a key the payload does not contain. Do not drop a key the payload does contain.
+The join key is `type:name`. Use `site:` for locations. When a device is known,
+qualify an interface as `interface:<device>/<interface>` to avoid collisions.
+When a tool payload contains several entities, write every one on that row's
+`keys` and in the top-level union. A later file joins by sharing the same
+string. Do not invent a key the payload does not contain. Do not drop one.
+
+Recommendations remain required agent outputs wherever the owning skill calls
+for them. Only recommendation ids are excluded from relationship `keys`;
+findings, PIDs, product SKUs, prose, source refs, and record ids likewise stay
+in their own fields. The future relationship map joins `(timestamp, catalog
+path, shared keys[])`; it does not copy payloads between records.
 
 Extend `type` only when a write cannot proceed with this list.
 Do not add a catalog file for entities.
@@ -139,6 +156,8 @@ Do not add a catalog file for entities.
 
 Reader uses **rely on**. Writer procedure stays in the writer skill.
 For **state**, **request**, and **result**, also use the envelope.
+For every JSON row below except deferred `state/workspace.json`, readers may
+rely on top-level `keys` being present; `[]` means no supported entity.
 
 Observation stamps are `YYYY-MM-DDTHH-MM-SSZ.json`, append-only.
 Open the prior stamp from that source's metadata `last_visit_id`.
@@ -153,7 +172,8 @@ after the write.
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
 | `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
-| `testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |
+| `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |
+| `operational/runs/YYYY-MM-DDTHH-MM-SSZ.json` | result | Pipeline Monitor or GitHub GitOps Change | `github-actions-mcp` `schemas/operation-run.schema.json` | envelope, `operation` `git` `workflow` `result` `devices` `files` `summary` `keys`; never config bodies, patches, or full logs |
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
 | `compliance/metadata-testing.json` | metadata | Compliance Test | `compliance-test-runner` `schemas/compliance-test-metadata.schema.json` | `last_visit_id` `last_collected_at` |
 | `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results` row `keys` `risk` |
@@ -165,7 +185,7 @@ after the write.
 | `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope, ticket slot |
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment` `hardware[]` `software[]` `configuration[]` `compliance[]` `timeline[]` `warehouse` `asks[]` `answers` `horizon` `coverage` `read[]` `roadmap_ref` |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
-| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `finding` `change` `git` `ci` `pr` |
+| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `finding` `change` including `operational_ref`, `git` `ci` `pr` `keys` |
 | `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` |
 | `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `tests[]` `last_visit_id` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `last_visit_id` |
@@ -194,7 +214,9 @@ after the write.
 4. If this file is input for an attached subagent, invoke them now.
    Health Analyzer and Modernization Analysis do not wait.
    Network Design writes from files already on disk.
-   Network Ops: after a `dev` commit, invoke Pipeline Monitor and wait.
+   Network Ops invokes GitHub GitOps Change once, consumes its final compact
+   response without polling subagent status, creates/merges the PR on pass,
+   then replaces `state/network-ops.json`.
    Compliance Intelligence writes its files and stops. Compliance Analyzer
    writes only `state/compliance.json`. Invoke Author only for
    operator-selected INTEL ids.

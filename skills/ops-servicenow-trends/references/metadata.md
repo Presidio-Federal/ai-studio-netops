@@ -52,6 +52,8 @@ Which?
 
 After resolve, and after every successful scan:
 
+- `keys` — `[]`; scope labels and filters are not entity
+  identity and do not create canonical keys
 - `source_agent` — `ops-servicenow-trends`
 - scope fields from prior file or this resolve
 - `lookback_days` / `min_related_cases` — prior file or defaults

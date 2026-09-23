@@ -64,6 +64,7 @@ POLICY_FORBIDDEN_OPS = {"upsert_change", "close_change"}
 
 REQUEST_REQUIRED = [
     "schema",
+    "keys",
     "request_id",
     "created_at",
     "requested_by",
@@ -76,6 +77,7 @@ REQUEST_REQUIRED = [
 ]
 RESULT_REQUIRED = [
     "schema",
+    "keys",
     "request_id",
     "correlation_id",
     "completed_at",
@@ -97,6 +99,9 @@ UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$"
 )
 HOST_ABS_RE = re.compile(r"^([A-Za-z]:[\\/]|/Users/|/home/|/tmp/|/var/|/etc/)")
+KEY_RE = re.compile(
+    r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+)
 
 
 class Errors:
@@ -178,6 +183,35 @@ def validate_source_refs(value: Any, errors: Errors) -> None:
         return
     for index, item in enumerate(value):
         validate_workspace_path(item, f"source_refs[{index}]", errors)
+
+
+def validate_keys(value: Any, expected: set[str], errors: Errors) -> None:
+    if not isinstance(value, list):
+        errors.add("keys must be an array")
+        return
+    if not all(isinstance(item, str) and KEY_RE.fullmatch(item) for item in value):
+        errors.add("keys entries must match the canonical workspace key pattern")
+        return
+    if len(value) != len(set(value)):
+        errors.add("keys must not contain duplicates")
+    if set(value) != expected:
+        errors.add(f"keys must equal the source-supported top-level union: {sorted(expected)}")
+
+
+def record_key(record: Any) -> set[str]:
+    if not isinstance(record, dict):
+        return set()
+    record_type = record.get("type")
+    number = record.get("number")
+    if record_type in RECORD_TYPES and isinstance(number, str) and number:
+        return {f"{record_type}:{number}"}
+    return set()
+
+
+def device_keys(values: Any) -> set[str]:
+    if not isinstance(values, list):
+        return set()
+    return {f"device:{value}" for value in values if isinstance(value, str) and value}
 
 
 def validate_authorization(auth: Any, operation: str, errors: Errors) -> None:
@@ -278,6 +312,12 @@ def validate_request(data: Any, errors: Errors) -> None:
         validate_authorization(obj.get("authorization"), operation, errors)
     if "record" in obj and operation:
         validate_request_record(obj.get("record"), operation, errors)
+    record = obj.get("record")
+    expected_keys = record_key(record)
+    if isinstance(record, dict):
+        expected_keys |= device_keys(record.get("affected_devices"))
+    if "keys" in obj:
+        validate_keys(obj.get("keys"), expected_keys, errors)
 
 
 def validate_result_url(value: Any, errors: Errors) -> None:
@@ -348,6 +388,8 @@ def validate_result(data: Any, errors: Errors) -> None:
             errors.add("successful mutation requires verification.read_back=true")
         if record is None or not record.get("number") or not record.get("sys_id"):
             errors.add("successful mutation requires record.number and record.sys_id")
+    if "keys" in obj:
+        validate_keys(obj.get("keys"), record_key(record), errors)
 
 
 STATE_SCHEMA = "servicenow-state/v1"
@@ -358,6 +400,7 @@ BOARD_ACTIONS = {"created", "updated", "assigned", "drafted", "recommended", "no
 TRENDS = {"first", "unchanged", "worse", "better"}
 STATE_REQUIRED = [
     "schema",
+    "keys",
     "updated_at",
     "source_agent",
     "status",
@@ -438,6 +481,15 @@ def validate_state(data: Any, errors: Errors) -> None:
             errors.add("cases.active must be servicenow/cases/active.json")
         if cases.get("index") != "servicenow/cases/index.json":
             errors.add("cases.index must be servicenow/cases/index.json")
+    expected_keys = record_key(obj.get("last_record"))
+    if opened is not None:
+        expected_keys |= device_keys(opened.get("devices"))
+    if isinstance(history, list):
+        for row in history:
+            if isinstance(row, dict):
+                expected_keys |= device_keys(row.get("devices"))
+    if "keys" in obj:
+        validate_keys(obj.get("keys"), expected_keys, errors)
 
 
 def validate_active(data: Any, errors: Errors) -> None:
@@ -445,7 +497,7 @@ def validate_active(data: Any, errors: Errors) -> None:
     if obj is None:
         return
     require_fields(
-        obj, ["schema", "updated_at", "source_agent", "status", "headline", "cases"], "active", errors
+        obj, ["schema", "keys", "updated_at", "source_agent", "status", "headline", "cases"], "active", errors
     )
     if obj.get("schema") != ACTIVE_SCHEMA:
         errors.add(f"schema must be {ACTIVE_SCHEMA}")
@@ -470,13 +522,20 @@ def validate_active(data: Any, errors: Errors) -> None:
             errors.add(f"{name}.source_refs must be an array")
         if "updated_at" in rec:
             validate_utc(rec.get("updated_at"), f"{name}.updated_at", errors)
+    expected_keys: set[str] = set()
+    for row in cases:
+        expected_keys |= record_key(row)
+        if isinstance(row, dict):
+            expected_keys |= device_keys(row.get("devices"))
+    if "keys" in obj:
+        validate_keys(obj.get("keys"), expected_keys, errors)
 
 
 def validate_index(data: Any, errors: Errors) -> None:
     obj = require_object(data, "index", errors)
     if obj is None:
         return
-    require_fields(obj, ["schema", "updated_at", "source_agent", "cases"], "index", errors)
+    require_fields(obj, ["schema", "keys", "updated_at", "source_agent", "cases"], "index", errors)
     if obj.get("schema") != INDEX_SCHEMA:
         errors.add(f"schema must be {INDEX_SCHEMA}")
     if "updated_at" in obj:
@@ -495,6 +554,13 @@ def validate_index(data: Any, errors: Errors) -> None:
             errors.add(f"{name}.type must be incident or change")
         if "updated_at" in rec:
             validate_utc(rec.get("updated_at"), f"{name}.updated_at", errors)
+    expected_keys: set[str] = set()
+    for row in cases:
+        expected_keys |= record_key(row)
+        if isinstance(row, dict):
+            expected_keys |= device_keys(row.get("devices"))
+    if "keys" in obj:
+        validate_keys(obj.get("keys"), expected_keys, errors)
 
 
 def main(argv: list[str]) -> int:

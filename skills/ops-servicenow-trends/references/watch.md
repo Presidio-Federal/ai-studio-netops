@@ -16,12 +16,16 @@ ServiceNow-Trend-Analysis is authorization. Do not confirm.
    Never overwrite. That stamp is `watch_id`.
 4. Collect. `write_file` **`servicenow/trends/<stamp>.json`**
    (including `metrics`), then `read_file` that same path.
+   Set top-level `keys` to the deduplicated union from explicit
+   cluster incident-number and device fields.
    Never `2026-….json` at the workspace root or under
    `automations/schedules/`.
 5. `write_file` **`servicenow/metadata-trends.json`**
    (`last_visit_id` when collection succeeded). Keep **at
    most 10** stamps under `servicenow/trends/`. After the new
    write, delete older stamp files in **that directory only**.
+   Set metadata top-level `keys` to `[]` when it has no
+   explicit entity identity.
    If Access denied lists `file_explorer`, retry once
    `file_explorer/` + the catalog row. Do not `execute_command`.
 

@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "1.19.0"
+version: "1.19.1"
 ---
 
 # Health Monitor
 
-Version 1.19.0.
+Version 1.19.1.
 
 ## Identity
 
@@ -114,6 +114,10 @@ says something changed is not a note. Plane `status` is this visit
 only. Do not invent a root cause the data does not support. Do not
 call the other source. Do not stamp `expires_at`. Do not write
 `state/`.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## Reply format
 

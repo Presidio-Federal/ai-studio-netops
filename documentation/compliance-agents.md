@@ -59,7 +59,7 @@ Compliance Intelligence writes:
 
 Compliance Test writes:
 
-- `testing/<stamp>.json` and `state/testing.json` for every run
+- `operational/testing/<stamp>.json` and `state/testing.json` for every run
 - `compliance/testing/<stamp>.json` for compliance-suite evidence
 - `compliance/metadata-testing.json` as the latest compliance-test pointer
 
@@ -70,7 +70,10 @@ Compliance Analyzer writes:
 Each evidence plane keeps ten stamps. Metadata provides `last_visit_id`; no
 agent lists directories. Relationship keys such as `control:AC-3`,
 `test:aaa-authorization`, and `device:WAN-01` let later readers join the
-evidence.
+evidence. Every structured write carries the deduplicated top-level union;
+metadata or entity-free records use `keys: []`. Ranked recommendations remain
+first-class outputs, but recommendation IDs stay in their normal fields rather
+than becoming relationship keys.
 
 ## Intelligence loop
 

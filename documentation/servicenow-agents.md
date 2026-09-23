@@ -32,6 +32,11 @@ Missing scope is not a failure. The agent reads, discovers options,
 asks if more than one fit, and writes the choice. It does not invent
 a marker or treat the whole shared instance as this lab.
 
+Every structured write carries top-level `keys` derived from explicit ticket
+numbers, affected inventory devices, sites, and services. Recommendations
+remain in summaries and next actions; recommendation IDs and prose are not
+relationship keys.
+
 ## Trends
 
 Nightly or on demand. Same visit order as Health: read

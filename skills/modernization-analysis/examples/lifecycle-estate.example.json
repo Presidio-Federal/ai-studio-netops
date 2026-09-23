@@ -1,5 +1,6 @@
 {
   "schema": "lifecycle-estate/v2",
+  "keys": ["device:device-a"],
   "updated_at": "2026-09-07T00:00:00Z",
   "source_agent": "modernization-analysis",
   "status": "stale",

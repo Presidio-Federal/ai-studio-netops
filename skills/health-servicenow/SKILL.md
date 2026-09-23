@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
-version: "1.7.1"
-description: "v1.7.1 — Read-only ServiceNow health visit. Each thread note states the issue, the state, and how it was closed or changed, plus every join key the payload contained. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+version: "1.7.2"
+description: "v1.7.2 — Read-only ServiceNow health visit. Each thread note states the issue, the state, and how it was closed or changed, plus every join key the payload contained. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill
@@ -63,6 +63,10 @@ Do **not** call `get_folder_structure`. Do **not** list
 `servicenow.last_visit_id` is set, then that stamp under
 `health/servicenow/`. Then `inventory/prod.json` before any
 ServiceNow call. Never overwrite a timestamped file.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 

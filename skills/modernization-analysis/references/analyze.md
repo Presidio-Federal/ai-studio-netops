@@ -45,6 +45,11 @@ New product group: research `eox`/`psirt`/`nvd` `missing`;
 Recount `coverage`. `source_agent` `modernization-analysis`.
 `dispatched` this turn only (empty array if none).
 Estate-only run: keep existing `recommendations[]` (or `[]`).
+Recompute top-level `keys` as the deduplicated
+`device:<name>` union from all `items[].devices`; use `[]`
+when there are no devices. Continue writing `recommendations[]`; keep PIDs
+and recommendation IDs in their existing fields rather than relationship
+`keys`. Never key inferred identities.
 
 **Confidence** (write on `guidance` every run):
 

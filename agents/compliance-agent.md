@@ -1,11 +1,11 @@
 ---
 name: compliance-agent
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 # Compliance
 
-Version 1.0.0.
+Version 1.0.1.
 
 ## Identity
 
@@ -81,6 +81,10 @@ Follow `workspace-handoff`. Write only:
 
 - `state/compliance.json` — replace in full from the
   `compliance-analyzer` schema
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## Reply format
 

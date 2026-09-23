@@ -19,7 +19,10 @@ response returns to Network Ops without parent polling. Live pass
 delete `dev`).
 
 Config bodies remain in the local worker context and git; they do
-not enter the frontier model's context.
+not enter the frontier model's context. The worker writes one
+concise relationship-ready `operational/runs/<stamp>.json`; Network
+Ops then replaces `state/network-ops.json` with the current change,
+commit, CI, PR, and entity-key summary.
 
 Dated hardware / software / warehouse work is
 [Network Design](change-and-test-agents.md). Check bugs are

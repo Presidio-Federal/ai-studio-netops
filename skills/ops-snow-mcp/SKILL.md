@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.8.4"
-description: "v3.8.4 — Dispatch/onsite: if they are on a recommend:kb trend ticket, ask to draft a KB. Write Knowledge only after yes. Never the schedule folder."
+version: "3.8.5"
+description: "v3.8.5 — Dispatch/onsite: if they are on a recommend:kb trend ticket, ask to draft a KB. Write Knowledge only after yes. Never the schedule folder."
 ---
 
 # Ops ServiceNow Operator skill
@@ -85,6 +85,14 @@ Use exactly: `references/dispatch.md`, `references/metadata.md`,
 `examples/servicenow-state.example.json`.
 Do not search the workspace for them. Do not pass
 `Internal directory` as a filename.
+
+Every structured JSON write requires top-level `keys`: a
+deduplicated canonical union, or `[]`. Derive `device:` only
+from explicit device fields and derive `incident:` / `change:`
+only from a typed record number in the payload. Keep nested
+identity fields. Never key request IDs, correlation IDs,
+recommendations, prose mentions, or source refs. A location,
+when explicitly present, is `site:` (never `location:`).
 
 Do **not** call `get_folder_structure`. Do **not** list or
 `lstat` `automations/schedules`. That folder is empty scratch.

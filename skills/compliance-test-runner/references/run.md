@@ -71,7 +71,7 @@ UTC stamp from `updated_at` (same as Health): `2026-08-25T00:28:30Z` →
 `20260825T002830Z`. `local_path` on the run file must match the path
 you wrote.
 
-1. Always: `testing/YYYY-MM-DDTHH-MM-SSZ.json` then `state/testing.json`
+1. Always: `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` then `state/testing.json`
    (`latest` = that testing path).
 2. If `scope.suites` includes `compliance`: read
    `compliance/metadata-testing.json` and its latest visit when present.

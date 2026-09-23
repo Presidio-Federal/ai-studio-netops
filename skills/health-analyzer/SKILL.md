@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "3.1.3"
-description: "v3.1.3 — Analyze and trend production network health from visit stamps already on disk. Use each nurse's note. Join planes that share a type:name key. Write SOAP into state/health.json."
+version: "3.1.4"
+description: "v3.1.4 — Analyze and trend production network health from visit stamps already on disk. Use each nurse's note. Join planes that share a type:name key. Write SOAP into state/health.json."
 ---
 
 # Health Analyzer skill
@@ -65,6 +65,10 @@ Do **not** call `get_folder_structure`. Do **not** list
 then prior `state/health.json`. If a metadata `last_visit_id` is
 set, then that stamp. Do not list `health/iosxe/`. Do not open
 other `state/*.json`.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 

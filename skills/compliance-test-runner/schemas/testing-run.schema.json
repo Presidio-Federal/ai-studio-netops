@@ -1,10 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compliance-run/v1",
-  "title": "testing/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "One general live or static run extract under testing/. Compliance history uses the dedicated compliance-test-visit schema.",
+  "title": "operational/testing/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "One general live or static run extract under operational/testing/. Compliance history uses the dedicated compliance-test-visit schema.",
   "type": "object",
   "required": [
+    "keys",
     "version",
     "updated_at",
     "source_agent",
@@ -18,6 +19,11 @@
     "risk"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "version": { "type": "integer", "const": 1 },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "compliance-test" },
@@ -81,7 +87,7 @@
                 "description": "Canonical test:<check-id> and exact device key, plus control keys only when the report or published catalog maps them. Strip a known suite/ prefix from the report check for the test key.",
                 "items": {
                   "type": "string",
-                  "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+                  "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
                 }
               },
               "detail": { "type": "string" }
@@ -104,7 +110,7 @@
                 "description": "Canonical test:<check-id> and exact device key, plus source-supported control keys.",
                 "items": {
                   "type": "string",
-                  "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+                  "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
                 }
               },
               "reason": { "type": "string" }

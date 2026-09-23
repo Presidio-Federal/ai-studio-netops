@@ -1,11 +1,11 @@
 ---
 name: ops-servicenow-agent
-version: "1.3.4"
+version: "1.3.5"
 ---
 
 # Ops ServiceNow Operator
 
-Version 1.3.4.
+Version 1.3.5.
 
 ## Identity
 
@@ -85,6 +85,13 @@ Write ONLY:
   when you processed one
 
 Do not write `servicenow/trends/` or `health/`.
+
+Every structured JSON write includes top-level `keys`, the
+deduplicated union supported by explicit payload fields, or
+`[]`. Use `device:` only for named device fields, `incident:`
+only for typed incident numbers, and `change:` only for typed
+change numbers. Do not derive keys from request IDs,
+correlation IDs, prose, recommendation IDs, or source refs.
 
 ## How you work
 

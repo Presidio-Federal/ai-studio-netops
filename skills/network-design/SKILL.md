@@ -1,7 +1,7 @@
 ---
 name: network-design
-version: "3.1.1"
-description: "v3.1.1 — Network design from the as-built: hardware, software, configuration, compliance, best-practice judgment. Ask when something is missing. Warehouse on ServiceNow."
+version: "3.1.3"
+description: "v3.1.3 — Network design outputs with canonical top-level workspace entity keys."
 ---
 
 # Network Design skill
@@ -44,6 +44,13 @@ Use exactly: `references/analyze.md`, `references/design.md`,
 `schemas/design-plan.schema.json`,
 `examples/design-plan.example.json`,
 `examples/roadmap.example.md`.
+
+Every JSON output includes top-level `keys`: the deduplicated union of exact
+entity keys supported by structured fields in that artifact, or `[]`. Do not
+infer keys from prose. Use only `device|interface|site|service|test|control|incident|change`;
+locations use `site:`. When a device is known, interfaces are
+`interface:<device>/<interface>`. Preserve any nested `keys`. Markdown outputs
+are exempt; their owning JSON state carries the keys.
 
 **First tools:** `read_file` `state/design.json` if present,
 then `inventory/prod.json`, `inventory/dev.json`,

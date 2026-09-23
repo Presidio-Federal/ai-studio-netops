@@ -1,4 +1,5 @@
 {
+  "keys": ["control:AC-3", "test:NET-COMP-0004", "test:aaa-authorization-configured", "control:AC-4", "test:NET-COMP-0005", "control:AC-19"],
   "version": 1,
   "updated_at": "2026-08-17T16:21:39Z",
   "source_agent": "compliance-intel",

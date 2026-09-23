@@ -78,6 +78,10 @@ It writes `inventory/infra-sot.json` (id map), then
 `state/netbox.json` (summary + wiring). The operator result is who
 is connected to whom. Counts without links are not a finished job.
 
+Every structured inventory/state write carries top-level `keys`. Device,
+qualified interface, and site keys are derived only from explicit inventory
+or NetBox identity fields; metadata-only outcomes use `keys: []`.
+
 ## What readers use
 
 - `inventory/prod.json` — published access snapshot (RESTCONF

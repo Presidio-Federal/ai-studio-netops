@@ -1,5 +1,10 @@
 {
   "schema": "servicenow-trend/v1",
+  "keys": [
+    "device:edge-01",
+    "incident:INC0000001",
+    "incident:INC0000002"
+  ],
   "source": "servicenow-trends",
   "watch_id": "2026-09-10T15-00-00Z",
   "checked_at": "2026-09-10T15:00:00Z",

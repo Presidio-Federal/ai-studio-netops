@@ -1,6 +1,7 @@
 # GitHub tools — Network Ops
 
-Exact names. Do not invent tools. Do not `write_file`.
+Exact names. Do not invent tools. `write_file` is only for
+`state/network-ops.json`.
 
 | Tool | When |
 |------|------|

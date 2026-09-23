@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "operation-run/v1",
+  "title": "operational/runs/YYYY-MM-DDTHH-MM-SSZ.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "operation",
+    "git",
+    "workflow",
+    "result",
+    "keys"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "operation-run/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": {
+      "type": "string",
+      "enum": ["github-pipeline-monitor", "github-gitops-change"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["ok", "failed", "blocked", "unknown", "no_change"]
+    },
+    "headline": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "next_action": { "type": ["string", "null"], "maxLength": 500 },
+    "operation": {
+      "type": "string",
+      "enum": ["workflow_watch", "config_change"]
+    },
+    "git": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "commit_sha"],
+      "properties": {
+        "ref": { "type": ["string", "null"] },
+        "commit_sha": { "type": ["string", "null"] }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "run_id", "html_url", "marker"],
+      "properties": {
+        "name": { "type": ["string", "null"] },
+        "run_id": { "type": ["string", "null"] },
+        "html_url": { "type": ["string", "null"] },
+        "marker": { "type": ["string", "null"], "maxLength": 500 }
+      }
+    },
+    "result": {
+      "type": "string",
+      "enum": ["pass", "fail", "unknown", "no_change", "blocked", "failed"]
+    },
+    "devices": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "files": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "type": "string" }
+    },
+    "summary": { "type": "string", "maxLength": 1000 },
+    "keys": {
+      "type": "array",
+      "maxItems": 200,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
+    }
+  }
+}

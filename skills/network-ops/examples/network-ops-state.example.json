@@ -1,10 +1,10 @@
 {
-  "schema": "network-ops-state/v1",
+  "schema": "network-ops-state/v2",
   "updated_at": "2026-09-13T16:00:00Z",
   "source_agent": "network-ops",
-  "status": "committed",
+  "status": "merged",
   "headline": "Add WAN NTP peers to five edges that have no ntp stanza in git",
-  "next_action": "Consume GitHub GitOps Change's final result; merge on live pass",
+  "next_action": null,
   "mode": "implement",
   "finding": {
     "source": "operator",
@@ -21,7 +21,8 @@
     ],
     "peer": "WAN-01",
     "files": [],
-    "summary": "List inventory/configs; copy ntp server/peer lines from the listed WAN file onto each failing edge; do not replace the rest of the file"
+    "summary": "Added the approved NTP peer lines to five edge configs without changing unrelated content",
+    "operational_ref": "operational/runs/2026-09-13T16-00-00Z.json"
   },
   "git": {
     "ref": "dev",
@@ -31,13 +32,21 @@
   "ci": {
     "workflow": "apply.yml",
     "ref": "dev",
-    "run_id": null,
-    "html_url": null,
-    "result": "running"
+    "run_id": "32123456789",
+    "html_url": "https://github.com/example-org/network-sot/actions/runs/32123456789",
+    "result": "pass",
+    "marker": "Live: PASS"
   },
   "pr": {
-    "number": null,
-    "html_url": null,
-    "merged": false
-  }
+    "number": 42,
+    "html_url": "https://github.com/example-org/network-sot/pull/42",
+    "merged": true
+  },
+  "keys": [
+    "device:AI-BRANCH-01",
+    "device:AI-BRANCH-02",
+    "device:AI-CLOUD-EDGE",
+    "device:AI-DC-EDGE",
+    "device:AI-HQ-EDGE"
+  ]
 }

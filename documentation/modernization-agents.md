@@ -67,6 +67,11 @@ Family-only bulletin becomes an ask on the row.
 never from a CCW part number. Empty hardware EoX on a virtual
 PID is unavailable research, not a failed estate.
 
+Every structured lifecycle write carries top-level `keys` derived from
+explicit device identity. Recommendations remain first-class outputs;
+recommendation IDs, PIDs, roadmap refs, and SKUs stay in their normal fields
+and are not relationship keys.
+
 ## How a refresh runs
 
 1. Analysis seeds identity from inventory / NetBox / upload /

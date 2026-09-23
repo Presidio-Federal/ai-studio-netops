@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "schema",
+    "keys",
     "request_id",
     "correlation_id",
     "completed_at",
@@ -20,6 +21,14 @@
     "schema": {
       "type": "string",
       "const": "servicenow-result/v1"
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
     },
     "request_id": {
       "type": "string",

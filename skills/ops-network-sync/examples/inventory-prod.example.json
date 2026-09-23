@@ -86,5 +86,12 @@
       "b_device": "WAN-01",
       "b_interface": "GigabitEthernet1"
     }
+  ],
+  "keys": [
+    "device:AI-HQ-EDGE",
+    "device:WAN-01",
+    "interface:AI-HQ-EDGE/GigabitEthernet2",
+    "interface:WAN-01/GigabitEthernet1",
+    "site:example-lab-prod"
   ]
 }

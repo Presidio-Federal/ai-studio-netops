@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.8.3"
+version: "1.8.4"
 ---
 
 # Health Device
 
-Version 1.8.3.
+Version 1.8.4.
 
 ## Identity
 
@@ -89,6 +89,10 @@ flaps, prefixes, and whether the neighbor is established. A later
 visit's `note` is what changed since that baseline. `headline` is that opinion across the readings. A
 sentence that only says unchanged is not a note. Do not invent a
 root cause the device did not show. Do not stamp `expires_at`.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## Reply format
 

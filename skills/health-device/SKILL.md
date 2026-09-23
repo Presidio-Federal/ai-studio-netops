@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.8.3"
-description: "v1.8.3 — IOS-XE device health visit. GET-only RESTCONF. The first visit writes every admin-up interface and BGP neighbor the device returned, with the nurse's note. Later visits diff those rows."
+version: "1.8.4"
+description: "v1.8.4 — IOS-XE device health visit. GET-only RESTCONF. The first visit writes every admin-up interface and BGP neighbor the device returned, with the nurse's note. Later visits diff those rows."
 ---
 
 # Health Device skill
@@ -65,6 +65,10 @@ RESTCONF. Then `health/metadata-iosxe.json` if it exists. If
 observation back. Then write `last_visit_id` to this visit’s
 `watch_id`. Never overwrite a timestamped file. Never write a port
 or host into metadata.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 

@@ -4,8 +4,13 @@
   "title": "compliance/metadata-testing.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "source_agent", "last_visit_id", "last_collected_at"],
+  "required": ["keys", "schema", "source_agent", "last_visit_id", "last_collected_at"],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": {"type": "string", "const": "compliance-test-metadata/v1"},
     "source_agent": {"type": "string", "const": "compliance-test"},
     "last_visit_id": {

@@ -20,7 +20,8 @@
     "netbox",
     "device_count",
     "devices",
-    "links"
+    "links",
+    "keys"
   ],
   "properties": {
     "schema": { "type": "string", "const": "network-access-inventory/v3" },
@@ -74,7 +75,15 @@
     },
     "device_count": { "type": "integer", "minimum": 0 },
     "devices": { "type": "array", "items": { "$ref": "#/$defs/device" } },
-    "links": { "type": "array", "items": { "$ref": "#/$defs/link" } }
+    "links": { "type": "array", "items": { "$ref": "#/$defs/link" } },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
+    }
   },
   "$defs": {
     "coverage": {

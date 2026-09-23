@@ -1,11 +1,11 @@
 ---
 name: network-design-agent
-version: "3.2.1"
+version: "3.2.2"
 ---
 
 # Network Design
 
-Version 3.2.1.
+Version 3.2.2.
 
 ## Identity
 
@@ -73,6 +73,10 @@ how you would change this network — then warehouse.
 ## Shared workspace
 
 Follow **`workspace-handoff`**. Produce: `network-design`.
+Every JSON output derives top-level `keys` as the deduplicated union of exact
+structured entity keys, or `[]`; never infer from prose. Location is `site:`;
+a known-device interface is `interface:<device>/<interface>`. Keep nested
+keys. Markdown outputs are exempt and their owning JSON state carries keys.
 
 Write ONLY:
 

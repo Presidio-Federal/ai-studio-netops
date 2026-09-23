@@ -18,3 +18,11 @@ status, poll GitHub, or re-invoke the worker.
 Worker Result `pass` → create `dev` → `main` PR and merge with
 `merge_method=merge`. Do not delete `dev`. Any other result → no PR and no
 merge.
+
+After the terminal result, replace `state/network-ops.json` with only the
+compact worker, CI, and PR evidence. Set top-level `keys` to the deduplicated
+union derived only from structured entities, or `[]`; never infer from prose.
+Allowed prefixes are `device|interface|site|service|test|control|incident|change`.
+Use `site:` for location and `interface:<device>/<interface>` when the device
+is known; preserve nested keys. Preserve the
+worker's `operational/runs/<stamp>.json` path in `change.operational_ref`.

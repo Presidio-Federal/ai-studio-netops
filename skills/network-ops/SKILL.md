@@ -1,14 +1,14 @@
 ---
 name: network-ops
-version: "2.0.0"
-description: "v2.0.0 — Frontier orchestrator delegates config I/O and pipeline polling to one local GitOps worker, then merges on pass."
+version: "2.1.1"
+description: "v2.1.1 — Delegate GitOps work and publish canonical top-level workspace entity keys."
 ---
 
 # Network Ops skill
 
 GitHub is the config SoT. Network Ops decides the exact change but never loads
 large config bodies. GitHub GitOps Change owns config I/O, `dev` puts, and
-Actions polling.
+Actions polling. Network Ops owns `state/network-ops.json`.
 
 ## Route
 
@@ -46,6 +46,27 @@ Result `pass` → `github_create_pull_request`
 `github_merge_pull_request` (`merge_method=merge`). Do not
 delete `dev`. Result `fail`, `unknown`, `no_change`, `blocked`,
 or `failed` → do not create or merge a PR.
+
+## Current operational state
+
+After every terminal outcome, replace `state/network-ops.json` following
+`schemas/network-ops-state.schema.json`. Copy only the worker's compact
+evidence:
+
+- devices and changed repository paths
+- one-line change summary and `operational/runs/<stamp>.json` reference
+- final `dev` commit, CI run/result, and one marker line
+- PR number/URL/merged result
+- top-level `keys` equal to the deduplicated union of exact keys supported by
+  structured fields, or `[]`; never infer from prose
+
+Allowed prefixes are `device|interface|site|service|test|control|incident|change`.
+Location is `site:`. When a device is known, use
+`interface:<device>/<interface>`. Keep any nested `keys`.
+
+Never copy config bodies, patches, or full pipeline logs. Use
+`examples/network-ops-state.example.json` for shape and `workspace-handoff`
+for ownership.
 
 ## Reference routing
 

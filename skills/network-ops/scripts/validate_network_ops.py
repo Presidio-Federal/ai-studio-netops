@@ -8,19 +8,27 @@ import re
 import sys
 from typing import Any
 
-SCHEMA = "network-ops-state/v1"
+SCHEMA = "network-ops-state/v2"
 SOURCE_AGENT = "network-ops"
 STATUSES = {
     "recommended",
     "committed",
     "ci_failed",
     "merged",
+    "no_change",
+    "unknown",
     "blocked",
     "failed",
 }
 MODES = {"recommend", "implement"}
 KINDS = {"missing_config", "test_bug", "other"}
 CI_RESULTS = {"pass", "fail", "unknown", "running"}
+KEY_RE = re.compile(
+    r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+)
+OPERATIONAL_REF_RE = re.compile(
+    r"^operational/runs/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.json$"
+)
 UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$"
 )
@@ -32,6 +40,11 @@ REQUIRED = [
     "headline",
     "next_action",
     "mode",
+    "change",
+    "git",
+    "ci",
+    "pr",
+    "keys",
 ]
 
 
@@ -82,6 +95,18 @@ def main() -> None:
             errors.append("finding must be an object")
         elif finding.get("kind") not in KINDS:
             errors.append("finding.kind is not allowed")
+    change = data.get("change")
+    if not isinstance(change, dict):
+        errors.append("change must be an object")
+    else:
+        operational_ref = change.get("operational_ref")
+        if operational_ref is not None and (
+            not isinstance(operational_ref, str)
+            or not OPERATIONAL_REF_RE.match(operational_ref)
+        ):
+            errors.append("change.operational_ref must be operational/runs/<UTC>.json or null")
+        if not isinstance(change.get("devices") or [], list):
+            errors.append("change.devices must be an array")
     git = data.get("git")
     if isinstance(git, dict) and git.get("ref") == "main" and data.get("status") != "merged":
         errors.append("git.ref must be dev until merged")
@@ -90,6 +115,22 @@ def main() -> None:
         result = ci.get("result")
         if result is not None and result not in CI_RESULTS:
             errors.append("ci.result is not allowed")
+    keys = data.get("keys")
+    if not isinstance(keys, list):
+        errors.append("keys must be an array")
+        keys = []
+    elif len(keys) != len(set(keys)):
+        errors.append("keys must not contain duplicates")
+    for key in keys:
+        if not isinstance(key, str) or not KEY_RE.match(key):
+            errors.append(f"keys contains invalid type:name key: {key}")
+    if isinstance(change, dict):
+        expected_keys = set()
+        for device in change.get("devices") or []:
+            if isinstance(device, str):
+                expected_keys.add(f"device:{device}")
+        if set(keys) != expected_keys:
+            errors.append("keys must equal the deduplicated union of change.devices")
     if errors:
         for item in errors:
             print(item, file=sys.stderr)

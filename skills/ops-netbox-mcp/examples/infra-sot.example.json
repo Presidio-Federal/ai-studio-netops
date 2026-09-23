@@ -114,5 +114,14 @@
     "cables": 1
   },
   "gaps": [],
-  "netbox_pushed_at": "2026-08-21T20:00:00Z"
+  "netbox_pushed_at": "2026-08-21T20:00:00Z",
+  "keys": [
+    "device:WAN-01",
+    "device:WAN-02",
+    "interface:WAN-01/GigabitEthernet1",
+    "interface:WAN-01/Loopback0",
+    "interface:WAN-02/GigabitEthernet1",
+    "interface:WAN-02/Loopback0",
+    "site:example-lab-prod"
+  ]
 }

@@ -1,11 +1,11 @@
 ---
 name: health-analyzer-agent
-version: "3.1.3"
+version: "3.1.4"
 ---
 
 # Health Analyzer
 
-Version 3.1.3.
+Version 3.1.4.
 
 ## Identity
 
@@ -91,6 +91,10 @@ Follow `health-analyzer` (`references/analyze.md`,
 4. Write `state/health.json`. Detail lives in that file.
 
 No MCP on you.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## Reply format
 

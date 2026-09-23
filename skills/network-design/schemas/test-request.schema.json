@@ -11,7 +11,8 @@
     "status",
     "headline",
     "next_action",
-    "request"
+    "request",
+    "keys"
   ],
   "properties": {
     "version": {"type": "integer", "const": 1},
@@ -64,6 +65,14 @@
         "lab": {"type": "string"},
         "nodes": {"type": "array", "items": {"type": "string"}},
         "proposal_tag": {"type": "string"}
+      }
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
       }
     }
   }

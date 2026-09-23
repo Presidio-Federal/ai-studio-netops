@@ -1,5 +1,6 @@
 {
   "schema": "lifecycle-item/v1",
+  "keys": ["device:device-a"],
   "pid": "cat8000v",
   "updated_at": "2026-09-07T00:10:00Z",
   "expires_at": "2026-12-06T00:10:00Z",

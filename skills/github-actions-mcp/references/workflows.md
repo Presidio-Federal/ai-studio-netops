@@ -41,3 +41,10 @@ alone is not `fail` for GitOps merge.
 | `running` | Run not completed yet |
 
 A green check is not `pass`.
+
+For `operational/runs/*.json`, set top-level `keys` to the deduplicated union
+derived only from structured entities, or `[]`; never infer from marker text,
+headlines, or summaries. Allowed prefixes are
+`device|interface|site|service|test|control|incident|change`. Location is
+`site:`; a known-device interface is `interface:<device>/<interface>`. Keep
+nested keys.

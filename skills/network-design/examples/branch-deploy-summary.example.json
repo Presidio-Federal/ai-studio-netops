@@ -41,12 +41,19 @@
     "run_id": "31226585624",
     "html_url": "https://github.com/example-org/network-sot/actions/runs/31226585624",
     "headline": "8/8 in-scope checks passed on AI-BRANCH-03",
-    "run_file": "testing/2026-08-08T19-40-00Z.json"
+    "run_file": "operational/testing/2026-08-08T19-40-00Z.json"
   },
   "servicenow": {
     "number": "CHG0001004",
     "sys_id": "00000000000000000000000000000001",
     "table": "change_request",
     "url": "https://example.service-now.com/change_request.do?sys_id=00000000000000000000000000000001"
-  }
+  },
+  "keys": [
+    "change:CHG0001004",
+    "device:AI-BRANCH-03",
+    "device:AI-BRANCH-03-SW",
+    "device:WAN-04",
+    "interface:WAN-04/GigabitEthernet4"
+  ]
 }

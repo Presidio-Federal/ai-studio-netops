@@ -26,3 +26,7 @@ or dispatched; `degraded` when a voting vital consult is degraded;
 Do not write visit files under `health/`.
 
 Analysis steps: `references/analyze.md`.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.

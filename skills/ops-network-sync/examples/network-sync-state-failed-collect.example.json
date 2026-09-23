@@ -87,5 +87,6 @@
   "deploy_twin": null,
   "reconcile_dev": null,
   "gaps": ["prod collect: CML unreachable"],
-  "next_action": null
+  "next_action": null,
+  "keys": []
 }

@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.18.1"
-description: "v1.18.1 — Fixed sandbox path with direct-stdin or exact-heredoc bounded NIST scan."
+version: "1.18.2"
+description: "v1.18.2 — Fixed sandbox path with direct-stdin or exact-heredoc bounded NIST scan."
 ---
 
 # Compliance intel
@@ -220,8 +220,8 @@ Preserve top-level fields from the schema (`version`, `updated_at`,
 
 Each candidate **must** include:
 
-- `keys` — `recommendation:<INTEL-id>`, every `control:<NIST-id>`, and
-  `test:<existing-id>` when `maps_to_existing` is not `none`
+- `keys` — every `control:<NIST-id>` and `test:<existing-id>` when
+  `maps_to_existing` is not `none`; keep the `INTEL-*` identifier only in `id`
 - `why_network` — why this control applies to **these** devices
 - `priority` — `critical` | `high` | `medium` | `low` (impact if we
   do not test it on this estate)
@@ -250,6 +250,10 @@ Good themes when inventory shows network gear and the catalog does
 not already cover them: mgmt-plane hardening, AAA, logging/NTP,
 routing-protocol authentication, CoPP. Author decides the exact
 CLI against committed config.
+
+## Canonical top-level keys
+
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## Workspace schema
 

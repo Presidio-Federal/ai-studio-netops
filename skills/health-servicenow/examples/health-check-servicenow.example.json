@@ -1,4 +1,5 @@
 {
+  "keys": ["incident:<number>", "change:<number>", "device:<inventory-name>"],
   "schema": "health-servicenow-check/v2",
   "source": "servicenow",
   "watch_id": "2026-09-01T15-00-00Z",

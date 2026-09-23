@@ -1,4 +1,5 @@
 {
+  "keys": ["control:SC-8", "control:AC-17"],
   "schema": "compliance-intel-visit/v1",
   "visit_id": "2026-09-22T14-00-00Z",
   "checked_at": "2026-09-22T14:00:00Z",
@@ -22,13 +23,13 @@
       "id": "INTEL-0001",
       "priority": "high",
       "status": "proposed",
-      "keys": ["recommendation:INTEL-0001", "control:SC-8"]
+      "keys": ["control:SC-8"]
     },
     {
       "id": "INTEL-0002",
       "priority": "medium",
       "status": "proposed",
-      "keys": ["recommendation:INTEL-0002", "control:AC-17"]
+      "keys": ["control:AC-17"]
     }
   ],
   "vs_prior": {

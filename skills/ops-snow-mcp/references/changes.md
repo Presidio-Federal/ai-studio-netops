@@ -59,6 +59,10 @@ plus inventory labels. Rows that do not match are out of scope.
 
 10. Verify number, sys_id, state, `correlation_id`, and requested material fields (plans, justification, appended validation/deployment notes when applicable).
 11. Write the normalized result per `references/workspace-contract.md`.
+    Its top-level `keys` contains the source-supported
+    `change:<number>` and any explicit `device:<name>` values
+    present in that artifact; do not derive keys from markers
+    or prose.
 
 ## Operation mapping
 

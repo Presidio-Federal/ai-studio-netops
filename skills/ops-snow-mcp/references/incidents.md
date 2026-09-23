@@ -53,6 +53,10 @@ do not treat the whole instance as this lab.
 
 10. Verify number, sys_id, state, the automation/correlation markers, and requested material fields (`short_description`, urgency, impact, category, and appended notes when applicable).
 11. Write the normalized result per `references/workspace-contract.md`.
+    Its top-level `keys` contains the source-supported
+    `incident:<number>` and any explicit `device:<name>` values
+    present in that artifact; do not derive keys from markers
+    or prose.
 
 ## Operation mapping
 

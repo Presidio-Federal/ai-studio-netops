@@ -13,7 +13,8 @@
     "next_action",
     "lab",
     "proposal_tag",
-    "nodes"
+    "nodes",
+    "keys"
   ],
   "properties": {
     "version": {"type": "integer", "const": 1},
@@ -87,7 +88,7 @@
         "run_id": {"type": "string"},
         "html_url": {"type": "string"},
         "headline": {"type": "string"},
-        "run_file": {"type": "string", "description": "Workspace-relative testing/YYYY-MM-DDTHH-MM-SSZ.json"}
+        "run_file": {"type": "string", "description": "Workspace-relative operational/testing/YYYY-MM-DDTHH-MM-SSZ.json"}
       }
     },
     "servicenow": {
@@ -122,6 +123,14 @@
             }
           }
         }
+      }
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
       }
     }
   }

@@ -6,6 +6,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "keys",
     "schema",
     "source",
     "watch_id",
@@ -19,6 +20,11 @@
     "vs_prior"
   ],
   "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+    },
     "schema": { "type": "string", "const": "health-thousandeyes-check/v2" },
     "source": { "type": "string", "const": "thousandeyes" },
     "watch_id": {
@@ -94,8 +100,7 @@
             "test",
             "control",
             "incident",
-            "change",
-            "recommendation"
+            "change"
           ]
         },
         "name": { "type": "string", "minLength": 1 },
@@ -156,7 +161,7 @@
           "minItems": 1,
           "maxItems": 16,
           "description": "Every join key in this tool payload. type:name. test:<id> when the API returned a test id. device: when the payload names an inventory device.",
-          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|recommendation):.+" }
+          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
         },
         "at": { "type": "string", "minLength": 1 },
         "scope": { "type": "string", "minLength": 1, "description": "test:<testId>/<agentName>. Stable key for the next visit's diff." },

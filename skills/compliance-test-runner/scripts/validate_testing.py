@@ -16,15 +16,25 @@ STATE_STATUSES = {"PASS", "FAIL", "MIXED", "UNKNOWN", "running"}
 RISK_LEVELS = {"LOW", "MEDIUM", "HIGH", "UNKNOWN"}
 PUSH = {"proceed", "proceed_with_caution", "do_not_push", "unknown"}
 CHECK_STATUSES = {"PASS", "FAIL", "ERROR", "SKIP"}
+KEY_TYPES = {
+    "device",
+    "interface",
+    "site",
+    "service",
+    "test",
+    "control",
+    "incident",
+    "change",
+}
 KEY_RE = re.compile(
-    r"^(device|interface|site|service|test|control|incident|change|recommendation):[^ ].*$"
+    r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
 )
 UTC_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|\+00:00)$"
 )
 HOST_ABS_RE = re.compile(r"^([A-Za-z]:[\\/]|/Users/|/home/|/tmp/|/var/|/etc/)")
 RUN_PATH_RE = re.compile(
-    r"^testing/("
+    r"^operational/testing/("
     r"\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z"  # 2026-08-21T19-56-18Z
     r"|\d{8}T\d{6}Z"  # legacy 20260825T172855Z
     r")\.json$"
@@ -32,6 +42,7 @@ RUN_PATH_RE = re.compile(
 VISIT_ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$")
 
 RUN_REQUIRED = [
+    "keys",
     "version",
     "updated_at",
     "source_agent",
@@ -45,6 +56,7 @@ RUN_REQUIRED = [
     "risk",
 ]
 STATE_REQUIRED = [
+    "keys",
     "schema",
     "updated_at",
     "source_agent",
@@ -55,6 +67,7 @@ STATE_REQUIRED = [
     "latest",
 ]
 COMPLIANCE_REQUIRED = [
+    "keys",
     "schema",
     "visit_id",
     "checked_at",
@@ -140,8 +153,8 @@ def validate_run_path(value: Any, name: str, errors: Errors) -> None:
         return
     if not RUN_PATH_RE.match(path):
         errors.add(
-            f"{name} must match testing/YYYY-MM-DDTHH-MM-SSZ.json "
-            f"(e.g. testing/2026-08-21T19-56-18Z.json)"
+            f"{name} must match operational/testing/YYYY-MM-DDTHH-MM-SSZ.json "
+            f"(e.g. operational/testing/2026-08-21T19-56-18Z.json)"
         )
 
 
@@ -180,11 +193,54 @@ def validate_result_keys(item: dict[str, Any], name: str, errors: Errors) -> Non
         errors.add(f"{name}.keys missing device:{device}")
 
 
+def validate_top_level_keys(obj: dict[str, Any], errors: Errors) -> None:
+    keys = obj.get("keys")
+    if not isinstance(keys, list):
+        errors.add("keys must be an array")
+        return
+    if len(keys) != len(set(keys)):
+        errors.add("keys must not contain duplicates")
+    for key in keys:
+        if not isinstance(key, str) or not KEY_RE.match(key):
+            errors.add(f"keys has invalid canonical key: {key}")
+
+    nested: list[str] = []
+
+    def collect(value: Any, top: bool = False) -> None:
+        if isinstance(value, dict):
+            if not top and isinstance(value.get("keys"), list):
+                nested.extend(key for key in value["keys"] if isinstance(key, str))
+            entity_type = value.get("type")
+            entity_name = value.get("name")
+            if entity_type in KEY_TYPES and isinstance(entity_name, str):
+                nested.append(f"{entity_type}:{entity_name}")
+            device = value.get("device")
+            if isinstance(device, str):
+                nested.append(f"device:{device}")
+            for field in ("devices_requested", "devices_scanned", "failing_devices"):
+                entities = value.get(field)
+                if isinstance(entities, list):
+                    nested.extend(
+                        f"device:{name}" for name in entities if isinstance(name, str)
+                    )
+            for child in value.values():
+                collect(child)
+        elif isinstance(value, list):
+            for child in value:
+                collect(child)
+
+    collect(obj, top=True)
+    expected = list(dict.fromkeys(nested))
+    if set(keys) != set(expected):
+        errors.add("keys must be the deduplicated union of nested row keys")
+
+
 def validate_run(data: Any, errors: Errors) -> None:
     obj = require_object(data, "run", errors)
     if obj is None:
         return
     require_fields(obj, RUN_REQUIRED, "run", errors)
+    validate_top_level_keys(obj, errors)
     if obj.get("version") != 1:
         errors.add("version must be 1")
     if obj.get("source_agent") != SOURCE_AGENT:
@@ -228,8 +284,8 @@ def validate_run(data: Any, errors: Errors) -> None:
     if "local_path" in obj:
         validate_run_path(obj.get("local_path"), "local_path", errors)
         local = normalize_workspace_path(str(obj.get("local_path") or ""))
-        if local.startswith("compliance/"):
-            errors.add("general testing run local_path must stay under testing/")
+        if not local.startswith("operational/testing/"):
+            errors.add("general testing run local_path must stay under operational/testing/")
 
 
 def validate_compliance(data: Any, errors: Errors) -> None:
@@ -237,6 +293,7 @@ def validate_compliance(data: Any, errors: Errors) -> None:
     if obj is None:
         return
     require_fields(obj, COMPLIANCE_REQUIRED, "compliance visit", errors)
+    validate_top_level_keys(obj, errors)
     if obj.get("schema") != "compliance-test-visit/v1":
         errors.add("compliance visit schema must be compliance-test-visit/v1")
     if obj.get("source_agent") != SOURCE_AGENT:
@@ -292,6 +349,7 @@ def validate_state(data: Any, errors: Errors, file_path: str = "") -> None:
     if obj is None:
         return
     require_fields(obj, STATE_REQUIRED, "state", errors)
+    validate_top_level_keys(obj, errors)
     if obj.get("schema") != STATE_SCHEMA:
         errors.add(f"schema must be {STATE_SCHEMA}")
     if obj.get("source_agent") != SOURCE_AGENT:
@@ -310,8 +368,8 @@ def validate_state(data: Any, errors: Errors, file_path: str = "") -> None:
     latest = normalize_workspace_path(str(obj.get("latest") or ""))
     path_norm = file_path.replace("\\", "/")
     is_testing_state = path_norm.endswith("state/testing.json")
-    if is_testing_state and latest.startswith("compliance/"):
-        errors.add("state/testing.json latest must be testing/<UTC>.json")
+    if is_testing_state and not latest.startswith("operational/testing/"):
+        errors.add("state/testing.json latest must be operational/testing/<UTC>.json")
 
 
 def main(argv: list[str]) -> int:

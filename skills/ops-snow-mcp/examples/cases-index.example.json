@@ -1,5 +1,11 @@
 {
   "schema": "servicenow-cases-index/v1",
+  "keys": [
+    "device:AI-CLOUD-EDGE",
+    "device:AI-HQ-EDGE",
+    "incident:INC0001001",
+    "incident:INC0001002"
+  ],
   "updated_at": "2026-08-20T17:38:00Z",
   "source_agent": "servicenow",
   "cases": [

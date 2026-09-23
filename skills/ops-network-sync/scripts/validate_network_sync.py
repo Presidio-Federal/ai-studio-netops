@@ -53,6 +53,9 @@ UTC_RE = re.compile(
 SNAPSHOT_ID_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z$")
 HOST_ABS_RE = re.compile(r"^([A-Za-z]:[\\/]|/Users/|/home/|/tmp/|/var/|/etc/)")
 INVENTORY_PATH_RE = re.compile(r"^inventory/(prod|dev)\.json$")
+KEY_RE = re.compile(
+    r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+)
 
 INVENTORY_REQUIRED = [
     "schema",
@@ -70,6 +73,7 @@ INVENTORY_REQUIRED = [
     "device_count",
     "devices",
     "links",
+    "keys",
 ]
 STATE_REQUIRED = [
     "schema",
@@ -84,6 +88,7 @@ STATE_REQUIRED = [
     "inventories",
     "gaps",
     "next_action",
+    "keys",
 ]
 DEVICE_REQUIRED = [
     "name",
@@ -223,6 +228,18 @@ def validate_string_list(value: Any, name: str, errors: Errors) -> None:
         errors.add(f"{name} must be a string array")
 
 
+def validate_keys(value: Any, name: str, errors: Errors) -> set[str]:
+    if not isinstance(value, list):
+        errors.add(f"{name} must be an array")
+        return set()
+    if len(value) != len(set(value)):
+        errors.add(f"{name} must not contain duplicates")
+    for key in value:
+        if not isinstance(key, str) or not KEY_RE.match(key):
+            errors.add(f"{name} contains invalid key: {key}")
+    return {key for key in value if isinstance(key, str)}
+
+
 def validate_published_coverage(value: Any, name: str, errors: Errors) -> None:
     obj = require_object(value, name, errors)
     if obj is None:
@@ -334,6 +351,7 @@ def validate_inventory(
     links = obj.get("links")
     if not isinstance(links, list):
         errors.add("links must be an array")
+        links = []
     else:
         for i, link in enumerate(links):
             row = require_object(link, f"links[{i}]", errors)
@@ -344,6 +362,15 @@ def validate_inventory(
                     errors.add(f"links[{i}].{field} must be a non-empty string")
     for i, device in enumerate(devices):
         validate_device(device, i, errors)
+    actual_keys = validate_keys(obj.get("keys"), "keys", errors)
+    expected_keys = {
+        *(f"device:{device['name']}" for device in devices if isinstance(device, dict) and isinstance(device.get("name"), str)),
+        *(f"interface:{link[side + '_device']}/{link[side + '_interface']}" for link in links if isinstance(link, dict) for side in ("a", "b") if isinstance(link.get(side + "_device"), str) and isinstance(link.get(side + "_interface"), str)),
+    }
+    if isinstance(netbox, dict) and isinstance(netbox.get("site"), str):
+        expected_keys.add(f"site:{netbox['site']}")
+    if actual_keys != expected_keys:
+        errors.add("keys must equal the deduplicated union of devices, device-qualified link interfaces, and netbox.site")
     if collected is not None and expires is not None and expires < collected:
         errors.add("expires_at must not be before collected_at")
 
@@ -568,6 +595,7 @@ def validate_state(data: Any, errors: Errors, as_of: datetime) -> None:
             validate_action_result(obj.get(field), field, errors)
     if "infra_sot" in obj:
         errors.add("infra_sot belongs in state/netbox.json, not state/network-sync.json")
+    validate_keys(obj.get("keys"), "keys", errors)
 
 
 def pair_slot(
