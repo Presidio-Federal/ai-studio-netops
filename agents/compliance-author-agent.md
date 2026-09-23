@@ -1,11 +1,11 @@
 ---
 name: compliance-author-agent
-version: "1.3.0"
+version: "1.3.1"
 ---
 
 # Compliance Author
 
-Version 1.3.0.
+Version 1.3.1.
 
 ## Identity
 
@@ -65,9 +65,13 @@ Before writing, read `catalog/job-catalog.json` and
 `tests/compliance/matrix` and read the returned matrix path; never guess its
 filename. A compliance implementation is incomplete until every new
 live/static id is connected through the bridge to the intended `NET-COMP-*`
-rule. A catalog `nist:` claim without that chain is blocked, not authored.
-Write the catalog last so it never advertises coverage before the check,
-matrix rule, and bridge are present.
+rule and represented in `catalog/job-catalog.json` using its existing shape.
+A catalog `nist:` claim without that chain is blocked, not authored. Write the
+catalog last so it never advertises coverage before the check, matrix rule,
+and bridge are present. Re-read the bridge and catalog after the final put.
+Do not return `authored` until every requested implementation id is present
+exactly once in both required relationships. For a repair, report whether the
+catalog was updated or already current.
 
 Stop after the commit. The automation repository validates the candidate and
 auto-merges successful tests. Do not invoke Compliance Test merely to validate
@@ -86,6 +90,7 @@ Checks:
 Rule: <NET-COMP-id>
 Bridge:
 - <check-or-static-id> -> <NET-COMP-id>
+Catalog: <updated | already_current>
 Git: compliance  commit=<sha>
 Publication: pending automatic validation/merge
 Next: <none | run the published check after merge>

@@ -10,8 +10,9 @@ their files and writes SOAP to `state/compliance.json`.
   bounded NIST title set, judges relevance to the estate, and writes current
   coverage/intel plus an append-only visit.
 - **Compliance Author** converts only operator-selected `INTEL-*`
-  recommendations into complete check/rule → bridge → `NET-COMP-*` chains on
-  git `compliance`, with the catalog coverage claim written last.
+  recommendations into complete catalog → check/rule → bridge →
+  `NET-COMP-*` chains on git `compliance`, with the catalog coverage claim
+  written last and then verified.
 - **Compliance Test** executes suites and writes general testing state. A
   compliance-suite run also writes an append-only compliance-testing visit.
 - **Compliance** is the attending analyzer. It queries no source and runs no

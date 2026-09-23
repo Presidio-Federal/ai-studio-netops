@@ -16,7 +16,7 @@ Deployed model is **MiniMax** unless noted.
 | Modernization Lifecycle | 1.4.1 | MiniMax |
 | Compliance | 1.0.1 | MiniMax |
 | Compliance Intelligence | 2.0.3 | MiniMax |
-| Compliance Author | 1.3.0 | MiniMax |
+| Compliance Author | 1.3.1 | MiniMax |
 | Compliance Test | 1.4.1 | MiniMax |
 | Health Monitor | 1.19.1 | MiniMax |
 | Health Device | 1.8.4 | MiniMax |

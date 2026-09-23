@@ -1,7 +1,7 @@
 ---
 name: compliance-test-authoring
-version: "1.7.0"
-description: "v1.7.0 — Publish complete check-to-bridge-to-NET-COMP chains on git compliance."
+version: "1.7.2"
+description: "v1.7.2 — Publish complete catalog-to-check-to-bridge-to-NET-COMP chains on git compliance."
 ---
 
 # Compliance test authoring
@@ -9,6 +9,8 @@ description: "v1.7.0 — Publish complete check-to-bridge-to-NET-COMP chains on 
 For **Compliance Author**. Workspace is input. Candidate checks live on git
 `compliance`; automation validates and publishes them. After you push, stop.
 Do not call `github_run_action` or poll runs.
+Call GitHub MCP tools directly. Never use code execution, `execute_command`,
+helper scripts, or `Internal directory`.
 
 ## Write
 
@@ -42,21 +44,29 @@ Do not call `github_run_action` or poll runs.
      or add the smallest new rule using the existing matrix shape
    - map every new live/static implementation id to that rule in
      `tests/compliance/matrix/test-bridge.yml`
-   - add the implementation id to `catalog/job-catalog.json`; include `nist:`
-     only when the bridge chain supports that coverage claim
+   - add every new live/static implementation id to
+     `catalog/job-catalog.json`, matching the existing catalog shape; include
+     `nist:` only when the bridge chain supports that coverage claim
    `github_get_file` those paths `ref=compliance`, then `github_put_file`
    `ref=compliance` with that `sha`. Never `github_create_branch`.
 7. Verify before the final put:
    - every new live/static id exists exactly once
    - every id that contributes to compliance has exactly one intended bridge
      mapping and its `NET-COMP-*` target exists
+   - every authored or repaired implementation id is represented exactly once
+     in the central catalog
    - bridge ids, catalog ids, filenames, and rule ids match exactly
    - NIST relationships are intentional; live and static lists need not be
      identical when they prove different things
    Missing or ambiguous linkage → `blocked`; never publish a catalog-only
    coverage claim. Put matrix/check assets first, bridge next, and the catalog
    last.
-8. Stop. Branch automation validates the candidate and auto-merges successful
+8. Re-read `tests/compliance/matrix/test-bridge.yml` and
+   `catalog/job-catalog.json` after the final put. Return success only after
+   every requested id is present exactly once in the required relationship
+   and catalog records. Report `Catalog: updated` or
+   `Catalog: already_current`.
+9. Stop. Branch automation validates the candidate and auto-merges successful
    tests to `main`. Do not claim publication before the test appears there.
    Compliance Test later records evidence from a pipeline or authorized
    ad-hoc run; it is not the candidate-branch validator.
