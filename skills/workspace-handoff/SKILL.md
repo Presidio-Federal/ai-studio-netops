@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.54.0 — Every structured workspace record carries canonical source-supported relationship keys."
-version: "1.54.0"
+description: "v1.55.0 — Network Ops records separate GitOps submission and Pipeline Monitor evidence."
+version: "1.55.0"
 ---
 
 # Workspace handoff
@@ -214,9 +214,10 @@ after the write.
 4. If this file is input for an attached subagent, invoke them now.
    Health Analyzer and Modernization Analysis do not wait.
    Network Design writes from files already on disk.
-   Network Ops invokes GitHub GitOps Change once, consumes its final compact
-   response without polling subagent status, creates/merges the PR on pass,
-   then replaces `state/network-ops.json`.
+   Network Ops may invoke GitHub GitOps Change once for bounded inspection,
+   then once to apply. It invokes Pipeline Monitor once for the submitted SHA,
+   never polls subagent status, creates/merges the PR on live pass, then
+   replaces `state/network-ops.json`.
    Compliance Intelligence writes its files and stops. Compliance Analyzer
    writes only `state/compliance.json`. Invoke Author only for
    operator-selected INTEL ids.

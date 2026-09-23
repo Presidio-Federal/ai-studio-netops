@@ -58,7 +58,11 @@
         "summary": { "type": "string", "maxLength": 1000 },
         "operational_ref": {
           "type": ["string", "null"],
-          "description": "Workspace-relative operational/runs/<stamp>.json returned by the worker."
+          "description": "Workspace-relative operation record returned by GitOps Change."
+        },
+        "monitoring_ref": {
+          "type": ["string", "null"],
+          "description": "Workspace-relative operation record returned by Pipeline Monitor."
         }
       }
     },

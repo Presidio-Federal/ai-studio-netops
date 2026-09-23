@@ -3,20 +3,20 @@
   "updated_at": "2026-09-22T20:40:00Z",
   "source_agent": "github-gitops-change",
   "status": "ok",
-  "headline": "Added SSH version 2 to two edge configs; Dev live tests passed",
-  "next_action": "Network Ops may open and merge the dev to main pull request",
+  "headline": "Added SSH version 2 to two edge configs and submitted the final dev commit",
+  "next_action": "Pipeline Monitor must watch apply.yml for this exact commit",
   "operation": "config_change",
   "git": {
     "ref": "dev",
     "commit_sha": "abc123def456"
   },
   "workflow": {
-    "name": "apply.yml",
-    "run_id": "32123456789",
-    "html_url": "https://github.com/example-org/network-sot/actions/runs/32123456789",
-    "marker": "Live: PASS"
+    "name": null,
+    "run_id": null,
+    "html_url": null,
+    "marker": null
   },
-  "result": "pass",
+  "result": "submitted",
   "devices": ["AI-CLOUD-EDGE", "AI-DC-EDGE"],
   "summary": "Ensured the exact global command 'ip ssh version 2' was present without changing unrelated content.",
   "keys": ["device:AI-CLOUD-EDGE", "device:AI-DC-EDGE"]

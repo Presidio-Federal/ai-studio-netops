@@ -22,7 +22,8 @@
     "peer": "WAN-01",
     "files": [],
     "summary": "Added the approved NTP peer lines to five edge configs without changing unrelated content",
-    "operational_ref": "operational/runs/2026-09-13T16-00-00Z.json"
+    "operational_ref": "operational/runs/2026-09-13T15-59-30Z.json",
+    "monitoring_ref": "operational/runs/2026-09-13T16-00-00Z.json"
   },
   "git": {
     "ref": "dev",

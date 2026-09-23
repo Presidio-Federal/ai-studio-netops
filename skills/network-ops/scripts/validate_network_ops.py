@@ -105,6 +105,12 @@ def main() -> None:
             or not OPERATIONAL_REF_RE.match(operational_ref)
         ):
             errors.append("change.operational_ref must be operational/runs/<UTC>.json or null")
+        monitoring_ref = change.get("monitoring_ref")
+        if monitoring_ref is not None and (
+            not isinstance(monitoring_ref, str)
+            or not OPERATIONAL_REF_RE.match(monitoring_ref)
+        ):
+            errors.append("change.monitoring_ref must be operational/runs/<UTC>.json or null")
         if not isinstance(change.get("devices") or [], list):
             errors.append("change.devices must be an array")
     git = data.get("git")

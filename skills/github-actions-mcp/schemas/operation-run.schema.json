@@ -56,7 +56,7 @@
     },
     "result": {
       "type": "string",
-      "enum": ["pass", "fail", "unknown", "no_change", "blocked", "failed"]
+      "enum": ["submitted", "pass", "fail", "unknown", "no_change", "blocked", "failed"]
     },
     "devices": {
       "type": "array",

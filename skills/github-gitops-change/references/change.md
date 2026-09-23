@@ -1,6 +1,13 @@
 # Bounded config change
 
-## Preflight
+## Inspect
+
+When Network Ops lacks exact syntax, read the resolved targets and only the
+deterministically selected peers. Return the exact relevant feature lines,
+their scope/placement, and whether peers agree. Cap evidence at 30 lines per
+device. Never return full configs, write files, or choose policy.
+
+## Apply preflight
 
 List `inventory/configs` on `dev`. Resolve every requested hostname or
 deterministic hostname rule against that response. Do not guess a path,
@@ -22,15 +29,15 @@ Preserve unrelated content, order, indentation, comments, and line endings.
 Do not render a fresh configuration. If placement cannot be followed exactly,
 return `blocked`.
 
-## Commit and watch
+## Commit
 
 Put changed files to their original listed paths on `ref=dev`, using each
 retrieved SHA. Record every commit SHA. The final put SHA represents the
 cumulative proposal.
 
-No changes → `no_change`. Otherwise watch `apply.yml`, branch `dev`, for that
-exact final SHA through completion. Never dispatch the workflow. Return the
-run URL and one `# Network test report` marker line, never the full log.
+No changes → `no_change`. Otherwise return the final SHA as `submitted` to
+Network Ops. Do not call Actions tools; Pipeline Monitor owns the exact-SHA
+watch.
 
 The operation record's top-level `keys` is the deduplicated union derived only
 from structured entities, or `[]`; never infer from config text, marker text,

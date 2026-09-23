@@ -1,28 +1,30 @@
 ---
 name: network-ops
-version: "2.1.1"
-description: "v2.1.1 — Delegate GitOps work and publish canonical top-level workspace entity keys."
+version: "2.2.0"
+description: "v2.2.0 — Decide from bounded config evidence, delegate commits, and gate merges on Pipeline Monitor."
 ---
 
 # Network Ops skill
 
 GitHub is the config SoT. Network Ops decides the exact change but never loads
-large config bodies. GitHub GitOps Change owns config I/O, `dev` puts, and
-Actions polling. Network Ops owns `state/network-ops.json`.
+large config bodies. GitHub GitOps Change returns bounded inspection evidence
+or performs exact `dev` puts. Pipeline Monitor owns Actions polling. Network
+Ops owns `state/network-ops.json`.
 
 ## Route
 
 | Intent | How |
 |--------|-----|
-| Change / fix / implement | Send one bounded prescription to GitHub GitOps Change; merge on its final live pass. |
+| Change with missing syntax/evidence | GitOps Change `inspect` → decide → GitOps Change `apply`. |
+| Change with exact evidence | GitOps Change `apply` directly. |
 | Check bug | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. |
 | Run a suite with no config change | Compliance Test. |
 
 Exact tools: [references/tools.md](references/tools.md).
 
-Do not call config file or Actions tools. Do not query subagent status. Invoke
-GitHub GitOps Change once and treat its final response as the next input.
+Do not call config file or Actions tools. Do not query subagent status. Treat
+each attached agent's final response as the next input.
 
 ## Prescription
 
@@ -34,18 +36,23 @@ Send only:
 - exact scope and placement
 - preserve-unrelated-content constraints
 
-Never send a full config. Missing exact syntax, scope, placement, or
-deterministic targets → `blocked`.
+Never send a full config. If those details are missing, first invoke GitOps
+Change with `Mode: inspect`, exact targets/question, and an exact or
+deterministic peer rule. It returns only relevant lines, scope, placement, and
+consensus. Network Ops decides; the worker does not choose policy. Inspection
+that remains ambiguous → `blocked`.
 
 How to delegate and ship: [references/change.md](references/change.md).
 
 ## After worker result
 
-Result `pass` → `github_create_pull_request`
+Apply Result `submitted` → invoke Pipeline Monitor once with `apply.yml`,
+`dev`, and the exact returned commit SHA. Monitor Result `pass` →
+`github_create_pull_request`
 (`source_branch=dev`, `target_branch=main`) then
 `github_merge_pull_request` (`merge_method=merge`). Do not
-delete `dev`. Result `fail`, `unknown`, `no_change`, `blocked`,
-or `failed` → do not create or merge a PR.
+delete `dev`. Monitor `fail|unknown`, or apply `no_change|blocked|failed` →
+do not create or merge a PR.
 
 ## Current operational state
 
@@ -54,7 +61,8 @@ After every terminal outcome, replace `state/network-ops.json` following
 evidence:
 
 - devices and changed repository paths
-- one-line change summary and `operational/runs/<stamp>.json` reference
+- one-line change summary plus GitOps and Pipeline Monitor
+  `operational/runs/<stamp>.json` references
 - final `dev` commit, CI run/result, and one marker line
 - PR number/URL/merged result
 - top-level `keys` equal to the deduplicated union of exact keys supported by
