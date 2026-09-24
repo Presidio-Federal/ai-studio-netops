@@ -42,12 +42,13 @@ explicit `null` when not collected.
 ## Splunk visit
 
 Everything is in `references/splunk.md`: three reads, two searches
-(three on the baseline), resolve hosts, diff against the board on
-`health/metadata-splunk.json`, stamp or quiet, rewrite the board.
+grouped by device in Splunk, a spelling lookup per device, diff
+against the board on `health/metadata-splunk.json`, board written
+first, stamp when due. Baseline window `-7d`.
 
-Order: READ_BOARD → READ_PROD → READ_TOPOLOGY → [S0] → S1 → S2 →
-RESOLVE → DIFF → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE] →
-WRITE_BOARD → STOP.
+Order: READ_BOARD → READ_PROD → READ_TOPOLOGY → S1 → S2 → RESOLVE →
+DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE →
+WRITE_BOARD] → STOP.
 
 A window with no S2 rows is **quiet**. A failed S1 is
 `unavailable`: null counts, watermark **not** advanced, stamp
@@ -86,7 +87,7 @@ directories. Do not write `health-board.md`. Do not
 | Item | Max |
 |------|----:|
 | Workspace file read/write | 12 |
-| Splunk collection (`splunk_search`) | 3 (4 on the baseline) |
+| Splunk collection (`splunk_search`) | 2 (plus one retry each) |
 | Splunk listing (resolve only) | 2 |
 | ThousandEyes `te_get_test_results` | one per metadata test, one retry each |
 | ThousandEyes `te_list_alerts` | 1 |

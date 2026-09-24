@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.36.0"
-description: "v1.36.0 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches, board on health/metadata-splunk.json, stamp only on a material syslog event. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; agents resolved to devices through topology-observed.json."
+version: "1.36.1"
+description: "v1.36.1 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches grouped by device in Splunk, -7d baseline, board written before the stamp, stamp only on a material syslog event. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; agents resolved to devices through topology-observed.json."
 ---
 
 # Health Monitor skill
@@ -26,8 +26,10 @@ visit**: board only, no stamp.
 **Splunk.** `references/splunk.md` is the whole visit: read the board
 (`health/metadata-splunk.json`), `prod.json`, and
 `topology-observed.json` if present; run S1 and S2 exactly as
-printed (S0 first on the baseline); resolve hosts; every S2 row is a
-reading and a `changed[]` item. Do not write SPL of your own.
+printed (baseline window `-7d`); Splunk already groups by device —
+you only look up the `prod.json` spelling; write the board, then
+the stamp; every S2 row is a reading and a `changed[]` item. Do not
+write SPL of your own.
 
 **ThousandEyes.** `references/thousandeyes.md` is the whole visit:
 read the board (`health/metadata-thousandeyes.json`) and
@@ -110,8 +112,8 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 If the invoke does not name Splunk or ThousandEyes: ASK_WHICH → STOP.
 
 Splunk: READ_BOARD → READ_PROD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
-[S0] → S1 → S2 → RESOLVE_HOSTS → DIFF → DECIDE → [WRITE_STAMP →
-READ_BACK → PRUNE] → WRITE_BOARD → STOP
+S1 → S2 → RESOLVE_DEVS → DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP →
+READ_BACK → PRUNE → WRITE_BOARD] → STOP
 
 ThousandEyes: READ_BOARD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
 [AGENTS] → (per test: NETWORK)* → ALERTS → BUILD → DIFF → DECIDE →

@@ -23,12 +23,9 @@ Do not collect another health source. Do not copy PAT into metadata.
 
 ## Splunk window
 
-- No `collected_through`: this is the baseline visit. Do not use
-  `-24h` and do not use `bootstrap_earliest` when that value is
-  `-24h`. S0 (`references/splunk.md`) finds the oldest event still
-  stored; `earliest_time` is that time. `latest_time` is `now`. If
-  S0 fails, stop. Do not substitute `-24h`. Do not advance the
-  watermark.
+- No `collected_through`: this is the baseline visit.
+  `earliest_time` = `-7d`, `latest_time` = `now`. Ignore
+  `bootstrap_earliest`. The board is state; a week seeds it.
 - After S1 and S2 succeed and the board is built: set
   `collected_through` to the latest S1 `last_at` when events exist,
   else this visit’s `checked_at`. Set `last_collected_at` every

@@ -24,7 +24,7 @@
         "index": { "type": "string", "minLength": 1 },
         "sourcetype": { "type": "string", "minLength": 1 },
         "dashboard_id": { "type": ["string", "null"] },
-        "bootstrap_earliest": { "type": ["string", "null"], "description": "Ignored on the first visit when the value is -24h. The first visit starts at the oldest event still in the index." },
+        "bootstrap_earliest": { "type": ["string", "null"], "description": "Ignored. The first visit reads -7d; later visits start at collected_through." },
         "collected_through": { "type": ["string", "null"], "description": "ISO-8601 UTC watermark: the last event time collected. Next visit's earliest_time. Never moves backward; not advanced on a failed search." },
         "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
         "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },

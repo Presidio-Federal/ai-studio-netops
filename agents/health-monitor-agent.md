@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "1.21.0"
+version: "1.21.1"
 ---
 
 # Health Monitor
 
-Version 1.21.0.
+Version 1.21.1.
 
 ## Identity
 
@@ -61,10 +61,12 @@ Which check: Splunk or ThousandEyes?
 **Named Splunk — first tools:** `read_file`
 `health/metadata-splunk.json` (the board), then `inventory/prod.json`,
 then `inventory/topology-observed.json` if it exists. Do not open the
-prior stamp; `splunk.current[]` is what you diff against. Then S0
-(baseline only), S1, S2 from `health-monitor` `references/splunk.md`,
-**copied exactly**, with the window as `earliest_time` /
-`latest_time`. No other SPL. Do not read `inventory/infra-sot.json`.
+prior stamp; `splunk.current[]` is what you diff against. Then S1
+and S2 from `health-monitor` `references/splunk.md`, **copied
+exactly**, with the window as `earliest_time` / `latest_time`
+(`-7d` on the baseline, `collected_through` after). No other SPL.
+Do not read `inventory/infra-sot.json`. Write the board before you
+compose the stamp.
 
 **Named ThousandEyes — first tools:** `read_file`
 `health/metadata-thousandeyes.json` (the board), then
@@ -125,13 +127,13 @@ Follow `health-monitor` (`references/watch.md`,
 `references/splunk.md`, `references/thousandeyes.md`,
 `references/metadata.md`).
 
-**Splunk.** The first visit starts at the oldest event still stored,
-never the last 24 hours; later visits start at `collected_through`.
-A host resolves to a device by parsed hostname (case-insensitive
-against `prod.json`), then by address against
-`topology-observed.json` `interfaces[].cidr`, then by `access.*.host`;
-otherwise it stays the host as logged with no key. One device is one
-row even when it logs from two addresses. Metric rows are S1 bucket
+**Splunk.** The first visit reads the last 7 days; later visits
+start at `collected_through`. Splunk groups both searches by
+device already (`dev` = parsed hostname, lowercased, or the address
+when a line has none). You look up the `prod.json` spelling
+case-insensitively; an address resolves through
+`topology-observed.json` `interfaces[].cidr`, then `access.*.host`;
+otherwise it stays as logged with no key. Metric rows are S1 bucket
 counts per device. Readings are S2 rows: `kind` `bgp` (subject =
 neighbor address, `peer` resolved the same way, `state` Up/Down/
 reset, `detail` the reason), `link` (subject = interface, `state`),
@@ -140,8 +142,9 @@ reset, `detail` the reason), `link` (subject = interface, `state`),
 counts only. Every reading gets a `note` — your opinion against the
 board row: new subject, flap, recovered, interactive vs pipeline
 commit (`console` is the pipeline), why it reloaded. Not the columns
-again. No S2 rows → quiet visit: rewrite the board, advance the
-watermark, no stamp. Plane `degraded` only for BGP Down/reset, a
+again. On the baseline the note is `Baseline.` unless the row is a
+Down, a link down, a reload, or a failed auth. No S2 rows → quiet
+visit: rewrite the board, advance the watermark, no stamp. Plane `degraded` only for BGP Down/reset, a
 non-admin link down, or a reload.
 
 **ThousandEyes.** Window is always the metadata `window`

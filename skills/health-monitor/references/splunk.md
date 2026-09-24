@@ -26,20 +26,19 @@ or reorder pipes. Do not write new SPL.
 Do not open the prior stamp; the board is the prior state.
 
 **Window.** `collected_through` set → `earliest_time` =
-`collected_through`, `latest_time` = `now`. Not set → baseline: run
-S0 first and use its `oldest` as `earliest_time`. Never `-24h`.
+`collected_through`, `latest_time` = `now`. Not set → baseline:
+`earliest_time` = `-7d`, `latest_time` = `now`. The board is state,
+not history; a week is enough to seed it. Never a rolling `-24h` on
+a later visit.
 
 ## Searches
 
-**S0 — baseline only.** Oldest event still stored.
+Both searches group by `dev` = the parsed IOS hostname, lowercased,
+or the syslog `host` address when the line carries no hostname.
+Splunk does the collapse of one device logging from two addresses;
+you do not.
 
-```
-index=<index> sourcetype=<sourcetype>
-| stats min(_time) as oldest
-| eval oldest=strftime(oldest,"%Y-%m-%dT%H:%M:%SZ")
-```
-
-**S1 — per-host bucket counts. Always.** One row per host and
+**S1 — per-device bucket counts. Always.** One row per `dev` and
 bucket. This is the `metrics` row and the `series[]` row.
 
 ```
@@ -47,19 +46,21 @@ index=<index> sourcetype=<sourcetype>
 | rex field=_raw "%(?<facility>[A-Z0-9_]+)-(?<sev>\d+)-(?<cisco_mn>[A-Z0-9_]+)"
 | rex field=_raw "\d+: (?<ios_hostname>[A-Za-z][A-Za-z0-9._-]*): \*?[A-Z][a-z]{2} +\d"
 | eval bucket=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK","link", facility="SYS" AND cisco_mn="CONFIG_I","config", facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART"),"reload", match(cisco_mn,"^IPACCESSLOG"),"acl", cisco_mn="LOGIN_SUCCESS" OR cisco_mn="AUTH_PASSED","auth_ok", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED","auth_failed", cisco_mn="NO_MATCH","ssh_no_match", isnull(cisco_mn),"unparsed", 1=1,"other")
-| stats count, max(_time) as last_at, values(ios_hostname) as ios_hostname by host, bucket
+| eval dev=lower(coalesce(ios_hostname,host))
+| stats count, max(_time) as last_at by dev, bucket
 | eval last_at=strftime(last_at,"%Y-%m-%dT%H:%M:%SZ")
-| sort host bucket
+| sort dev bucket
 ```
 
-**S2 — material subjects. Always.** One row per host, kind, subject.
-This is the `readings` row and the board row. Zero rows on a quiet
-window is normal.
+**S2 — material subjects. Always.** One row per `dev`, kind,
+subject. This is the `readings` row and the board row. Zero rows on
+a quiet window is normal.
 
 ```
 index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO" OR "%LINK-" OR "SYS-5-CONFIG_I" OR "SYS-5-RELOAD" OR "SYS-5-RESTART" OR IPACCESSLOG* OR "LOGIN_FAILED" OR "AUTH_FAILED")
 | rex field=_raw "%(?<facility>[A-Z0-9_]+)-(?<sev>\d+)-(?<cisco_mn>[A-Z0-9_]+)"
 | rex field=_raw "\d+: (?<ios_hostname>[A-Za-z][A-Za-z0-9._-]*): \*?[A-Z][a-z]{2} +\d"
+| eval dev=lower(coalesce(ios_hostname,host))
 | rex field=_raw "[Nn]eighbor (?<neighbor_ip>[0-9a-fA-F.:]+) (?<bgp_state>Up|Down|active reset|passive reset) ?(?<bgp_reason>.*)"
 | rex field=_raw "Interface (?<intf>[^,]+), changed state to (?<link_state>[a-z ]+)"
 | rex field=_raw "Configured from (?<via>\S+) by (?<user>[^\s,]+)(?: on (?<line>\S+))?(?: \((?<source_ip>[^)]+)\))?"
@@ -72,9 +73,9 @@ index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO"
 | eval state=case(kind="bgp",coalesce(bgp_state,"reset"), kind="link",link_state, kind="acl",acl_action, 1=1,null())
 | eval src=coalesce(source_ip,auth_ip)
 | eval detail=case(kind="bgp",bgp_reason, kind="reload",reload_reason, kind="config",coalesce(line,via), 1=1,null())
-| stats count, max(_time) as at, latest(state) as state, latest(src) as source_ip, latest(detail) as detail, values(ios_hostname) as ios_hostname by host, kind, subject
+| stats count, max(_time) as at, latest(state) as state, latest(src) as source_ip, latest(detail) as detail by dev, kind, subject
 | eval at=strftime(at,"%Y-%m-%dT%H:%M:%SZ")
-| sort host kind subject
+| sort dev kind subject
 ```
 
 A search that fails is retried **once**. S1 failing again →
@@ -84,37 +85,48 @@ S1 good → `partial`, readings `[]`.
 Nothing else. No `head`-sampled raw events, no `by severity`, no
 third search, no follow-up on a mnemonic you found interesting.
 
-## Resolve a host to a device
+## Resolve `dev` to a device
 
-For each S1/S2 `host`, in this order; stop at the first hit:
+For each distinct `dev`, in this order; stop at the first hit:
 
-1. `ios_hostname` equals a `prod.json` `devices[].name`
+1. `dev` equals a `prod.json` `devices[].name`
    **case-insensitively** → that name.
-2. `host` equals the address part of any
+2. `dev` is an address equal to the address part of any
    `topology-observed.json` `devices[].interfaces[].cidr` → that
    device's name.
-3. `host` equals `access.restconf.host` or `access.ssh.host` on a
+3. `dev` equals `access.restconf.host` or `access.ssh.host` on a
    `prod.json` device → that name.
-4. No match → `name` = `host` as logged, `scope` `host:<host>`,
-   `keys []`. Do not guess.
+4. No match → `name` = `dev` as logged, `keys []`, metric `scope`
+   `host:<dev>`. Do not guess.
 
-Write the `prod.json` spelling. One device is one row even when it
-logs from two addresses: sum the S1 counts, keep the latest S2 row
-per kind + subject.
+Write the `prod.json` spelling. Usually every `dev` is a hostname
+and this is a spelling lookup. Only a line logged without a
+hostname shows up as an address; if such an address resolves to a
+device that also has a hostname row, add its S1 counts to that
+device's row and, for an S2 row with the same kind + subject, keep
+whichever `at` is later.
 
 ## Build the rows
 
-**Metric row** per resolved device (from S1): `events` = sum of every
-bucket; `bgp_events` `link_events` `config_events` `reload_events`
-`acl_events` `auth_ok` `auth_failed` `ssh_no_match` = that bucket's
-count or 0. `scope` `device:<name>`.
+**Metric row** (stamp `metrics[]`) — one per resolved device from
+S1. Has `scope`, no `keys`.
 
-**Reading / board row** per S2 result row: `name`, `kind`, `subject`,
-`count`, `at`, `state`, `source_ip`, `detail` copied. `peer` (bgp
-only): the device whose `topology-observed.json` interface address
-equals `subject`, else null. `keys`: `device:<name>`; plus
-`interface:<name>/<subject>` on a link row; plus the `peer` key on a
-resolved bgp row; `[]` when the host is unresolved.
+| Column | From |
+|--------|------|
+| `at` | `checked_at` |
+| `scope` | `device:<name>` (`host:<dev>` when unresolved) |
+| `name` | resolved name |
+| `events` | sum of that device's bucket counts |
+| `bgp_events` `link_events` `config_events` `reload_events` `acl_events` `auth_ok` `auth_failed` `ssh_no_match` | that bucket's `count`, or 0 when the bucket is absent |
+
+**Reading / board row** — one per S2 row. Has `keys`, no `scope`.
+
+| Column | From |
+|--------|------|
+| `name` | resolved name |
+| `kind` `subject` `count` `at` `state` `source_ip` `detail` | copied from the S2 row (`null` where S2 has none) |
+| `peer` | bgp only: the device whose `topology-observed.json` interface address equals `subject`, else null |
+| `keys` | `device:<name>`; a link row adds `interface:<name>/<subject>`; a bgp row with `peer` adds `device:<peer>`; `[]` when unresolved |
 
 ## Diff against the board
 
@@ -153,12 +165,22 @@ their own — they are `changed` and, for failed auth and reload,
 
 ## Write
 
+Order: **board first, then stamp.** The board is a copy of the rows
+you already built; write it as soon as the rows exist so a visit
+that dies while composing notes still leaves the board for the
+next visit to diff against. Then the stamp (when due), `read_file`
+it, prune to 10, and rewrite the board once more with
+`last_visit_id` set.
+
 **Stamp** (schema `health-splunk-check`): `readings` = every S2 row +
-`note`. `note` is the opinion against the board: new subject vs
-flap vs recovered (compare `state` and `count` to the board row),
-who committed from where and whether it looks interactive (`vty`,
-an operator address) or pipeline (`console`), why it reloaded.
-Not the columns again. `unchanged` = board rows not replaced.
+`note`. `note` is one sentence against the board row: new subject
+vs flap vs recovered (compare `state` and `count` to the board
+row), who committed from where and whether it looks interactive
+(`vty`, an operator address) or pipeline (`console`), why it
+reloaded. Not the columns again. **On the baseline** there is no
+board to compare to: `note` is `"Baseline."` unless the row is a
+bgp Down/reset, a link `down`, a reload, or an auth_failed — those
+get the one sentence. `unchanged` = board rows not replaced.
 `baseline_ref` = `health/splunk/<baseline_visit_id>.json`.
 `headline`: device, subject, state or user, when; then devices
 logged and unchanged count. `concerns`: devices with a bgp
@@ -183,8 +205,8 @@ Down/reset, non-admin link down, reload, or auth_failed.
 | Item | Max |
 |------|----:|
 | Workspace reads | 4 |
-| Workspace writes | 3 (stamp, board, prune) |
-| `splunk_search` | 3 (4 on the baseline) |
+| Workspace writes | 4 (board, stamp, prune, board) |
+| `splunk_search` | 2 (plus one retry each) |
 
 ## Reply
 

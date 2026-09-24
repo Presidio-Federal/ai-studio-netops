@@ -103,10 +103,12 @@ IOS-XE board: `last_visit_id`, `last_collected_at`, `current[]`
 
 One named check. Unnamed invoke asks which and stops.
 
-**Splunk** — syslog for the index and sourcetype in metadata. Window
-is the watermark (`collected_through`), not another rolling 24 hours.
-Two fixed searches: per-host bucket counts and per-subject rollup
-(BGP neighbor, interface, config user, reload, ACL, failed auth).
+**Splunk** — syslog for the index and sourcetype in metadata. The
+first visit reads 7 days; after that the window is the watermark
+(`collected_through`), not another rolling 24 hours. Two fixed
+searches grouped by device in Splunk: per-device bucket counts and
+per-subject rollup (BGP neighbor, interface, config user, reload,
+ACL, failed auth).
 Hosts resolve to devices by parsed hostname, then by address against
 `inventory/topology-observed.json`. The board on
 `health/metadata-splunk.json` holds the last state per device, kind,
