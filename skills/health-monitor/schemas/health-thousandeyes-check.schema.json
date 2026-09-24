@@ -1,63 +1,60 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-thousandeyes-check/v2",
+  "$id": "health-thousandeyes-check/v3",
   "title": "health/thousandeyes/YYYY-MM-DDTHH-MM-SSZ.json",
-    "description": "ThousandEyes lab slip (Kind observation). One metrics row per test and agent: test name, loss, latency, jitter, rounds. vs_prior.changed is the diff against the prior stamp; empty on the first visit. path_summary is the worst test after path-vis. Do not store every round.",
+  "description": "ThousandEyes lab slip (Kind observation). Written on the first visit, when at least one test row moved materially against the board on health/metadata-thousandeyes.json (state, loss, latency, error rounds, row appeared or vanished), or when coverage is not complete. A quiet visit writes the board only. metrics: one estate row. readings: one row per test + agent that moved, same shape as a board row plus note. vs_prior.changed: one structured item per reading. Do not store rounds.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "keys",
-    "schema",
-    "source",
-    "watch_id",
-    "checked_at",
-    "ok",
-    "status",
-    "headline",
-    "window",
-    "coverage",
-    "metrics",
-    "vs_prior"
-  ],
+  "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "alerts", "vs_prior"],
   "properties": {
     "keys": {
       "type": "array",
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": { "type": "string", "const": "health-thousandeyes-check/v2" },
+    "schema": { "type": "string", "const": "health-thousandeyes-check/v3" },
     "source": { "type": "string", "const": "thousandeyes" },
-    "watch_id": {
-      "type": "string",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-    },
+    "watch_id": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
     "checked_at": { "type": "string", "minLength": 1 },
     "ok": { "type": ["boolean", "null"] },
     "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
-    "headline": { "type": "string", "minLength": 1 },
-    "window": { "type": "string", "minLength": 1 },
-    "window_start": { "type": ["string", "null"] },
-    "window_end": { "type": ["string", "null"] },
-    "prior_observation": { "type": ["string", "null"] },
+    "headline": { "type": "string", "minLength": 1, "description": "Which test, which direction, loss / latency / rounds, since when; then how many rows are unchanged and alerts firing." },
+    "window": { "type": "string", "minLength": 1, "description": "The window string passed to the MCP, e.g. 1h." },
+    "window_start": { "type": ["string", "null"], "description": "Oldest round date across the results, when known." },
+    "window_end": { "type": ["string", "null"], "description": "Newest round date across the results, when known." },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
     "concerns": {
       "type": "array",
       "maxItems": 8,
+      "description": "One test entity-ref per degraded row. Omit others.",
       "items": { "$ref": "#/$defs/entity_ref" }
     },
     "metrics": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/metric_row" }
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" },
+      "description": "One estate row: counts across every test row this visit. Nulls when collection failed."
     },
+    "readings": {
+      "type": "array",
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/reading" },
+      "description": "One row per test + agent that moved materially this visit (every row on the first visit). Empty only when coverage is not complete."
+    },
+    "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
+    "baseline_ref": { "type": ["string", "null"], "description": "health/thousandeyes/<baseline_visit_id>.json. Null on the first visit." },
     "alerts": {
       "type": ["object", "null"],
       "additionalProperties": false,
+      "required": ["firing", "items"],
+      "description": "te_list_alerts state=trigger on this window. firing 0 can mean no rule is bound to these tests; it is not proof of health.",
       "properties": {
-        "firing": { "type": "integer" },
+        "firing": { "type": ["integer", "null"] },
         "items": {
           "type": "array",
+          "maxItems": 10,
           "items": {
             "type": "object",
             "additionalProperties": false,
@@ -70,39 +67,15 @@
         }
       }
     },
-    "path_summary": {
-      "type": ["object", "null"],
-      "additionalProperties": false,
-      "description": "Standing-order path-vis on the worst test only. Omit when path-vis did not run.",
-      "required": ["test_id"],
-      "properties": {
-        "test_id": { "type": "string", "minLength": 1 },
-        "test_name": { "type": "string" },
-        "hops": { "type": ["integer", "null"] },
-        "last_error_hop": { "type": ["string", "null"] }
-      }
-    }
+    "skipped_reason": { "type": ["string", "null"] }
   },
   "$defs": {
     "entity_ref": {
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "name"],
-      "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "device",
-            "interface",
-            "site",
-            "service",
-            "test",
-            "control",
-            "incident",
-            "change"
-          ]
-        },
+        "type": { "type": "string", "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change"] },
         "name": { "type": "string", "minLength": 1 },
         "id": { "type": ["string", "null"] },
         "source_ref": { "type": ["string", "null"] }
@@ -112,18 +85,26 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["prior_watch_id", "delta", "changed"],
-      "description": "Diff against the prior stamp of this source. First visit: prior_watch_id null, delta first, changed []. Later visits: changed lists only what moved.",
       "properties": {
-        "prior_watch_id": { "type": ["string", "null"] },
+        "prior_watch_id": { "type": ["string", "null"], "description": "Board last_visit_id at the start of this visit." },
         "delta": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better"]
+          "enum": ["first", "unchanged", "worse", "better", "changed"],
+          "description": "worse: any row went ok -> degraded, loss rose, or error rounds appeared. better: only rows going degraded -> ok or loss falling. changed: latency moved or a row appeared / vanished with nothing worse. first on the baseline."
         },
-        "changed": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
-        }
+        "changed": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/change" } }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "field", "prior", "current", "at"],
+      "properties": {
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "field": { "type": "string", "enum": ["state", "loss_pct", "latency_ms_avg", "error_rounds", "row"] },
+        "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "current": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "at": { "type": "string", "minLength": 1 }
       }
     },
     "coverage": {
@@ -131,50 +112,52 @@
       "additionalProperties": false,
       "required": ["state"],
       "properties": {
-        "state": {
-          "type": "string",
-          "enum": ["complete", "unavailable", "not_requested", "partial"]
-        },
+        "state": { "type": "string", "enum": ["complete", "unavailable", "not_requested", "partial"] },
         "detail": { "type": "string" }
       }
     },
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "at",
-        "scope",
-        "name",
-        "agent",
-        "loss_pct",
-        "latency_ms_p95",
-        "latency_ms_avg",
-        "jitter_ms",
-        "ok_rounds",
-        "error_rounds",
-        "keys",
-        "note"
-      ],
+      "required": ["at", "scope", "tests", "rows", "degraded_rows", "worst_loss_pct", "worst_scope", "error_rounds", "alerts_firing"],
       "properties": {
-        "keys": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 16,
-          "description": "Every join key in this tool payload. type:name. test:<id> when the API returned a test id. device: when the payload names an inventory device.",
-          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
-        },
         "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "minLength": 1, "description": "test:<testId>/<agentName>. Stable key for the next visit's diff." },
-        "name": { "type": ["string", "null"], "description": "API testName. Null when that test returned no result." },
-        "agent": { "type": ["string", "null"], "description": "Agent name on the result. Null when the test returned no result." },
-        "server": { "type": ["string", "null"], "description": "serverIp on the result." },
-        "loss_pct": { "type": ["number", "null"], "description": "Mean loss on ok rounds this window." },
-        "latency_ms_p95": { "type": ["number", "null"] },
-        "latency_ms_avg": { "type": ["number", "null"] },
-        "jitter_ms": { "type": ["number", "null"] },
-        "ok_rounds": { "type": ["integer", "null"] },
-        "error_rounds": { "type": ["integer", "null"] },
-        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. Loss, latency, jitter, ok and error rounds, and what moved since the prior stamp. Include the path-vis hop when this row is the worst test. A sentence that only says loss rose is not a note." }
+        "scope": { "type": "string", "const": "estate" },
+        "tests": { "type": ["integer", "null"], "description": "Tests in metadata." },
+        "rows": { "type": ["integer", "null"], "description": "Test + agent rows measured this visit." },
+        "degraded_rows": { "type": ["integer", "null"] },
+        "worst_loss_pct": { "type": ["number", "null"], "description": "Highest loss_pct across rows." },
+        "worst_scope": { "type": ["string", "null"], "description": "scope of that row." },
+        "error_rounds": { "type": ["integer", "null"], "description": "Sum of error_rounds across rows." },
+        "alerts_firing": { "type": ["integer", "null"] }
+      }
+    },
+    "reading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "test_id", "name", "agent", "server", "src_device", "dst_device", "keys", "at", "state", "loss_pct", "loss_max_pct", "latency_ms_avg", "jitter_ms", "ok_rounds", "bad_rounds", "error_rounds", "error_type", "first_bad_round_at", "note"],
+      "description": "Board row plus note. Numbers come from the network result rounds in this window; state is the nurse's read of those numbers against the fixed rule in references/thousandeyes.md.",
+      "properties": {
+        "scope": { "type": "string", "pattern": "^test:[^ /]+/[^ ]+$", "description": "test:<testId>/<agentName>. Stable key for the board diff." },
+        "test_id": { "type": "string", "minLength": 1 },
+        "name": { "type": ["string", "null"], "description": "test.testName from the result payload." },
+        "agent": { "type": ["string", "null"], "description": "agent.agentName on the result rows." },
+        "server": { "type": ["string", "null"], "description": "serverIp on the result rows (the far agent's IP on agent-to-agent)." },
+        "src_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr contains the agent's IP (metadata agents[].device). Null when unresolved." },
+        "dst_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr contains server. Null when unresolved." },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }, "description": "test:<testId>, device:<src_device>, device:<dst_device>, service:<metadata service> when set." },
+        "at": { "type": "string", "minLength": 1, "description": "Newest round date." },
+        "state": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "loss_pct": { "type": ["number", "null"], "description": "Mean loss over ok rounds, whole number. Null when no ok round." },
+        "loss_max_pct": { "type": ["number", "null"], "description": "Highest loss on any ok round." },
+        "latency_ms_avg": { "type": ["number", "null"], "description": "avgLatency on the newest ok round." },
+        "jitter_ms": { "type": ["number", "null"], "description": "jitter on the newest ok round." },
+        "ok_rounds": { "type": ["integer", "null"], "description": "Rounds without errorType." },
+        "bad_rounds": { "type": ["integer", "null"], "description": "Ok rounds with loss >= 5." },
+        "error_rounds": { "type": ["integer", "null"], "description": "Rounds with errorType set." },
+        "error_type": { "type": ["string", "null"], "description": "The errorType seen most; null when none." },
+        "first_bad_round_at": { "type": ["string", "null"], "description": "Oldest round date in the window with loss >= 5 or errorType. Null when none." },
+        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: what moved, in which direction, since when, whether the reverse direction agrees. Not the columns again." }
       }
     }
   }

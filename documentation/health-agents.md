@@ -112,9 +112,18 @@ Hosts resolve to devices by parsed hostname, then by address against
 `health/metadata-splunk.json` holds the last state per device, kind,
 and subject; a window with no material event writes the board only.
 
-**ThousandEyes** — path tests: loss, latency, jitter, errors,
-alerts. Account and test ids come from metadata. Standing order on
-loss / error rounds: one path-vis on the worst direction.
+**ThousandEyes** — path tests. One network-results call per
+metadata test on the metadata `window` (default `1h`), one alerts
+call. One board row per test and agent: `state` from a fixed rule
+(majority of rounds at or above 5% loss, mean loss ≥ 5, or no ok
+round), mean and max loss, latency and jitter on the newest round,
+`first_bad_round_at`, and the devices at each end (`src_device`
+from the agent's IP, `dst_device` from `serverIp`, both through
+`inventory/topology-observed.json` cidr). The board on
+`health/metadata-thousandeyes.json` is the prior; a stamp is written
+only when state, mean loss (10 points), latency (20 ms), or error
+rounds moved, or a row appeared. No path-vis: the connector's
+path-vis result carries hop counts, not hop addresses.
 
 ## Health Device
 
@@ -225,25 +234,34 @@ BGP, link, config, reload, ACL log, or failed-auth event.
 
 ### Observation — ThousandEyes (material change)
 
-`health/thousandeyes/<stamp>.json`
+`health/thousandeyes/<stamp>.json` — written only when a row moved.
 
 ```json
 {
-  "schema": "health-thousandeyes-check/v2",
+  "schema": "health-thousandeyes-check/v3",
   "source": "thousandeyes",
-  "watch_id": "2026-08-14T16-05-00Z",
+  "watch_id": "2026-09-25T04-05-00Z",
   "status": "degraded",
-  "headline": "path-b 30/30 errored; path-a 0% loss",
+  "headline": "<a2a-test-name> <cloud-agent> -> <hq-agent> recovered: 0% on 30 of 30 ok rounds since 03:12Z, was 12% (max 34%) at the baseline; the reverse still loses 17%. 2 rows unchanged; 0 alerts firing.",
+  "window": "1h",
   "coverage": { "state": "complete" },
   "vs_prior": {
-    "prior_watch_id": "2026-08-14T15-00-00Z",
-    "delta": "worse",
-    "changed": ["test:t2 ok_rounds 12 → 0", "test:t2 error_rounds 0 → 30"]
+    "prior_watch_id": "2026-09-24T22-05-00Z",
+    "delta": "better",
+    "changed": [
+      { "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "field": "state", "prior": "degraded", "current": "ok", "at": "2026-09-25T04:00:01Z" },
+      { "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "field": "loss_pct", "prior": 12, "current": 0, "at": "2026-09-25T04:00:01Z" }
+    ]
   },
   "metrics": [
-    { "scope": "test:t1", "loss_pct": 0.0, "ok_rounds": 1, "error_rounds": 0 },
-    { "scope": "test:t2", "loss_pct": null, "ok_rounds": 0, "error_rounds": 30 }
-  ]
+    { "at": "2026-09-25T04:05:00Z", "scope": "estate", "tests": 3, "rows": 3, "degraded_rows": 1, "worst_loss_pct": 17, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 }
+  ],
+  "readings": [
+    { "scope": "test:<a2a-test-id>/<cloud-agent>", "test_id": "<a2a-test-id>", "name": "<a2a-test-name>", "agent": "<cloud-agent>", "server": "<hq-agent-ip>", "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "at": "2026-09-25T04:00:01Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 1.0, "jitter_ms": 0.4, "ok_rounds": 30, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null, "note": "Forward direction is clean for the whole window; the reverse still loses 17%, so the fix so far only helped one direction." }
+  ],
+  "unchanged": 2,
+  "baseline_ref": "health/thousandeyes/2026-09-24T22-05-00Z.json",
+  "alerts": { "firing": 0, "items": [] }
 }
 ```
 

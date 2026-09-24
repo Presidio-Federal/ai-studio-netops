@@ -4,17 +4,17 @@ Paths, Kind, catalog: **`workspace-handoff`**.
 Write schemas live in this skill. Do not `execute_command`. Do not
 invent files. Persist with `write_file` on catalog paths.
 
-One named visit writes **one** new observation and updates this
-plane’s metadata. Do not write `state/`.
+One named visit rewrites this plane’s board and writes **at most
+one** new observation. Do not write `state/`.
 
 ## When to write
 
 | File | Kind | When |
 |------|------|------|
 | `health/metadata-splunk.json` | metadata | **Every** Splunk visit: the board (`current[]`, `series[]`, `visits[]`), watermark, `last_collected_at`; `last_visit_id` only when a stamp was written. |
-| `health/metadata-thousandeyes.json` | metadata | TE ids or `last_visit_id`. |
+| `health/metadata-thousandeyes.json` | metadata | **Every** ThousandEyes visit: the board (`current[]`, `series[]`, `visits[]`), `agents[]`, `last_collected_at`; `last_visit_id` only when a stamp was written. |
 | `health/splunk/<stamp>.json` | observation | First visit, or S2 returned rows, or coverage ≠ `complete`; **never overwrite**. A quiet window writes no stamp. |
-| `health/thousandeyes/<stamp>.json` | observation | Each TE visit; **never overwrite**. |
+| `health/thousandeyes/<stamp>.json` | observation | First visit, or a row moved materially, or coverage ≠ `complete`; **never overwrite**. A quiet visit writes no stamp. |
 
 Stamp `YYYY-MM-DDTHH-MM-SSZ.json`. If that path exists, bump 1s.
 `watch_id` matches **this** visit’s new file. Never overwrite. At

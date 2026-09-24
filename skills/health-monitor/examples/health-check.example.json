@@ -1,56 +1,52 @@
 {
-  "keys": ["test:<test-id>", "device:<inventory-name>"],
-  "schema": "health-thousandeyes-check/v2",
+  "keys": ["test:<a2a-test-id>", "test:<a2a-reverse-test-id>", "test:<a2s-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+  "schema": "health-thousandeyes-check/v3",
   "source": "thousandeyes",
-  "watch_id": "2026-08-14T16-05-00Z",
-  "checked_at": "2026-08-14T16:05:00Z",
+  "watch_id": "2026-09-24T22-05-00Z",
+  "checked_at": "2026-09-24T22:05:00Z",
   "ok": true,
   "status": "degraded",
-  "headline": "One test's loss rose from 4% to 16% over 31 ok rounds, latency 1.0 ms, jitter 0.5 ms, 0 error rounds. The other test stayed at 0% loss. Path-vis recorded the hop where it failed.",
+  "headline": "<a2a-test-name> <cloud-agent> -> <hq-agent> loses 12% (max 34%) on 31 of 31 ok rounds since 21:00Z; the reverse <a2a-reverse-test-name> loses 19%; latency 1 ms both ways. <a2s-test-name> to <server-ip> is clean, 0% on 62 rounds. 3 rows measured, 0 unchanged; 0 alerts firing (no rule bound).",
   "window": "1h",
-  "coverage": { "state": "complete" },
+  "window_start": "2026-09-24T21:00:01Z",
+  "window_end": "2026-09-24T22:00:08Z",
+  "coverage": { "state": "complete", "detail": "network results for 3 metadata tests + alerts" },
   "vs_prior": {
-    "prior_watch_id": "2026-08-14T15-00-00Z",
-    "delta": "worse",
-    "changed": ["<test-name> loss_pct 4 → 16"]
+    "prior_watch_id": null,
+    "delta": "first",
+    "changed": []
   },
+  "concerns": [
+    { "type": "test", "name": "<a2a-test-name>", "id": "<a2a-test-id>", "source_ref": null },
+    { "type": "test", "name": "<a2a-reverse-test-name>", "id": "<a2a-reverse-test-id>", "source_ref": null }
+  ],
   "metrics": [
+    { "at": "2026-09-24T22:05:00Z", "scope": "estate", "tests": 3, "rows": 3, "degraded_rows": 2, "worst_loss_pct": 19, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 }
+  ],
+  "readings": [
     {
-      "at": "2026-08-14T16:05:00Z",
-      "scope": "test:<test-id>/<agent-name>",
-      "name": "<test-name>",
-      "agent": "<agent-name>",
-      "server": "<server>",
-      "keys": ["test:<test-id>", "device:<inventory-name>"],
-      "note": "Loss rose 4% to 16% since the prior stamp. 31 ok rounds, 0 error rounds, mean latency 1.0 ms, jitter 0.5 ms. Path-vis last hop is where the loss showed up. This path got worse.",
-      "loss_pct": 16.0,
-      "latency_ms_p95": null,
-      "latency_ms_avg": 1.0,
-      "jitter_ms": 0.5,
-      "ok_rounds": 31,
-      "error_rounds": 0
+      "scope": "test:<a2a-test-id>/<cloud-agent>", "test_id": "<a2a-test-id>", "name": "<a2a-test-name>", "agent": "<cloud-agent>", "server": "<hq-agent-ip>",
+      "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+      "at": "2026-09-24T22:00:01Z", "state": "degraded", "loss_pct": 12, "loss_max_pct": 34, "latency_ms_avg": 1.0, "jitter_ms": 0.5,
+      "ok_rounds": 31, "bad_rounds": 24, "error_rounds": 0, "error_type": null, "first_bad_round_at": "2026-09-24T21:00:01Z",
+      "note": "Baseline. Loss on 24 of 31 rounds across the whole window, never an error round: packets drop on the path, the path itself is up. Latency 1 ms says this is not congestion. Reverse direction sees the same."
     },
     {
-      "at": "2026-08-14T16:05:00Z",
-      "scope": "test:<test-id>/<agent-name>",
-      "name": "<test-name>",
-      "agent": "<agent-name>",
-      "server": "<server>",
-      "keys": ["test:<test-id>"],
-      "note": "Loss stayed 0% over 31 ok rounds, latency 1.0 ms, jitter 0.4 ms. This test did not move and does not explain the other test's loss.",
-      "loss_pct": 0.0,
-      "latency_ms_p95": null,
-      "latency_ms_avg": 1.0,
-      "jitter_ms": 0.4,
-      "ok_rounds": 31,
-      "error_rounds": 0
+      "scope": "test:<a2a-reverse-test-id>/<hq-agent>", "test_id": "<a2a-reverse-test-id>", "name": "<a2a-reverse-test-name>", "agent": "<hq-agent>", "server": "<cloud-agent-ip>",
+      "src_device": "<hq-edge>", "dst_device": "<cloud-edge>", "keys": ["test:<a2a-reverse-test-id>", "device:<hq-edge>", "device:<cloud-edge>"],
+      "at": "2026-09-24T22:00:01Z", "state": "degraded", "loss_pct": 19, "loss_max_pct": 32, "latency_ms_avg": 1.0, "jitter_ms": 0.5,
+      "ok_rounds": 31, "bad_rounds": 27, "error_rounds": 0, "error_type": null, "first_bad_round_at": "2026-09-24T21:00:01Z",
+      "note": "Baseline. Worse than the forward direction (19% vs 12%) but the same shape: steady loss, no errors, 1 ms. Both directions bad points at the shared path between <hq-edge> and <cloud-edge>, not one agent."
+    },
+    {
+      "scope": "test:<a2s-test-id>/<cloud-agent>", "test_id": "<a2s-test-id>", "name": "<a2s-test-name>", "agent": "<cloud-agent>", "server": "<server-ip>",
+      "src_device": "<cloud-edge>", "dst_device": "<cloud-edge>", "keys": ["test:<a2s-test-id>", "device:<cloud-edge>"],
+      "at": "2026-09-24T22:00:08Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 2.3, "jitter_ms": 0.6,
+      "ok_rounds": 62, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null,
+      "note": "Baseline. Clean: 0% on 62 rounds, 2 ms. Source and server sit behind the same edge, so this row says the cloud agent and its LAN are fine; the loss above is beyond <cloud-edge>."
     }
   ],
-  "alerts": { "firing": 0, "items": [] },
-  "path_summary": {
-    "test_id": "<test-id>",
-    "test_name": "<test-name>",
-    "hops": 4,
-    "last_error_hop": "<hop>"
-  }
+  "unchanged": 0,
+  "baseline_ref": null,
+  "alerts": { "firing": 0, "items": [] }
 }

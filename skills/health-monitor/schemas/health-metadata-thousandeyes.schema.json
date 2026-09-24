@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-metadata-thousandeyes/v1",
+  "$id": "health-metadata-thousandeyes/v2",
   "title": "health/metadata-thousandeyes.json",
-  "description": "ThousandEyes lookup inventory (Kind metadata). Health Monitor TE visit only. Not the five-field envelope.",
+  "description": "ThousandEyes plane board (Kind metadata). Health Monitor ThousandEyes visit only. Rewritten every ThousandEyes visit, quiet or not. Carries the lookup (account_id, window, tests[], agents[]), last_visit_id (last stamp), last_collected_at (last completed collection), and the board: current[] last-known row per test + agent, series[] one estate metric row per visit, visits[]. Not the five-field envelope.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "updated_at", "source_agent", "thousandeyes"],
@@ -10,47 +10,134 @@
     "keys": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
+      "description": "Union of every key on current[] and tests[]."
     },
-    "schema": { "type": "string", "const": "health-metadata-thousandeyes/v1" },
+    "schema": { "type": "string", "const": "health-metadata-thousandeyes/v2" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-monitor" },
     "thousandeyes": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tests"],
+      "required": ["account_id", "window", "tests", "agents", "last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits"],
       "properties": {
         "account_id": { "type": "string", "minLength": 1 },
         "account_name": { "type": ["string", "null"] },
-        "window": { "type": "string" },
-        "result_type": { "type": "string" },
-        "last_visit_id": {
-          "type": ["string", "null"],
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-        },
-        "last_collected_at": { "type": ["string", "null"] },
+        "window": { "type": "string", "minLength": 1, "description": "Window string passed to te_get_test_results and te_list_alerts every visit. Default 1h. An operator may set it; the nurse does not change it." },
+        "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
+        "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
+        "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
         "tests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["test_id", "test_name", "type", "service"],
+            "properties": {
+              "test_id": { "type": "string", "minLength": 1 },
+              "test_name": { "type": ["string", "null"] },
+              "type": { "type": ["string", "null"], "description": "agent-to-agent, agent-to-server, ... from the test listing." },
+              "service": { "type": ["string", "null"], "description": "A service name an operator bound to this test. The nurse never sets it; copy it through. Adds service:<name> to that row's keys." }
+            }
+          }
+        },
+        "agents": {
           "type": "array",
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["test_id"],
+            "required": ["agent_id", "agent_name", "ip", "device"],
             "properties": {
-              "test_id": { "type": "string", "minLength": 1 },
-              "test_name": { "type": ["string", "null"] }
+              "agent_id": { "type": "string", "minLength": 1 },
+              "agent_name": { "type": "string", "minLength": 1 },
+              "ip": { "type": ["string", "null"], "description": "The agent's private ipAddresses entry that falls inside an inventory device's interface cidr; else its first ipAddresses entry." },
+              "device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr (inventory/topology-observed.json) contains ip. Null when the topology file is absent or no cidr matches." }
             }
-          }
+          },
+          "description": "Resolved on the baseline (one te_agents_get_agents) and again only when a result names an agent not listed here or topology-observed.json is newer than the last resolve."
+        },
+        "current": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "Last-known row per test + agent. A visit replaces every row it measured and keeps rows for tests it could not read."
+        },
+        "series": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/metric_row" },
+          "description": "One estate row per visit, oldest first."
+        },
+        "visits": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/visit_row" }
         }
       }
     },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
+      "properties": { "thousandeyes": { "type": "string", "enum": ["user", "discovered"] } }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "test_id", "name", "agent", "server", "src_device", "dst_device", "keys", "at", "state", "loss_pct", "loss_max_pct", "latency_ms_avg", "jitter_ms", "ok_rounds", "bad_rounds", "error_rounds", "error_type", "first_bad_round_at"],
+      "description": "Same shape as a stamp reading, without note.",
       "properties": {
-        "thousandeyes": {
-          "type": "string",
-          "enum": ["user", "discovered"]
-        }
+        "scope": { "type": "string", "pattern": "^test:[^ /]+/[^ ]+$" },
+        "test_id": { "type": "string", "minLength": 1 },
+        "name": { "type": ["string", "null"] },
+        "agent": { "type": ["string", "null"] },
+        "server": { "type": ["string", "null"] },
+        "src_device": { "type": ["string", "null"] },
+        "dst_device": { "type": ["string", "null"] },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "at": { "type": "string", "minLength": 1 },
+        "state": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "loss_pct": { "type": ["number", "null"] },
+        "loss_max_pct": { "type": ["number", "null"] },
+        "latency_ms_avg": { "type": ["number", "null"] },
+        "jitter_ms": { "type": ["number", "null"] },
+        "ok_rounds": { "type": ["integer", "null"] },
+        "bad_rounds": { "type": ["integer", "null"] },
+        "error_rounds": { "type": ["integer", "null"] },
+        "error_type": { "type": ["string", "null"] },
+        "first_bad_round_at": { "type": ["string", "null"] }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "tests", "rows", "degraded_rows", "worst_loss_pct", "worst_scope", "error_rounds", "alerts_firing"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "estate" },
+        "tests": { "type": ["integer", "null"] },
+        "rows": { "type": ["integer", "null"] },
+        "degraded_rows": { "type": ["integer", "null"] },
+        "worst_loss_pct": { "type": ["number", "null"] },
+        "worst_scope": { "type": ["string", "null"] },
+        "error_rounds": { "type": ["integer", "null"] },
+        "alerts_firing": { "type": ["integer", "null"] }
+      }
+    },
+    "visit_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "window"],
+      "properties": {
+        "watch_id": { "type": ["string", "null"] },
+        "checked_at": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
+        "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "stamp_written": { "type": "boolean" },
+        "window": { "type": "string", "minLength": 1 }
       }
     }
   }

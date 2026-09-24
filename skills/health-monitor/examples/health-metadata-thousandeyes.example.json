@@ -1,17 +1,51 @@
 {
-  "keys": ["test:<test-id>"],
-  "schema": "health-metadata-thousandeyes/v1",
-  "updated_at": "2026-08-14T16:05:00Z",
+  "keys": ["test:<a2a-test-id>", "test:<a2a-reverse-test-id>", "test:<a2s-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+  "schema": "health-metadata-thousandeyes/v2",
+  "updated_at": "2026-09-25T04:05:00Z",
   "source_agent": "health-monitor",
   "thousandeyes": {
-    "account_id": "0",
-    "account_name": "example-account",
+    "account_id": "<aid>",
+    "account_name": "<account-name>",
     "window": "1h",
-    "result_type": "network",
-    "last_visit_id": "2026-08-14T16-05-00Z",
-    "last_collected_at": "2026-08-14T16:05:00Z",
+    "last_visit_id": "2026-09-25T04-05-00Z",
+    "last_collected_at": "2026-09-25T04:05:00Z",
+    "baseline_visit_id": "2026-09-24T22-05-00Z",
     "tests": [
-      { "test_id": "<test-id>", "test_name": "<test-name>" }
+      { "test_id": "<a2a-test-id>", "test_name": "<a2a-test-name>", "type": "agent-to-agent", "service": null },
+      { "test_id": "<a2a-reverse-test-id>", "test_name": "<a2a-reverse-test-name>", "type": "agent-to-agent", "service": null },
+      { "test_id": "<a2s-test-id>", "test_name": "<a2s-test-name>", "type": "agent-to-server", "service": null }
+    ],
+    "agents": [
+      { "agent_id": "<cloud-agent-id>", "agent_name": "<cloud-agent>", "ip": "<cloud-agent-ip>", "device": "<cloud-edge>" },
+      { "agent_id": "<hq-agent-id>", "agent_name": "<hq-agent>", "ip": "<hq-agent-ip>", "device": "<hq-edge>" }
+    ],
+    "current": [
+      {
+        "scope": "test:<a2a-test-id>/<cloud-agent>", "test_id": "<a2a-test-id>", "name": "<a2a-test-name>", "agent": "<cloud-agent>", "server": "<hq-agent-ip>",
+        "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+        "at": "2026-09-25T04:00:01Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 1.0, "jitter_ms": 0.4,
+        "ok_rounds": 30, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null
+      },
+      {
+        "scope": "test:<a2a-reverse-test-id>/<hq-agent>", "test_id": "<a2a-reverse-test-id>", "name": "<a2a-reverse-test-name>", "agent": "<hq-agent>", "server": "<cloud-agent-ip>",
+        "src_device": "<hq-edge>", "dst_device": "<cloud-edge>", "keys": ["test:<a2a-reverse-test-id>", "device:<hq-edge>", "device:<cloud-edge>"],
+        "at": "2026-09-25T04:00:01Z", "state": "degraded", "loss_pct": 17, "loss_max_pct": 30, "latency_ms_avg": 1.0, "jitter_ms": 0.5,
+        "ok_rounds": 30, "bad_rounds": 25, "error_rounds": 0, "error_type": null, "first_bad_round_at": "2026-09-25T03:00:01Z"
+      },
+      {
+        "scope": "test:<a2s-test-id>/<cloud-agent>", "test_id": "<a2s-test-id>", "name": "<a2s-test-name>", "agent": "<cloud-agent>", "server": "<server-ip>",
+        "src_device": "<cloud-edge>", "dst_device": "<cloud-edge>", "keys": ["test:<a2s-test-id>", "device:<cloud-edge>"],
+        "at": "2026-09-24T22:00:08Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 2.3, "jitter_ms": 0.6,
+        "ok_rounds": 62, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null
+      }
+    ],
+    "series": [
+      { "at": "2026-09-24T22:05:00Z", "scope": "estate", "tests": 3, "rows": 3, "degraded_rows": 2, "worst_loss_pct": 19, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 },
+      { "at": "2026-09-25T04:05:00Z", "scope": "estate", "tests": 3, "rows": 2, "degraded_rows": 1, "worst_loss_pct": 17, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 }
+    ],
+    "visits": [
+      { "watch_id": "2026-09-24T22-05-00Z", "checked_at": "2026-09-24T22:05:00Z", "status": "degraded", "coverage": "complete", "delta": "first", "stamp_written": true, "window": "1h" },
+      { "watch_id": "2026-09-25T04-05-00Z", "checked_at": "2026-09-25T04:05:00Z", "status": "degraded", "coverage": "partial", "delta": "better", "stamp_written": true, "window": "1h" }
     ]
   },
   "provenance": { "thousandeyes": "discovered" }

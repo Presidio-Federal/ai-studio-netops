@@ -1,6 +1,6 @@
 # Splunk visit — syslog board
 
-Use on a **Splunk visit** only. ThousandEyes: `references/demo-scope.md`.
+Use on a **Splunk visit** only. ThousandEyes: `references/thousandeyes.md`.
 Tool is `splunk_search`. `index` and `sourcetype` come from
 `health/metadata-splunk.json`; substitute them into every search.
 Never `index=*`. Never put `earliest=` in SPL — the window goes in

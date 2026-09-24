@@ -1,52 +1,37 @@
 {
-  "keys": ["test:<test-id>", "device:<inventory-name>"],
-  "schema": "health-thousandeyes-check/v2",
+  "keys": ["test:<a2a-test-id>", "test:<a2a-reverse-test-id>", "test:<a2s-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+  "schema": "health-thousandeyes-check/v3",
   "source": "thousandeyes",
-  "watch_id": "2026-08-19T12-00-00Z",
-  "checked_at": "2026-08-19T12:00:00Z",
+  "watch_id": "2026-09-25T04-05-00Z",
+  "checked_at": "2026-09-25T04:05:00Z",
   "ok": true,
   "status": "degraded",
-  "headline": "First visit, no prior stamp. One test shows 14.5% mean loss over 10 ok rounds, latency 12 ms, jitter 1.2 ms. The other test returned no result, so that direction is unknown.",
+  "headline": "<a2a-test-name> <cloud-agent> -> <hq-agent> recovered: 0% on 30 of 30 ok rounds since 03:12Z, was 12% (max 34%) at the baseline; the reverse <a2a-reverse-test-name> still loses 17%, so the plane stays degraded. <a2s-test-name> returned no rounds this window (result call failed once, not retried); its board row is kept. 2 rows unchanged (reverse direction still 17%, not moved enough to stamp); 0 alerts firing.",
   "window": "1h",
-  "coverage": {
-    "state": "partial",
-    "detail": "one metadata test returned network results; the other timed out"
-  },
+  "window_start": "2026-09-25T03:00:01Z",
+  "window_end": "2026-09-25T04:00:01Z",
+  "coverage": { "state": "partial", "detail": "2 of 3 metadata tests returned results; <a2s-test-id> network call failed" },
   "vs_prior": {
-    "prior_watch_id": null,
-    "delta": "first",
-    "changed": []
+    "prior_watch_id": "2026-09-24T22-05-00Z",
+    "delta": "better",
+    "changed": [
+      { "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "field": "state", "prior": "degraded", "current": "ok", "at": "2026-09-25T04:00:01Z" },
+      { "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "field": "loss_pct", "prior": 12, "current": 0, "at": "2026-09-25T04:00:01Z" }
+    ]
   },
   "metrics": [
+    { "at": "2026-09-25T04:05:00Z", "scope": "estate", "tests": 3, "rows": 2, "degraded_rows": 1, "worst_loss_pct": 17, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 }
+  ],
+  "readings": [
     {
-      "at": "2026-08-19T12:00:00Z",
-      "scope": "test:<test-id>/<agent-name>",
-      "name": "<test-name>",
-      "agent": "<agent-name>",
-      "server": "<server>",
-      "keys": ["test:<test-id>", "device:<inventory-name>"],
-      "note": "First visit, no prior stamp. Mean loss 14.5% over 10 ok rounds, latency 12 ms, jitter 1.2 ms, 0 error rounds. The path is already losing traffic.",
-      "loss_pct": 14.5,
-      "latency_ms_p95": null,
-      "latency_ms_avg": 12.0,
-      "jitter_ms": 1.2,
-      "ok_rounds": 10,
-      "error_rounds": 0
-    },
-    {
-      "at": "2026-08-19T12:00:00Z",
-      "scope": "test:<test-id>/<agent-name>",
-      "name": "<test-name>",
-      "agent": null,
-      "keys": ["test:<test-id>"],
-      "note": "This test returned no result, so loss, latency, and jitter are unknown. Do not treat the missing direction as healthy.",
-      "loss_pct": null,
-      "latency_ms_p95": null,
-      "latency_ms_avg": null,
-      "jitter_ms": null,
-      "ok_rounds": null,
-      "error_rounds": null
+      "scope": "test:<a2a-test-id>/<cloud-agent>", "test_id": "<a2a-test-id>", "name": "<a2a-test-name>", "agent": "<cloud-agent>", "server": "<hq-agent-ip>",
+      "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+      "at": "2026-09-25T04:00:01Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 1.0, "jitter_ms": 0.4,
+      "ok_rounds": 30, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null,
+      "note": "Forward direction is clean for the whole window; the reverse still loses 17%, so the fix so far only helped one direction."
     }
   ],
+  "unchanged": 2,
+  "baseline_ref": "health/thousandeyes/2026-09-24T22-05-00Z.json",
   "alerts": { "firing": 0, "items": [] }
 }

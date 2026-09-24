@@ -1,7 +1,7 @@
-# Health metadata — ids and Splunk window
+# Health metadata — ids, window, boards
 
-Splunk lookup is `health/metadata-splunk.json`. ThousandEyes lookup
-is `health/metadata-thousandeyes.json`. **Not** the five-field
+Splunk board is `health/metadata-splunk.json`. ThousandEyes board is
+`health/metadata-thousandeyes.json`. **Not** the five-field
 envelope. Workspace first. Do not put live index names or test ids
 in the prompt or this skill. Do not read or write the other source’s
 metadata on this visit.
@@ -9,15 +9,15 @@ metadata on this visit.
 ## Read before telemetry MCP
 
 1. `read_file` this visit’s metadata file if it exists.
-2. Splunk: the metadata file **is** the board (`splunk.current[]`);
-   do not open the prior stamp. ThousandEyes: if `last_visit_id` is
-   set, that stamp is the prior observation.
+2. The metadata file **is** the board (`splunk.current[]` /
+   `thousandeyes.current[]`); do not open the prior stamp.
 3. Only if ids are still incomplete: resolve (below). Do not list
    when metadata already has the facts for this visit.
 
 **Splunk visit** needs `splunk.index` and `splunk.sourcetype`.
-**ThousandEyes visit** needs `thousandeyes.account_id` and at least
-one `tests[].test_id`.
+**ThousandEyes visit** needs `thousandeyes.account_id`, `window`,
+and at least one `tests[].test_id`. `agents[]` empty is fine — call
+A in `references/thousandeyes.md` fills it.
 
 Do not collect another health source. Do not copy PAT into metadata.
 
@@ -43,10 +43,12 @@ Do not collect another health source. Do not copy PAT into metadata.
 Pass the window as MCP `earliest_time` / `latest_time`. Do not put
 `earliest=` in SPL.
 
-ThousandEyes later visits use `thousandeyes.window` or `1h`. The
-first ThousandEyes visit (no `last_visit_id`) uses `7d`. If that
-window is rejected, use `24h`. If that is rejected, use the
-metadata window. Not a Splunk watermark.
+## ThousandEyes window
+
+Every ThousandEyes visit, first or later, passes
+`thousandeyes.window` (default `1h`; write `1h` when the field is
+missing). No `7d`, no `24h`, no watermark: the board holds the
+state, the window is how many rounds the state is read from.
 
 ## Resolve — incomplete for this visit only
 
@@ -63,12 +65,13 @@ if several, stop and write what you listed is missing.
 
 **ThousandEyes** missing `account_id` or tests:
 `te_manage_account_groups(action="list")` then `te_tests_get_tests`
-(or `te_tests_manage_agent_agent` list) once. One account and a
-clear path-test set → write them (`provenance: discovered`) and
-collect. Several accounts or no obvious tests → show options and
-ask. No human: one account + tests you will watch, write and run;
-ambiguous → stop. Do not list agents. Do not copy ids out of this
-skill.
+once. Keep enabled tests of type `agent-to-agent` and
+`agent-to-server`; skip `api`, `bgp`, disabled tests. Write each as
+`{test_id, test_name, type, service: null}` (`provenance:
+discovered`) and collect. Several accounts → show options and ask.
+No human: one account → write and run; several → stop. Do not copy
+ids out of this skill. `service` is set by an operator, never by
+you.
 
 Human ask shape (after you have options):
 
@@ -85,7 +88,8 @@ Do not create indexes, dashboards, or tests. Do not `index=*`.
 
 Splunk: `write_file` `health/metadata-splunk.json` **every visit**
 (it is the board), after resolve and again at the end with the
-watermark, `current[]`, `series[]`, `visits[]`. ThousandEyes:
-`write_file` `health/metadata-thousandeyes.json` after resolve and
-after every successful stamp write (`last_visit_id`). Do not copy
-the other source through.
+watermark, `current[]`, `series[]`, `visits[]`. ThousandEyes: `write_file`
+`health/metadata-thousandeyes.json` **every visit** (it is the
+board), after resolve and again at the end with `current[]`,
+`series[]`, `visits[]`, `agents[]`. Do not copy the other source
+through.
