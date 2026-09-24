@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.8.4"
-description: "v1.8.4 — IOS-XE device health visit. GET-only RESTCONF. The first visit writes every admin-up interface and BGP neighbor the device returned, with the nurse's note. Later visits diff those rows."
+version: "1.9.0"
+description: "v1.9.0 — IOS-XE device health visit. GET-only RESTCONF. Diffs against the board on health/metadata-iosxe.json; a quiet visit writes the board only. Stamps carry moved/abnormal rows, structured deltas, ACL and CDP probe results, observed edges."
 ---
 
 # Health Device skill
@@ -10,13 +10,15 @@ One IOS-XE GET visit per conversation. Tool is `iosxe_restconf_get`
 with `port` from `inventory/prod.json`. Do not load `cisco-iosxe-mcp`
 write or YANG-discovery workflows. Do not call other health MCPs.
 
-Write `health/iosxe/<stamp>.json`. Write
-`health/metadata-iosxe.json` with `last_visit_id` and
-`last_collected_at` only. Do not write `state/`. Do not read other
-planes. Do not list `health/iosxe/` to find a prior stamp. Trend is
-`vs_prior` vs `health/iosxe/<last_visit_id>.json`. If that id is
-missing: `delta` `first`. Rank from `prod.json` only. Never put a
-port or host in the metadata file.
+Every visit rewrites `health/metadata-iosxe.json` — the **board**:
+`current[]` (last-known state of every admin-up interface, BGP
+neighbor, and ACL), `series[]`, `visits[]`, `relations[]`,
+`last_collected_at`, `last_visit_id`, `baseline_visit_id`. Write
+`health/iosxe/<stamp>.json` only when there is no board, when
+something material moved against `current[]`, or when coverage is
+not complete. Do not write `state/`. Do not read other planes. Do
+not list `health/iosxe/` to find a prior stamp. Rank from
+`prod.json` only. Never put a port or host in the metadata file.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
@@ -33,7 +35,8 @@ any metadata file except `health/metadata-iosxe.json`, other
 Unavailable collection: counts **null**, never `0`. Do not write
 under `automations/schedules/`. Do **not** call `execute_command`. Do
 not write scripts. Do not stamp `expires_at`. Do not emit
-recommendations.
+recommendations. Do not write `asserted` relations; `observed` only,
+from a CDP/LLDP neighbor or a resolved BGP peer.
 
 ## Files
 
@@ -43,8 +46,8 @@ run a validator. Persist with `write_file` on catalog paths.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `health/metadata-iosxe.json` | metadata | `last_visit_id` and `last_collected_at` only. No port, no host. |
-| `health/iosxe/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics` and `vs_prior`. Optional `concerns[]`: one device entity-ref when a metric on that device is non-zero. |
+| `health/metadata-iosxe.json` | metadata | Board. Every visit. No port, no host. |
+| `health/iosxe/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics`, `readings` (moved/abnormal rows; first visit all), `unchanged`, `baseline_ref`, `vs_prior` (structured `changed[]`). Optional `relations[]` (new edges), `concerns[]`. |
 
 Use exactly: `references/watch.md`, `references/iosxe.md`,
 `references/workspace-contract.md`,
@@ -59,26 +62,27 @@ Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
 **Visit — first tools:** `read_file` `inventory/prod.json` before any
-RESTCONF. Then `health/metadata-iosxe.json` if it exists. If
-`iosxe.last_visit_id` is set, `read_file`
-`health/iosxe/<last_visit_id>.json` and compare. Read the new
-observation back. Then write `last_visit_id` to this visit’s
-`watch_id`. Never overwrite a timestamped file. Never write a port
-or host into metadata.
+RESTCONF. Then `inventory/infra-sot.json` if it exists (peer
+resolution only). Then `health/metadata-iosxe.json` if it exists;
+its `iosxe.current[]` is what you diff against. Do not open the
+prior stamp unless the board has no `current[]`. Collect four GETs
+per ranked device (interfaces, BGP, ACL probe, CDP probe). Decide
+stamp or quiet. Write the stamp if due and read it back. Rewrite the
+board. Never overwrite a timestamped file.
 
 ## Canonical top-level keys
 
-Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. An interface key is always `interface:<device>/<interface>`. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 
-READ_PROD → READ_METADATA → READ_PRIOR_STAMP → PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK → WRITE_METADATA → STOP
+READ_PROD → READ_SOT → READ_BOARD → COLLECT → DIFF → DECIDE → [WRITE_CHECK → READ_BACK → PRUNE] → WRITE_BOARD → STOP
 
 On collection failure: still write that check (`unavailable`, null
-facts).
+facts) and the board (prior rows kept).
 
 ## Reference routing
 
-- Visit steps, budget: `references/watch.md`
-- IOS-XE GETs + ranking: `references/iosxe.md`
-- Paths: `workspace-handoff`; produce: `references/workspace-contract.md`
+- Visit steps, budget, reply: `references/watch.md`
+- IOS-XE GETs, field mapping, what is material: `references/iosxe.md`
+- Paths; when to write: `workspace-handoff`; `references/workspace-contract.md`

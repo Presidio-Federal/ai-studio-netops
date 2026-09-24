@@ -1,57 +1,80 @@
 {
-  "keys": ["device:<inventory-name>", "interface:<interface>"],
-  "schema": "health-iosxe-check/v2",
+  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
+  "schema": "health-iosxe-check/v3",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-00Z",
   "checked_at": "2026-08-31T16:00:00Z",
-  "ok": true,
-  "status": "ok",
-  "headline": "Nothing moved since the prior stamp. Admin-up interfaces are still if-oper-state-ready with 0 errors, 0 discards, and 0 flaps. The BGP neighbor is still fsm-established with 3 prefixes, so this device does not explain a path problem.",
+  "ok": false,
+  "status": "degraded",
+  "headline": "<wan-device> <wan-interface> in_discards 0 -> 412 and num_flaps 0 -> 2 since 2026-08-31T15:41:07Z; its CDP neighbor <edge-device> <edge-interface> is still if-oper-state-ready. BGP to <edge-device> still fsm-established, prefixes 3 -> 3. 41 other board rows unchanged; ACL GET 204 on both devices.",
   "window": "live",
   "coverage": {
     "state": "complete",
-    "detail": "RESTCONF GET on ranked wan/edge; ACL not requested (no discards/errors)"
+    "detail": "RESTCONF GET interfaces-oper, bgp AF, acl-oper (204), cdp-neighbor-details on 2 ranked devices"
   },
   "vs_prior": {
     "prior_watch_id": "2026-08-31T10-00-00Z",
-    "delta": "unchanged",
-    "changed": []
+    "delta": "worse",
+    "changed": [
+      {
+        "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
+        "field": "in_discards",
+        "prior": 0,
+        "current": 412,
+        "at": "2026-08-31T16:00:00Z"
+      },
+      {
+        "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
+        "field": "num_flaps",
+        "prior": 0,
+        "current": 2,
+        "at": "2026-08-31T15:41:07Z"
+      }
+    ]
   },
   "metrics": [
     {
       "at": "2026-08-31T16:00:00Z",
-      "scope": "device:<inventory-name>",
+      "scope": "device:<wan-device>",
+      "oper_not_ready": 0,
+      "bgp_not_established": 0,
+      "in_errors": 0,
+      "in_discards": 412,
+      "num_flaps": 2,
+      "acls": 0
+    },
+    {
+      "at": "2026-08-31T16:00:00Z",
+      "scope": "device:<edge-device>",
       "oper_not_ready": 0,
       "bgp_not_established": 0,
       "in_errors": 0,
       "in_discards": 0,
-      "num_flaps": 0
+      "num_flaps": 0,
+      "acls": 0
     }
   ],
   "readings": [
     {
-      "name": "<inventory-name>",
+      "name": "<wan-device>",
       "kind": "interface",
-      "subject": "<interface>",
-      "keys": ["device:<inventory-name>", "interface:<interface>"],
-      "note": "Interface still if-oper-state-ready. In errors 0, discards 0, flaps 0. None of those moved since the prior stamp.",
+      "subject": "<wan-interface>",
+      "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
       "state": "if-oper-state-ready",
       "in_errors": 0,
-      "in_discards": 0,
-      "num_flaps": 0,
-      "prefixes_received": null
-    },
-    {
-      "name": "<inventory-name>",
-      "kind": "bgp",
-      "subject": "<neighbor-id>",
-      "keys": ["device:<inventory-name>"],
-      "note": "BGP neighbor still fsm-established with 3 prefixes received. State did not leave established since the prior stamp.",
-      "state": "fsm-established",
-      "in_errors": null,
-      "in_discards": null,
-      "num_flaps": null,
-      "prefixes_received": 3
+      "in_discards": 412,
+      "in_crc_errors": 0,
+      "num_flaps": 2,
+      "input_acl": null,
+      "output_acl": null,
+      "neighbor": "interface:<edge-device>/<edge-interface>",
+      "note": "Up now, but flapped twice (device last-change 15:41:07Z) and has dropped 412 inbound frames since the 10:00 visit with 0 CRC errors, so this looks like a transient link or far-end event, not a bad cable. The far end <edge-device> <edge-interface> shows no errors. No ACL is bound, so the discards are not policy."
     }
+  ],
+  "unchanged": 41,
+  "baseline_ref": "health/iosxe/2026-08-30T09-00-00Z.json",
+  "relations": [],
+  "concerns": [
+    { "type": "device", "name": "<wan-device>", "source_ref": "inventory/prod.json" }
   ]
 }

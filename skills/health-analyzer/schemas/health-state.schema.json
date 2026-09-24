@@ -258,7 +258,7 @@
         "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
         "trend": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better"]
+          "enum": ["first", "unchanged", "worse", "better", "changed"]
         },
         "trend_note": {
           "type": "string",
@@ -310,7 +310,7 @@
         "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
         "trend": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better"]
+          "enum": ["first", "unchanged", "worse", "better", "changed"]
         },
         "trend_note": {
           "type": "string",

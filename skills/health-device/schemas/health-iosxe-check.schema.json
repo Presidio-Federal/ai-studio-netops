@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-iosxe-check/v2",
+  "$id": "health-iosxe-check/v3",
   "title": "health/iosxe/YYYY-MM-DDTHH-MM-SSZ.json",
-    "description": "IOS-XE lab slip (Kind observation). metrics are per-device counts. readings are each admin-up interface and each BGP neighbor (name, subject, state). The next visit diffs readings. vs_prior.changed is only what moved; empty on the first visit. No RESTCONF body.",
+  "description": "IOS-XE lab slip (Kind observation). Written on the first visit, when something material moved against health/metadata-iosxe.json current[], or when coverage is not complete. metrics are per-device counts. readings are only the rows that moved or are abnormal this visit; the first visit writes every row and becomes baseline_ref. unchanged counts the board rows not in readings. vs_prior.changed is structured: one item per field that moved. relations lists edges new this visit. No RESTCONF body.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,6 +17,9 @@
     "window",
     "coverage",
     "metrics",
+    "readings",
+    "unchanged",
+    "baseline_ref",
     "vs_prior"
   ],
   "properties": {
@@ -25,7 +28,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": { "type": "string", "const": "health-iosxe-check/v2" },
+    "schema": { "type": "string", "const": "health-iosxe-check/v3" },
     "source": { "type": "string", "const": "iosxe" },
     "watch_id": {
       "type": "string",
@@ -34,9 +37,8 @@
     "checked_at": { "type": "string", "minLength": 1 },
     "ok": { "type": ["boolean", "null"] },
     "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
-    "headline": { "type": "string", "minLength": 1 },
+    "headline": { "type": "string", "minLength": 1, "description": "Quotes measurements: which subject, which field, prior -> current." },
     "window": { "type": "string", "minLength": 1 },
-    "prior_observation": { "type": ["string", "null"] },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
     "concerns": {
@@ -53,8 +55,22 @@
     "readings": {
       "type": "array",
       "maxItems": 64,
-      "description": "Admin-up interfaces and BGP neighbors measured this visit. Same name spelling as inventory. The next visit diffs state, errors, and prefixes. Omit admin-down idle interfaces.",
+      "description": "First visit: every admin-up interface, every BGP neighbor, every ACL (and one acl row with present false per device that returned 204). Later visits: only rows whose material field moved since current[], plus rows that are abnormal now (oper not ready, BGP not established, errors/discards/flaps increased). Not the whole estate.",
       "items": { "$ref": "#/$defs/reading" }
+    },
+    "unchanged": {
+      "type": ["integer", "null"],
+      "description": "Count of board rows (metadata current[]) that are not in readings. 0 on the first visit. null when coverage is unavailable."
+    },
+    "baseline_ref": {
+      "type": ["string", "null"],
+      "description": "health/iosxe/<baseline_visit_id>.json — the first-visit stamp that listed every subject. Null on the first visit itself."
+    },
+    "relations": {
+      "type": "array",
+      "maxItems": 32,
+      "description": "Observed edges that are new this visit (a neighbor that appeared, a BGP peer that resolved for the first time). The full current edge set is on metadata relations[].",
+      "items": { "$ref": "#/$defs/relation" }
     },
     "skipped_reason": { "type": ["string", "null"] }
   },
@@ -67,16 +83,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "device",
-            "interface",
-            "site",
-            "service",
-            "test",
-            "control",
-            "incident",
-            "change"
-          ]
+          "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change"]
         },
         "name": { "type": "string", "minLength": 1 },
         "id": { "type": ["string", "null"] },
@@ -87,18 +94,40 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["prior_watch_id", "delta", "changed"],
-      "description": "Diff against the prior IOS-XE stamp. First visit: prior_watch_id null, delta first, changed []. Later visits: changed lists only readings that moved.",
+      "description": "Diff of this collection against metadata current[]. First visit: prior_watch_id null, delta first, changed []. Later visits: one changed item per material field that moved.",
       "properties": {
-        "prior_watch_id": { "type": ["string", "null"] },
+        "prior_watch_id": { "type": ["string", "null"], "description": "metadata last_visit_id at the start of this visit." },
         "delta": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better"]
+          "enum": ["first", "unchanged", "worse", "better", "changed"],
+          "description": "worse when any change lowered health (state left up/established, counters increased, ACL unbound). better when every change raised it. changed when it is neither (new neighbor, ACL bound, first ACE hits)."
         },
         "changed": {
           "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
+          "maxItems": 24,
+          "items": { "$ref": "#/$defs/change" }
         }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "field", "prior", "current", "at"],
+      "properties": {
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
+          "description": "The current[] row's keys."
+        },
+        "field": {
+          "type": "string",
+          "enum": ["oper", "admin", "in_errors", "in_discards", "in_crc_errors", "num_flaps", "input_acl", "output_acl", "neighbor", "state", "up_time", "prefixes_received", "peer", "present", "bound_to", "ace_count", "matches_total", "row"]
+        },
+        "prior": { "description": "Prior value from current[]; null when the row is new (field row)." },
+        "current": { "description": "Value this visit; null when the row disappeared (field row)." },
+        "at": { "type": "string", "minLength": 1, "description": "Interface last-change from the device when the field is oper or admin; otherwise this visit's checked_at." }
       }
     },
     "coverage": {
@@ -116,46 +145,62 @@
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "at",
-        "scope",
-        "oper_not_ready",
-        "bgp_not_established",
-        "in_errors",
-        "in_discards",
-        "num_flaps"
-      ],
+      "required": ["at", "scope", "oper_not_ready", "bgp_not_established", "in_errors", "in_discards", "num_flaps", "acls"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "pattern": "^(estate|device:[^ ].*)$" },
         "oper_not_ready": { "type": ["integer", "null"] },
         "bgp_not_established": { "type": ["integer", "null"] },
         "in_errors": { "type": ["integer", "null"] },
         "in_discards": { "type": ["integer", "null"] },
-        "num_flaps": { "type": ["integer", "null"] }
+        "num_flaps": { "type": ["integer", "null"] },
+        "acls": { "type": ["integer", "null"], "description": "ACLs present on the device. 0 when the ACL GET returned 204. null when not collected." }
       }
     },
     "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "kind", "subject", "state", "keys", "note"],
+      "required": ["name", "kind", "subject", "keys", "note"],
       "properties": {
         "keys": {
           "type": "array",
           "minItems": 1,
           "maxItems": 16,
-          "description": "Every join key in this tool payload. type:name.",
+          "uniqueItems": true,
+          "description": "Same keys as the matching current[] row.",
           "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
         },
         "name": { "type": "string", "minLength": 1, "description": "Device name as inventory/prod.json writes it." },
-        "kind": { "type": "string", "enum": ["interface", "bgp"] },
-        "subject": { "type": "string", "minLength": 1, "description": "Interface name as the device reports it, or the BGP neighbor id." },
-        "state": { "type": ["string", "null"] },
+        "kind": { "type": "string", "enum": ["interface", "bgp", "acl"] },
+        "subject": { "type": "string", "minLength": 1, "description": "Interface name as the device reports it, the BGP neighbor id, or the ACL name (none when present is false)." },
+        "state": { "type": ["string", "null"], "description": "interface oper-status or bgp session-state." },
         "in_errors": { "type": ["integer", "null"] },
         "in_discards": { "type": ["integer", "null"] },
+        "in_crc_errors": { "type": ["integer", "null"] },
         "num_flaps": { "type": ["integer", "null"] },
+        "input_acl": { "type": ["string", "null"] },
+        "output_acl": { "type": ["string", "null"] },
+        "neighbor": { "type": ["string", "null"] },
         "prefixes_received": { "type": ["integer", "null"] },
-        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. Oper state, errors, discards, flaps, or prefixes, and what moved since the prior stamp. A sentence that only says unchanged is not a note." }
+        "up_time": { "type": ["string", "null"] },
+        "peer": { "type": ["string", "null"] },
+        "present": { "type": ["boolean", "null"] },
+        "bound_to": { "type": "array", "items": {"type": "string", "pattern": "^interface:[^ ]+/[^ ]+$"} },
+        "ace_count": { "type": ["integer", "null"] },
+        "matches_total": { "type": ["integer", "null"] },
+        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent: what this row shows and, after the first visit, what moved and since when. A sentence that only says unchanged is not a note." }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "rel", "basis"],
+      "properties": {
+        "from": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
+        "to": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
+        "rel": { "type": "string", "enum": ["connected_to", "peers_with"] },
+        "basis": { "type": "string", "const": "observed" },
+        "evidence_ref": { "type": "string" }
       }
     }
   }

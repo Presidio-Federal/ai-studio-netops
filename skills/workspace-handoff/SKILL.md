@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.56.0 — Network Ops reads evidence directly, then waits for GitOps and Pipeline Monitor results."
-version: "1.56.0"
+description: "v1.57.0 — Quiet visits write metadata only; nurse board on metadata; structured deltas; typed relations[]; capability-probe rule; services registry and relationships state rows."
+version: "1.57.0"
 ---
 
 # Workspace handoff
@@ -29,9 +29,11 @@ The file and the delegation are one act:
 2. If a subagent is attached and this file is their input, invoke them and wait.
 3. Never tell the operator to go run the next agent.
 
-**Health Analyzer.** If a plane is clock-stale (`checked_at` + 26h) or
-missing, and that Writer is attached, invoke the task line. A stamp
-inside 26h is current, including `coverage` `unavailable`.
+**Health Analyzer.** If a plane is clock-stale (metadata
+`last_collected_at` + 26h; if that field is absent, latest stamp
+`checked_at` + 26h) or missing, and that Writer is attached, invoke
+the task line. A collection inside 26h is current, including
+`coverage` `unavailable`.
 `assess-now`: do not wait. `refresh-then-assess`: wait only for planes
 that are both stale and material. Record `dispatched[]` on
 `state/health.json`.
@@ -62,6 +64,11 @@ metadata. Record dispatches on `state/compliance.json`.
 
 Writing Intel evidence does not invoke Author. Only operator-selected
 `INTEL-*` ids authorize Compliance Author.
+
+**Relationship agent.** Task line `Run the relationship compile only.`
+Health Analyzer may invoke it after writing `state/health.json` and
+does not wait. It reads a fixed path list and writes only
+`state/relationships.json`. It does not infer edges.
 
 **Network Design.** Read the chart already on disk. Missing or stale
 inputs are reduced coverage; still write `state/design.json`. Warehouse
@@ -137,8 +144,11 @@ Do not invent an id. Do not put topology, edges, or cause here.
 - `id` — the source-native id when the file you opened has one; otherwise null
 - `source_ref` — the catalog path or ticket id, not a payload
 
-The join key is `type:name`. Use `site:` for locations. When a device is known,
-qualify an interface as `interface:<device>/<interface>` to avoid collisions.
+The join key is `type:name`. Use `site:` for locations. An interface key is
+always `interface:<device>/<interface>`; a bare `interface:<name>` is invalid.
+Every producer that names an interface knows the device (the GET target, the
+syslog host, the NetBox device). A `service:` key must match a `services[].name`
+in `inventory/services.json`; when that file is absent, write no `service:` key.
 When a tool payload contains several entities, write every one on that row's
 `keys` and in the top-level union. A later file joins by sharing the same
 string. Do not invent a key the payload does not contain. Do not drop one.
@@ -152,6 +162,71 @@ path, shared keys[])`; it does not copy payloads between records.
 Extend `type` only when a write cannot proceed with this list.
 Do not add a catalog file for entities.
 
+## Relations
+
+`keys` says which entities a record mentions. `relations[]` says how two
+of them are related. It is optional on every structured JSON record.
+Writer schemas copy this shape; they do not redefine it.
+
+```json
+{ "from": "test:8435764", "to": "interface:WAN-01/GigabitEthernet4",
+  "rel": "traverses", "basis": "observed",
+  "evidence_ref": "health/thousandeyes/2026-09-24T14-50-00Z.json" }
+```
+
+- `from`, `to` — strings that also appear in this record's `keys`.
+- `rel` — one of `connected_to` `peers_with` `traverses` `tests`
+  `located_at` `impacted` `depends_on` `caused` `resolved_by` `changed`.
+- `basis` — `intended` (git or NetBox says so), `observed` (the tool
+  payload literally contains the relation: a cable, a CDP neighbor, a
+  BGP neighbor, a path-vis hop, a ticket's typed field), or `asserted`
+  (an agent concluded it).
+- `evidence_ref` — catalog path, git path, or ticket number. Required
+  on `asserted`.
+
+Nurses and other MiniMax writers write `observed` only. `asserted` is
+Health Analyzer, Network Ops, and Network Design. Do not put a
+relation in `keys`. Do not write one whose ends are not both in `keys`.
+Do not infer one from prose.
+
+## Capability probe
+
+Some data exists only on some platforms or estates: ACL operational
+counters, CDP or LLDP neighbors, custom ticket columns, HTTP test
+results. A writer whose skill names such a source calls it once per
+visit. HTTP 204, an empty list, or 404 on that path means the platform
+has none: record `present: false` (or `null` counts) on the row the
+skill names, do not degrade the plane, do not retry, do not ask. Never
+put a platform-specific name (ACL, column, test id) in a prompt or
+skill; discover it and write it to that plane's metadata.
+
+## Quiet visits
+
+A completed collection with no material change against the writer's
+metadata `current[]` writes **metadata only**: append to `visits[]` and
+`series[]`, advance `last_collected_at`, leave `last_visit_id` alone.
+No stamp. A stamp is written only when `vs_prior.changed[]` is
+non-empty, on the first visit, or when coverage is not `complete`.
+Freshness readers use `last_collected_at`.
+
+Nurse metadata carries the board for that plane (writer schema owns
+the fields):
+
+- `current[]` — one row per subject (interface, neighbor, ACL, test,
+  ticket) with its last-known state and `last_changed`. The nurse
+  diffs against this, not against the prior stamp.
+- `series[]` — ring of the last 10 `metrics[]` rows.
+- `visits[]` — ring of the last 10 `{watch_id, checked_at, status,
+  coverage, delta, stamp_written}`.
+- `relations[]` — every `observed` edge the last collection saw,
+  rebuilt each visit (Relations shape). The stamp's `relations[]`
+  carries only edges new this visit. The Relationship agent reads the
+  board, so a quiet visit still refreshes `last_seen`.
+
+`vs_prior.changed[]` items are `{keys, field, prior, current, at}`;
+`at` is the source event time when the payload has one, else
+`checked_at`.
+
 ## Catalog
 
 Reader uses **rely on**. Writer procedure stays in the writer skill.
@@ -162,12 +237,16 @@ rely on top-level `keys` being present; `[]` means no supported entity.
 Observation stamps are `YYYY-MM-DDTHH-MM-SSZ.json`, append-only.
 Open the prior stamp from that source's metadata `last_visit_id`.
 Do not list the directory. The writer keeps 10 and deletes older
-after the write.
+after the write. `last_visit_id` is the last **stamp**;
+`last_collected_at` is the last completed collection (see Quiet
+visits).
 
 | File | Kind | Writer | Schema | Readers may rely on |
 |------|------|--------|--------|---------------------|
 | `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | `snapshot_id` `collected_at` `published_at` `expires_at` (current iff now < `expires_at`) `status` `coverage` `name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf` `access.ssh` `source_metadata`. Missing prod.json blocks NetBox bootstrap. |
-| `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` `cables[]` `counts` |
+| `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` (`cidr` resolves an address to `interface:<device>/<name>`) `cables[]` (intended `connected_to`) `counts` |
+| `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` `owner` `source_ref`. Absent file: write no `service:` key. |
+| `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `edges[]` (`from` `to` `rel` `basis` `first_seen` `last_seen` `seen_count` `sources[]` `status`), `drift[]`, `watermarks` |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
@@ -189,10 +268,10 @@ after the write.
 | `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` |
 | `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `tests[]` `last_visit_id` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `last_visit_id` |
-| `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at`. RESTCONF port stays on `inventory/prod.json`. |
+| `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` `series[]` `visits[]` `relations[]`. RESTCONF port stays on `inventory/prod.json`. |
 | `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `coverage` `metrics` `keys` `vs_prior` `alerts` `path_summary` |
 | `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `coverage` `metrics` `readings` `keys` `vs_prior` |
-| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `coverage` `metrics` `readings` `keys` `vs_prior` `concerns` |
+| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `relations[]` `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `coverage` `metrics` `threads` (`keys` + `note`) `vs_prior` `ticket_numbers` |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched`. `next_action` is `soap.plan`. |
 | `state/lifecycle.json` | state | Modernization Analysis and Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | envelope, `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current iff now < `expires_at`. |
@@ -215,8 +294,9 @@ after the write.
    Health Analyzer and Modernization Analysis do not wait.
    Network Design writes from files already on disk.
    Network Ops reads workspace and relevant Git configs directly, invokes
-   GitHub GitOps Change once to apply, then invokes Pipeline Monitor once for
-   the submitted SHA.
+   GitHub GitOps Change only after explicit implementation authorization, then
+   invokes Pipeline Monitor once for the submitted SHA. Questions and
+   hypotheticals remain read-only recommendations.
    Each invocation is synchronous: wait for its final response without polling
    status or launching background work. Create/merge the PR on live pass, then
    replace `state/network-ops.json`.
@@ -230,3 +310,5 @@ after the write.
 2. A required **state**, **request**, or **result** (and `inventory/infra-sot.json` when that snap is required): missing, stale, or failed envelope blocks that action. Alert and continue independent work. Optional missing is reduced coverage.
 3. An **observation**, **snapshot** (except infra-sot), **metadata**, or **configuration** file: rely-on fields only.
 4. A `source_ref` that starts with `workspace/` or `/workspace/`: strip that prefix and read the remainder.
+5. Join records on nested row `keys` (a reading, thread, metric row, edge). The top-level `keys` union is an index for finding a record, not a statement that everything in it is related.
+6. Freshness of a nurse plane is metadata `last_collected_at`; a plane can be current with no new stamp.

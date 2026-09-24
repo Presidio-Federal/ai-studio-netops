@@ -19,9 +19,10 @@ description). No oper-status, no counters.
 1. `read_file` `inventory/prod.json`. Missing or `now >= expires_at`:
    write `unavailable`, ask or stop. Do not guess PAT.
 2. Candidate set = devices with both `access.restconf.host` and
-   `access.restconf.port` (wan + edge; more than two). Match names
-   case-insensitively. Do not hardcode hostnames or ports in this file.
-3. Rank wan/edge with RESTCONF, then fill remaining budget:
+   `access.restconf.port`. Match names case-insensitively; write the
+   `prod.json` spelling everywhere. Do not hardcode hostnames or
+   ports in this file.
+3. Rank, then fill remaining budget:
 
 | Rank | Evidence |
 |------|----------|
@@ -29,8 +30,10 @@ description). No oper-status, no counters.
 | 2 | `role=edge` (or HQ/CLOUD/DC in `name`) with RESTCONF |
 | 3 | Remaining RESTCONF devices in `prod.json` |
 
-Do not open ThousandEyes or Splunk files. Missing `prod.json`: skip
-all GETs.
+4. `read_file` `inventory/infra-sot.json` if it exists. Keep only
+   `devices[].name` and `devices[].interfaces[].{name,cidr}` in mind;
+   they resolve a BGP neighbor address to a device. Missing file: every
+   `peer` is null. Do not open ThousandEyes or Splunk files.
 
 ## Calls (copy these)
 
@@ -38,83 +41,145 @@ Every call: `iosxe_restconf_get(path="<path>", port=<access.restconf.port>)`.
 No `fields` filter on address-families (payload is small). Parent 404:
 retry the parent container once, then stop YANG-fishing.
 
-| Why ranked | Path |
-|------------|------|
-| Baseline + TE / LINK / path | `Cisco-IOS-XE-interfaces-oper:interfaces` |
-| `role=wan` or BGP mnemonic | `Cisco-IOS-XE-bgp-oper:bgp-state-data/address-families` |
-| One unhealthy or implicated peer | `Cisco-IOS-XE-bgp-oper:bgp-state-data/neighbors/neighbor={afi-safi},{vrf-name},{id}` |
-| Drops on a ranked up interface | `Cisco-IOS-XE-acl-oper:access-lists` — **only then** |
-| Oper GET failed | one fallback `ietf-interfaces:interfaces-state` |
+Four GETs per ranked device, in this order:
+
+| # | Purpose | Path |
+|---|---------|------|
+| 1 | Interfaces: oper, counters, ACL bindings | `Cisco-IOS-XE-interfaces-oper:interfaces` |
+| 2 | BGP neighbors (204 or 404 → the device runs no BGP; `bgp_not_established` 0, no bgp rows) | `Cisco-IOS-XE-bgp-oper:bgp-state-data/address-families` |
+| 3 | ACLs present and ACE counters | `Cisco-IOS-XE-acl-oper:access-lists` |
+| 4 | Physical neighbors | `Cisco-IOS-XE-cdp-oper:cdp-neighbor-details` |
+
+Follow-ups, only when needed:
+
+| When | Path |
+|------|------|
+| One neighbor not `fsm-established` and you need its detail | `Cisco-IOS-XE-bgp-oper:bgp-state-data/neighbors/neighbor={afi-safi},{vrf-name},{id}` |
+| GET 4 returned 204 or 404 | `Cisco-IOS-XE-lldp-oper:lldp-entries` once |
+| GET 1 failed | `ietf-interfaces:interfaces-state` once |
 
 Do **not** GET the unkeyed `.../neighbors` list (~37 KB).
 
-**ACL is follow-up, not baseline.** Skip `access-lists` unless a ranked
-**up** interface shows traffic being dropped (`in_discards`,
-`in_errors`, or `out_errors` > 0 after the oper GET). No drops → do
-not look for ACLs. HTTP **204** (empty) = no ACLs on that box; write
-`acls.count` 0, do not GET native ACL config, do not degrade. Omit
-`acls` entirely when you did not run the GET.
+**Capability probes.** GET 3 and GET 4 are probes: HTTP **204**,
+`404`, or an empty list means the platform has none. ACL 204 → one
+`acl` board row for that device with `subject` `none`, `present`
+`false`, metric `acls` 0. CDP 204 → try LLDP once; both empty →
+every `neighbor` on that device stays null. Neither degrades the
+plane. Do not retry. Do not GET native ACL config. Do not ask.
+
+## What to keep from each payload
+
+Read the payload, keep these fields, discard the rest. Live counters
+may be strings — coerce to integers.
+
+**Interfaces** (`interface[]`, skip `admin-status` down and
+`Loopback*`/`Null*`): `name`, `admin-status` → `admin`,
+`oper-status` → `oper`, `last-change` → `last_changed`,
+`statistics.in-errors` → `in_errors`, `in-discards` → `in_discards`,
+`in-crc-errors` → `in_crc_errors`, `num-flaps` → `num_flaps`,
+`rx-kbps` → `rx_kbps`, `tx-kbps` → `tx_kbps`,
+`input-security-acl` → `input_acl` (null when absent or empty),
+`output-security-acl` → `output_acl`.
+
+**BGP** (`address-families[].address-family[].bgp-neighbor-summaries.
+bgp-neighbor-summary[]`): `id` → `subject`, `state`, `up-time` →
+`up_time`, `prefixes-received` → `prefixes_received`, `as` →
+`remote_as`. `peer`: if `id` equals the address part of any
+`infra-sot` `interfaces[].cidr` (ignore the `/len`), `device:<that
+device's name>`; else null.
+
+**ACLs** (`access-list[]`): `access-list-name` → `subject`,
+`ace_count` = length of `access-list-entries.access-list-entry[]`,
+`matches_total` = sum of `access-list-entries-oper-data.match-counter`.
+`bound_to` = every `interface:<device>/<name>` whose `input_acl` or
+`output_acl` equals this name. The oper model does not say permit or
+deny; do not guess it. Do not write ACE lists onto any file.
+
+**CDP** (`cdp-neighbor-detail[]`): `local-intf-name` is the local
+interface; `device-name` minus any domain suffix, matched
+case-insensitively to a `prod.json` name, is the neighbor device;
+`port-id` its port. When it matches: interface row `neighbor` =
+`interface:<neighbor prod.json name>/<port-id>` and a board relation
+`{from: interface:<this device>/<local-intf-name>, to: that neighbor,
+rel: connected_to, basis: observed, evidence_ref:
+"Cisco-IOS-XE-cdp-oper:cdp-neighbor-details on device:<this device>"}`.
+No match (a host, an agent VM, an unknown name): `neighbor` null, no
+relation. LLDP fallback: `device-id` / `local-interface` / `port-id`
+the same way. A resolved `peer` adds `{from: device:<this device>, to:
+<peer>, rel: peers_with, basis: observed, evidence_ref:
+"Cisco-IOS-XE-bgp-oper:bgp-state-data on device:<this device>"}`.
+
+Write each edge once per direction it was seen; the compiler merges.
+
+## Diff against the board — what is material
+
+The board is `health/metadata-iosxe.json` `iosxe.current[]`. Match a
+collected row to a board row by `device` + `kind` + `subject`.
+
+Material (one `vs_prior.changed[]` item per field):
+
+| Kind | Field moved |
+|------|-------------|
+| interface | `oper`, `admin`, `input_acl`, `output_acl`, `neighbor`; `in_errors`, `in_discards`, `in_crc_errors`, `num_flaps` **increased** |
+| bgp | `state`, `peer`; `prefixes_received` changed; `up_time` shorter than the board's (session reset) |
+| acl | row appeared or disappeared (`field` `row`); `present`, `bound_to`, `ace_count` changed; `matches_total` moved from 0 (or null) to > 0 — the first hits |
+| any | a row appeared or disappeared (`field` `row`, `prior` or `current` null) |
+
+Not material (update the board, no `changed` item): `rx_kbps`,
+`tx_kbps`, `up_time` growing, `matches_total` growing after the
+first hit, `last_changed` alone.
+
+`at` on a `changed` item: the interface's `last-change` when the field
+is `oper` or `admin`; otherwise this visit's `checked_at`.
+
+`delta`: `worse` when any item lowered health (left
+`if-oper-state-ready`/`fsm-established`, a counter increased, an ACL
+was unbound, a neighbor or peer disappeared); `better` when every item
+raised it; `changed` otherwise; `unchanged` when `changed` is empty;
+`first` when there was no board.
 
 ## Write the lab slip — not the RESTCONF body
 
-Map oper enums to counts (`if-state-up` / `if-oper-state-ready`
-→ ready). IETF fallback uses `admin-status` / `oper-status`
-`up`/`down`.
+Write a stamp only when: no board (first visit), `changed[]` is
+non-empty, or `coverage.state` is not `complete`. Otherwise the visit
+is quiet: update the board only (`references/watch.md`).
 
-Write `headline`, `coverage`, `metrics` (one row per collected
-device `scope` `device:<name>`), `readings`, and `vs_prior`.
-`readings` is every admin-up interface and every BGP neighbor:
-`name` as `inventory/prod.json` writes it, `kind` `interface` or
-`bgp`, `subject` the interface name or neighbor `id`, `keys` every
-join key that payload contains (`device:<inventory name>` and
-`interface:<name>` when the interface is in the payload), `note`
-the nurse's opinion (oper state, errors, discards, flaps, or
-prefixes, and what moved since the prior stamp), `state`
-(`if-oper-state-ready` or `fsm-established` and the other oper
-values the device returned), plus `in_errors` / `in_discards` /
-`num_flaps` on interfaces and `prefixes_received` on neighbors.
-Omit admin-down idle interfaces. Cap 64. The first visit writes
-every admin-up interface and every BGP neighbor the GET returned.
-`readings` is empty only when that GET returned none. Each `note`
-says this is the first visit and the state, errors, discards,
-flaps, or prefixes. A later visit diffs those rows. Add `concerns` only when
-a metric on that device is non-zero. The stamp has no `devices[]`
-tree.
+`metrics`: one row per collected device, `scope` `device:<name>`:
+`oper_not_ready` (admin-up, oper not ready, non-idle),
+`bgp_not_established` (summaries whose `state` ≠ `fsm-established`),
+`in_errors`, `in_discards`, `num_flaps` (sums over admin-up ports),
+`acls` (ACLs present; 0 on 204). Null when not collected.
 
-There is no baseline until a prior stamp exists. First visit:
-`delta` `first`, `changed` []. Store `readings` anyway. Later
-visit: diff `readings` against that prior file by `name` + `kind`
-+ `subject`. `changed` lists only what moved: the inventory name,
-the interface or neighbor, and the old state to the new state.
-`headline` is the opinion across those notes. A sentence that only
-says unchanged is not a note: name the state, the errors, and the
-prefixes. Do not copy a name from this skill. Keys on
-each metric
-row: `oper_not_ready`, `bgp_not_established`, `in_errors`,
-`in_discards`, `num_flaps`. Null when that device was not
-collected.
+`readings`: **first visit** — every admin-up interface, every BGP
+neighbor, every ACL (and the `present: false` row per 204 device).
+**Later visits** — only rows with a `changed` item this visit, plus
+rows abnormal now (oper not ready, BGP not established, a counter that
+increased). Same `keys` as the board row. `note` is the nurse's
+opinion: what the row shows, what moved, since when (`last_changed`),
+and what the neighbor/peer/ACL columns say about the cause (for
+example: drops with no ACL bound are not policy; a flap with 0 CRC
+errors points at the far end; a neighbor that vanished with the
+interface still up is a far-end shutdown). A note that only says
+unchanged is not a note.
 
-Count **oper_not_ready** from admin-up / oper-not-ready (non-idle).
-Count **bgp_not_established** from `bgp-neighbor-summary` whose
-`state` is not `fsm-established`. Sum errors/flaps from ranked up
-ports (skip idle shutdown). Live counters may be strings — coerce
-to numbers for the metric row.
+`unchanged`: board rows not in `readings`. `baseline_ref`:
+`health/iosxe/<baseline_visit_id>.json`, null on the first visit.
+`relations`: edges not present on the prior board. `concerns`: one
+device entity-ref per device with a non-zero metric.
 
-ACL GET is follow-up evidence for `headline` only (drops already
-set `in_discards` / `in_errors`). Do not dump ACE lists onto the
-stamp.
+`headline`: subject, field, prior → current, since when; then the
+unchanged count and the ACL/CDP probe result — not "interfaces
+checked". Do not copy a name from this skill.
 
 ## Plane status
 
 **degraded** when any collected device has: admin-up and oper not ready
 on a non-idle interface, **or** BGP `state` ≠ `fsm-established`, **or**
-`in_errors` / `out_errors` / `num_flaps` > 0 on a ranked up interface.
-Idle shutdown ports do not count. Missing `acls` or count 0 does not
-degrade. This plane’s `status` is these readings only. Do not call
-ThousandEyes or Splunk.
+`in_errors` / `in_discards` / `num_flaps` increased since the board on
+a ranked up interface. Idle shutdown ports do not count. ACL 204, zero
+ACLs, or no CDP neighbors never degrade. This plane's `status` is these
+readings only.
 
-Some GETs fail, others succeed → `partial`. All fail or no PAT →
-`unknown` / `unavailable`, null facts, never zeros.
-
-Headline: device names, oper-not-ready count, BGP states, error/flap
-counts — not “interfaces checked.”
+Some GETs fail, others succeed → `partial` (board rows for the failed
+device are kept as they were, its metric row null). All fail or no PAT
+→ `unknown` / `unavailable`, null facts, never zeros.

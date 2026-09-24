@@ -4,6 +4,13 @@ Network Ops reads relevant target/peer config bodies and decides the change.
 GitHub GitOps Change performs full-file edits and `dev` puts. Pipeline Monitor
 owns `apply.yml` polling.
 
+## Authorization
+
+Questions and hypotheticals produce a read-only recommendation. Do not invoke
+GitOps Change or Pipeline Monitor, put files, create a PR, or merge unless the
+operator explicitly commands implementation. “How would you configure” is not
+authorization. Ambiguity stays read-only.
+
 ## Handoff
 
 Read the relevant workspace state and detailed visit. List

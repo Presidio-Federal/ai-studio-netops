@@ -6,6 +6,10 @@ from GitHub directly to verify the finding and derive exact syntax. The local
 GitHub GitOps Change worker owns full-file GitHub writes. Pipeline Monitor owns
 pipeline polling.
 
+Questions such as “how would you configure” are read-only recommendations.
+Only an explicit implementation command authorizes the GitOps worker,
+pipeline watch, PR, and merge.
+
 Evidence is the work queue: `state/testing.json`,
 `state/compliance.json`, `state/health.json`. Design
 (`state/design.json`) is awareness — hardware and replacement —

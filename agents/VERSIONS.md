@@ -4,7 +4,7 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 2.3.0 | Frontier (operator-selected; GitOps orchestration risk) |
+| Network Ops | 2.4.0 | Frontier (operator-selected; GitOps orchestration risk) |
 | GitHub GitOps Change | 1.3.0 | MiniMax |
 | Pipeline Monitor | 1.2.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
@@ -19,6 +19,6 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Author | 1.3.1 | MiniMax |
 | Compliance Test | 1.4.2 | MiniMax |
 | Health Monitor | 1.19.1 | MiniMax |
-| Health Device | 1.8.4 | MiniMax |
+| Health Device | 1.9.0 | MiniMax |
 | Health ServiceNow | 1.7.3 | MiniMax |
 | Health Analyzer | 3.1.4 | MiniMax |

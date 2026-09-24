@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "2.3.0"
-description: "v2.3.0 — Read workspace and GitHub configs, decide exact changes, and delegate mechanical commits."
+version: "2.4.0"
+description: "v2.4.0 — Separate read-only recommendations from explicitly authorized implementation."
 ---
 
 # Network Ops skill
@@ -15,12 +15,19 @@ owns Actions polling. Network Ops owns `state/network-ops.json`.
 
 | Intent | How |
 |--------|-----|
+| “How would”, “what should”, recommend, explain | Read evidence and return an exact recommendation; no delegation or Git mutation. |
 | Change / fix / implement | Read workspace evidence + target/peer Git configs → decide → GitOps Change commit. |
 | Check bug | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. |
 | Run a suite with no config change | Compliance Test. |
 
 Exact tools: [references/tools.md](references/tools.md).
+
+Questions and hypotheticals are `recommend`, never implementation
+authorization. Ambiguous intent is also `recommend`. Only an explicit
+imperative such as `apply`, `implement`, `make this change`, `push`, `commit`,
+`fix it`, or `proceed with that recommendation` authorizes delegation, Git
+mutation, pipeline monitoring, and PR merge.
 
 Network Ops may call `github_list_files` and `github_get_file` for config
 discovery. It never calls `github_put_file` or Actions tools. Do not query
@@ -45,6 +52,10 @@ relevant passing/canonical peer paths returned by that listing. Verify the
 finding and derive exact lines, scope, and placement. Ambiguous evidence →
 `blocked`; do not ask the operator for lines already available in Git.
 
+In recommendation mode, write `state/network-ops.json` with
+`mode=recommend`, `status=recommended`, the exact proposed change, evidence
+summary, and canonical keys. Do not invoke either subagent or mutate Git.
+
 How to delegate and ship: [references/change.md](references/change.md).
 
 ## After worker result
@@ -60,7 +71,8 @@ do not create or merge a PR.
 ## Current operational state
 
 After every terminal outcome, replace `state/network-ops.json` following
-`schemas/network-ops-state.schema.json`. Copy only the worker's compact
+`schemas/network-ops-state.schema.json`. In recommendation mode record the
+bounded proposal/evidence; in implementation mode copy only compact worker
 evidence:
 
 - devices and changed repository paths

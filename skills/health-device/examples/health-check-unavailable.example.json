@@ -1,20 +1,20 @@
 {
   "keys": [],
-  "schema": "health-iosxe-check/v2",
+  "schema": "health-iosxe-check/v3",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-01Z",
   "checked_at": "2026-08-31T16:00:01Z",
   "ok": false,
   "status": "unknown",
-  "headline": "IOS-XE RESTCONF timed out; no oper extract",
+  "headline": "IOS-XE RESTCONF timed out on every ranked device; no oper extract. Board rows kept as they were.",
   "window": "live",
   "coverage": {
     "state": "unavailable",
     "detail": "RESTCONF timeout after retry"
   },
   "vs_prior": {
-    "prior_watch_id": null,
-    "delta": "first",
+    "prior_watch_id": "2026-08-31T10-00-00Z",
+    "delta": "unchanged",
     "changed": []
   },
   "metrics": [
@@ -25,8 +25,12 @@
       "bgp_not_established": null,
       "in_errors": null,
       "in_discards": null,
-      "num_flaps": null
+      "num_flaps": null,
+      "acls": null
     }
   ],
-  "readings": []
+  "readings": [],
+  "unchanged": null,
+  "baseline_ref": "health/iosxe/2026-08-30T09-00-00Z.json",
+  "relations": []
 }
