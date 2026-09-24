@@ -1,6 +1,6 @@
 {
   "keys": [],
-  "schema": "health-iosxe-check/v3",
+  "schema": "health-iosxe-check/v4",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-01Z",
   "checked_at": "2026-08-31T16:00:01Z",
@@ -8,6 +8,7 @@
   "status": "unknown",
   "headline": "IOS-XE RESTCONF timed out on every ranked device; no oper extract. Board rows kept as they were.",
   "window": "live",
+  "scope": "all",
   "coverage": {
     "state": "unavailable",
     "detail": "RESTCONF timeout after retry"
@@ -31,6 +32,5 @@
   ],
   "readings": [],
   "unchanged": null,
-  "baseline_ref": "health/iosxe/2026-08-30T09-00-00Z.json",
-  "relations": []
+  "baseline_ref": "health/iosxe/2026-08-30T09-00-00Z.json"
 }

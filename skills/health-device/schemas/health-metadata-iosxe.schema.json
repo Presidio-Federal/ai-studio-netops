@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-metadata-iosxe/v2",
+  "$id": "health-metadata-iosxe/v3",
   "title": "health/metadata-iosxe.json",
-  "description": "IOS-XE plane board (Kind metadata). Health Device only. Rewritten every visit, including quiet visits. last_visit_id is the last stamp written; last_collected_at is the last completed collection. current[] is the last-known state of every subject and is what the next visit diffs against. No port, no host, no credentials. RESTCONF port stays on inventory/prod.json.",
+  "description": "IOS-XE plane board (Kind metadata). Health Device only. Rewritten every health visit, including quiet visits. last_visit_id is the last stamp written; last_collected_at is the last completed collection. current[] is the last-known state of every subject and is what the next visit diffs against. A board row has the same shape as a stamp reading, minus note. No port, no host, no credentials. RESTCONF port stays on inventory/prod.json.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "updated_at", "source_agent", "iosxe"],
@@ -11,15 +11,15 @@
       "type": "array",
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
-      "description": "Union of every key on current[] and relations[]."
+      "description": "Union of every key on current[]."
     },
-    "schema": { "type": "string", "const": "health-metadata-iosxe/v2" },
+    "schema": { "type": "string", "const": "health-metadata-iosxe/v3" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-device" },
     "iosxe": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits", "relations"],
+      "required": ["last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits"],
       "properties": {
         "last_visit_id": {
           "type": ["string", "null"],
@@ -28,74 +28,66 @@
         },
         "last_collected_at": {
           "type": ["string", "null"],
-          "description": "checked_at of the last completed collection, stamp or not. Freshness readers use this."
+          "description": "checked_at of the last completed collection, stamp or not. Per-device freshness: the latest visits[] row whose scope includes the device."
         },
         "baseline_visit_id": {
           "type": ["string", "null"],
           "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$",
-          "description": "watch_id of the first-visit stamp (the one that wrote every subject). Stamps point at it with baseline_ref."
+          "description": "watch_id of the first-visit stamp (the one that listed every subject). Stamps point at it with baseline_ref."
         },
         "current": {
           "type": "array",
-          "maxItems": 160,
-          "items": { "$ref": "#/$defs/current_row" },
-          "description": "One row per subject the last collection returned: every admin-up interface, every BGP neighbor, every ACL. Rows for a device that was not collected this visit are kept as they were."
+          "maxItems": 120,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "One row per subject the last collection returned. Interfaces: admin-up only, physical and sub-interfaces and Tunnel; never Loopback*, Vlan*, Null*, or admin-down. BGP: every neighbor summary. ACL: one row per ACL the device returned; no row when the ACL GET returned 204. Rows for a device outside this visit's scope, or whose collection failed, are kept as they were."
         },
         "series": {
           "type": "array",
-          "maxItems": 100,
+          "maxItems": 10,
           "items": { "$ref": "#/$defs/metric_row" },
-          "description": "metrics[] rows of the last 10 visits, oldest first. When a visit is appended and more than 10 visits are present, drop every row of the oldest visit."
+          "description": "One estate row per visit, oldest first: sums over the devices collected that visit. Per-device rows live on the stamp."
         },
         "visits": {
           "type": "array",
           "maxItems": 10,
           "items": { "$ref": "#/$defs/visit_row" },
           "description": "Last 10 visits, oldest first."
-        },
-        "relations": {
-          "type": "array",
-          "maxItems": 120,
-          "items": { "$ref": "#/$defs/relation" },
-          "description": "Every observed edge the last collection saw (CDP/LLDP neighbor -> connected_to; BGP neighbor resolved to an inventory device -> peers_with). Rebuilt each visit."
         }
       }
     }
   },
   "$defs": {
-    "current_row": {
+    "row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["keys", "device", "kind", "subject", "last_changed"],
+      "required": ["name", "kind", "subject", "keys", "state", "last_changed"],
+      "description": "Same shape as a stamp reading, without note.",
       "properties": {
+        "name": { "type": "string", "minLength": 1, "description": "Device name as inventory/prod.json writes it." },
+        "kind": { "type": "string", "enum": ["interface", "bgp", "acl"] },
+        "subject": { "type": "string", "minLength": 1, "description": "Interface name as the device returns it, BGP neighbor id, or ACL name." },
         "keys": {
           "type": "array",
           "minItems": 1,
+          "maxItems": 16,
           "uniqueItems": true,
           "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
-          "description": "device:<name> plus interface:<device>/<interface> for interface and acl rows; plus the peer device key on a resolved bgp row."
+          "description": "device:<name>; plus interface:<name>/<subject> on interface rows; plus the peer device key on a resolved bgp row; plus each bound interface key on an acl row."
         },
-        "device": { "type": "string", "minLength": 1, "description": "inventory/prod.json name." },
-        "kind": { "type": "string", "enum": ["interface", "bgp", "acl"] },
-        "subject": { "type": "string", "minLength": 1, "description": "Interface name, BGP neighbor id, or ACL name as the device returned it." },
-        "last_changed": { "type": "string", "minLength": 1, "description": "When a material field on this row last changed. Interface rows: the device's last-change when present, else the checked_at of the visit that saw the change. New rows: this visit's checked_at." },
-        "oper": { "type": ["string", "null"], "description": "interface: oper-status." },
-        "admin": { "type": ["string", "null"], "description": "interface: admin-status." },
+        "state": { "type": ["string", "null"], "description": "interface: oper-status. bgp: session-state. acl: bound or unbound." },
+        "last_changed": { "type": "string", "minLength": 1, "description": "Interface rows: the device's last-change. Other rows: checked_at of the visit that last saw a material field move (or first saw the row)." },
         "in_errors": { "type": ["integer", "null"] },
         "in_discards": { "type": ["integer", "null"] },
         "in_crc_errors": { "type": ["integer", "null"] },
         "num_flaps": { "type": ["integer", "null"] },
-        "rx_kbps": { "type": ["integer", "null"], "description": "interface: last-seen rate. Movement is not material." },
+        "rx_kbps": { "type": ["integer", "null"], "description": "Not material; last seen." },
         "tx_kbps": { "type": ["integer", "null"] },
         "input_acl": { "type": ["string", "null"], "description": "interface: input-security-acl name, null when none." },
         "output_acl": { "type": ["string", "null"] },
-        "neighbor": { "type": ["string", "null"], "description": "interface: CDP/LLDP neighbor as interface:<device>/<port> when the neighbor name resolves to an inventory device; else null." },
-        "state": { "type": ["string", "null"], "description": "bgp: session-state as returned." },
-        "up_time": { "type": ["string", "null"], "description": "bgp: up-time as returned. A shorter value than the prior visit is a session reset." },
         "prefixes_received": { "type": ["integer", "null"] },
+        "up_time": { "type": ["string", "null"], "description": "bgp: as returned. Shorter than the board's value means the session reset." },
         "remote_as": { "type": ["integer", "null"] },
-        "peer": { "type": ["string", "null"], "description": "bgp: device:<name> when the neighbor address matches an inventory/infra-sot.json interface cidr; else null." },
-        "present": { "type": ["boolean", "null"], "description": "acl: false when the ACL GET returned 204 for this device (one row per device with subject none)." },
+        "peer": { "type": ["string", "null"], "description": "bgp: device:<name> when the neighbor id equals an interface address of a device in inventory/prod.json (from this visit's interface payloads or inventory/topology-observed.json); else null." },
         "bound_to": { "type": "array", "items": {"type": "string", "pattern": "^interface:[^ ]+/[^ ]+$"}, "description": "acl: interfaces whose input_acl or output_acl names this ACL." },
         "ace_count": { "type": ["integer", "null"] },
         "matches_total": { "type": ["integer", "null"], "description": "acl: sum of ACE match counters. Movement after the first hit is not material." }
@@ -113,32 +105,25 @@
         "in_errors": { "type": ["integer", "null"] },
         "in_discards": { "type": ["integer", "null"] },
         "num_flaps": { "type": ["integer", "null"] },
-        "acls": { "type": ["integer", "null"], "description": "ACLs present on the device. 0 when the ACL GET returned 204. null when not collected." }
+        "acls": { "type": ["integer", "null"], "description": "ACLs present. 0 when the ACL GET returned 204. null when not collected." }
       }
     },
     "visit_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written"],
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "scope"],
       "properties": {
         "watch_id": { "type": ["string", "null"], "description": "The stamp id when one was written; null on a quiet visit." },
         "checked_at": { "type": "string", "minLength": 1 },
-        "status": { "type": "string", "enum": ["healthy", "degraded", "unknown"] },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
         "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
         "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"], "description": "Same value as the visit's vs_prior.delta." },
-        "stamp_written": { "type": "boolean" }
-      }
-    },
-    "relation": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["from", "to", "rel", "basis"],
-      "properties": {
-        "from": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
-        "to": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
-        "rel": { "type": "string", "enum": ["connected_to", "peers_with"] },
-        "basis": { "type": "string", "const": "observed" },
-        "evidence_ref": { "type": "string", "description": "The GET path that returned the neighbor, e.g. Cisco-IOS-XE-cdp-oper:cdp-neighbor-details on device:<name>." }
+        "stamp_written": { "type": "boolean" },
+        "scope": {
+          "type": ["array", "string"],
+          "items": {"type": "string", "pattern": "^device:[^ ].*$"},
+          "description": "\"all\" when every ranked device was collected; else the device keys the task line named."
+        }
       }
     }
   }

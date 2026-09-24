@@ -65,6 +65,13 @@ metadata. Record dispatches on `state/compliance.json`.
 Writing Intel evidence does not invoke Author. Only operator-selected
 `INTEL-*` ids authorize Compliance Author.
 
+**Health Device, topology.** Task line `Run the network topology map
+only.` writes `inventory/topology-observed.json`. Health Analyzer may
+invoke it after a device stamp shows an interface state change or a
+row that appeared or disappeared, and does not wait. A scoped device
+visit is `Run the network device health check only. Scope: device:<a>
+device:<b>`; dispatch one at a time.
+
 **Relationship agent.** Task line `Run the relationship compile only.`
 Health Analyzer may invoke it after writing `state/health.json` and
 does not wait. It reads a fixed path list and writes only
@@ -217,11 +224,20 @@ the fields):
   diffs against this, not against the prior stamp.
 - `series[]` — ring of the last 10 `metrics[]` rows.
 - `visits[]` — ring of the last 10 `{watch_id, checked_at, status,
-  coverage, delta, stamp_written}`.
-- `relations[]` — every `observed` edge the last collection saw,
-  rebuilt each visit (Relations shape). The stamp's `relations[]`
-  carries only edges new this visit. The Relationship agent reads the
-  board, so a quiet visit still refreshes `last_seen`.
+  coverage, delta, stamp_written, scope}`. `scope` is `"all"` or the
+  device keys the task line named; per-device freshness is the latest
+  visit whose scope includes the device.
+
+A task line may carry `Scope: device:<a> device:<b>` to limit a nurse
+visit to those inventory devices. The nurse replaces only those rows
+on the board. Scoped visits of the same plane run one at a time: two
+writers on one board lose rows.
+
+**Edges as columns.** When a payload row already names the other
+entity (a BGP `peer`, a cable's two ends), that column *is* the edge;
+do not also write `relations[]`. Use `relations[]` only where no such
+column exists (a test path, a ticket's typed fields). The Relationship
+agent reads both forms.
 
 `vs_prior.changed[]` items are `{keys, field, prior, current, at}`;
 `at` is the source event time when the payload has one, else
@@ -245,6 +261,7 @@ visits).
 |------|------|--------|--------|---------------------|
 | `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | `snapshot_id` `collected_at` `published_at` `expires_at` (current iff now < `expires_at`) `status` `coverage` `name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf` `access.ssh` `source_metadata`. Missing prod.json blocks NetBox bootstrap. |
 | `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` (`cidr` resolves an address to `interface:<device>/<name>`) `cables[]` (intended `connected_to`) `counts` |
+| `inventory/topology-observed.json` | snapshot | Health Device (topology map) | `health-device` `schemas/topology-iosxe.schema.json` | envelope, `mapped_at` `prior_mapped_at` `devices[].name` `node_definition` `software_version` `interfaces[]` (`cidr` resolves an address to a device) `links[]` (`a` `b` `seen_from` — the observed cable) `unresolved[]` `changes[]`. Task line `Run the network topology map only.` |
 | `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` `owner` `source_ref`. Absent file: write no `service:` key. |
 | `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `edges[]` (`from` `to` `rel` `basis` `first_seen` `last_seen` `seen_count` `sources[]` `status`), `drift[]`, `watermarks` |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
@@ -268,10 +285,10 @@ visits).
 | `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` |
 | `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `tests[]` `last_visit_id` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `last_visit_id` |
-| `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` `series[]` `visits[]` `relations[]`. RESTCONF port stays on `inventory/prod.json`. |
+| `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows; bgp row `peer` is the adjacency) `series[]` `visits[]`. RESTCONF port stays on `inventory/prod.json`. |
 | `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `coverage` `metrics` `keys` `vs_prior` `alerts` `path_summary` |
 | `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `coverage` `metrics` `readings` `keys` `vs_prior` |
-| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `relations[]` `concerns` |
+| `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `coverage` `metrics` `threads` (`keys` + `note`) `vs_prior` `ticket_numbers` |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched`. `next_action` is `soap.plan`. |
 | `state/lifecycle.json` | state | Modernization Analysis and Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | envelope, `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current iff now < `expires_at`. |

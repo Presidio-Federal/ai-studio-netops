@@ -1,6 +1,6 @@
 {
-  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
-  "schema": "health-metadata-iosxe/v2",
+  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>", "interface:<edge-device>/<edge-interface>", "interface:<edge-device>/<lan-interface>"],
+  "schema": "health-metadata-iosxe/v3",
   "updated_at": "2026-08-31T22:00:00Z",
   "source_agent": "health-device",
   "iosxe": {
@@ -9,13 +9,12 @@
     "baseline_visit_id": "2026-08-30T09-00-00Z",
     "current": [
       {
-        "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
-        "device": "<wan-device>",
+        "name": "<wan-device>",
         "kind": "interface",
         "subject": "<wan-interface>",
+        "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
+        "state": "if-oper-state-ready",
         "last_changed": "2026-08-31T15:41:07Z",
-        "oper": "if-oper-state-ready",
-        "admin": "if-state-up",
         "in_errors": 0,
         "in_discards": 412,
         "in_crc_errors": 0,
@@ -23,40 +22,27 @@
         "rx_kbps": 18,
         "tx_kbps": 22,
         "input_acl": null,
-        "output_acl": null,
-        "neighbor": "interface:<edge-device>/<edge-interface>"
+        "output_acl": null
       },
       {
-        "keys": ["device:<wan-device>", "device:<edge-device>"],
-        "device": "<wan-device>",
+        "name": "<wan-device>",
         "kind": "bgp",
         "subject": "<neighbor-address>",
-        "last_changed": "2026-08-30T09:00:00Z",
+        "keys": ["device:<wan-device>", "device:<edge-device>"],
         "state": "fsm-established",
+        "last_changed": "2026-08-30T09:00:00Z",
         "up_time": "1d13h",
         "prefixes_received": 3,
         "remote_as": 65001,
         "peer": "device:<edge-device>"
       },
       {
-        "keys": ["device:<wan-device>"],
-        "device": "<wan-device>",
-        "kind": "acl",
-        "subject": "none",
-        "last_changed": "2026-08-30T09:00:00Z",
-        "present": false,
-        "bound_to": [],
-        "ace_count": null,
-        "matches_total": null
-      },
-      {
-        "keys": ["device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
-        "device": "<edge-device>",
+        "name": "<edge-device>",
         "kind": "interface",
         "subject": "<edge-interface>",
+        "keys": ["device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
+        "state": "if-oper-state-ready",
         "last_changed": "2026-08-30T09:00:00Z",
-        "oper": "if-oper-state-ready",
-        "admin": "if-state-up",
         "in_errors": 0,
         "in_discards": 0,
         "in_crc_errors": 0,
@@ -64,25 +50,47 @@
         "rx_kbps": 22,
         "tx_kbps": 18,
         "input_acl": null,
-        "output_acl": null,
-        "neighbor": "interface:<wan-device>/<wan-interface>"
+        "output_acl": null
+      },
+      {
+        "name": "<edge-device>",
+        "kind": "interface",
+        "subject": "<lan-interface>",
+        "keys": ["device:<edge-device>", "interface:<edge-device>/<lan-interface>"],
+        "state": "if-oper-state-ready",
+        "last_changed": "2026-08-30T09:00:00Z",
+        "in_errors": 0,
+        "in_discards": 0,
+        "in_crc_errors": 0,
+        "num_flaps": 0,
+        "rx_kbps": 3,
+        "tx_kbps": 5,
+        "input_acl": "<acl-name>",
+        "output_acl": null
+      },
+      {
+        "name": "<edge-device>",
+        "kind": "acl",
+        "subject": "<acl-name>",
+        "keys": ["device:<edge-device>", "interface:<edge-device>/<lan-interface>"],
+        "state": "bound",
+        "last_changed": "2026-08-30T09:00:00Z",
+        "bound_to": ["interface:<edge-device>/<lan-interface>"],
+        "ace_count": 4,
+        "matches_total": 0
       }
     ],
     "series": [
-      { "at": "2026-08-31T16:00:00Z", "scope": "device:<wan-device>", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 412, "num_flaps": 2, "acls": 0 },
-      { "at": "2026-08-31T16:00:00Z", "scope": "device:<edge-device>", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 0, "num_flaps": 0, "acls": 0 },
-      { "at": "2026-08-31T22:00:00Z", "scope": "device:<wan-device>", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 412, "num_flaps": 2, "acls": 0 },
-      { "at": "2026-08-31T22:00:00Z", "scope": "device:<edge-device>", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 0, "num_flaps": 0, "acls": 0 }
+      { "at": "2026-08-30T09:00:00Z", "scope": "estate", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 0, "num_flaps": 0, "acls": 1 },
+      { "at": "2026-08-31T10:00:00Z", "scope": "estate", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 0, "num_flaps": 0, "acls": 1 },
+      { "at": "2026-08-31T16:00:00Z", "scope": "estate", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 412, "num_flaps": 2, "acls": 1 },
+      { "at": "2026-08-31T22:00:00Z", "scope": "estate", "oper_not_ready": 0, "bgp_not_established": 0, "in_errors": 0, "in_discards": 412, "num_flaps": 2, "acls": 1 }
     ],
     "visits": [
-      { "watch_id": "2026-08-30T09-00-00Z", "checked_at": "2026-08-30T09:00:00Z", "status": "healthy", "coverage": "complete", "delta": "first", "stamp_written": true },
-      { "watch_id": null, "checked_at": "2026-08-31T10:00:00Z", "status": "healthy", "coverage": "complete", "delta": "unchanged", "stamp_written": false },
-      { "watch_id": "2026-08-31T16-00-00Z", "checked_at": "2026-08-31T16:00:00Z", "status": "degraded", "coverage": "complete", "delta": "worse", "stamp_written": true },
-      { "watch_id": null, "checked_at": "2026-08-31T22:00:00Z", "status": "degraded", "coverage": "complete", "delta": "unchanged", "stamp_written": false }
-    ],
-    "relations": [
-      { "from": "interface:<wan-device>/<wan-interface>", "to": "interface:<edge-device>/<edge-interface>", "rel": "connected_to", "basis": "observed", "evidence_ref": "Cisco-IOS-XE-cdp-oper:cdp-neighbor-details on device:<wan-device>" },
-      { "from": "device:<wan-device>", "to": "device:<edge-device>", "rel": "peers_with", "basis": "observed", "evidence_ref": "Cisco-IOS-XE-bgp-oper:bgp-state-data on device:<wan-device>" }
+      { "watch_id": "2026-08-30T09-00-00Z", "checked_at": "2026-08-30T09:00:00Z", "status": "ok", "coverage": "complete", "delta": "first", "stamp_written": true, "scope": "all" },
+      { "watch_id": null, "checked_at": "2026-08-31T10:00:00Z", "status": "ok", "coverage": "complete", "delta": "unchanged", "stamp_written": false, "scope": "all" },
+      { "watch_id": "2026-08-31T16-00-00Z", "checked_at": "2026-08-31T16:00:00Z", "status": "degraded", "coverage": "complete", "delta": "worse", "stamp_written": true, "scope": "all" },
+      { "watch_id": null, "checked_at": "2026-08-31T22:00:00Z", "status": "degraded", "coverage": "complete", "delta": "unchanged", "stamp_written": false, "scope": ["device:<wan-device>"] }
     ]
   }
 }

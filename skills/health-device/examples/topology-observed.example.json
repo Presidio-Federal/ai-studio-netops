@@ -1,0 +1,87 @@
+{
+  "keys": [
+    "device:<wan-device>", "device:<edge-device>", "device:<lan-switch>",
+    "interface:<wan-device>/<wan-interface>", "interface:<edge-device>/<edge-interface>",
+    "interface:<edge-device>/<lan-interface>", "interface:<lan-switch>/<switch-uplink>"
+  ],
+  "schema": "topology-iosxe/v1",
+  "updated_at": "2026-09-07T09:00:00Z",
+  "source_agent": "health-device",
+  "status": "ok",
+  "headline": "2 devices mapped, 1 inventory neighbor without RESTCONF, 2 links, 1 unresolved neighbor. Since 2026-08-31T09:00:00Z: links unchanged; <edge-device> software_version 17.12.3 -> 17.12.4.",
+  "next_action": "none",
+  "mapped_at": "2026-09-07T09:00:00Z",
+  "prior_mapped_at": "2026-08-31T09:00:00Z",
+  "scope": "all",
+  "coverage": {
+    "state": "complete",
+    "devices_probed": 2,
+    "devices_failed": [],
+    "neighbor_protocol_absent": [],
+    "detail": "interfaces-oper, platform, cdp-neighbor-details on 2 ranked devices"
+  },
+  "devices": [
+    {
+      "keys": ["device:<wan-device>"],
+      "name": "<wan-device>",
+      "platform": "iosxe",
+      "role": "wan",
+      "node_definition": "cat8000v",
+      "software_version": "17.12.4",
+      "collected": true,
+      "interfaces": [
+        { "name": "<wan-interface>", "cidr": "100.64.1.1/30" },
+        { "name": "GigabitEthernet2", "cidr": null },
+        { "name": "Loopback0", "cidr": "1.1.1.1/32" }
+      ]
+    },
+    {
+      "keys": ["device:<edge-device>"],
+      "name": "<edge-device>",
+      "platform": "iosxe",
+      "role": "edge",
+      "node_definition": "cat8000v",
+      "software_version": "17.12.4",
+      "collected": true,
+      "interfaces": [
+        { "name": "<edge-interface>", "cidr": "100.64.1.2/30" },
+        { "name": "<lan-interface>", "cidr": "10.40.40.1/24" },
+        { "name": "Loopback0", "cidr": "3.3.3.3/32" }
+      ]
+    },
+    {
+      "keys": ["device:<lan-switch>"],
+      "name": "<lan-switch>",
+      "platform": "iosxe",
+      "role": "hq",
+      "node_definition": "iosvl2",
+      "software_version": null,
+      "collected": false,
+      "interfaces": []
+    }
+  ],
+  "links": [
+    {
+      "keys": ["device:<edge-device>", "device:<wan-device>", "interface:<edge-device>/<edge-interface>", "interface:<wan-device>/<wan-interface>"],
+      "a": "interface:<edge-device>/<edge-interface>",
+      "b": "interface:<wan-device>/<wan-interface>",
+      "seen_from": ["device:<edge-device>", "device:<wan-device>"],
+      "first_seen": "2026-08-31T09:00:00Z",
+      "last_seen": "2026-09-07T09:00:00Z"
+    },
+    {
+      "keys": ["device:<edge-device>", "device:<lan-switch>", "interface:<edge-device>/<lan-interface>", "interface:<lan-switch>/<switch-uplink>"],
+      "a": "interface:<edge-device>/<lan-interface>",
+      "b": "interface:<lan-switch>/<switch-uplink>",
+      "seen_from": ["device:<edge-device>"],
+      "first_seen": "2026-08-31T09:00:00Z",
+      "last_seen": "2026-09-07T09:00:00Z"
+    }
+  ],
+  "unresolved": [
+    { "from": "interface:<wan-device>/GigabitEthernet2", "neighbor_name": "<unknown-host>", "port": "eth0", "platform_hint": "Linux" }
+  ],
+  "changes": [
+    { "at": "2026-09-07T09:00:00Z", "change": "version_changed", "subject": "device:<edge-device>", "prior": "17.12.3", "current": "17.12.4" }
+  ]
+}

@@ -1,16 +1,17 @@
 {
-  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
-  "schema": "health-iosxe-check/v3",
+  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>"],
+  "schema": "health-iosxe-check/v4",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-00Z",
   "checked_at": "2026-08-31T16:00:00Z",
   "ok": false,
   "status": "degraded",
-  "headline": "<wan-device> <wan-interface> in_discards 0 -> 412 and num_flaps 0 -> 2 since 2026-08-31T15:41:07Z; its CDP neighbor <edge-device> <edge-interface> is still if-oper-state-ready. BGP to <edge-device> still fsm-established, prefixes 3 -> 3. 41 other board rows unchanged; ACL GET 204 on both devices.",
+  "headline": "<wan-device> <wan-interface> in_discards 0 -> 412 and num_flaps 0 -> 2 since 2026-08-31T15:41:07Z; BGP to <edge-device> still fsm-established, prefixes 3 -> 3. 41 other board rows unchanged; ACL GET 204 on both devices.",
   "window": "live",
+  "scope": "all",
   "coverage": {
     "state": "complete",
-    "detail": "RESTCONF GET interfaces-oper, bgp AF, acl-oper (204), cdp-neighbor-details on 2 ranked devices"
+    "detail": "RESTCONF GET interfaces-oper, bgp AF, acl-oper (204) on 2 ranked devices"
   },
   "vs_prior": {
     "prior_watch_id": "2026-08-31T10-00-00Z",
@@ -61,19 +62,20 @@
       "subject": "<wan-interface>",
       "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
       "state": "if-oper-state-ready",
+      "last_changed": "2026-08-31T15:41:07Z",
       "in_errors": 0,
       "in_discards": 412,
       "in_crc_errors": 0,
       "num_flaps": 2,
+      "rx_kbps": 18,
+      "tx_kbps": 22,
       "input_acl": null,
       "output_acl": null,
-      "neighbor": "interface:<edge-device>/<edge-interface>",
-      "note": "Up now, but flapped twice (device last-change 15:41:07Z) and has dropped 412 inbound frames since the 10:00 visit with 0 CRC errors, so this looks like a transient link or far-end event, not a bad cable. The far end <edge-device> <edge-interface> shows no errors. No ACL is bound, so the discards are not policy."
+      "note": "Up now, but flapped twice (last-change 15:41:07Z) and dropped 412 inbound frames since the 10:00 visit with no CRC errors, so this looks like a transient link or far-end event rather than a bad cable. No ACL is bound, so the discards are not policy. The topology map shows the far end is <edge-device>; its board row shows no errors."
     }
   ],
   "unchanged": 41,
   "baseline_ref": "health/iosxe/2026-08-30T09-00-00Z.json",
-  "relations": [],
   "concerns": [
     { "type": "device", "name": "<wan-device>", "source_ref": "inventory/prod.json" }
   ]
