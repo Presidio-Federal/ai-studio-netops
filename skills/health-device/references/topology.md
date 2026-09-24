@@ -7,111 +7,128 @@ counters, no BGP, no ACL, no stamp, no board write. One file:
 `schemas/topology-iosxe.schema.json`, example
 `examples/topology-observed.example.json`).
 
-The product is what a digital twin needs and nothing else: which
-devices exist, what they are (`node_definition`, `software_version`),
-what interfaces they have, and who is cabled to whom. Everything in
-the file is **observed** from the devices. Intended topology lives in
-git; another writer owns it.
+You are a recorder, not an analyst. Each device tells you three things
+— its version, its interfaces, its neighbors — and you write down what
+it said. You never compare two devices' reports, never decide which
+one is right, never read a description, never look at an address to
+work out who is cabled to whom. A reader does the pairing later.
 
-## Inventory and scope
+## Rules that make this work on the first try
 
-Same as `references/iosxe.md` steps 1–3: `read_file`
-`inventory/prod.json`; candidate set = devices with RESTCONF; honour
-`Scope:` device keys if present, else every candidate. Then `read_file`
-`inventory/topology-observed.json` if it exists — that is the prior map.
-Missing → first map, `prior_mapped_at` null, `changes` [].
+1. **One device at a time.** Finish device A completely — three
+   calls, reduce, write the file — before the first call to device B.
+2. **One IOS-XE call per turn.** Never issue two IOS-XE calls in the
+   same message. Every response must be matched to the port you just
+   passed, and that is only certain when there is one in flight.
+3. **Write after every device.** The file on disk is your memory. Do
+   not hold nine devices in your head.
+4. **Copy, do not reason.** A CDP row becomes a `neighbors[]` row
+   with the fields renamed. That is the whole job.
+5. **One retry, then move on.** A failed call is retried once. If it
+   fails again the device goes on `coverage.failed`, keeps its prior
+   row if one exists, and you continue with the next device.
 
-## Calls per device in scope
+## Setup (two reads)
 
-| # | Purpose | Call |
-|---|---------|------|
-| 1 | Software version | `iosxe_get_platform_and_yang(port=<port>)` with **no other arguments** — do not pass `yang_model` or `list_modules`. Keep `version` only. |
-| 2 | Interface list and addresses | `iosxe_restconf_get(path="Cisco-IOS-XE-interfaces-oper:interfaces", port=<port>)` — keep every `interface[].name` and its `ipv4` (as `address/prefix`, null when none). Include admin-down and Loopback. Discard counters and states. |
-| 3 | Neighbors | `iosxe_restconf_get(path="Cisco-IOS-XE-cdp-oper:cdp-neighbor-details", port=<port>)` |
-| 3b | Only when 3 returned 204/404/empty | `iosxe_restconf_get(path="Cisco-IOS-XE-lldp-oper:lldp-entries", port=<port>)` once |
+1. `read_file` `inventory/prod.json`. Candidate set = devices with
+   `access.restconf.host` and `access.restconf.port`. Honour `Scope:`
+   device keys if present, else every candidate, in `prod.json` order.
+   Note each device's `name`, `platform`, `role`,
+   `source_metadata.node_definition`, `access.restconf.port`. Keep the
+   full list of `prod.json` `name` values for neighbor resolution.
+2. `read_file` `inventory/topology-observed.json` if it exists — the
+   prior map. Missing → first map: `prior_mapped_at` null, `changes` [].
 
-Both 3 and 3b empty → the device goes on
-`coverage.neighbor_protocol_absent`; its interfaces are still recorded.
-A failed call → `coverage.devices_failed`; the device row keeps its
-prior values from the old map (or `software_version` null and
-`interfaces` [] on a first map). Never retry more than once. Never
-GET native config. Never SSH.
+Set `mapped_at` now. Write the file once immediately with
+`status gaps`, `coverage.state partial`, `probed 0`, `devices` = the
+prior rows (or []), so a reader knows a map is in progress.
 
-## Build `devices[]`
+## Per device — exactly this sequence
 
-One row per device in scope (`collected` true) plus one per
-`prod.json` device that a neighbor row resolved to but was not in
-scope or has no RESTCONF (`collected` false, `interfaces` [],
-`software_version` null). `platform`, `role`, `node_definition` come
-from `prod.json` (`platform`, `role`,
-`source_metadata.node_definition`) — never from the box. Devices in
-the prior map but out of this scope are carried over unchanged.
+**Call 1 — version.**
+`iosxe_get_platform_and_yang(port=<port>)` with no other arguments.
+Keep only the `version` string. Do not pass `yang_model` or
+`list_modules`.
 
-## Build `links[]`
+**Call 2 — interfaces.**
+`iosxe_restconf_get(path="Cisco-IOS-XE-native:native/interface", port=<port>)`.
+The payload is grouped by type (`GigabitEthernet[]`, `Loopback[]`,
+`Tunnel[]`, `Vlan[]`, ...). For each entry: `name` = type + `name`
+field (`GigabitEthernet` + `3.51` → `GigabitEthernet3.51`); `cidr` =
+`ip.address.primary.address` + `/` + prefix length of
+`ip.address.primary.mask` (255.255.255.252 → /30, .0 → /24, .255 →
+/32), or null when there is no primary address. **Ignore every other
+field.** `description` is prose — never read it, never write it.
 
-From each CDP row: local end = `interface:<this device>/<local-intf-name>`;
-far device = `device-name` with any domain suffix removed, matched
-case-insensitively to a `prod.json` `name`; far end =
-`interface:<that name>/<port-id>`. LLDP: `device-id`,
-`local-interface`, `port-id` the same way. Expand short names
-(`Gi1` → `GigabitEthernet1`, `Te` → `TenGigabitEthernet`, `Gig 0/0` →
-`GigabitEthernet0/0`) so they match the interface list.
+**Call 3 — neighbors.**
+`iosxe_restconf_get(path="Cisco-IOS-XE-cdp-oper:cdp-neighbor-details", port=<port>)`.
+For each `cdp-neighbor-detail[]` entry write one row:
 
-- Far device matched → a link. `a` is the interface key whose device
-  name sorts first; `b` the other. Two devices reporting the same
-  pair are **one** row with both in `seen_from`.
-- Far device not matched → an `unresolved[]` row (`neighbor_name`
-  as returned minus suffix, `port`, `platform_hint` from the CDP
-  `platform` field when present). Do not mint a key. Do not add it to
-  `devices[]`.
-- Skip local ends that are `Loopback*`, `Vlan*`, or a management port
-  the CDP row names as such.
+| CDP field | Row field |
+|-----------|-----------|
+| `local-intf-name` | `local` = `interface:<this device name>/<value>` |
+| `device-name` minus everything from the first `.` | `far_name` |
+| `port-id` (expand `Gi`→`GigabitEthernet`, `Te`→`TenGigabitEthernet`, `Gig 0/0`→`GigabitEthernet0/0`) | `far_port` |
+| `far_name` matched **case-insensitively** to a `prod.json` `name` | `far` = `interface:<that prod.json name>/<far_port>`; no match → null |
+| `platform` | `platform_hint` (null when absent) |
 
-Merge with the prior map: a link present before and now keeps
-`first_seen`; `last_seen` = `mapped_at`. A scoped map replaces only
-links that have a scoped device in `seen_from`; other links carry over.
+204, 404, or empty → call
+`iosxe_restconf_get(path="Cisco-IOS-XE-lldp-oper:lldp-entries", port=<port>)`
+once; same mapping with `device-id`, `local-interface`, `port-id`.
+Both empty → `neighbors []` and the device goes on
+`coverage.neighbor_protocol_absent`.
 
-## `changes[]` — what moved since the prior map
+Do not drop a row because it looks wrong. Do not merge two rows. Do
+not skip a row because another device already reported that link. Do
+not check whether the far port's address matches. Two devices
+reporting the same cable is expected and is the reader's job to pair.
 
-Compare against the prior file. One event per item, appended to the
-ring (keep the last 10, oldest first), `at` = `mapped_at`:
+**Reduce.** Build this device's row: `keys` (device key, every
+`neighbors[].local`, every non-null `neighbors[].far`), `name`,
+`platform`, `role`, `node_definition` (all from `prod.json`),
+`software_version`, `probed_at` (now), `interfaces[]`, `neighbors[]`.
+
+**Diff.** If the prior map has a row for this device, compare only
+against that row and append events to `changes[]` (`at` =
+`mapped_at`, `device` = this device):
 
 | Event | When |
 |-------|------|
-| `link_added` | pair not in the prior `links[]` |
-| `link_removed` | prior pair not seen now, and at least one end was in scope and did not fail |
-| `link_moved` | a local end that pointed at one far end now points at another (`subject` the local end, `prior`/`current` the far ends) |
-| `link_one_sided` | both ends are RESTCONF devices in scope, only one reported it (`current` the reporting device) |
-| `device_added` / `device_removed` | a `collected` device appeared in or vanished from `prod.json`'s candidate set |
-| `version_changed` | `software_version` differs from the prior row |
-| `interface_added` / `interface_removed` | interface list of a collected device differs |
+| `neighbor_added` | a `local` present now, absent before (`current` = far or far_name) |
+| `neighbor_removed` | a `local` present before, absent now |
+| `neighbor_moved` | same `local`, different `far` (or `far_name` when unresolved) |
+| `version_changed` | `software_version` differs |
+| `interface_added` / `interface_removed` | interface name present on one side only |
 
-First map: `changes` [].
+No prior row → `device_added` if a prior map exists, nothing on a
+first map.
 
-## Status and headline
+**Write.** Replace this device's row in `devices[]` (or append),
+update `coverage.probed`, `keys`, `updated_at`, and `write_file` the
+whole file. Then start the next device.
 
-`status`: `ok` when every device in scope was probed and no
-`link_one_sided` event was raised this map; `gaps` when a device
-failed or a link between two probed devices was one-sided;
-`unavailable` when nothing was probed. `coverage.state` likewise.
+## Finish
 
-`headline`: devices mapped, links, unresolved count, then the changes
-since `prior_mapped_at` in words (or "first map"). `next_action`:
-`none`, or `Add <neighbor_name> to inventory` when `unresolved[]` is
-non-empty, or `Re-run: <device> failed` on gaps.
-
-`keys`: every `device:` in `devices[]` and every interface key on
-`links[]`.
+After the last device: `coverage.state` `complete` when `failed` is
+empty, else `partial`; `status` `ok` / `gaps`; `prior_mapped_at` ←
+the prior file's `mapped_at`. A device that was in the prior map but
+is no longer in `prod.json`'s candidate set → `device_removed`, drop
+its row. Trim `changes[]` to the last 20. `headline`: probed / in
+scope, neighbor rows, count of rows with `far` null (name them), then
+the change events in words or "first map". `next_action`: `none`, or
+`Add <far_name> to inventory` when any `far` is null, or `Re-run:
+<device> failed`. Write, then `read_file` it back.
 
 ## Budget
 
 | Item | Max |
 |------|----:|
-| Workspace file read/write | 6 |
-| IOS-XE calls (`iosxe_get_platform_and_yang` + `iosxe_restconf_get`) | 40 |
+| Workspace reads | 3 |
+| Workspace writes | in-scope devices + 2 |
+| IOS-XE calls (`iosxe_get_platform_and_yang` + `iosxe_restconf_get`) | 4 × in-scope devices, cap 40 |
 
-Over budget: write what you have as `gaps`, list the devices not
-probed in `coverage.detail`.
+Over budget: finish the current device, write, stop with `gaps` and
+the unprobed devices named in `coverage.detail`.
 
 ## Reply
 
@@ -119,8 +136,8 @@ probed in `coverage.detail`.
 Visit: topology
 Result: <ok | gaps | unavailable>
 Wrote: inventory/topology-observed.json
-Devices: <n> mapped, <m> inventory neighbors without RESTCONF
-Links: <n> (<k> one-sided)  Unresolved: <n>
+Devices: <probed> of <in_scope> probed
+Neighbors: <n> rows, <k> not in inventory (<names>)
 Changes: <none since <prior_mapped_at> | first map | one line per event>
 Next: <next_action>
 ```

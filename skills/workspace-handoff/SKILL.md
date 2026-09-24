@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.57.0 — Quiet visits write metadata only; nurse board on metadata; structured deltas; typed relations[]; capability-probe rule; services registry and relationships state rows."
-version: "1.57.0"
+description: "v1.57.1 — Quiet visits write metadata only; nurse board on metadata; structured deltas; typed relations[]; capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
+version: "1.57.1"
 ---
 
 # Workspace handoff
@@ -261,7 +261,7 @@ visits).
 |------|------|--------|--------|---------------------|
 | `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | `snapshot_id` `collected_at` `published_at` `expires_at` (current iff now < `expires_at`) `status` `coverage` `name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf` `access.ssh` `source_metadata`. Missing prod.json blocks NetBox bootstrap. |
 | `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` (`cidr` resolves an address to `interface:<device>/<name>`) `cables[]` (intended `connected_to`) `counts` |
-| `inventory/topology-observed.json` | snapshot | Health Device (topology map) | `health-device` `schemas/topology-iosxe.schema.json` | envelope, `mapped_at` `prior_mapped_at` `devices[].name` `node_definition` `software_version` `interfaces[]` (`cidr` resolves an address to a device) `links[]` (`a` `b` `seen_from` — the observed cable) `unresolved[]` `changes[]`. Task line `Run the network topology map only.` |
+| `inventory/topology-observed.json` | snapshot | Health Device (topology map) | `health-device` `schemas/topology-iosxe.schema.json` | envelope, `coverage.state` (`partial` while a map is in progress) `mapped_at` `prior_mapped_at` `devices[].name` `node_definition` `software_version` `probed_at` `interfaces[]` (`cidr` resolves an address to a device) `neighbors[]` (`local` `far_name` `far_port` `far` — one end's view of a cable; `far` null means the name is not in inventory; readers pair rows across devices) `changes[]`. Task line `Run the network topology map only.` |
 | `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` `owner` `source_ref`. Absent file: write no `service:` key. |
 | `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `edges[]` (`from` `to` `rel` `basis` `first_seen` `last_seen` `seen_count` `sources[]` `status`), `drift[]`, `watermarks` |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |

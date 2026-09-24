@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.10.0"
-description: "v1.10.0 — IOS-XE device visits, GET-only RESTCONF. Health mode diffs against the board on health/metadata-iosxe.json and writes a stamp only when something material moved. Topology mode maps observed cabling, versions, and interfaces to inventory/topology-observed.json. No CDP on health visits; no counters on topology maps."
+version: "1.10.1"
+description: "v1.10.1 — IOS-XE device visits, GET-only RESTCONF. Health mode diffs against the board on health/metadata-iosxe.json and writes a stamp only when something material moved. Topology mode records each device's version, interfaces, and CDP neighbors to inventory/topology-observed.json, one device at a time, one call per turn, no cross-device reasoning. No CDP on health visits; no counters on topology maps."
 ---
 
 # Health Device skill
@@ -29,10 +29,14 @@ board, something material moved, or coverage is not complete. Do not
 GET CDP or LLDP on a health visit; far-end context comes from
 `inventory/topology-observed.json` when it exists.
 
-**Topology.** Version, interface list with addresses, and CDP/LLDP
-neighbors per device. One file, overwritten, with a `changes[]` ring
-of what moved since the prior map. Neighbors not in `prod.json` go on
-`unresolved[]` without a key.
+**Topology.** Per device: version, interface names with addresses,
+and its CDP/LLDP rows copied into `devices[].neighbors[]`. **One
+device at a time, one IOS-XE call per turn, rewrite the file after
+every device.** You never pair two devices' reports, never read
+`description`, never use addresses to decide cabling — a reader pairs
+`neighbors[]` rows. A neighbor name not in `prod.json` keeps
+`far_name` with `far` null. `changes[]` is a per-device diff against
+that device's prior row.
 
 Both: do not write `state/`. Do not read other planes. Do not list
 `health/iosxe/` to find a prior stamp. Rank and resolve names from
@@ -55,7 +59,7 @@ measurements. Unavailable collection: counts **null**, never `0`. Do
 not write under `automations/schedules/`. Do **not** call
 `execute_command`. Do not write scripts. Do not stamp `expires_at`. Do
 not emit recommendations. Do not write `relations[]`; edges are the
-`peer` column and `links[]`.
+`peer` column and `neighbors[].far`.
 
 ## Files
 
@@ -67,7 +71,7 @@ run a validator. Persist with `write_file` on catalog paths.
 |------|------|----------|
 | `health/metadata-iosxe.json` | metadata | Board. Every health visit. No port, no host. |
 | `health/iosxe/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics`, `readings` (moved/abnormal rows; first visit all), `unchanged`, `baseline_ref`, `vs_prior` (structured `changed[]`). Optional `concerns[]`. |
-| `inventory/topology-observed.json` | snapshot | Envelope. `devices[]` `links[]` `unresolved[]` `changes[]`. Overwrite. |
+| `inventory/topology-observed.json` | snapshot | Envelope. `coverage` `devices[]` (each with `interfaces[]` `neighbors[]`) `changes[]`. Rewritten after every device. |
 
 Use exactly: `references/watch.md`, `references/iosxe.md`,
 `references/topology.md`, `references/workspace-contract.md`,
@@ -93,8 +97,12 @@ stamp if due and read it back. Rewrite the board.
 
 **Topology map — first tools:** `read_file` `inventory/prod.json`,
 then `inventory/topology-observed.json` if it exists (prior map).
-Per device in scope: platform call, interfaces GET, CDP GET (LLDP
-once on 204). Write the file and read it back.
+Write the file once as `partial`. Then for each device in scope, in
+order, one call per turn: `iosxe_get_platform_and_yang(port)` →
+`iosxe_restconf_get` `Cisco-IOS-XE-native:native/interface` →
+`iosxe_restconf_get` `Cisco-IOS-XE-cdp-oper:cdp-neighbor-details`
+(LLDP once on 204) → reduce → `write_file`. Never start the next
+device before the file is written. Finish, write, read back.
 
 ## Canonical top-level keys
 
@@ -104,11 +112,12 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 Health: READ_PROD → READ_TOPOLOGY → READ_BOARD → COLLECT → DIFF → DECIDE → [WRITE_CHECK → READ_BACK → PRUNE] → WRITE_BOARD → STOP
 
-Topology: READ_PROD → READ_PRIOR_MAP → COLLECT → DIFF → WRITE_MAP → READ_BACK → STOP
+Topology: READ_PROD → READ_PRIOR_MAP → WRITE_PARTIAL → (per device: VERSION → INTERFACES → NEIGHBORS → REDUCE → DIFF → WRITE_MAP)* → FINISH → WRITE_MAP → READ_BACK → STOP
 
 On collection failure: health still writes the check (`unavailable`,
-null facts) and the board (prior rows kept); topology writes `gaps`
-with the prior rows for the failed device.
+null facts) and the board (prior rows kept); topology retries a call
+once, then lists the device in `coverage.failed`, keeps its prior row,
+and moves to the next device.
 
 ## Reference routing
 

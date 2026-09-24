@@ -2,39 +2,40 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "topology-iosxe/v1",
   "title": "inventory/topology-observed.json",
-  "description": "Observed physical topology (Kind snapshot). Health Device, topology mode only. One file, rewritten each map; changes[] is the ring of what moved between maps. devices[] is what a digital twin needs (name, platform, node_definition, software_version, interfaces); links[] is who is cabled to whom as CDP/LLDP saw it; unresolved[] is a neighbor the inventory does not know. Everything here is observed. Intended topology lives elsewhere (git). No config, no counters, no health.",
+  "description": "Observed physical topology (Kind snapshot). Health Device, topology mode only. One file, rewritten after every device probed. Each devices[] row is what ONE device reported about itself: version, interfaces with addresses, and its CDP/LLDP neighbors exactly as returned. The nurse never merges two devices' reports, never decides which report is stale, never reads descriptions. A reader pairs neighbors[] rows across devices mechanically. changes[] is the ring of what moved between maps, per device. Everything here is observed. No config, no counters, no health.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["keys", "schema", "updated_at", "source_agent", "status", "headline", "next_action", "mapped_at", "prior_mapped_at", "scope", "coverage", "devices", "links", "unresolved", "changes"],
+  "required": ["keys", "schema", "updated_at", "source_agent", "status", "headline", "next_action", "mapped_at", "prior_mapped_at", "scope", "coverage", "devices", "changes"],
   "properties": {
     "keys": {
       "type": "array",
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
-      "description": "Union of device keys and every interface key on links[]."
+      "description": "Every device key in devices[] plus every interface key that appears as a neighbors[].local or neighbors[].far."
     },
     "schema": { "type": "string", "const": "topology-iosxe/v1" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-device" },
-    "status": { "type": "string", "enum": ["ok", "gaps", "unavailable"], "description": "ok: every ranked device probed and every link seen from both ends or from a device whose far end has no RESTCONF. gaps: a probe failed, or a link between two RESTCONF devices was seen from one end only. unavailable: nothing probed." },
-    "headline": { "type": "string", "minLength": 1, "description": "Devices mapped, links found, unresolved count, and what changed since prior_mapped_at (or 'first map')." },
+    "status": { "type": "string", "enum": ["ok", "gaps", "unavailable"], "description": "ok: every device in scope probed. gaps: at least one device failed or the map is still in progress. unavailable: nothing probed." },
+    "headline": { "type": "string", "minLength": 1, "description": "Devices probed / in scope, neighbor rows recorded, unresolved neighbor names, then what changed since prior_mapped_at (or 'first map')." },
     "next_action": { "type": "string", "minLength": 1 },
     "mapped_at": { "type": "string", "minLength": 1 },
     "prior_mapped_at": { "type": ["string", "null"] },
     "scope": {
       "type": ["array", "string"],
       "items": {"type": "string", "pattern": "^device:[^ ].*$"},
-      "description": "\"all\" or the device keys the task line named. A scoped map replaces only links seen from those devices."
+      "description": "\"all\" or the device keys the task line named."
     },
     "coverage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "devices_probed", "devices_failed", "neighbor_protocol_absent"],
+      "required": ["state", "in_scope", "probed", "failed", "neighbor_protocol_absent"],
       "properties": {
-        "state": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
-        "devices_probed": { "type": "integer" },
-        "devices_failed": { "type": "array", "items": {"type": "string", "pattern": "^device:[^ ].*$"} },
-        "neighbor_protocol_absent": { "type": "array", "items": {"type": "string", "pattern": "^device:[^ ].*$"}, "description": "Devices where both the CDP and LLDP GET returned 204/404/empty." },
+        "state": { "type": "string", "enum": ["complete", "partial", "unavailable"], "description": "partial while devices remain or a device failed." },
+        "in_scope": { "type": "integer" },
+        "probed": { "type": "integer" },
+        "failed": { "type": "array", "items": {"type": "string", "pattern": "^device:[^ ].*$"} },
+        "neighbor_protocol_absent": { "type": "array", "items": {"type": "string", "pattern": "^device:[^ ].*$"}, "description": "Devices where CDP and LLDP both returned 204/404/empty." },
         "detail": { "type": "string" }
       }
     },
@@ -42,40 +43,28 @@
       "type": "array",
       "maxItems": 64,
       "items": { "$ref": "#/$defs/device" },
-      "description": "Every inventory/prod.json device that was probed, plus every inventory device that appeared as a neighbor (collected false)."
-    },
-    "links": {
-      "type": "array",
-      "maxItems": 128,
-      "items": { "$ref": "#/$defs/link" },
-      "description": "One row per physical link, unordered. Loopback, Vlan, and management ports are not links."
-    },
-    "unresolved": {
-      "type": "array",
-      "maxItems": 64,
-      "items": { "$ref": "#/$defs/unresolved" },
-      "description": "A CDP/LLDP neighbor whose name does not match any inventory/prod.json device. No key is minted for it."
+      "description": "One row per inventory/prod.json device in scope. Rows are written one device at a time; a device not yet probed this map keeps its prior row (or is absent on a first map)."
     },
     "changes": {
       "type": "array",
-      "maxItems": 10,
+      "maxItems": 20,
       "items": { "$ref": "#/$defs/change" },
-      "description": "Ring of the last 10 change events across maps, oldest first. Empty on the first map."
+      "description": "Ring of the last 20 change events, oldest first. Each is a per-device comparison against that device's prior row. Empty on the first map."
     }
   },
   "$defs": {
     "device": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["keys", "name", "platform", "role", "node_definition", "software_version", "collected", "interfaces"],
+      "required": ["keys", "name", "platform", "role", "node_definition", "software_version", "probed_at", "interfaces", "neighbors"],
       "properties": {
-        "keys": { "type": "array", "minItems": 1, "items": {"type": "string", "pattern": "^device:[^ ].*$"} },
+        "keys": { "type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^(device|interface):[^ ].*$"}, "description": "device:<name> plus interface keys of every neighbors[].local and resolved neighbors[].far." },
         "name": { "type": "string", "minLength": 1, "description": "inventory/prod.json spelling." },
         "platform": { "type": ["string", "null"], "description": "prod.json platform." },
         "role": { "type": ["string", "null"], "description": "prod.json role." },
         "node_definition": { "type": ["string", "null"], "description": "prod.json source_metadata.node_definition. Never from the device." },
-        "software_version": { "type": ["string", "null"], "description": "From the live platform call. Null when not collected." },
-        "collected": { "type": "boolean", "description": "true when this map probed the device. false when it is here only because a probed device named it as a neighbor." },
+        "software_version": { "type": ["string", "null"], "description": "version from the platform call. Null when the call failed." },
+        "probed_at": { "type": ["string", "null"], "description": "When this device's three calls completed. Null when carried over from a prior map because collection failed." },
         "interfaces": {
           "type": "array",
           "maxItems": 64,
@@ -84,48 +73,43 @@
             "additionalProperties": false,
             "required": ["name", "cidr"],
             "properties": {
-              "name": { "type": "string", "minLength": 1 },
-              "cidr": { "type": ["string", "null"], "description": "Primary IPv4 as address/prefix when the interface has one. Lets the health visit resolve a BGP neighbor id to a device without any other system." }
+              "name": { "type": "string", "minLength": 1, "description": "Full IOS name, e.g. GigabitEthernet1, Loopback0, GigabitEthernet3.51." },
+              "cidr": { "type": ["string", "null"], "description": "Primary IPv4 as address/prefix, null when the interface has no address." }
             }
           },
-          "description": "Every interface the device returned, including admin-down and Loopback (a twin needs the slots; BGP peers often sit on loopbacks). Empty when collected is false."
+          "description": "Every interface the device returned, including Loopback and shut ones. Name and address only — never description."
+        },
+        "neighbors": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/neighbor" },
+          "description": "One row per CDP (or LLDP) entry this device returned, as returned. Do not drop, merge, or reconcile rows."
         }
       }
     },
-    "link": {
+    "neighbor": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["keys", "a", "b", "seen_from", "first_seen", "last_seen"],
+      "required": ["local", "far_name", "far_port", "far"],
       "properties": {
-        "keys": { "type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^(device|interface):[^ ].*$"}, "description": "Both interface keys and both device keys." },
-        "a": { "type": "string", "pattern": "^interface:[^ ]+/[^ ]+$", "description": "Lower device name sorts first, so the same link always has the same a/b." },
-        "b": { "type": "string", "pattern": "^interface:[^ ]+/[^ ]+$" },
-        "seen_from": { "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"type": "string", "pattern": "^device:[^ ].*$"}, "description": "Which end(s) reported it. One entry when the far end has no RESTCONF, was out of scope, or did not report the link." },
-        "first_seen": { "type": "string", "minLength": 1 },
-        "last_seen": { "type": "string", "minLength": 1 }
-      }
-    },
-    "unresolved": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["from", "neighbor_name", "port"],
-      "properties": {
-        "from": { "type": "string", "pattern": "^interface:[^ ]+/[^ ]+$" },
-        "neighbor_name": { "type": "string", "minLength": 1, "description": "device-name / device-id as returned, domain suffix removed." },
-        "port": { "type": ["string", "null"] },
-        "platform_hint": { "type": ["string", "null"], "description": "CDP platform string when present. Helps a human add the device to inventory." }
+        "local": { "type": "string", "pattern": "^interface:[^ ]+/[^ ]+$", "description": "interface:<this device>/<local-intf-name>." },
+        "far_name": { "type": "string", "minLength": 1, "description": "device-name as returned, domain suffix removed. Kept even when resolved." },
+        "far_port": { "type": ["string", "null"], "description": "port-id as returned, short form expanded (Gi1 -> GigabitEthernet1)." },
+        "far": { "type": ["string", "null"], "pattern": "^interface:[^ ]+/[^ ]+$", "description": "interface:<prod.json name>/<far_port> when far_name matches a prod.json device case-insensitively; null when it does not (the neighbor is unknown to inventory)." },
+        "platform_hint": { "type": ["string", "null"], "description": "CDP platform string when present. Only useful when far is null." }
       }
     },
     "change": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["at", "change", "subject", "prior", "current"],
+      "required": ["at", "device", "change", "subject", "prior", "current"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
-        "change": { "type": "string", "enum": ["link_added", "link_removed", "link_moved", "link_one_sided", "device_added", "device_removed", "version_changed", "interface_added", "interface_removed"] },
-        "subject": { "type": "string", "minLength": 1, "description": "The interface key (links, link_moved: the local end), or device key." },
-        "prior": { "description": "Prior far end, version, or null." },
-        "current": { "description": "Current far end, version, or null." }
+        "device": { "type": "string", "pattern": "^device:[^ ].*$", "description": "The device whose row changed." },
+        "change": { "type": "string", "enum": ["neighbor_added", "neighbor_removed", "neighbor_moved", "version_changed", "interface_added", "interface_removed", "device_added", "device_removed"] },
+        "subject": { "type": "string", "minLength": 1, "description": "neighbor_*: the local interface key. interface_*: the interface name. version_changed / device_*: the device key." },
+        "prior": { "description": "Prior far (neighbor), version, or null." },
+        "current": { "description": "Current far (neighbor), version, or null." }
       }
     }
   }

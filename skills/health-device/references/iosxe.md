@@ -35,7 +35,8 @@ description). No oper-status, no counters.
 
 4. `read_file` `inventory/topology-observed.json` if it exists. Keep
    `devices[].name` + `interfaces[].cidr` (peer resolution) and
-   `links[]` (far-end context for notes). Missing file: resolve peers
+   `devices[].neighbors[]` `local`/`far` (far-end context for notes).
+   Missing file: resolve peers
    from this visit's own interface payloads only; notes name no far
    end. Do not GET CDP or LLDP on a health visit.
 
@@ -152,8 +153,9 @@ mismatch). Identical field names and values to the board row.
 `note` — only on a row that changed, is abnormal, or is mismatched.
 It is the nurse's opinion, not the columns again: what moved, since
 when (`last_changed`), and what the ACL, peer, and far-end columns say
-about the cause. Far end comes from `topology-observed.json` `links[]`
-when present (for example: drops with no ACL bound are not policy; a
+about the cause. Far end comes from `topology-observed.json`
+`devices[].neighbors[]` (this interface as `local`, its `far`) when
+present (for example: drops with no ACL bound are not policy; a
 flap with 0 CRC errors points at the far end; a peer that vanished
 with the interface still up is a far-end shutdown). Do not repeat
 addresses or counter values the row already carries. A healthy

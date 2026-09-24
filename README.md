@@ -1,8 +1,10 @@
 # AI Studio NetOps
 
-# AI Studio Multi-Agent Orchestration
+Agents carry out the work. The case record carries the continuity.
 
-### A patient chart for agents working on the same problem
+A patient chart for agents working on the same problem.
+
+[The idea](#the-patient-chart) · [A case in motion](#a-case-in-motion) · [Why it breaks](#where-coordination-breaks-down) · [This repository](#how-this-repository-applies-the-idea) · [Principles](#principles)
 
 **What happens when the next agent arrives after the first agent’s context is gone?**
 
@@ -20,6 +22,7 @@ That shared chart maintains continuity across shifts and specialties. A lab resu
 
 That gives AI Studio a practical design rule:
 
+> [!IMPORTANT]
 > **Agents carry out the work. The case record carries the continuity.**
 
 An agent reads the relevant case state, gets fresh evidence from an authoritative source, compares it with what is already known, and records a material observation or assessment with a reference to its evidence. An analyzer can then connect findings across specialties and propose the next objective. A later agent can pick up that objective without replaying every conversation.
@@ -73,11 +76,11 @@ Multi-agent orchestration makes that division of work possible. **Its value come
 
 ## Where coordination breaks down
 
-**Context continuity.** An agent's conversation is a poor permanent record. Context can grow, get compressed, expire, or become unavailable when a different agent or model takes over. A team needs a durable account of what it currently knows and why.
-
-**Handoffs create rework.** If the next specialist receives only a summary of the previous specialist's reasoning, it may need to rediscover evidence, repeat tests, or guess which claims were observations and which were interpretations. Direct handoffs are useful for delegation; they should not be the only place the case exists.
-
-**Reality does not arrive in a fixed order.** A linear workflow assumes that agent A finishes before B starts and that C receives everything it needs from B. In operations, a new alert, test result, incident update, or human request may arrive at any time. Agents need to join, revisit, or resume a case when their expertise is needed.
+| Failure | What goes wrong |
+| --- | --- |
+| **Context continuity** | An agent's conversation is a poor permanent record. Context can grow, get compressed, expire, or become unavailable when a different agent or model takes over. A team needs a durable account of what it currently knows and why. |
+| **Handoffs create rework** | If the next specialist receives only a summary of the previous specialist's reasoning, it may need to rediscover evidence, repeat tests, or guess which claims were observations and which were interpretations. Direct handoffs are useful for delegation; they should not be the only place the case exists. |
+| **Reality does not arrive in a fixed order** | A linear workflow assumes that agent A finishes before B starts and that C receives everything it needs from B. In operations, a new alert, test result, incident update, or human request may arrive at any time. Agents need to join, revisit, or resume a case when their expertise is needed. |
 
 ## What this design aims to achieve
 
