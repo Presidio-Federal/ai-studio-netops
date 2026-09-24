@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-metadata-servicenow/v1",
+  "$id": "health-metadata-servicenow/v2",
   "title": "health/metadata-servicenow.json",
-  "description": "ServiceNow lookup inventory (Kind metadata). ServiceNow Health Check only. Not the five-field envelope.",
+  "description": "ServiceNow plane board (Kind metadata). Health ServiceNow visit only. Rewritten every ServiceNow visit, quiet or not. Carries the lookup (marker, match_terms, lookback_days, entity_fields discovered from sys_dictionary), last_visit_id (last stamp), last_collected_at (last completed collection), and the board: current[] last-known row per in-scope ticket, series[] one lab metric row per visit, visits[]. Not the five-field envelope.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "updated_at", "source_agent", "servicenow"],
@@ -10,40 +10,123 @@
     "keys": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
+      "description": "Union of every key on current[]."
     },
-    "schema": { "type": "string", "const": "health-metadata-servicenow/v1" },
+    "schema": { "type": "string", "const": "health-metadata-servicenow/v2" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-servicenow" },
     "servicenow": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["marker"],
+      "required": ["marker", "match_terms", "lookback_days", "entity_fields", "last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits"],
       "properties": {
-        "marker": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Workspace lookup. Text that identifies this lab's tickets."
-        },
+        "marker": { "type": "string", "minLength": 1, "description": "Text that identifies this lab's tickets (prod.json lab_title, else source.name). One of the scope terms." },
         "match_terms": {
           "type": "array",
-          "items": { "type": "string", "minLength": 1 }
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Operator-set extra scope terms (a correlation tag, a project code). Empty is fine. Never device names."
         },
-        "last_visit_id": {
-          "type": ["string", "null"],
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+        "lookback_days": { "type": "integer", "minimum": 1, "maximum": 365, "description": "Baseline window for inactive rows. Default 30. Later visits use last_collected_at minus one day." },
+        "entity_fields": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["device", "interface", "ip", "service"],
+          "description": "Typed ticket columns on this instance, discovered once from sys_dictionary (name=incident, element starts with u_). Null means the platform has no such column: a capability probe result, not an error. An operator may overwrite.",
+          "properties": {
+            "device": { "type": ["string", "null"] },
+            "interface": { "type": ["string", "null"] },
+            "ip": { "type": ["string", "null"] },
+            "service": { "type": ["string", "null"] }
+          }
         },
-        "last_collected_at": { "type": ["string", "null"] }
+        "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
+        "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
+        "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+        "current": {
+          "type": "array",
+          "maxItems": 32,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "Last-known row per in-scope ticket. A visit replaces every row it was returned and keeps the rest; over 32, drop inactive rows oldest updated_at first."
+        },
+        "series": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/metric_row" },
+          "description": "One lab row per visit, oldest first."
+        },
+        "visits": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/visit_row" }
+        }
       }
     },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "servicenow": {
-          "type": "string",
-          "enum": ["user", "discovered"]
-        }
+        "servicenow": { "type": "string", "enum": ["user", "discovered"], "description": "How marker was set." },
+        "entity_fields": { "type": "string", "enum": ["user", "discovered"] }
+      }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "type", "number", "keys", "state", "active", "urgency", "priority", "opened_at", "updated_at", "resolved_at", "issue", "close_code", "close_notes", "rfc", "ci", "service", "device", "interface", "ip"],
+      "description": "Same shape as a stamp thread, without note.",
+      "properties": {
+        "scope": { "type": "string", "pattern": "^(incident|change):[^ ]+$" },
+        "type": { "type": "string", "enum": ["incident", "change"] },
+        "number": { "type": "string", "minLength": 1 },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "state": { "type": "string", "minLength": 1 },
+        "active": { "type": "boolean" },
+        "urgency": { "type": ["string", "null"] },
+        "priority": { "type": ["string", "null"] },
+        "opened_at": { "type": "string", "minLength": 1 },
+        "updated_at": { "type": "string", "minLength": 1 },
+        "resolved_at": { "type": ["string", "null"] },
+        "issue": { "type": "string", "minLength": 1 },
+        "close_code": { "type": ["string", "null"] },
+        "close_notes": { "type": ["string", "null"] },
+        "rfc": { "type": ["string", "null"] },
+        "ci": { "type": ["string", "null"] },
+        "service": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"] },
+        "interface": { "type": ["string", "null"] },
+        "ip": { "type": ["string", "null"] }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "rows", "open_incidents", "open_p1p2", "open_changes", "resolved_rows", "typed_rows"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "lab" },
+        "rows": { "type": ["integer", "null"] },
+        "open_incidents": { "type": ["integer", "null"] },
+        "open_p1p2": { "type": ["integer", "null"] },
+        "open_changes": { "type": ["integer", "null"] },
+        "resolved_rows": { "type": ["integer", "null"] },
+        "typed_rows": { "type": ["integer", "null"] }
+      }
+    },
+    "visit_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "since"],
+      "properties": {
+        "watch_id": { "type": ["string", "null"] },
+        "checked_at": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "unknown"] },
+        "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
+        "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "stamp_written": { "type": "boolean" },
+        "since": { "type": "string", "minLength": 1, "description": "The since value used in this visit's query." }
       }
     }
   }

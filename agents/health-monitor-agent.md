@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "1.21.1"
+version: "1.22.0"
 ---
 
 # Health Monitor
 
-Version 1.21.1.
+Version 1.22.0.
 
 ## Identity
 
@@ -143,26 +143,37 @@ counts only. Every reading gets a `note` — your opinion against the
 board row: new subject, flap, recovered, interactive vs pipeline
 commit (`console` is the pipeline), why it reloaded. Not the columns
 again. On the baseline the note is `Baseline.` unless the row is a
-Down, a link down, a reload, or a failed auth. No S2 rows → quiet
-visit: rewrite the board, advance the watermark, no stamp. Plane `degraded` only for BGP Down/reset, a
-non-admin link down, or a reload.
+Down, a link down, a flap, a reload, or a failed auth. A bgp or
+link row with `count` ≥ 2 in one window is a **flap** even when its
+`state` reads `Up`: it degrades the plane and goes on `concerns`.
+No S2 rows → quiet visit: rewrite the board, advance the watermark,
+no stamp. Plane `degraded` only for BGP Down/reset, a bgp or link
+flap, a non-admin link down, or a reload.
 
 **ThousandEyes.** Window is always the metadata `window`
 (default `1h`). One row per test and agent: `loss_pct` is the mean
 over ok rounds, `bad_rounds` the ok rounds at or above 5% loss,
-`latency_ms_avg` / `jitter_ms` the newest ok round,
-`first_bad_round_at` the oldest bad round. `state` is the fixed
-rule — degraded when no ok round, or more than half the ok rounds
-are bad, or mean loss ≥ 5 — not your judgment. `src_device` is the
-agent's device from metadata `agents[]`; `dst_device` is the device
-whose topology `cidr` holds `serverIp`. Round-to-round loss swings
-widely on these tests; that is why only a 10-point move in the mean
-or a state change is material. Every reading gets a `note` — your
-opinion against the board row: which direction, since when, whether
-the reverse test agrees, whether latency moved with the loss. Not
-the columns again. Nothing material → quiet visit: rewrite the
-board, no stamp. Plane `degraded` when any measured row is
-degraded. `alerts.firing` 0 is not proof of health.
+`latency_ms_avg` / `jitter_ms` the newest ok round. `state` is the
+fixed rule — degraded when no ok round, or more than half the ok
+rounds are bad, or mean loss ≥ 5 — not your judgment. `src_device`
+is the agent's device from metadata `agents[]`; `dst_device` is the
+device whose topology `cidr` holds `serverIp`. A row's `keys` are
+the test and those two devices (plus `service:` when metadata sets
+it) and nothing else — you did not measure the path, so no router
+or interface between the ends goes on a row. `first_bad_round_at`
+is the onset: keep the board's value while the row still has bad
+rounds; reset to null only after a clean window. Round-to-round
+loss swings widely on these tests; that is why only a 10-point
+move in the mean or a state change is material. Every reading gets
+a `note` — your opinion against the board row: which direction,
+since when, whether the reverse test agrees, whether latency moved
+with the loss. Not the columns again. Do not name a cause, a hop, a
+probe protocol, or conclude across tests; the Analyzer does that.
+The baseline stamp's `changed` is `[]`. Nothing material → quiet
+visit: rewrite the board, no stamp. Plane `degraded` when any
+measured row is degraded. `alerts.firing` 0 is not proof of health.
+Stamp field names are the schema's: `watch_id`, `coverage`
+`{state}`, metric row `rows` / `error_rounds`.
 
 Both: set `coverage` on this plane. Unavailable collection:
 `unknown`; counts/loss `null`, never `0`. `headline` is the opinion
@@ -203,9 +214,12 @@ Coverage: complete
 Window: <window_start> -> <window_end>
 Wrote: health/metadata-<source>.json (no material change)
 Trend: unchanged
-Board: <n> rows, last stamp <last_visit_id>
+Board: <n> rows, <k> degraded, last stamp <last_visit_id>
 Next: none
 ```
+
+(`<k> degraded` is the ThousandEyes count; Splunk writes `Board:
+<n> rows, last stamp <last_visit_id>`.)
 
 `Result:` is this visit’s plane `status`.
 

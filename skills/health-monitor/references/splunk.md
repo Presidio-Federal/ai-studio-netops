@@ -136,8 +136,8 @@ event is a change):
 
 | kind | `field` | `prior` | `current` |
 |------|---------|---------|-----------|
-| bgp | `bgp_state` | board `state` or null | `state` |
-| link | `link_state` | board `state` or null | `state` |
+| bgp | `bgp_state` | board `state` or null | `state`, or `<state> x<count>` when `count` ≥ 2 |
+| link | `link_state` | board `state` or null | `state`, or `<state> x<count>` when `count` ≥ 2 |
 | config | `config` | board `at` or null | `<subject> via <detail> from <source_ip>` |
 | reload | `reload` | board `at` or null | `detail` |
 | acl | `acl` | board `at` or null | `<state> x<count>` |
@@ -145,11 +145,18 @@ event is a change):
 
 `at` = the row's `at`.
 
+**Flap.** S2 keeps `latest(state)`, so a session or link that went
+down and came back inside one window reads `Up` with `count` ≥ 2.
+That is a **flap**: treat a bgp or link row with `count` ≥ 2 exactly
+like a `Down`/reset for `delta`, plane status, and `concerns`, even
+though `state` says `Up`. Say "flapped" in the note.
+
 `delta`: `worse` when any item is a bgp `Down`/reset, a link `down`
-(not `administratively down`), a reload, or an auth_failed; `better`
-when items are only `Up`/`up` and nothing worse; `changed` when
-only config, acl, or administratively down; `unchanged` when S2 was
-empty; `first` when there is no board.
+(not `administratively down`), a bgp or link flap (`count` ≥ 2), a
+reload, or an auth_failed; `better` when items are only `Up`/`up`
+with `count` 1 and nothing worse; `changed` when only config, acl,
+or administratively down; `unchanged` when S2 was empty; `first`
+when there is no board.
 
 **Stamp or quiet.** Write a stamp when: no board (first visit), S2
 returned at least one row, or coverage ≠ `complete`. Otherwise the
@@ -158,10 +165,11 @@ visit is **quiet**: no stamp; board only.
 ## Plane status
 
 `degraded` when any S2 row has bgp `state` `Down`/`active reset`/
-`passive reset`, link `state` `down`, or kind `reload`. Config, ACL
-logs, admin-down, failed auth, and SSH NO_MATCH never degrade on
-their own — they are `changed` and, for failed auth and reload,
-`concerns`. `unknown` when S1 failed.
+`passive reset`, link `state` `down`, a bgp or link `count` ≥ 2
+(flap), or kind `reload`. Config, ACL logs, admin-down, failed auth,
+and SSH NO_MATCH never degrade on their own — they are `changed`
+and, for failed auth and reload, `concerns`. `unknown` when S1
+failed.
 
 ## Write
 
@@ -179,12 +187,12 @@ row), who committed from where and whether it looks interactive
 (`vty`, an operator address) or pipeline (`console`), why it
 reloaded. Not the columns again. **On the baseline** there is no
 board to compare to: `note` is `"Baseline."` unless the row is a
-bgp Down/reset, a link `down`, a reload, or an auth_failed — those
-get the one sentence. `unchanged` = board rows not replaced.
+bgp Down/reset, a link `down`, a flap, a reload, or an auth_failed —
+those get the one sentence. `unchanged` = board rows not replaced.
 `baseline_ref` = `health/splunk/<baseline_visit_id>.json`.
 `headline`: device, subject, state or user, when; then devices
 logged and unchanged count. `concerns`: devices with a bgp
-Down/reset, non-admin link down, reload, or auth_failed.
+Down/reset, a flap, non-admin link down, reload, or auth_failed.
 
 **Board** (schema `health-metadata-splunk`) — every visit:
 - `current[]` ← S2 rows replace rows with the same

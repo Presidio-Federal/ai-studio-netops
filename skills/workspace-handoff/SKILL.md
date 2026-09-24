@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.57.4 — Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory; splunk board carries last syslog state per device/kind/subject; thousandeyes board carries one row per test + agent with src/dst device); structured deltas; typed relations[]; capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
-version: "1.57.4"
+description: "v1.58.0 — Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory; splunk board carries last syslog state per device/kind/subject; thousandeyes board carries one row per test + agent with src/dst device and optional operator-declared tests[].path; servicenow board carries one row per in-scope ticket with typed entity columns discovered into entity_fields); structured deltas; typed relations[]; edges as columns (a ticket's typed fields are columns, not relations[]); capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
+version: "1.58.0"
 ---
 
 # Workspace handoff
@@ -234,10 +234,14 @@ on the board. Scoped visits of the same plane run one at a time: two
 writers on one board lose rows.
 
 **Edges as columns.** When a payload row already names the other
-entity (a BGP `peer`, a cable's two ends), that column *is* the edge;
-do not also write `relations[]`. Use `relations[]` only where no such
-column exists (a test path, a ticket's typed fields). The Relationship
-agent reads both forms.
+entity (a BGP `peer`, a cable's two ends, a ticket's typed `device` /
+`interface` / `service` / `rfc` columns, a test row's `src_device` /
+`dst_device`), that column *is* the edge; do not also write
+`relations[]`. Use `relations[]` only where no such column exists (a
+measured hop-by-hop path). The Relationship agent reads both forms.
+An operator-declared expectation (TE `tests[].path`, `prod.json`
+`links[]`) is `intended`; the compiler, not the nurse, turns it into
+edges.
 
 `vs_prior.changed[]` items are `{keys, field, prior, current, at}`;
 `at` is the source event time when the payload has one, else
@@ -283,13 +287,13 @@ visits).
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
 | `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `finding` `change` including `operational_ref`, `git` `ci` `pr` `keys` |
 | `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `bgp` — `peer` is the adjacency; `link`; `config` — `subject` is the user, `source_ip`; `reload`; `acl`; `auth_failed`) `series[]` `visits[]` |
-| `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `window` `tests[]` (`test_id` `test_name` `type` `service`) `agents[]` (`agent_name` `ip` `device`) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per test + agent: `state` `loss_pct` `latency_ms_avg` `ok_rounds` `bad_rounds` `error_rounds` `first_bad_round_at`; `src_device` / `dst_device` are the ends of the path) `series[]` `visits[]` |
-| `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `last_visit_id` |
+| `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `window` `tests[]` (`test_id` `test_name` `type` `service` `path` — operator-declared expected device sequence, intended, may be null) `agents[]` (`agent_name` `ip` `device`) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per test + agent: `state` `loss_pct` `latency_ms_avg` `ok_rounds` `bad_rounds` `error_rounds` `first_bad_round_at`; `src_device` / `dst_device` are the ends of the path) `series[]` `visits[]` |
+| `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `lookback_days` `entity_fields` (`device` `interface` `ip` `service` — the instance's typed ticket columns, null when the platform has none) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per in-scope ticket: `scope` `type` `number` `state` `active` `urgency` `priority` `opened_at` `updated_at` `resolved_at` `issue` `close_code` `rfc` `ci` `service` `device` `interface` `ip` — the typed columns and `rfc` are the ticket's edges) `series[]` `visits[]` |
 | `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `device` — boot time, version, cpu, memory; `interface`; `bgp`, whose `peer` is the adjacency) `series[]` `visits[]`. RESTCONF port stays on `inventory/prod.json`. |
 | `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `alerts` `keys` `vs_prior` (structured `changed[]`, `field` in `state loss_pct latency_ms_avg error_rounds row`) `concerns`. Written only when a row moved materially. |
 | `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `window_start` `window_end` `coverage` `metrics` (per-device bucket counts) `readings` (one per material syslog subject this window) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns`. Written only when the window held a material event. |
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
-| `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `coverage` `metrics` `threads` (`keys` + `note`) `vs_prior` `ticket_numbers` |
+| `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `window` (the `since` used) `coverage` `metrics` (one `lab` row) `threads` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `row state urgency device interface ip service rfc issue updated`) `concerns`. Written only when a ticket moved. `status` is `ok`/`unknown`; tickets do not vote on vitals. |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched`. `next_action` is `soap.plan`. |
 | `state/lifecycle.json` | state | Modernization Analysis and Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | envelope, `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current iff now < `expires_at`. |
 | `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | `eox` `replacement` `recommended_software` `psirts` `vulnerabilities` `expires_at`. Path is `items[].detail_ref`. |

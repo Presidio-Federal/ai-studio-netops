@@ -1,31 +1,19 @@
 {
   "keys": [],
-  "schema": "health-servicenow-check/v2",
+  "schema": "health-servicenow-check/v3",
   "source": "servicenow",
-  "watch_id": "2026-09-01T15-00-01Z",
-  "checked_at": "2026-09-01T15:00:01Z",
+  "watch_id": "2026-09-25T06-10-00Z",
+  "checked_at": "2026-09-25T06:10:00Z",
   "ok": null,
   "status": "unknown",
-  "headline": "ServiceNow find failed; no incident extract",
-  "window": "active + recent closed",
-  "coverage": {
-    "state": "unavailable",
-    "detail": "snow_find_incidents error; snow_query_table not reached budget"
-  },
-  "vs_prior": {
-    "prior_watch_id": null,
-    "delta": "first",
-    "changed": []
-  },
-  "threads": [],
+  "headline": "Incident query failed twice; no ticket rows this visit. Board kept from 2026-09-25T00-10-00Z (3 rows).",
+  "window": "2026-09-24 00:10:00",
+  "coverage": { "state": "unavailable", "detail": "snow_query_table incident returned ok:false twice (API 401)" },
+  "vs_prior": { "prior_watch_id": "2026-09-25T00-10-00Z", "delta": "unchanged", "changed": [] },
   "metrics": [
-    {
-      "at": "2026-09-01T15:00:01Z",
-      "scope": "lab",
-      "open_incidents": null,
-      "open_changes": null,
-      "open_p1p2": null,
-      "out_of_scope_open": null
-    }
-  ]
+    { "at": "2026-09-25T06:10:00Z", "scope": "lab", "rows": null, "open_incidents": null, "open_p1p2": null, "open_changes": null, "resolved_rows": null, "typed_rows": null }
+  ],
+  "threads": [],
+  "unchanged": null,
+  "baseline_ref": "health/servicenow/2026-09-25T00-10-00Z.json"
 }

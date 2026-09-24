@@ -38,7 +38,13 @@
               "test_id": { "type": "string", "minLength": 1 },
               "test_name": { "type": ["string", "null"] },
               "type": { "type": ["string", "null"], "description": "agent-to-agent, agent-to-server, ... from the test listing." },
-              "service": { "type": ["string", "null"], "description": "A service name an operator bound to this test. The nurse never sets it; copy it through. Adds service:<name> to that row's keys." }
+              "service": { "type": ["string", "null"], "description": "A service name an operator bound to this test. The nurse never sets it; copy it through. Adds service:<name> to that row's keys." },
+              "path": {
+                "type": ["array", "null"],
+                "maxItems": 16,
+                "items": { "type": "string", "minLength": 1 },
+                "description": "Operator-declared expected device sequence from source to destination (inventory names), basis intended. The nurse never sets it and never copies it onto a row or its keys; the Relationship agent reads it here. Null or absent when undeclared. The connector exposes no per-hop path-vis, so there is no observed path."
+              }
             }
           }
         },
@@ -96,7 +102,7 @@
         "server": { "type": ["string", "null"] },
         "src_device": { "type": ["string", "null"] },
         "dst_device": { "type": ["string", "null"] },
-        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 4, "items": { "type": "string", "pattern": "^(test|device|service):[^ ].*$" }, "description": "Exactly test:<test_id>, device:<src_device>, device:<dst_device> (when resolved), service:<service> (when set). Never a device or interface between the ends." },
         "at": { "type": "string", "minLength": 1 },
         "state": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
         "loss_pct": { "type": ["number", "null"] },
@@ -107,7 +113,7 @@
         "bad_rounds": { "type": ["integer", "null"] },
         "error_rounds": { "type": ["integer", "null"] },
         "error_type": { "type": ["string", "null"] },
-        "first_bad_round_at": { "type": ["string", "null"] }
+        "first_bad_round_at": { "type": ["string", "null"], "description": "Onset of the current bad stretch. Carried forward from the prior board row while the row keeps having bad rounds; reset to null only after a whole window with none." }
       }
     },
     "metric_row": {

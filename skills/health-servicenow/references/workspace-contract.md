@@ -1,34 +1,27 @@
 # Produce — Health ServiceNow
 
-Paths, Kind, catalog: **`workspace-handoff`**.
-Write schemas live in this skill. Do not `execute_command`. Do not
-invent files. Persist with `write_file` on catalog paths.
-
-One visit writes **one** new `health/servicenow/<stamp>.json`.
-Do not write `state/`. Update `health/metadata-servicenow.json`
-only. Do not write other `health/<source>/` directories.
+Paths, Kind, catalog: **`workspace-handoff`**. Write schemas live in
+this skill. Do not `execute_command`. Do not invent files. Persist
+with `write_file` on catalog paths.
 
 ## When to write
 
 | File | Kind | When |
 |------|------|------|
-| `health/metadata-servicenow.json` | metadata | Marker resolve, or last-visit stamps after a successful collection. |
-| `health/servicenow/<stamp>.json` | observation | Each ServiceNow visit; **never overwrite**. |
+| `health/metadata-servicenow.json` | metadata | **Every** visit (it is the board): after resolve, and at the end with `current[]`, `series[]`, `visits[]`, `last_collected_at`. `last_visit_id` only when a stamp was written. Not advanced on `unavailable`. |
+| `health/servicenow/<stamp>.json` | observation | Baseline, a moved row (`vs_prior.changed[]` non-empty), or coverage ≠ `complete`. **Never overwrite.** A quiet visit writes no stamp. |
 
-Do not write `health-board.md`, `servicenow/`, or `state/servicenow.json`.
+Do not write `state/`, `health-board.md`, `servicenow/`,
+`state/servicenow.json`, `servicenow/cases/`, `runs/`, `inventory/`,
+`trend-analysis.json`, `remediation-request.json`,
+`state/network-sync.json`, other `health/<source>/` directories, or
+anything under `automations/schedules/`.
 
-Stamp `YYYY-MM-DDTHH-MM-SSZ.json`. If that path exists, bump 1s.
-`watch_id` matches **this** visit’s new file. Never overwrite. At
-most **10** stamps under `health/servicenow/`; delete older after
-write.
+Stamp `YYYY-MM-DDTHH-MM-SSZ.json`. If that path exists, bump 1 s.
+`watch_id` matches **this** visit's new file. At most **10** stamps
+under `health/servicenow/`; delete older after write.
 
-Do not write `runs/`, `inventory/`, `trend-analysis.json`, or
-`state/network-sync.json`. Do not write under
-`automations/schedules/`.
-
-Visit steps: `references/watch.md`.
-
-Unavailable counts are null.
+Order: stamp (when due) → `read_file` it → prune → board.
 
 ## Canonical top-level keys
 

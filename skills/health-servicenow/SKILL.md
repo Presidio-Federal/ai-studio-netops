@@ -1,53 +1,71 @@
 ---
 name: health-servicenow
-version: "1.7.3"
-description: "v1.7.3 — Read-only ServiceNow health visit. Marker comes from inventory/prod.json. Each thread note states the issue, the state, and how it was closed or changed, plus every join key the payload contained. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+version: "2.0.0"
+description: "v2.0.0 — Read-only ServiceNow board visit. Scope is decided in the query (inventory device names, marker, match terms) so a shared instance returns only this lab's tickets; typed entity columns are discovered once from sys_dictionary and read as row columns (device, interface, ip, service, rfc — the edges); board on health/metadata-servicenow.json; stamp only when a ticket's state, urgency, typed field, rfc, issue, or update time moved. snow_query_table only; no find/get. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill
 
-One ServiceNow **read** visit per conversation. Find/get in-scope
-incidents and changes. Do not create or update records. Do not call
-other health MCPs.
-
-Write `health/servicenow/<stamp>.json`. Update
-`health/metadata-servicenow.json` when the marker or `last_visit_id`
-changes. Do not write `state/`. Do not read other planes. You
-interpret this source vs its last stamp (`servicenow.last_visit_id`).
+One ServiceNow **read** visit per conversation. This is a **board
+visit**: `health/metadata-servicenow.json` carries the last-known row
+per in-scope ticket (`current[]`), `series[]`, `visits[]`. The board
+is the prior; do not open the prior stamp. No moved ticket = **quiet
+visit**: board only, no stamp.
 
 If they ask for a different health check, or to file/update a ticket:
 reply `That's not what I do.` and stop.
 
+`references/query.md` is the whole visit: read the board,
+`inventory/prod.json`, and `inventory/services.json` if present;
+build `since` and the scope terms; one `snow_query_table` on
+`incident` and one on `change_request` (plus one on `sys_dictionary`
+on the baseline to discover the typed columns); build one row per
+returned ticket; derive `keys` by the fixed rule; diff against
+`current[]`; stamp when something moved.
+
+**Shared instance.** Most tickets are not this lab's. Scope lives in
+the query, not in your judgment: the terms are `prod.json` device
+names, metadata `marker`, and `match_terms`. Do not widen a query to
+"see what else is there". Do not classify a wider set yourself. Do
+not query by category, caller, or assignment group alone.
+
+**Typed columns are the edges.** `device`, `interface`, `ip`,
+`service`, `rfc` on a row are copied from the ticket's own columns
+(names discovered once and kept in metadata `entity_fields`). They
+are the relations; do not also write `relations[]`. A column the
+platform lacks is `null` on every row — a capability result, not a
+failure.
+
 ## Hard boundaries
 
-Read only: `snow_find_incidents`, `snow_get_incident`,
-`snow_find_changes`, `snow_get_change`. `snow_query_table` only when
-find returns empty or unusable. Never `snow_create_*`,
-`snow_update_*`, catalog, assets, or knowledge. Do not write `runs/`,
-`servicenow/`, `state/servicenow.json`, `inventory/`,
-`trend-analysis.json`, `remediation-request.json`,
+Only `snow_query_table`, read-only, three calls at most. Never
+`snow_find_*`, `snow_get_*`, `snow_create_*`, `snow_update_*`,
+catalog, assets, or knowledge. Do not request `description`,
+`work_notes`, or `comments`. Do not query `sys_journal_field`,
+`cmdb_ci*`, or `sys_user`. Do not read other planes' metadata or
+stamps. Do not read `inventory/infra-sot.json`. Do not write
+`state/`, `runs/`, `servicenow/`, `state/servicenow.json`,
+`inventory/`, `trend-analysis.json`, `remediation-request.json`,
 `state/network-sync.json`, other `health/<source>/` directories, or
-`health-board.md`. Do not invent files. Do not invent ticket numbers
-or hostnames. Do not invent a demo marker. Unavailable collection:
-counts **null**, never `0`. Do not write under
-`automations/schedules/`. Do **not** call `execute_command`. Do not
-write scripts. Do not stamp `expires_at`. Do not emit
-recommendations.
+`health-board.md`. Do not invent files, ticket numbers, hostnames,
+or a marker. Unavailable collection: counts **null**, never `0`.
+Tickets never set `status`; it is `ok` or `unknown`. Do not write
+under `automations/schedules/`. Do **not** call `execute_command`.
+Do not write scripts. Do not stamp `expires_at`. Do not emit
+recommendations or a cause.
 
 ## Files
 
-Paths and catalog: **`workspace-handoff`**. When/how:
-`references/workspace-contract.md`. Write from the schemas. Do not
-run a validator. Persist with `write_file` on catalog paths.
+Paths and catalog: **`workspace-handoff`**. Write from the schemas.
+Do not run a validator. Persist with `write_file` on catalog paths.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `health/metadata-servicenow.json` | metadata | Marker and match terms. **Not** five-field. |
-| `health/servicenow/<stamp>.json` | observation | Plane `status`/`headline`. Never overwrite. Required `metrics`, `threads`, and `vs_prior`. |
+| `health/metadata-servicenow.json` | metadata | Board. **Every** visit. `marker`, `match_terms`, `lookback_days`, `entity_fields`, `current[]`, `series[]`, `visits[]`. **Not** five-field. |
+| `health/servicenow/<stamp>.json` | observation | Only when a row moved, on the first visit, or coverage ≠ complete. Never overwrite. Required `metrics`, `threads`, `unchanged`, `baseline_ref`, `vs_prior` (structured `changed[]`). |
 
 Use exactly: `references/watch.md`, `references/query.md`,
-`references/demo-scope.md`, `references/metadata.md`,
-`references/workspace-contract.md`,
+`references/metadata.md`, `references/workspace-contract.md`,
 `schemas/health-servicenow-check.schema.json`,
 `schemas/health-metadata-servicenow.schema.json`,
 `examples/health-check-servicenow.example.json`,
@@ -58,11 +76,10 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**Visit — first tools:** `read_file`
-`health/metadata-servicenow.json` if it exists. If
-`servicenow.last_visit_id` is set, then that stamp under
-`health/servicenow/`. Then `inventory/prod.json` before any
-ServiceNow call. Never overwrite a timestamped file.
+**Visit — first tools:** `read_file` `health/metadata-servicenow.json`
+(the board), then `inventory/prod.json`, then
+`inventory/services.json` if it exists. Do not open the prior stamp.
+Never overwrite a timestamped file.
 
 ## Canonical top-level keys
 
@@ -71,20 +88,21 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 ## State machine
 
 If `servicenow.marker` is missing: set it from `inventory/prod.json`
-`lab_title`, else `source.name`. Do not ask. Then the visit.
-Both strings missing: write `unavailable` and stop.
+`lab_title`, else `source.name`. Do not ask. If `entity_fields` is
+missing: call D once and write it. Both marker strings missing:
+write `unavailable` and stop.
 
-Named visit with marker: READ_METADATA → READ_PRIOR_STAMP → READ_PROD
-→ PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK → WRITE_METADATA →
-READ_BACK → STOP
+READ_BOARD → READ_PROD → READ_SERVICES → RESOLVE_IF_NEEDED → [D] → I
+→ C → BUILD → DIFF → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE] →
+WRITE_BOARD → STOP
 
-On collection failure: still write that check (`unavailable`, null
-counts). Do not advance metadata last-visit.
+On I failing twice: still write the check (`unavailable`, null
+counts, `threads []`); do not advance `last_collected_at`. On C
+failing twice with I good: `partial`, incident rows only.
 
 ## Reference routing
 
 - Visit steps, budget: `references/watch.md`
-- Query: `references/query.md`
-- Demo scope: `references/demo-scope.md`
-- Marker: `references/metadata.md`
+- Since, scope, queries, rows, keys, diff, board, reply: `references/query.md`
+- Marker and entity-field discovery: `references/metadata.md`
 - Paths: `workspace-handoff`; produce: `references/workspace-contract.md`

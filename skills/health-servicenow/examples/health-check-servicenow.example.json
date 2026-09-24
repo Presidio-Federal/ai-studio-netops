@@ -1,43 +1,51 @@
 {
-  "keys": ["incident:<number>", "change:<number>", "device:<inventory-name>"],
-  "schema": "health-servicenow-check/v2",
+  "keys": ["incident:<inc-a>", "incident:<inc-b>", "incident:<inc-c>", "device:<wan-edge>", "interface:<wan-edge>/<port>", "device:<hub-router>", "device:<cloud-edge>"],
+  "schema": "health-servicenow-check/v3",
   "source": "servicenow",
-  "watch_id": "2026-09-01T15-00-00Z",
-  "checked_at": "2026-09-01T15:00:00Z",
+  "watch_id": "2026-09-25T00-10-00Z",
+  "checked_at": "2026-09-25T00:10:00Z",
   "ok": true,
   "status": "ok",
-  "headline": "BGP adjacency to an inventory device was down. It is resolved: the neighbor was restored and the change that restored the peer is implemented.",
-  "window": "active + recent closed",
-  "coverage": {
-    "state": "complete",
-    "detail": "snow_find_incidents + snow_find_changes; classified against metadata marker and inventory labels"
-  },
-  "vs_prior": {
-    "prior_watch_id": "2026-09-01T09-00-00Z",
-    "delta": "better",
-    "changed": [
-      "incident:<number> was BGP adjacency down, now resolved: neighbor restored",
-      "change:<number> implemented: restore that BGP peer"
-    ]
-  },
+  "headline": "Baseline: three in-scope incidents, all open, none with a change attached. <inc-a> (In Progress, 7 weeks) and <inc-c> (New, 6 weeks) both describe the same WAN loss; only <inc-a> names devices, in its title. <inc-b> is a port-provisioning request, not a fault, and is the only ticket with typed device and interface columns. No change requests in scope. 0 rows unchanged.",
+  "window": "2026-08-26 00:10:00",
+  "coverage": { "state": "complete", "detail": "incident + change_request queries, 3 + 0 rows" },
+  "vs_prior": { "prior_watch_id": null, "delta": "first", "changed": [] },
+  "concerns": [],
+  "metrics": [
+    { "at": "2026-09-25T00:10:00Z", "scope": "lab", "rows": 3, "open_incidents": 3, "open_p1p2": 0, "open_changes": 0, "resolved_rows": 0, "typed_rows": 1 }
+  ],
   "threads": [
     {
-      "keys": [
-        "incident:<number>",
-        "change:<number>",
-        "device:<inventory-name>"
-      ],
-      "note": "BGP adjacency to the inventory device was down. Urgency high. State resolved. Close code solved. Close notes: the neighbor was restored. Change justification: restore that BGP peer. Change state implemented."
+      "scope": "incident:<inc-a>", "type": "incident", "number": "<inc-a>",
+      "keys": ["incident:<inc-a>", "device:<hub-router>", "device:<cloud-edge>"],
+      "state": "In Progress", "active": true, "urgency": "2 - Medium", "priority": "3 - Moderate",
+      "opened_at": "2026-08-04T18:01:43Z", "updated_at": "2026-08-08T18:33:24Z", "resolved_at": null,
+      "issue": "Bidirectional packet loss on the CLOUD-HQ WAN path, fault isolated to <hub-router> <port-a> <-> <cloud-edge> <port-b>",
+      "close_code": null, "close_notes": null, "rfc": null, "ci": null, "service": null,
+      "device": null, "interface": null, "ip": null,
+      "note": "Open 7 weeks, last touched 6 weeks ago; names two devices in the title but no typed device column and no change attached."
+    },
+    {
+      "scope": "incident:<inc-b>", "type": "incident", "number": "<inc-b>",
+      "keys": ["incident:<inc-b>", "device:<wan-edge>", "interface:<wan-edge>/<port>"],
+      "state": "New", "active": true, "urgency": "3 - Low", "priority": "5 - Planning",
+      "opened_at": "2026-08-09T10:25:54Z", "updated_at": "2026-08-09T10:25:56Z", "resolved_at": null,
+      "issue": "Network Port Provisioning — <wan-edge>/<port>",
+      "close_code": null, "close_notes": null, "rfc": null, "ci": null, "service": null,
+      "device": "<wan-edge>", "interface": "<port>", "ip": "<link-ip>",
+      "note": "A provisioning request, not a fault; the only row carrying typed device and interface columns; untouched since it opened 6 weeks ago."
+    },
+    {
+      "scope": "incident:<inc-c>", "type": "incident", "number": "<inc-c>",
+      "keys": ["incident:<inc-c>"],
+      "state": "New", "active": true, "urgency": "3 - Low", "priority": "4 - Low",
+      "opened_at": "2026-08-13T14:44:40Z", "updated_at": "2026-08-13T14:44:40Z", "resolved_at": null,
+      "issue": "Chronic WAN packet loss — CLOUD-to-HQ and HQ-to-CLOUD both pairs, ongoing",
+      "close_code": null, "close_notes": null, "rfc": null, "ci": null, "service": null,
+      "device": null, "interface": null, "ip": null,
+      "note": "Same symptom as <inc-a>, filed 9 days later and never worked; no device, service, or change attached, so it joins the chart only by its number."
     }
   ],
-  "metrics": [
-    {
-      "at": "2026-09-01T15:00:00Z",
-      "scope": "lab",
-      "open_incidents": 0,
-      "open_changes": 0,
-      "open_p1p2": 0,
-      "out_of_scope_open": 14
-    }
-  ]
+  "unchanged": 0,
+  "baseline_ref": null
 }

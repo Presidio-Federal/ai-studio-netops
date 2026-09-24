@@ -1,92 +1,58 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-servicenow-check/v2",
+  "$id": "health-servicenow-check/v3",
   "title": "health/servicenow/YYYY-MM-DDTHH-MM-SSZ.json",
-    "description": "ServiceNow lab slip (Kind observation). threads is the nurse's judgment, one row per in-scope ticket story. keys lists every join key that tool payload contained (incident: change: device: interface: and the other contract types). The note says what those keys mean together. Counts stay on metrics.",
+  "description": "ServiceNow lab slip (Kind observation). Written on the first visit, when at least one in-scope ticket row moved against the board on health/metadata-servicenow.json (state, urgency, a typed entity column, rfc, issue, or any update), or when coverage is not complete. A quiet visit writes the board only. threads: one row per ticket that moved, same shape as a board row plus note. vs_prior.changed: one structured item per moved field. The typed columns (device, interface, ip, service, rfc) are the edges; no relations[]. Tickets do not vote on vitals: status is ok or unknown.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "keys",
-    "schema",
-    "source",
-    "watch_id",
-    "checked_at",
-    "ok",
-    "status",
-    "headline",
-    "window",
-    "coverage",
-    "metrics",
-    "threads",
-    "vs_prior"
-  ],
+  "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "threads", "unchanged", "baseline_ref", "vs_prior"],
   "properties": {
     "keys": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
+      "description": "Union of keys on threads[]."
     },
-    "schema": { "type": "string", "const": "health-servicenow-check/v2" },
+    "schema": { "type": "string", "const": "health-servicenow-check/v3" },
     "source": { "type": "string", "const": "servicenow" },
-    "watch_id": {
-      "type": "string",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-    },
+    "watch_id": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
     "checked_at": { "type": "string", "minLength": 1 },
     "ok": { "type": ["boolean", "null"] },
-    "status": { "type": "string", "enum": ["ok", "unknown"], "description": "Collection only. ok when find/get succeeded. unknown when coverage is unavailable. Open tickets do not set this." },
-    "headline": { "type": "string", "minLength": 1 },
-    "window": { "type": "string", "minLength": 1 },
-    "prior_observation": { "type": ["string", "null"] },
+    "status": { "type": "string", "enum": ["ok", "unknown"], "description": "Collection only. ok when the incident query succeeded; unknown when coverage is unavailable. Open tickets never set this." },
+    "headline": { "type": "string", "minLength": 1, "description": "Which tickets moved and how, how long the open ones have been open, whether any names a device or a change; then rows unchanged." },
+    "window": { "type": "string", "minLength": 1, "description": "The since value passed in the query: active rows plus rows updated on or after it." },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
     "concerns": {
       "type": "array",
       "maxItems": 8,
+      "description": "One incident entity-ref per active in-scope row whose priority or urgency is 1 or 2. Omit others.",
       "items": { "$ref": "#/$defs/entity_ref" }
     },
     "metrics": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/metric_row" }
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" },
+      "description": "One lab row: counts across the in-scope rows returned this visit. Nulls when collection failed."
     },
     "threads": {
       "type": "array",
-      "maxItems": 16,
-      "description": "One row per in-scope ticket story. Empty when this visit found none.",
-      "items": { "$ref": "#/$defs/thread" }
+      "maxItems": 32,
+      "items": { "$ref": "#/$defs/thread" },
+      "description": "One row per in-scope ticket that moved this visit (every returned row on the first visit). Empty only when coverage is not complete or nothing is in scope."
     },
-    "open_incidents": { "type": ["integer", "null"] },
-    "open_changes": { "type": ["integer", "null"] },
-    "open_p1p2": { "type": ["integer", "null"] },
-    "out_of_scope_open": { "type": ["integer", "null"] },
-    "ticket_numbers": {
-      "type": "array",
-      "maxItems": 5,
-      "description": "In-scope ticket numbers when a metric needs an id. Omit when the counts are enough.",
-      "items": { "type": "string", "minLength": 1 }
-    }
+    "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a thread this visit. 0 on the first visit. null when unavailable." },
+    "baseline_ref": { "type": ["string", "null"], "description": "health/servicenow/<baseline_visit_id>.json. Null on the first visit." },
+    "skipped_reason": { "type": ["string", "null"] }
   },
   "$defs": {
     "entity_ref": {
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "name"],
-      "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "device",
-            "interface",
-            "site",
-            "service",
-            "test",
-            "control",
-            "incident",
-            "change"
-          ]
-        },
+        "type": { "type": "string", "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change"] },
         "name": { "type": "string", "minLength": 1 },
         "id": { "type": ["string", "null"] },
         "source_ref": { "type": ["string", "null"] }
@@ -96,18 +62,26 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["prior_watch_id", "delta", "changed"],
-      "description": "This visit vs the last stamp of this source. Not a ticket dump.",
       "properties": {
-        "prior_watch_id": { "type": ["string", "null"] },
+        "prior_watch_id": { "type": ["string", "null"], "description": "Board last_visit_id at the start of this visit." },
         "delta": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better"]
+          "enum": ["first", "unchanged", "worse", "better", "changed"],
+          "description": "worse: a new active row, a row reopened, or urgency raised. better: rows only moved to Resolved/Closed/Canceled and nothing worse. changed: any other item (typed field, rfc, issue, update). first on the baseline."
         },
-        "changed": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
-        }
+        "changed": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/change" } }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "field", "prior", "current", "at"],
+      "properties": {
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "field": { "type": "string", "enum": ["row", "state", "urgency", "device", "interface", "ip", "service", "rfc", "issue", "updated"] },
+        "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "current": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "at": { "type": "string", "minLength": 1, "description": "The row's updated_at." }
       }
     },
     "coverage": {
@@ -115,53 +89,52 @@
       "additionalProperties": false,
       "required": ["state"],
       "properties": {
-        "state": {
-          "type": "string",
-          "enum": ["complete", "unavailable", "not_requested", "partial"]
-        },
+        "state": { "type": "string", "enum": ["complete", "unavailable", "not_requested", "partial"] },
         "detail": { "type": "string" }
-      }
-    },
-    "thread": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["keys", "note"],
-      "properties": {
-        "keys": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 16,
-          "description": "Every join key in that tool payload. type:name. Do not invent a key. Do not drop one the payload contains.",
-          "items": {
-            "type": "string",
-            "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
-          }
-        },
-        "note": {
-          "type": "string",
-          "minLength": 1,
-          "description": "The nurse's note for the higher agent. Include the issue in the ticket's words (short_description, and description when it adds the fault), urgency, and state. If closed, include close_code and close_notes. If a change is in the payload, include what it was for (justification or its short_description) and whether it was implemented. Do not write a sentence that only says the ticket opened or closed."
-        }
       }
     },
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": [
-        "at",
-        "scope",
-        "open_incidents",
-        "open_changes",
-        "open_p1p2",
-        "out_of_scope_open"
-      ],
+      "required": ["at", "scope", "rows", "open_incidents", "open_p1p2", "open_changes", "resolved_rows", "typed_rows"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "minLength": 1 },
-        "open_incidents": { "type": ["integer", "null"] },
-        "open_changes": { "type": ["integer", "null"] },
-        "open_p1p2": { "type": ["integer", "null"] },
-        "out_of_scope_open": { "type": ["integer", "null"] }
+        "scope": { "type": "string", "const": "lab" },
+        "rows": { "type": ["integer", "null"], "description": "In-scope rows returned this visit (incidents + changes)." },
+        "open_incidents": { "type": ["integer", "null"], "description": "Returned incident rows with active true." },
+        "open_p1p2": { "type": ["integer", "null"], "description": "Open incidents whose priority or urgency starts with 1 or 2." },
+        "open_changes": { "type": ["integer", "null"], "description": "Returned change rows with active true." },
+        "resolved_rows": { "type": ["integer", "null"], "description": "Returned rows with active false (resolved, closed, or canceled since the window start)." },
+        "typed_rows": { "type": ["integer", "null"], "description": "Returned rows whose device column is non-empty. How many tickets carry a typed entity; a capability signal for the operator." }
+      }
+    },
+    "thread": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "type", "number", "keys", "state", "active", "urgency", "priority", "opened_at", "updated_at", "resolved_at", "issue", "close_code", "close_notes", "rfc", "ci", "service", "device", "interface", "ip", "note"],
+      "description": "Board row plus note. Every column is copied from one table row; keys are derived by the fixed rule in references/query.md.",
+      "properties": {
+        "scope": { "type": "string", "pattern": "^(incident|change):[^ ]+$", "description": "incident:<number> or change:<number>. Stable key for the board diff." },
+        "type": { "type": "string", "enum": ["incident", "change"] },
+        "number": { "type": "string", "minLength": 1 },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }, "description": "incident:/change: for this row; device: from the device column or an inventory name in issue; interface:<device>/<interface> when both are set; service: from the service column, business_service, or a registry alias; change:<rfc> when rfc is set." },
+        "state": { "type": "string", "minLength": 1, "description": "Display value as returned (New, In Progress, On Hold, Resolved, Closed, Canceled, ...)." },
+        "active": { "type": "boolean" },
+        "urgency": { "type": ["string", "null"], "description": "Display value as returned, e.g. 2 - Medium." },
+        "priority": { "type": ["string", "null"], "description": "Display value as returned, e.g. 3 - Moderate." },
+        "opened_at": { "type": "string", "minLength": 1 },
+        "updated_at": { "type": "string", "minLength": 1, "description": "sys_updated_on. Moves on any edit including a work note." },
+        "resolved_at": { "type": ["string", "null"], "description": "resolved_at on incidents; closed_at on changes." },
+        "issue": { "type": "string", "minLength": 1, "description": "short_description, verbatim. Never description or work notes." },
+        "close_code": { "type": ["string", "null"] },
+        "close_notes": { "type": ["string", "null"], "description": "First sentence only." },
+        "rfc": { "type": ["string", "null"], "description": "Linked change number on an incident; null on changes." },
+        "ci": { "type": ["string", "null"], "description": "cmdb_ci display name, or null." },
+        "service": { "type": ["string", "null"], "description": "The typed service column when the platform has one, else business_service display, else a registry name matched by alias; null when none." },
+        "device": { "type": ["string", "null"], "description": "The typed device column value as returned (metadata entity_fields.device); null when the platform has no such column or it is empty." },
+        "interface": { "type": ["string", "null"], "description": "The typed interface column value as returned." },
+        "ip": { "type": ["string", "null"], "description": "The typed ip column value as returned." },
+        "note": { "type": "string", "minLength": 1, "description": "One sentence against the board row: what moved, how long open, whether a device or change is now attached. Not the columns again. No cause." }
       }
     }
   }

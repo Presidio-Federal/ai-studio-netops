@@ -74,7 +74,7 @@ row each). Group the rounds by `agent.agentName`, then fill:
 | `server` | `serverIp` (same on every round) |
 | `src_device` | metadata `agents[]` row with this `agent_name` → `device` |
 | `dst_device` | topology device whose `cidr` contains `server`; else metadata `agents[]` row with `ip` = `server` → `device`; else null |
-| `keys` | `test:<test_id>`; `device:<src_device>` and `device:<dst_device>` when not null; `service:<service>` when metadata sets it |
+| `keys` | **exactly**: `test:<test_id>`; `device:<src_device>` and `device:<dst_device>` when not null (once when equal); `service:<service>` when metadata sets it. At most 4. |
 | `at` | newest `date` |
 | `ok_rounds` | rounds without `errorType` |
 | `error_rounds` | rounds with `errorType`; `error_type` = the one seen most, null when none |
@@ -82,8 +82,28 @@ row each). Group the rounds by `agent.agentName`, then fill:
 | `loss_max_pct` | highest `loss` on any ok round |
 | `bad_rounds` | ok rounds with `loss` ≥ 5 |
 | `latency_ms_avg`, `jitter_ms` | `avgLatency`, `jitter` on the **newest ok round** |
-| `first_bad_round_at` | oldest `date` with `loss` ≥ 5 or `errorType`; null when none |
+| `first_bad_round_at` | see carry-forward below |
 | `state` | rule below |
+
+There is no `type` column on a row (`type` lives on metadata
+`tests[]`). **No path keys.** The payload names two ends and nothing
+between them: do not add `device:` or `interface:` keys for routers
+you believe sit on the path, from topology, from the prior stamp, or
+from memory. The path is not measured on this visit; an operator may
+declare the expected one on metadata `tests[].path` and the
+Relationship agent reads it there. Do not copy `path` onto a row.
+
+**`first_bad_round_at` carry-forward.** Let `w` = the oldest `date`
+in this window with `loss` ≥ 5 or `errorType` (null when none).
+
+- No bad round in this window → null.
+- Board row for this `scope` has a non-null `first_bad_round_at` and
+  this window has a bad round → keep the board value (the older one).
+- Otherwise → `w`.
+
+So a row that has been bad since before the window keeps its original
+onset instead of restarting every hour; the value resets to null only
+when a whole window is clean.
 
 **State rule** (fixed, no judgment):
 - `degraded` when `ok_rounds` = 0, **or** `bad_rounds` > half of
@@ -117,6 +137,7 @@ round to round; that is why the loss threshold is 10 points and
 
 `changed[]` item: `{keys, field, prior, current, at}` — `prior` from
 the board row (null when the row is new), `current` from this row.
+`keys` on the item = the row's `keys`.
 
 **Delta.** `first` on the baseline. `worse` if any item is `state`
 → `degraded`, `loss_pct` rising, or `error_rounds` appearing.
@@ -126,7 +147,9 @@ or `latency_ms_avg` items. `unchanged` if none.
 ## Stamp or quiet
 
 - Baseline (no `baseline_visit_id`): stamp; every row is a reading;
-  `delta` `first`; `unchanged` 0.
+  `delta` `first`; **`changed` `[]`** (there is no board to diff
+  against — do not write one `row` item per reading); `unchanged` 0;
+  `prior_watch_id` null.
 - `changed[]` non-empty, or coverage not `complete`: stamp; readings
   = the rows that moved (+ rows whose call failed, `state`
   `unknown`).
@@ -140,19 +163,46 @@ row, `readings` `[]`).
 
 ## Write
 
-**Stamp** (schema `health-thousandeyes-check`): `readings` = moved
-rows + `note`. `note` is the opinion against the board row: which
-direction, since when (`first_bad_round_at`), whether the reverse
-test agrees, whether latency moved with the loss (congestion) or
-did not (a drop on the path). Not the columns again. `metrics` =
-one `estate` row: `tests` (metadata count), `rows` measured,
-`degraded_rows`, `worst_loss_pct` + `worst_scope`, `error_rounds`
-sum, `alerts_firing`. `unchanged` = board rows not replaced.
-`baseline_ref` = `health/thousandeyes/<baseline_visit_id>.json`.
-`window_start` / `window_end` = oldest / newest `date` seen.
-`headline`: test, direction, loss / latency / rounds, since when;
-then rows unchanged and alerts firing. `concerns`: one
-`{type: test, name, id}` per degraded row.
+**Stamp** (schema `health-thousandeyes-check`). Top-level fields,
+these names and no others:
+
+```json
+{
+  "keys": [], "schema": "health-thousandeyes-check/v3", "source": "thousandeyes",
+  "watch_id": "<YYYY-MM-DDTHH-MM-SSZ>", "checked_at": "<ISO Z>", "ok": true,
+  "status": "ok|degraded|unknown", "headline": "...",
+  "window": "1h", "window_start": "<oldest date>", "window_end": "<newest date>",
+  "coverage": { "state": "complete|partial|unavailable", "detail": "..." },
+  "metrics": [ { "at": "...", "scope": "estate", "tests": 3, "rows": 4, "degraded_rows": 2,
+                 "worst_loss_pct": 19, "worst_scope": "test:<id>/<agent>", "error_rounds": 0, "alerts_firing": 0 } ],
+  "readings": [ { "...row columns...", "note": "..." } ],
+  "unchanged": 0, "baseline_ref": null,
+  "alerts": { "firing": 0, "items": [] },
+  "vs_prior": { "prior_watch_id": null, "delta": "first", "changed": [] },
+  "concerns": [ { "type": "test", "name": "<test_name>", "id": "<test_id>" } ]
+}
+```
+
+It is `watch_id`, not `visit_id`. `coverage` is an object. The
+metric row is `rows` and `error_rounds` (not `rows_measured`,
+`rows_total`, `error_rounds_total`) and carries `at`. `readings` =
+moved rows + `note`; a reading has exactly the row columns plus
+`note`. `metrics` = one `estate` row: `tests` (metadata count),
+`rows` measured, `degraded_rows`, `worst_loss_pct` + `worst_scope`,
+`error_rounds` sum, `alerts_firing`. `unchanged` = board rows not
+replaced. `baseline_ref` = `health/thousandeyes/<baseline_visit_id>.json`
+(null on the baseline). `window_start` / `window_end` = oldest /
+newest `date` seen. `headline`: test, direction, loss / latency /
+rounds, since when; then rows unchanged and alerts firing.
+`concerns`: one `{type: test, name, id}` per degraded row.
+
+`note` is one or two sentences about **this row against its board
+row**: which direction, since when (`first_bad_round_at`), whether
+the reverse test agrees, whether latency moved with the loss. Not
+the columns again. Do not name a cause, a hop, a probe protocol, or
+a device that is not `src_device` / `dst_device`; do not conclude
+across tests ("this rules out a path fault") — that is the
+Analyzer's job and it reads every row. No addresses in prose.
 
 **Board** (schema `health-metadata-thousandeyes`) — every visit:
 - `current[]` ← built rows replace rows with the same `scope`;
@@ -162,7 +212,8 @@ then rows unchanged and alerts firing. `concerns`: one
   status, coverage, delta, stamp_written, window}`; keep 10.
 - `agents[]` ← rewritten only when call A ran.
 - `tests[].test_name` / `type` ← from the payload when null.
-  `service` copied through, never set by you.
+  `service` and `path` copied through, never set by you (write
+  `null` when absent).
 - `last_collected_at` ← `checked_at`. `last_visit_id` ← this
   `watch_id` only when a stamp was written. `baseline_visit_id` ←
   this `watch_id` on the first visit.

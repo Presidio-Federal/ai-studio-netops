@@ -11,9 +11,9 @@
     "last_collected_at": "2026-09-25T04:05:00Z",
     "baseline_visit_id": "2026-09-24T22-05-00Z",
     "tests": [
-      { "test_id": "<a2a-test-id>", "test_name": "<a2a-test-name>", "type": "agent-to-agent", "service": null },
-      { "test_id": "<a2a-reverse-test-id>", "test_name": "<a2a-reverse-test-name>", "type": "agent-to-agent", "service": null },
-      { "test_id": "<a2s-test-id>", "test_name": "<a2s-test-name>", "type": "agent-to-server", "service": null }
+      { "test_id": "<a2a-test-id>", "test_name": "<a2a-test-name>", "type": "agent-to-agent", "service": null, "path": null },
+      { "test_id": "<a2a-reverse-test-id>", "test_name": "<a2a-reverse-test-name>", "type": "agent-to-agent", "service": null, "path": null },
+      { "test_id": "<a2s-test-id>", "test_name": "<a2s-test-name>", "type": "agent-to-server", "service": null, "path": null }
     ],
     "agents": [
       { "agent_id": "<cloud-agent-id>", "agent_name": "<cloud-agent>", "ip": "<cloud-agent-ip>", "device": "<cloud-edge>" },

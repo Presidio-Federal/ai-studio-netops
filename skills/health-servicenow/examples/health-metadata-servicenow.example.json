@@ -1,13 +1,53 @@
 {
-  "keys": [],
-  "schema": "health-metadata-servicenow/v1",
-  "updated_at": "2026-09-01T15:00:00Z",
+  "keys": ["incident:<inc-a>", "incident:<inc-b>", "incident:<inc-c>", "device:<wan-edge>", "interface:<wan-edge>/<port>", "device:<hub-router>", "device:<cloud-edge>"],
+  "schema": "health-metadata-servicenow/v2",
+  "updated_at": "2026-09-25T06:10:00Z",
   "source_agent": "health-servicenow",
   "servicenow": {
-    "marker": "EXAMPLE_MARKER",
-    "match_terms": ["AUTOMATION-ID:", "CORRELATION-ID:"],
-    "last_visit_id": "2026-09-01T15-00-00Z",
-    "last_collected_at": "2026-09-01T15:00:00Z"
+    "marker": "<lab-title>",
+    "match_terms": [],
+    "lookback_days": 30,
+    "entity_fields": { "device": "<device-column>", "interface": "<interface-column>", "ip": "<ip-column>", "service": null },
+    "last_visit_id": "2026-09-25T00-10-00Z",
+    "last_collected_at": "2026-09-25T06:10:00Z",
+    "baseline_visit_id": "2026-09-25T00-10-00Z",
+    "current": [
+      {
+        "scope": "incident:<inc-a>", "type": "incident", "number": "<inc-a>",
+        "keys": ["incident:<inc-a>", "device:<hub-router>", "device:<cloud-edge>"],
+        "state": "In Progress", "active": true, "urgency": "2 - Medium", "priority": "3 - Moderate",
+        "opened_at": "2026-08-04T18:01:43Z", "updated_at": "2026-08-08T18:33:24Z", "resolved_at": null,
+        "issue": "Bidirectional packet loss on the CLOUD-HQ WAN path, fault isolated to <hub-router> <port-a> <-> <cloud-edge> <port-b>",
+        "close_code": null, "close_notes": null, "rfc": null, "ci": null, "service": null,
+        "device": null, "interface": null, "ip": null
+      },
+      {
+        "scope": "incident:<inc-b>", "type": "incident", "number": "<inc-b>",
+        "keys": ["incident:<inc-b>", "device:<wan-edge>", "interface:<wan-edge>/<port>"],
+        "state": "New", "active": true, "urgency": "3 - Low", "priority": "5 - Planning",
+        "opened_at": "2026-08-09T10:25:54Z", "updated_at": "2026-08-09T10:25:56Z", "resolved_at": null,
+        "issue": "Network Port Provisioning — <wan-edge>/<port>",
+        "close_code": null, "close_notes": null, "rfc": null, "ci": null, "service": null,
+        "device": "<wan-edge>", "interface": "<port>", "ip": "<link-ip>"
+      },
+      {
+        "scope": "incident:<inc-c>", "type": "incident", "number": "<inc-c>",
+        "keys": ["incident:<inc-c>"],
+        "state": "New", "active": true, "urgency": "3 - Low", "priority": "4 - Low",
+        "opened_at": "2026-08-13T14:44:40Z", "updated_at": "2026-08-13T14:44:40Z", "resolved_at": null,
+        "issue": "Chronic WAN packet loss — CLOUD-to-HQ and HQ-to-CLOUD both pairs, ongoing",
+        "close_code": null, "close_notes": null, "rfc": null, "ci": null, "service": null,
+        "device": null, "interface": null, "ip": null
+      }
+    ],
+    "series": [
+      { "at": "2026-09-25T00:10:00Z", "scope": "lab", "rows": 3, "open_incidents": 3, "open_p1p2": 0, "open_changes": 0, "resolved_rows": 0, "typed_rows": 1 },
+      { "at": "2026-09-25T06:10:00Z", "scope": "lab", "rows": 3, "open_incidents": 3, "open_p1p2": 0, "open_changes": 0, "resolved_rows": 0, "typed_rows": 1 }
+    ],
+    "visits": [
+      { "watch_id": "2026-09-25T00-10-00Z", "checked_at": "2026-09-25T00:10:00Z", "status": "ok", "coverage": "complete", "delta": "first", "stamp_written": true, "since": "2026-08-26 00:10:00" },
+      { "watch_id": null, "checked_at": "2026-09-25T06:10:00Z", "status": "ok", "coverage": "complete", "delta": "unchanged", "stamp_written": false, "since": "2026-09-24 00:10:00" }
+    ]
   },
-  "provenance": { "servicenow": "user" }
+  "provenance": { "servicenow": "discovered", "entity_fields": "discovered" }
 }

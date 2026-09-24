@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.36.1"
-description: "v1.36.1 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches grouped by device in Splunk, -7d baseline, board written before the stamp, stamp only on a material syslog event. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; agents resolved to devices through topology-observed.json."
+version: "1.37.0"
+description: "v1.37.0 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches grouped by device in Splunk, -7d baseline, board written before the stamp, stamp only on a material syslog event; a bgp/link row with count >= 2 in one window is a flap and degrades. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; row keys are the test and its two ends only (no path keys); first_bad_round_at carries forward across visits; baseline changed[] is empty; optional operator-declared tests[].path."
 ---
 
 # Health Monitor skill
@@ -28,8 +28,9 @@ visit**: board only, no stamp.
 `topology-observed.json` if present; run S1 and S2 exactly as
 printed (baseline window `-7d`); Splunk already groups by device —
 you only look up the `prod.json` spelling; write the board, then
-the stamp; every S2 row is a reading and a `changed[]` item. Do not
-write SPL of your own.
+the stamp; every S2 row is a reading and a `changed[]` item. A bgp
+or link row with `count` ≥ 2 in one window is a flap: it degrades
+even when `latest(state)` reads `Up`. Do not write SPL of your own.
 
 **ThousandEyes.** `references/thousandeyes.md` is the whole visit:
 read the board (`health/metadata-thousandeyes.json`) and
@@ -39,7 +40,13 @@ per message; one `te_list_alerts`; build one row per test + agent
 (`state` from the fixed rule; `src_device` / `dst_device` from agent
 IP and `serverIp` through topology cidr); diff against
 `current[]` — only `state`, a 10-point loss move, a 20 ms latency
-move, error rounds appearing, or a new row are material.
+move, error rounds appearing, or a new row are material. Row `keys`
+are the test and its two end devices (plus `service:` when set) —
+never a router or interface you believe lies between them.
+`first_bad_round_at` is kept from the board while the row stays
+bad. The baseline stamp has `changed: []`. The stamp's top-level
+names are the schema's (`watch_id`, `coverage {state}`, metric row
+`rows` / `error_rounds`); do not rename them.
 
 Both: do not dump the MCP result. Do not write `state/`.
 
