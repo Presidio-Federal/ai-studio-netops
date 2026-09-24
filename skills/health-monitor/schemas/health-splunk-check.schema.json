@@ -1,85 +1,58 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-splunk-check/v2",
+  "$id": "health-splunk-check/v3",
   "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
-    "description": "Splunk lab slip (Kind observation). The first visit is the baseline: one metrics row per device that logged, plus readings for BGP, link, config, and auth. Later visits diff those rows. No window-wide event census and no raw syslog.",
+  "description": "Splunk lab slip (Kind observation). Written on the first visit, when the window held at least one material syslog event (BGP, link, config, reload, ACL log, failed auth), or when coverage is not complete. A quiet window (only DHCP, successful auth, DMI sync, other) writes the board only. metrics: one row per device that logged, bucket counts. readings: one row per device + kind + subject that had a material event this window, same shape as a board row plus note. vs_prior.changed: one structured item per reading. No raw syslog, no host list, no by_mnemonic.",
   "type": "object",
   "additionalProperties": false,
-  "required": [
-    "keys",
-    "schema",
-    "source",
-    "watch_id",
-    "checked_at",
-    "ok",
-    "status",
-    "headline",
-    "window",
-    "coverage",
-    "metrics",
-    "vs_prior"
-  ],
+  "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "window_start", "window_end", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
   "properties": {
     "keys": {
       "type": "array",
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": { "type": "string", "const": "health-splunk-check/v2" },
+    "schema": { "type": "string", "const": "health-splunk-check/v3" },
     "source": { "type": "string", "const": "splunk" },
-    "watch_id": {
-      "type": "string",
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-    },
+    "watch_id": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
     "checked_at": { "type": "string", "minLength": 1 },
     "ok": { "type": ["boolean", "null"] },
     "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
-    "headline": { "type": "string", "minLength": 1 },
-    "window": { "type": "string", "minLength": 1 },
-    "window_start": { "type": ["string", "null"] },
-    "window_end": { "type": ["string", "null"] },
-    "query_profile": { "type": "string" },
-    "scope": { "type": "string" },
-    "prior_observation": { "type": ["string", "null"] },
+    "headline": { "type": "string", "minLength": 1, "description": "Which device, which subject, what state or who, when; then how many devices logged and how many board rows are unchanged." },
+    "window": { "type": "string", "minLength": 1, "description": "baseline or watermark." },
+    "window_start": { "type": ["string", "null"], "description": "earliest_time passed to the MCP." },
+    "window_end": { "type": ["string", "null"], "description": "latest_time passed to the MCP." },
     "coverage": { "$ref": "#/$defs/coverage" },
     "vs_prior": { "$ref": "#/$defs/vs_prior" },
     "concerns": {
       "type": "array",
       "maxItems": 8,
+      "description": "One device entity-ref per device with a BGP Down/reset, a non-admin link down, a reload, or a failed auth this window. Omit others.",
       "items": { "$ref": "#/$defs/entity_ref" }
     },
     "metrics": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/metric_row" }
+      "items": { "$ref": "#/$defs/metric_row" },
+      "description": "One row per device (or unresolved host) that logged anything this window. A single estate row with nulls when the search failed."
     },
     "readings": {
       "type": "array",
       "maxItems": 64,
-      "description": "One subject line per device and signal this window. The next visit diffs these against the prior stamp. Omit raw syslog.",
-      "items": { "$ref": "#/$defs/reading" }
-    }
+      "items": { "$ref": "#/$defs/reading" },
+      "description": "One row per S2 result row this window. Empty only when coverage is not complete (a quiet window writes no stamp)."
+    },
+    "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
+    "baseline_ref": { "type": ["string", "null"], "description": "health/splunk/<baseline_visit_id>.json. Null on the first visit." },
+    "skipped_reason": { "type": ["string", "null"] }
   },
   "$defs": {
     "entity_ref": {
       "type": "object",
       "additionalProperties": false,
       "required": ["type", "name"],
-      "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
       "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "device",
-            "interface",
-            "site",
-            "service",
-            "test",
-            "control",
-            "incident",
-            "change"
-          ]
-        },
+        "type": { "type": "string", "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change"] },
         "name": { "type": "string", "minLength": 1 },
         "id": { "type": ["string", "null"] },
         "source_ref": { "type": ["string", "null"] }
@@ -89,18 +62,26 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["prior_watch_id", "delta", "changed"],
-      "description": "Diff against the prior stamp of this source. First visit: prior_watch_id null, delta first, changed []. Later visits: changed lists only what moved.",
       "properties": {
-        "prior_watch_id": { "type": ["string", "null"] },
+        "prior_watch_id": { "type": ["string", "null"], "description": "Board last_visit_id at the start of this visit." },
         "delta": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better"]
+          "enum": ["first", "unchanged", "worse", "better", "changed"],
+          "description": "worse: any BGP Down/reset, non-admin link down, reload, or failed auth. better: only Up/up and nothing worse. changed: config, ACL log, admin-down only. first on the baseline."
         },
-        "changed": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
-        }
+        "changed": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/change" } }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "field", "prior", "current", "at"],
+      "properties": {
+        "keys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }, "description": "The reading's keys." },
+        "field": { "type": "string", "enum": ["bgp_state", "link_state", "config", "reload", "acl", "auth_failed", "row"] },
+        "prior": { "description": "bgp_state / link_state: the board row's state, null when the subject is new. config / reload / acl / auth_failed: the board row's at, null when new." },
+        "current": { "description": "bgp_state / link_state: this state. config: '<subject> via <detail> from <source_ip>'. reload: detail. acl: '<state> x<count>'. auth_failed: '<subject> from <source_ip> x<count>'." },
+        "at": { "type": "string", "minLength": 1, "description": "The reading's at (last event time)." }
       }
     },
     "coverage": {
@@ -108,46 +89,46 @@
       "additionalProperties": false,
       "required": ["state"],
       "properties": {
-        "state": {
-          "type": "string",
-          "enum": ["complete", "unavailable", "not_requested", "partial"]
-        },
+        "state": { "type": "string", "enum": ["complete", "unavailable", "not_requested", "partial"] },
         "detail": { "type": "string" }
       }
     },
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["at", "scope", "name", "bgp_adjchange", "link_updown", "config_i"],
+      "required": ["at", "scope", "name", "events", "bgp_events", "link_events", "config_events", "reload_events", "acl_events", "auth_ok", "auth_failed", "ssh_no_match"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "minLength": 1, "description": "device:<name> for each device that logged. window only when no device logged anything but DHCP." },
-        "name": {
-          "type": ["string", "null"],
-          "description": "Inventory device name after collapsing the syslog host address and the parsed hostname onto one device. The host as logged only when inventory has no match. Null on a window row."
-        },
-        "bgp_adjchange": { "type": ["integer", "null"] },
-        "link_updown": { "type": ["integer", "null"] },
-        "config_i": { "type": ["integer", "null"] }
+        "scope": { "type": "string", "pattern": "^(estate|device:[^ ].*|host:[^ ].*)$", "description": "device:<inventory name>; host:<address> when inventory has no match; estate only on the unavailable row." },
+        "name": { "type": ["string", "null"], "description": "Inventory name, or the host as logged when unresolved. Null on the estate row." },
+        "events": { "type": ["integer", "null"], "description": "All events this window, every bucket." },
+        "bgp_events": { "type": ["integer", "null"] },
+        "link_events": { "type": ["integer", "null"] },
+        "config_events": { "type": ["integer", "null"] },
+        "reload_events": { "type": ["integer", "null"] },
+        "acl_events": { "type": ["integer", "null"] },
+        "auth_ok": { "type": ["integer", "null"], "description": "LOGIN_SUCCESS + AUTH_PASSED." },
+        "auth_failed": { "type": ["integer", "null"], "description": "LOGIN_FAILED + AUTH_FAILED." },
+        "ssh_no_match": { "type": ["integer", "null"], "description": "SSH-3-NO_MATCH (cipher/mac negotiation mismatch). Counted, never a reading." }
       }
     },
     "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "kind", "subject", "count", "keys", "note"],
+      "required": ["name", "kind", "subject", "keys", "count", "at", "note"],
+      "description": "A board row (health-metadata-splunk row, identical field names) plus note.",
       "properties": {
-        "keys": {
-          "type": "array",
-          "minItems": 1,
-          "maxItems": 16,
-          "description": "Every join key in this tool payload. type:name.",
-          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
-        },
-        "name": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "enum": ["bgp", "link", "config", "auth"] },
-        "subject": { "type": "string", "minLength": 1, "description": "The fact to diff next visit. BGP: neighbor and Up/Down. Link: interface and up/down. Config: who changed it. Auth: the mnemonic, including AUTH_PASSED." },
-        "count": { "type": "integer", "minimum": 1 },
-        "note": { "type": "string", "minLength": 1, "description": "Nurse's opinion for the higher agent. What this signal did since the prior stamp, with the neighbor or interface and whether config was committed. A sentence that only says something changed is not a note." }
+        "name": { "type": "string", "minLength": 1, "description": "Inventory name, or the host as logged when unresolved." },
+        "kind": { "type": "string", "enum": ["bgp", "link", "config", "reload", "acl", "auth_failed"] },
+        "subject": { "type": "string", "minLength": 1, "description": "bgp: neighbor address. link: interface name. config: user. reload: RELOAD or RESTART. acl: ACL name. auth_failed: user." },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }, "description": "device:<name> when resolved; interface:<name>/<subject> on link rows; the peer device key on a resolved bgp row. [] when the host is unresolved." },
+        "count": { "type": "integer", "minimum": 1, "description": "Events for this subject this window." },
+        "at": { "type": "string", "minLength": 1, "description": "Last event time for this subject, ISO-8601 UTC." },
+        "state": { "type": ["string", "null"], "description": "bgp: Up, Down, active reset, passive reset. link: up, down, administratively down. acl: denied or permitted. Null otherwise." },
+        "source_ip": { "type": ["string", "null"], "description": "config / auth_failed: the source address in the message." },
+        "peer": { "type": ["string", "null"], "description": "bgp: device:<name> when the neighbor address matches inventory/topology-observed.json interfaces[].cidr; else null." },
+        "detail": { "type": ["string", "null"], "description": "bgp: reason text after the state. reload: Reload Reason. config: the line (vty0) or via (console)." },
+        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion: what this means against the board (new subject, flap, recovered, who changed config and from where, why it reloaded). Not the columns again." }
       }
     }
   }

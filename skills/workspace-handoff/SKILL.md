@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.57.2 — Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory); structured deltas; typed relations[]; capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
-version: "1.57.2"
+description: "v1.57.3 — Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory; splunk board carries last syslog state per device/kind/subject); structured deltas; typed relations[]; capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
+version: "1.57.3"
 ---
 
 # Workspace handoff
@@ -282,12 +282,12 @@ visits).
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment` `hardware[]` `software[]` `configuration[]` `compliance[]` `timeline[]` `warehouse` `asks[]` `answers` `horizon` `coverage` `read[]` `roadmap_ref` |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
 | `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `finding` `change` including `operational_ref`, `git` `ci` `pr` `keys` |
-| `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` |
+| `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `bgp` — `peer` is the adjacency; `link`; `config` — `subject` is the user, `source_ip`; `reload`; `acl`; `auth_failed`) `series[]` `visits[]` |
 | `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `tests[]` `last_visit_id` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `last_visit_id` |
 | `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `device` — boot time, version, cpu, memory; `interface`; `bgp`, whose `peer` is the adjacency) `series[]` `visits[]`. RESTCONF port stays on `inventory/prod.json`. |
 | `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `coverage` `metrics` `keys` `vs_prior` `alerts` `path_summary` |
-| `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `coverage` `metrics` `readings` `keys` `vs_prior` |
+| `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `window_start` `window_end` `coverage` `metrics` (per-device bucket counts) `readings` (one per material syslog subject this window) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns`. Written only when the window held a material event. |
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `coverage` `metrics` `threads` (`keys` + `note`) `vs_prior` `ticket_numbers` |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` `series` `coverage` `mode` `dispatched`. `next_action` is `soap.plan`. |

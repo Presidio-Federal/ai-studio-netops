@@ -1,16 +1,36 @@
 {
-  "keys": [],
-  "schema": "health-metadata-splunk/v1",
-  "updated_at": "2026-08-30T18:45:00Z",
+  "keys": ["device:<wan-device>", "device:<edge-device>", "interface:<wan-device>/<wan-interface>"],
+  "schema": "health-metadata-splunk/v2",
+  "updated_at": "2026-08-31T22:00:00Z",
   "source_agent": "health-monitor",
   "splunk": {
-    "index": "example",
-    "sourcetype": "syslog",
+    "index": "<index>",
+    "sourcetype": "<sourcetype>",
     "dashboard_id": null,
     "bootstrap_earliest": "-24h",
-    "collected_through": "2026-08-30T18:43:58Z",
-    "last_visit_id": "2026-08-30T18-45-00Z",
-    "last_collected_at": "2026-08-30T18:45:00Z"
+    "collected_through": "2026-08-31T21:58:14Z",
+    "last_visit_id": "2026-08-31T16-00-00Z",
+    "last_collected_at": "2026-08-31T22:00:00Z",
+    "baseline_visit_id": "2026-08-30T09-00-00Z",
+    "current": [
+      { "name": "<wan-device>", "kind": "reload", "subject": "RELOAD", "keys": ["device:<wan-device>"], "count": 1, "at": "2026-08-31T15:40:12Z", "state": null, "source_ip": null, "peer": null, "detail": "Reload Command" },
+      { "name": "<wan-device>", "kind": "link", "subject": "<wan-interface>", "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"], "count": 2, "at": "2026-08-31T15:41:09Z", "state": "up", "source_ip": null, "peer": null, "detail": null },
+      { "name": "<wan-device>", "kind": "bgp", "subject": "<neighbor-address>", "keys": ["device:<wan-device>", "device:<edge-device>"], "count": 2, "at": "2026-08-31T15:41:30Z", "state": "Up", "source_ip": null, "peer": "device:<edge-device>", "detail": "" },
+      { "name": "<wan-device>", "kind": "config", "subject": "console", "keys": ["device:<wan-device>"], "count": 3, "at": "2026-08-29T21:27:16Z", "state": null, "source_ip": null, "peer": null, "detail": "console" },
+      { "name": "<edge-device>", "kind": "config", "subject": "<operator>", "keys": ["device:<edge-device>"], "count": 1, "at": "2026-08-31T15:55:02Z", "state": null, "source_ip": "<source-ip>", "peer": null, "detail": "vty0" }
+    ],
+    "series": [
+      { "at": "2026-08-30T09:00:00Z", "scope": "estate", "name": null, "events": 20412, "bgp_events": 31, "link_events": 19, "config_events": 211, "reload_events": 1, "acl_events": 6, "auth_ok": 778, "auth_failed": 0, "ssh_no_match": 27 },
+      { "at": "2026-08-31T10:00:00Z", "scope": "estate", "name": null, "events": 212, "bgp_events": 0, "link_events": 0, "config_events": 0, "reload_events": 0, "acl_events": 0, "auth_ok": 18, "auth_failed": 0, "ssh_no_match": 2 },
+      { "at": "2026-08-31T16:00:00Z", "scope": "estate", "name": null, "events": 85, "bgp_events": 2, "link_events": 2, "config_events": 1, "reload_events": 1, "acl_events": 0, "auth_ok": 9, "auth_failed": 0, "ssh_no_match": 1 },
+      { "at": "2026-08-31T22:00:00Z", "scope": "estate", "name": null, "events": 140, "bgp_events": 0, "link_events": 0, "config_events": 0, "reload_events": 0, "acl_events": 0, "auth_ok": 12, "auth_failed": 0, "ssh_no_match": 0 }
+    ],
+    "visits": [
+      { "watch_id": "2026-08-30T09-00-00Z", "checked_at": "2026-08-30T09:00:00Z", "status": "ok", "coverage": "complete", "delta": "first", "stamp_written": true, "window_start": "2026-07-01T14:02:11Z", "window_end": "2026-08-30T09:00:00Z" },
+      { "watch_id": null, "checked_at": "2026-08-31T10:00:00Z", "status": "ok", "coverage": "complete", "delta": "unchanged", "stamp_written": false, "window_start": "2026-08-30T08:58:40Z", "window_end": "2026-08-31T10:00:00Z" },
+      { "watch_id": "2026-08-31T16-00-00Z", "checked_at": "2026-08-31T16:00:00Z", "status": "degraded", "coverage": "complete", "delta": "worse", "stamp_written": true, "window_start": "2026-08-31T09:59:02Z", "window_end": "2026-08-31T16:00:00Z" },
+      { "watch_id": null, "checked_at": "2026-08-31T22:00:00Z", "status": "ok", "coverage": "complete", "delta": "unchanged", "stamp_written": false, "window_start": "2026-08-31T15:58:30Z", "window_end": "2026-08-31T22:00:00Z" }
+    ]
   },
   "provenance": { "splunk": "discovered" }
 }

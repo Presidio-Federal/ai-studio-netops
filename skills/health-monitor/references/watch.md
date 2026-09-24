@@ -31,93 +31,47 @@ required: compare to the prior stamp of **this** source
 The observation is a **lab slip**, not a MCP dump. Required:
 `headline`, `coverage`, `metrics`, `vs_prior`. The stamp has no
 `summary`, `tests[]`, `by_mnemonic`, `samples`, `top_hosts`, or
-`buckets`. Splunk F2 samples stay off the stamp. After
-standing-order path-vis, write `path_summary` for the worst test
-only (`test_id`, `test_name`, `hops`, `last_error_hop`).
+`buckets`. After standing-order path-vis, write `path_summary` for
+the worst test only (`test_id`, `test_name`, `hops`,
+`last_error_hop`).
 
 Required `metrics` on the observation: same keys every visit;
 explicit `null` when not collected.
 
-## Shared order
+## Splunk visit
 
-1. `read_file` this visit’s metadata
-   (`health/metadata-splunk.json` or
-   `health/metadata-thousandeyes.json`). Never
+Everything is in `references/splunk.md`: three reads, two searches
+(three on the baseline), resolve hosts, diff against the board on
+`health/metadata-splunk.json`, stamp or quiet, rewrite the board.
+
+Order: READ_BOARD → READ_PROD → READ_TOPOLOGY → [S0] → S1 → S2 →
+RESOLVE → DIFF → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE] →
+WRITE_BOARD → STOP.
+
+The board's `current[]` is the prior state; do not open the prior
+stamp. A window with no S2 rows is **quiet**: no stamp, board only,
+watermark advanced. A failed S1 is `unavailable`: null counts,
+watermark **not** advanced, stamp written. SSH NO_MATCH and
+successful auth are counts, never readings. Do not collect another
+source.
+
+## ThousandEyes visit — shared order
+
+1. `read_file` `health/metadata-thousandeyes.json`. Never
    `get_folder_structure`. Follow `references/metadata.md`.
-   On a Splunk visit also `read_file` `inventory/prod.json` and
-   `inventory/infra-sot.json` before any search. Those files are
-   how a syslog host and a parsed hostname become one device.
 2. If `last_visit_id` is set, `read_file`
-   `health/<source>/<last_visit_id>.json` and compare.
+   `health/thousandeyes/<last_visit_id>.json` and compare.
 3. Pick stamp `YYYY-MM-DDTHH-MM-SSZ`. If that path exists, add 1
    second. Never overwrite. That stamp is `watch_id`.
 4. Collect (`references/demo-scope.md`). Write the **lab slip**
    (`headline`, `coverage`, `metrics`, `vs_prior`), then
    `read_file`. Do not paste the tool JSON into extra arrays.
-5. Write this visit’s metadata (`last_visit_id`, Splunk watermark
-   when applicable). Keep **at most 10** stamps under
-   `health/<this source>/`. After the new write, delete older stamp
-   files in **that directory only** (oldest first) so 10 remain.
-   Do not overwrite. Do not list other `health/` directories. Do
-   not write `health-board.md`. Do not `execute_command`. Persist
-   with `write_file` on catalog paths.
-
-## Splunk visit
-
-Window from `health/metadata-splunk.json` (`collected_through` or
-bootstrap) — not another rolling `-24h`. Run B1–B4 then **always
-F1**. F2 only if a bucket is interesting.
-
-Host set change is coverage, not by itself `degraded`. Missing a
-quiet host is not a down device. Severity alone does not set
-`degraded`. SSH-NO_MATCH is a finding, not `degraded`. Do not
-collect another source.
-
-Empty successful window → `complete`, zeros allowed, advance
-watermark to `checked_at`. MCP/timeout → `unavailable`, null
-counts, **do not** advance the watermark.
-
-`metrics` one row per inventory device that logged anything other
-than DHCP `NO_LEASE`. Collapse first. A parsed IOS hostname and a
-syslog `host` address are the same device when either one matches
-the same inventory record: `devices[].name` in `inventory/prod.json`,
-or `devices[].name` plus `interfaces[].cidr` in
-`inventory/infra-sot.json` (compare the address, ignore the prefix
-length), or `access.restconf.host` / `access.ssh.host` when that
-string is the syslog host. Sum that device's counts onto one row.
-`name`, `scope`, and `keys` use the inventory `name`. Do not emit
-a second row for the address. A host with no inventory match stays
-one row under the host as logged, and the note says inventory has
-no name for it. Counts: `bgp_adjchange` (`BGP-5-ADJCHANGE`),
-`link_updown` (`LINEPROTO-5-UPDOWN`), `config_i` (`CONFIG_I`).
-Those counts may be 0. The row still exists. `scope` `window` with
-`name` null is only when the search succeeded and no device logged
-anything but DHCP. Do not use total event count as the vital.
-
-`readings` one row per device and subject (`kind` `bgp` | `link`
-| `config` | `auth`). BGP subject is `neighbor <id> Up` or `Down`.
-Link subject is the interface and up or down. Config subject is
-who changed it. Auth subject is the mnemonic, including
-`AUTH_PASSED`. Cap 64. A device that logged `AUTH_PASSED` and no
-BGP still gets a reading. DHCP `NO_LEASE` is not a reading.
-`keys` on each row is every join key that payload contains:
-`device:<inventory name>`, `interface:<name>` when the message
-names an interface, and any other contract type present. Write
-all of them. `note` on each row is the nurse's opinion for the higher agent.
-First visit: what this device did in the history just read,
-including a neighbor change, a link change, a config commit, or
-an auth mnemonic. Later visit: what changed since the prior
-stamp. A sentence that only says the window was quiet is not a
-note.
-
-The first visit is the baseline. `delta` `first`, `changed` [].
-The rows are that baseline: every device, what it did, and the
-note. Do not write an empty `readings` array when any device
-logged. Later visit: diff this visit's `metrics` and `readings` against that
-prior file. `changed` lists only what moved: the inventory name,
-the signal, and the old value to the new value. `headline` is the
-opinion across those notes: what recovered, what flapped, and
-whether config was committed. Do not copy a name from this skill.
+5. Write this visit’s metadata (`last_visit_id`). Keep **at most
+   10** stamps under `health/thousandeyes/`. After the new write,
+   delete older stamp files in **that directory only** (oldest
+   first) so 10 remain. Do not overwrite. Do not list other
+   `health/` directories. Do not write `health-board.md`. Do not
+   `execute_command`. Persist with `write_file` on catalog paths.
 
 ## ThousandEyes visit
 
@@ -173,7 +127,7 @@ after a successful write of the stamp.
 | Item | Max |
 |------|----:|
 | Workspace file read/write | 20 |
-| Splunk collection (`splunk_search`) | 6 |
+| Splunk collection (`splunk_search`) | 3 (4 on the baseline) |
 | Splunk listing (resolve only) | 2 |
 | ThousandEyes result calls | 6 |
 | ThousandEyes listing (resolve only) | 2 |

@@ -11,9 +11,9 @@ plane’s metadata. Do not write `state/`.
 
 | File | Kind | When |
 |------|------|------|
-| `health/metadata-splunk.json` | metadata | Splunk ids, watermark, or `last_visit_id`. |
+| `health/metadata-splunk.json` | metadata | **Every** Splunk visit: the board (`current[]`, `series[]`, `visits[]`), watermark, `last_collected_at`; `last_visit_id` only when a stamp was written. |
 | `health/metadata-thousandeyes.json` | metadata | TE ids or `last_visit_id`. |
-| `health/splunk/<stamp>.json` | observation | Each Splunk visit; **never overwrite**. |
+| `health/splunk/<stamp>.json` | observation | First visit, or S2 returned rows, or coverage ≠ `complete`; **never overwrite**. A quiet window writes no stamp. |
 | `health/thousandeyes/<stamp>.json` | observation | Each TE visit; **never overwrite**. |
 
 Stamp `YYYY-MM-DDTHH-MM-SSZ.json`. If that path exists, bump 1s.

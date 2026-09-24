@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.34.1"
-description: "v1.34.1 — One named Splunk or ThousandEyes health visit. The first visit writes a per-device or per-test baseline. Splunk collapses a host address and a parsed hostname onto one inventory device name."
+version: "1.35.0"
+description: "v1.35.0 — One named Splunk or ThousandEyes health visit. Splunk: two fixed searches, a board on health/metadata-splunk.json (last state per device/kind/subject), stamp only when a material syslog event (BGP, link, config, reload, ACL log, failed auth) arrived; hosts resolved through prod.json and topology-observed.json. ThousandEyes unchanged this version."
 ---
 
 # Health Monitor skill
@@ -17,15 +17,28 @@ the other source on this visit. Do not call other health MCPs.
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
 
-Write `health/<source>/<stamp>.json` as a **lab slip**: `headline`,
-`coverage`, `metrics`, `vs_prior`. Do not dump the MCP result.
-Do not write `state/`. You interpret this source vs its last stamp
-(`metadata.last_visit_id`).
+**Splunk.** `references/splunk.md` is the whole visit: read the board
+(`health/metadata-splunk.json` `splunk.current[]`), `prod.json`, and
+`topology-observed.json` if present; run S1 and S2 exactly as
+printed (S0 first on the baseline); resolve hosts; every S2 row is a
+reading and a `changed[]` item; no S2 rows = **quiet visit** (board
+only, watermark advanced, no stamp). The board carries `current[]`,
+`series[]`, `visits[]`, the watermark. Do not open the prior stamp.
+Do not write SPL of your own.
+
+**ThousandEyes.** Write `health/thousandeyes/<stamp>.json` as a **lab
+slip**: `headline`, `coverage`, `metrics`, `vs_prior`. Interpret vs
+the last stamp (`metadata.last_visit_id`).
+
+Both: do not dump the MCP result. Do not write `state/`.
 
 ## Hard boundaries
 
 Do not search Splunk `index=*`. Do not `stats` by `severity` or
-`log_level`. Do not build dashboards. Do not use `te_raw_api_call`.
+`log_level`. Only the SPL `references/splunk.md` prints — no
+sampling raw events, no extra searches. Do not read
+`inventory/infra-sot.json`. Do not build dashboards. Do not use
+`te_raw_api_call`.
 A later ThousandEyes visit does not use a 24h window. The first
 ThousandEyes visit uses `7d`. Do not write `runs/`, `inventory/`, `state/`,
 `trend-analysis.json`, `remediation-request.json`,
@@ -43,13 +56,14 @@ on catalog paths.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `health/metadata-splunk.json` | metadata | Splunk visit. **Not** five-field. |
+| `health/metadata-splunk.json` | metadata | Board. **Every** Splunk visit, quiet or not. Lookup, watermark, `current[]`, `series[]`, `visits[]`. **Not** five-field. |
 | `health/metadata-thousandeyes.json` | metadata | TE visit. **Not** five-field. |
-| `health/splunk/<stamp>.json` | observation | Never overwrite. Required `metrics` and `vs_prior`. |
+| `health/splunk/<stamp>.json` | observation | Only when S2 returned rows, on the first visit, or coverage ≠ complete. Never overwrite. Required `metrics`, `readings`, `unchanged`, `baseline_ref`, `vs_prior` (structured `changed[]`). |
 | `health/thousandeyes/<stamp>.json` | observation | Never overwrite. Required `metrics` and `vs_prior`. |
 
-Use exactly: `references/watch.md`, `references/demo-scope.md`,
-`references/workspace-contract.md`, `references/metadata.md`.
+Use exactly: `references/watch.md`, `references/splunk.md`,
+`references/demo-scope.md`, `references/workspace-contract.md`,
+`references/metadata.md`.
 Splunk: `schemas/health-splunk-check.schema.json`,
 `schemas/health-metadata-splunk.schema.json`,
 `examples/health-check-splunk.example.json`,
@@ -65,9 +79,10 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**Named Splunk — first tool:** `read_file`
-`health/metadata-splunk.json`. If `last_visit_id` is set, then that
-stamp under `health/splunk/`.
+**Named Splunk — first tools:** `read_file`
+`health/metadata-splunk.json` (the board), then `inventory/prod.json`,
+then `inventory/topology-observed.json` if it exists. Do not open the
+prior stamp.
 
 **Named ThousandEyes — first tool:** `read_file`
 `health/metadata-thousandeyes.json`. If `last_visit_id` is set, then
@@ -83,9 +98,13 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 If the invoke does not name Splunk or ThousandEyes: ASK_WHICH → STOP.
 
-Named visit: READ_THIS_METADATA → READ_PRIOR_STAMP → RESOLVE_IF_NEEDED
-→ PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK → WRITE_METADATA →
-READ_BACK → STOP
+Splunk: READ_BOARD → READ_PROD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
+[S0] → S1 → S2 → RESOLVE_HOSTS → DIFF → DECIDE → [WRITE_STAMP →
+READ_BACK → PRUNE] → WRITE_BOARD → STOP
+
+ThousandEyes: READ_THIS_METADATA → READ_PRIOR_STAMP →
+RESOLVE_IF_NEEDED → PICK_STAMP → COLLECT → WRITE_CHECK → READ_BACK →
+WRITE_METADATA → READ_BACK → STOP
 
 On collection failure: still write that check (`unavailable`, null
 counts). Do not advance the Splunk watermark.
@@ -93,6 +112,7 @@ counts). Do not advance the Splunk watermark.
 ## Reference routing
 
 - Visit steps, budget: `references/watch.md`
-- Resolve / Splunk watermark: `references/metadata.md`
-- Extract: `references/demo-scope.md`
+- Splunk searches, resolve, diff, board: `references/splunk.md`
+- Resolve ids / Splunk watermark: `references/metadata.md`
+- ThousandEyes extract: `references/demo-scope.md`
 - Paths: `workspace-handoff`; produce: `references/workspace-contract.md`

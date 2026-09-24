@@ -9,7 +9,9 @@ metadata on this visit.
 ## Read before telemetry MCP
 
 1. `read_file` this visit’s metadata file if it exists.
-2. If `last_visit_id` is set, that stamp is the prior observation.
+2. Splunk: the metadata file **is** the board (`splunk.current[]`);
+   do not open the prior stamp. ThousandEyes: if `last_visit_id` is
+   set, that stamp is the prior observation.
 3. Only if ids are still incomplete: resolve (below). Do not list
    when metadata already has the facts for this visit.
 
@@ -23,21 +25,20 @@ Do not collect another health source. Do not copy PAT into metadata.
 
 - No `collected_through`: this is the baseline visit. Do not use
   `-24h` and do not use `bootstrap_earliest` when that value is
-  `-24h`. One search, `stats min(_time) as oldest` on the metadata
-  index and sourcetype, finds the oldest event still stored.
-  `earliest_time` is that time. `latest_time` is `now`. If that
-  search fails, stop. Do not substitute `-24h`. Do not advance
-  the watermark.
-- After the baseline rows are on the stamp: set `collected_through`
-  to `last_event_at` when events exist, else this visit’s
-  `checked_at`. Set `last_visit_id` and `last_collected_at`. Never
-  move `collected_through` backward. Do not advance it when the
-  stamp has no device row and the search did return devices.
-  Re-read metadata before writing it.
+  `-24h`. S0 (`references/splunk.md`) finds the oldest event still
+  stored; `earliest_time` is that time. `latest_time` is `now`. If
+  S0 fails, stop. Do not substitute `-24h`. Do not advance the
+  watermark.
+- After S1 and S2 succeed and the board is built: set
+  `collected_through` to the latest S1 `last_at` when events exist,
+  else this visit’s `checked_at`. Set `last_collected_at` every
+  visit; `last_visit_id` only when a stamp was written;
+  `baseline_visit_id` on the first visit. Never move
+  `collected_through` backward.
 - Later Splunk visits: `earliest_time` = `collected_through`. Collect
   newly arrived data — not another rolling 24h.
-- Failed MCP: do **not** advance the watermark. Empty successful
-  window: zeros allowed; **do** advance to `checked_at`.
+- Failed S1: do **not** advance the watermark. Empty successful
+  window (S1 zero rows): **do** advance to `checked_at`; quiet visit.
 
 Pass the window as MCP `earliest_time` / `latest_time`. Do not put
 `earliest=` in SPL.
@@ -82,7 +83,9 @@ Do not create indexes, dashboards, or tests. Do not `index=*`.
 
 ## Write metadata
 
-After resolve, after every successful Splunk watermark update, and
-after every successful stamp write, `write_file` **this visit’s**
-metadata file only (`last_visit_id`). Do not copy the other source
-through.
+Splunk: `write_file` `health/metadata-splunk.json` **every visit**
+(it is the board), after resolve and again at the end with the
+watermark, `current[]`, `series[]`, `visits[]`. ThousandEyes:
+`write_file` `health/metadata-thousandeyes.json` after resolve and
+after every successful stamp write (`last_visit_id`). Do not copy
+the other source through.

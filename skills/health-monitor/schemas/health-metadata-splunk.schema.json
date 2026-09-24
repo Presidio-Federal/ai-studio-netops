@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-metadata-splunk/v1",
+  "$id": "health-metadata-splunk/v2",
   "title": "health/metadata-splunk.json",
-  "description": "Splunk lookup inventory (Kind metadata). Health Monitor Splunk visit only. Not the five-field envelope.",
+  "description": "Splunk plane board (Kind metadata). Health Monitor Splunk visit only. Rewritten every Splunk visit, quiet or not. Carries the lookup (index, sourcetype), the watermark (collected_through), last_visit_id (last stamp), last_collected_at (last completed collection), and the board: current[] last-known row per device + kind + subject, series[] one estate metric row per visit, visits[]. Not the five-field envelope.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "updated_at", "source_agent", "splunk"],
@@ -10,41 +10,101 @@
     "keys": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
+      "description": "Union of every key on current[]."
     },
-    "schema": { "type": "string", "const": "health-metadata-splunk/v1" },
+    "schema": { "type": "string", "const": "health-metadata-splunk/v2" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-monitor" },
     "splunk": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["index", "sourcetype", "collected_through", "last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits"],
       "properties": {
         "index": { "type": "string", "minLength": 1 },
         "sourcetype": { "type": "string", "minLength": 1 },
         "dashboard_id": { "type": ["string", "null"] },
-        "bootstrap_earliest": {
-          "type": "string",
-          "description": "Ignored on the first visit when the value is -24h. The first visit starts at the oldest event still in the index."
+        "bootstrap_earliest": { "type": ["string", "null"], "description": "Ignored on the first visit when the value is -24h. The first visit starts at the oldest event still in the index." },
+        "collected_through": { "type": ["string", "null"], "description": "ISO-8601 UTC watermark: the last event time collected. Next visit's earliest_time. Never moves backward; not advanced on a failed search." },
+        "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
+        "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
+        "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+        "current": {
+          "type": "array",
+          "maxItems": 120,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "Last-known row per device + kind + subject. A visit replaces the rows its S2 results name and keeps the rest."
         },
-        "collected_through": {
-          "type": ["string", "null"],
-          "description": "ISO-8601 UTC watermark. Next Splunk visit earliest_time."
+        "series": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/metric_row" },
+          "description": "One estate row per visit (sums over every device that logged), oldest first."
         },
-        "last_visit_id": {
-          "type": ["string", "null"],
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-        },
-        "last_collected_at": { "type": ["string", "null"] }
+        "visits": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/visit_row" }
+        }
       }
     },
     "provenance": {
       "type": "object",
       "additionalProperties": false,
+      "properties": { "splunk": { "type": "string", "enum": ["user", "discovered"] } }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "subject", "keys", "count", "at"],
+      "description": "Same shape as a stamp reading, without note.",
       "properties": {
-        "splunk": {
-          "type": "string",
-          "enum": ["user", "discovered"]
-        }
+        "name": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["bgp", "link", "config", "reload", "acl", "auth_failed"] },
+        "subject": { "type": "string", "minLength": 1 },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "count": { "type": "integer", "minimum": 1, "description": "Events for this subject in the window that last saw it." },
+        "at": { "type": "string", "minLength": 1 },
+        "state": { "type": ["string", "null"] },
+        "source_ip": { "type": ["string", "null"] },
+        "peer": { "type": ["string", "null"] },
+        "detail": { "type": ["string", "null"] }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "name", "events", "bgp_events", "link_events", "config_events", "reload_events", "acl_events", "auth_ok", "auth_failed", "ssh_no_match"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "pattern": "^(estate|device:[^ ].*|host:[^ ].*)$" },
+        "name": { "type": ["string", "null"] },
+        "events": { "type": ["integer", "null"] },
+        "bgp_events": { "type": ["integer", "null"] },
+        "link_events": { "type": ["integer", "null"] },
+        "config_events": { "type": ["integer", "null"] },
+        "reload_events": { "type": ["integer", "null"] },
+        "acl_events": { "type": ["integer", "null"] },
+        "auth_ok": { "type": ["integer", "null"] },
+        "auth_failed": { "type": ["integer", "null"] },
+        "ssh_no_match": { "type": ["integer", "null"] }
+      }
+    },
+    "visit_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "window_start", "window_end"],
+      "properties": {
+        "watch_id": { "type": ["string", "null"] },
+        "checked_at": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
+        "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "stamp_written": { "type": "boolean" },
+        "window_start": { "type": ["string", "null"] },
+        "window_end": { "type": ["string", "null"] }
       }
     }
   }

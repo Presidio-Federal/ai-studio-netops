@@ -103,8 +103,14 @@ IOS-XE board: `last_visit_id`, `last_collected_at`, `current[]`
 
 One named check. Unnamed invoke asks which and stops.
 
-**Splunk** — syslog for the lab index and sourcetype. Window is
-the watermark (`collected_through`), not another rolling 24 hours.
+**Splunk** — syslog for the index and sourcetype in metadata. Window
+is the watermark (`collected_through`), not another rolling 24 hours.
+Two fixed searches: per-host bucket counts and per-subject rollup
+(BGP neighbor, interface, config user, reload, ACL, failed auth).
+Hosts resolve to devices by parsed hostname, then by address against
+`inventory/topology-observed.json`. The board on
+`health/metadata-splunk.json` holds the last state per device, kind,
+and subject; a window with no material event writes the board only.
 
 **ThousandEyes** — path tests: loss, latency, jitter, errors,
 alerts. Account and test ids come from metadata. Standing order on
@@ -159,19 +165,27 @@ both stale and material.
 Trimmed from the skill examples. Full schemas live next to each
 skill.
 
-### Wristband — Splunk metadata
+### Wristband — Splunk board
 
 `health/metadata-splunk.json`
 
 ```json
 {
-  "schema": "health-metadata-splunk/v1",
+  "schema": "health-metadata-splunk/v2",
   "source_agent": "health-monitor",
   "splunk": {
-    "index": "example",
-    "sourcetype": "syslog",
-    "collected_through": "2026-08-30T18:43:58Z",
-    "last_visit_id": "2026-08-30T18-45-00Z"
+    "index": "<index>",
+    "sourcetype": "<sourcetype>",
+    "collected_through": "2026-08-31T21:58:14Z",
+    "last_visit_id": "2026-08-31T16-00-00Z",
+    "last_collected_at": "2026-08-31T22:00:00Z",
+    "baseline_visit_id": "2026-08-30T09-00-00Z",
+    "current": [
+      { "name": "<wan-device>", "kind": "bgp", "subject": "<neighbor-address>", "keys": ["device:<wan-device>", "device:<edge-device>"], "count": 2, "at": "2026-08-31T15:41:30Z", "state": "Up", "peer": "device:<edge-device>", "detail": "" },
+      { "name": "<edge-device>", "kind": "config", "subject": "<operator>", "keys": ["device:<edge-device>"], "count": 1, "at": "2026-08-31T15:55:02Z", "source_ip": "<source-ip>", "detail": "vty0" }
+    ],
+    "series": [ "one estate metric row per visit, ring of 10" ],
+    "visits": [ "one row per visit, ring of 10, stamp_written true/false" ]
   }
 }
 ```
@@ -179,33 +193,33 @@ skill.
 ThousandEyes metadata holds `account_id` and `tests[]`. ServiceNow
 metadata holds `marker` and `last_visit_id`.
 
-### Observation — Splunk lab slip
+### Observation — Splunk lab slip (material event)
 
-`health/splunk/<stamp>.json`
+`health/splunk/<stamp>.json` — written only when the window held a
+BGP, link, config, reload, ACL log, or failed-auth event.
 
 ```json
 {
-  "schema": "health-splunk-check/v2",
+  "schema": "health-splunk-check/v3",
   "source": "splunk",
-  "watch_id": "2026-08-30T18-45-00Z",
-  "status": "ok",
-  "headline": "37 new syslog events, 7 hosts; CONFIG_I + DMI sync; 0 flaps",
+  "watch_id": "2026-08-31T16-00-00Z",
+  "status": "degraded",
+  "headline": "<wan-device> reloaded at 15:40:12Z (Reload Command); BGP to <edge-device> Down then Up; <operator> committed config on <edge-device> from <source-ip>. 9 devices logged; 41 board rows unchanged.",
   "coverage": { "state": "complete" },
   "vs_prior": {
-    "prior_watch_id": "2026-08-30T04-03-20Z",
-    "delta": "unchanged",
-    "changed": []
+    "prior_watch_id": "2026-08-30T09-00-00Z",
+    "delta": "worse",
+    "changed": [
+      { "keys": ["device:<wan-device>"], "field": "reload", "prior": null, "current": "Reload Command", "at": "2026-08-31T15:40:12Z" }
+    ]
   },
   "metrics": [
-    {
-      "at": "2026-08-30T18:45:00Z",
-      "scope": "window",
-      "event_count": 37,
-      "critical_error_count": 0,
-      "flap_count": 0,
-      "unique_hosts": 7
-    }
-  ]
+    { "at": "2026-08-31T16:00:00Z", "scope": "device:<wan-device>", "name": "<wan-device>", "events": 61, "bgp_events": 2, "link_events": 2, "config_events": 0, "reload_events": 1, "acl_events": 0, "auth_ok": 6, "auth_failed": 0, "ssh_no_match": 0 }
+  ],
+  "readings": [
+    { "name": "<wan-device>", "kind": "reload", "subject": "RELOAD", "keys": ["device:<wan-device>"], "count": 1, "at": "2026-08-31T15:40:12Z", "detail": "Reload Command", "note": "Operator-requested reload from the console, not a crash." }
+  ],
+  "unchanged": 41
 }
 ```
 

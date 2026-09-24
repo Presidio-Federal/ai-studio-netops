@@ -1,42 +1,55 @@
 {
-  "keys": ["device:<inventory-name>"],
-  "schema": "health-splunk-check/v2",
+  "keys": ["device:<wan-device>", "device:<edge-device>", "interface:<wan-device>/<wan-interface>"],
+  "schema": "health-splunk-check/v3",
   "source": "splunk",
-  "watch_id": "2026-08-30T18-45-00Z",
-  "checked_at": "2026-08-30T18:45:00Z",
-  "ok": true,
-  "status": "ok",
-  "headline": "A BGP neighbor came Up since the prior stamp. No interface went down and nobody committed config, so the adjacency recovered without a config change.",
-  "window": "2026-08-30T04:03:20Z",
-  "window_start": "2026-08-30T04:03:20Z",
-  "window_end": "2026-08-30T18:45:00Z",
-  "coverage": { "state": "complete" },
+  "watch_id": "2026-08-31T16-00-00Z",
+  "checked_at": "2026-08-31T16:00:00Z",
+  "ok": false,
+  "status": "degraded",
+  "headline": "<wan-device> reloaded at 15:40:12Z (Reload Command, from console); its <wan-interface> went down then up at 15:41Z and BGP to <edge-device> (<neighbor-address>) is Up again after a Down at 15:40Z. <operator> committed config on <edge-device> from <source-ip> at 15:55Z. 9 devices logged; 41 board rows unchanged.",
+  "window": "watermark",
+  "window_start": "2026-08-31T10:00:00Z",
+  "window_end": "2026-08-31T16:00:00Z",
+  "coverage": { "state": "complete", "detail": "S1 buckets + S2 subjects on index/sourcetype from metadata" },
   "vs_prior": {
-    "prior_watch_id": "2026-08-30T04-03-20Z",
+    "prior_watch_id": "2026-08-30T09-00-00Z",
     "delta": "worse",
     "changed": [
-      "<inventory-name> bgp neighbor <neighbor-id> Up 0 → 1",
-      "<inventory-name> bgp_adjchange 0 → 1"
+      { "keys": ["device:<wan-device>"], "field": "reload", "prior": null, "current": "Reload Command", "at": "2026-08-31T15:40:12Z" },
+      { "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"], "field": "link_state", "prior": "up", "current": "up", "at": "2026-08-31T15:41:09Z" },
+      { "keys": ["device:<wan-device>", "device:<edge-device>"], "field": "bgp_state", "prior": "Up", "current": "Up", "at": "2026-08-31T15:41:30Z" },
+      { "keys": ["device:<edge-device>"], "field": "config", "prior": "2026-08-30T08:12:41Z", "current": "<operator> via vty0 from <source-ip>", "at": "2026-08-31T15:55:02Z" }
     ]
   },
   "metrics": [
-    {
-      "at": "2026-08-30T18:45:00Z",
-      "scope": "device:<inventory-name>",
-      "name": "<inventory-name>",
-      "bgp_adjchange": 1,
-      "link_updown": 0,
-      "config_i": 0
-    }
+    { "at": "2026-08-31T16:00:00Z", "scope": "device:<wan-device>", "name": "<wan-device>", "events": 61, "bgp_events": 2, "link_events": 2, "config_events": 0, "reload_events": 1, "acl_events": 0, "auth_ok": 6, "auth_failed": 0, "ssh_no_match": 0 },
+    { "at": "2026-08-31T16:00:00Z", "scope": "device:<edge-device>", "name": "<edge-device>", "events": 24, "bgp_events": 0, "link_events": 0, "config_events": 1, "reload_events": 0, "acl_events": 0, "auth_ok": 3, "auth_failed": 0, "ssh_no_match": 1 }
   ],
   "readings": [
     {
-      "name": "<inventory-name>",
-      "kind": "bgp",
-      "subject": "neighbor <neighbor-id> Up",
-      "keys": ["device:<inventory-name>"],
-      "count": 1,
-      "note": "BGP neighbor went Up (0 to 1) since the prior stamp. No LINEPROTO up/down and no CONFIG_I on this device, so the session recovered and this window has no config commit."
+      "name": "<wan-device>", "kind": "reload", "subject": "RELOAD", "keys": ["device:<wan-device>"],
+      "count": 1, "at": "2026-08-31T15:40:12Z", "state": null, "source_ip": null, "peer": null, "detail": "Reload Command",
+      "note": "Operator-requested reload from the console, not a crash. Everything else on this device this window follows from it."
+    },
+    {
+      "name": "<wan-device>", "kind": "link", "subject": "<wan-interface>", "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
+      "count": 2, "at": "2026-08-31T15:41:09Z", "state": "up", "source_ip": null, "peer": null, "detail": null,
+      "note": "Down then up inside a minute of the reload; ended up. Not a cable event."
+    },
+    {
+      "name": "<wan-device>", "kind": "bgp", "subject": "<neighbor-address>", "keys": ["device:<wan-device>", "device:<edge-device>"],
+      "count": 2, "at": "2026-08-31T15:41:30Z", "state": "Up", "source_ip": null, "peer": "device:<edge-device>", "detail": "",
+      "note": "Down at 15:40:05Z with 'Peer closed the session', Up 85 seconds later. Session recovered on its own after the reload."
+    },
+    {
+      "name": "<edge-device>", "kind": "config", "subject": "<operator>", "keys": ["device:<edge-device>"],
+      "count": 1, "at": "2026-08-31T15:55:02Z", "state": null, "source_ip": "<source-ip>", "peer": null, "detail": "vty0",
+      "note": "One interactive commit over SSH fifteen minutes after the WAN reload; the same operator address as prior commits on this device. Not the pipeline (pipeline commits show 'console')."
     }
+  ],
+  "unchanged": 41,
+  "baseline_ref": "health/splunk/2026-08-30T09-00-00Z.json",
+  "concerns": [
+    { "type": "device", "name": "<wan-device>", "source_ref": "inventory/prod.json" }
   ]
 }
