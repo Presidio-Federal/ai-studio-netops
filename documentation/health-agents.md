@@ -95,8 +95,9 @@ do not collect these planes.
 
 Live lookup ids, the Splunk watermark, and each plane’s
 `last_visit_id` live in metadata, not in the prompt. IOS-XE PAT
-lives on `inventory/prod.json`. `health/metadata-iosxe.json` holds
-only `last_visit_id` and `last_collected_at`.
+lives on `inventory/prod.json`. `health/metadata-iosxe.json` is the
+IOS-XE board: `last_visit_id`, `last_collected_at`, `current[]`
+(last-known rows), `series[]`, `visits[]`.
 
 ## Health Monitor
 
@@ -111,10 +112,17 @@ loss / error rounds: one path-vis on the worst direction.
 
 ## Health Device
 
-Device plane only. GET interfaces, BGP, and counters. ACL GET only
-when a ranked up port is dropping. Rank from `inventory/prod.json`.
-Prior stamp is `health/metadata-iosxe.json` `last_visit_id`
-(no directory list). Does not change config.
+Device plane only, two modes. **Health**: five small filtered GETs
+per device — boot time / version / reboot reason, cpu, memory,
+interface state and flaps/errors, BGP sessions — one device at a
+time, diffed against the board's `current[]`; a stamp only when
+something material moved (reboot, state change, flaps or errors up,
+threshold crossed, BGP reset). No ACL oper, no traffic rates, no CDP.
+**Topology** (`Run the network topology map only.`): version,
+interfaces with addresses, and CDP rows per device to
+`inventory/topology-observed.json`, file rewritten after every
+device; readers pair the `neighbors[]` rows. Rank from
+`inventory/prod.json`. Does not change config.
 
 ## Health ServiceNow
 

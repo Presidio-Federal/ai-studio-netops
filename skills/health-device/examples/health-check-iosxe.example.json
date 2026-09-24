@@ -1,61 +1,72 @@
 {
-  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>"],
-  "schema": "health-iosxe-check/v4",
+  "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
+  "schema": "health-iosxe-check/v5",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-00Z",
   "checked_at": "2026-08-31T16:00:00Z",
   "ok": false,
   "status": "degraded",
-  "headline": "<wan-device> <wan-interface> in_discards 0 -> 412 and num_flaps 0 -> 2 since 2026-08-31T15:41:07Z; BGP to <edge-device> still fsm-established, prefixes 3 -> 3. 41 other board rows unchanged; ACL GET 204 on both devices.",
+  "headline": "<wan-device> rebooted: boot_time 2026-08-14T13:33:57Z -> 2026-08-31T15:40:12Z, last_reboot_reason reload (abnormal); <wan-interface> num_flaps 0 -> 1 and <edge-device> <edge-interface> num_flaps 0 -> 1 at 15:41Z; BGP <wan-device> -> <edge-device> re-established, up_time 2w3d -> 00:18:50, prefixes 3 -> 3. 38 other board rows unchanged.",
   "window": "live",
   "scope": "all",
   "coverage": {
     "state": "complete",
-    "detail": "RESTCONF GET interfaces-oper, bgp AF, acl-oper (204) on 2 ranked devices"
+    "detail": "system-data, cpu, memory, interfaces (fields), bgp AF (fields) on 2 ranked devices"
   },
   "vs_prior": {
     "prior_watch_id": "2026-08-31T10-00-00Z",
     "delta": "worse",
     "changed": [
       {
-        "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
-        "field": "in_discards",
-        "prior": 0,
-        "current": 412,
-        "at": "2026-08-31T16:00:00Z"
+        "keys": ["device:<wan-device>"],
+        "field": "boot_time",
+        "prior": "2026-08-14T13:33:57Z",
+        "current": "2026-08-31T15:40:12Z",
+        "at": "2026-08-31T15:40:12Z"
       },
       {
         "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
         "field": "num_flaps",
         "prior": 0,
-        "current": 2,
+        "current": 1,
         "at": "2026-08-31T15:41:07Z"
+      },
+      {
+        "keys": ["device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
+        "field": "num_flaps",
+        "prior": 0,
+        "current": 1,
+        "at": "2026-08-31T15:41:09Z"
+      },
+      {
+        "keys": ["device:<wan-device>", "device:<edge-device>"],
+        "field": "up_time",
+        "prior": "2w3d",
+        "current": "00:18:50",
+        "at": "2026-08-31T16:00:00Z"
       }
     ]
   },
   "metrics": [
-    {
-      "at": "2026-08-31T16:00:00Z",
-      "scope": "device:<wan-device>",
-      "oper_not_ready": 0,
-      "bgp_not_established": 0,
-      "in_errors": 0,
-      "in_discards": 412,
-      "num_flaps": 2,
-      "acls": 0
-    },
-    {
-      "at": "2026-08-31T16:00:00Z",
-      "scope": "device:<edge-device>",
-      "oper_not_ready": 0,
-      "bgp_not_established": 0,
-      "in_errors": 0,
-      "in_discards": 0,
-      "num_flaps": 0,
-      "acls": 0
-    }
+    { "at": "2026-08-31T16:00:00Z", "scope": "device:<wan-device>", "oper_not_ready": 0, "bgp_not_established": 0, "num_flaps": 1, "in_errors": 0, "in_discards": 0, "cpu_5m_max": 4, "mem_used_pct_max": 12 },
+    { "at": "2026-08-31T16:00:00Z", "scope": "device:<edge-device>", "oper_not_ready": 0, "bgp_not_established": 0, "num_flaps": 1, "in_errors": 0, "in_discards": 0, "cpu_5m_max": 1, "mem_used_pct_max": 13 }
   ],
   "readings": [
+    {
+      "name": "<wan-device>",
+      "kind": "device",
+      "subject": "<wan-device>",
+      "keys": ["device:<wan-device>"],
+      "state": "up",
+      "last_changed": "2026-08-31T15:40:12Z",
+      "software_version": "17.15.1a",
+      "last_reboot_reason": "reload",
+      "reason_severity": "abnormal",
+      "cpu_5m": 4,
+      "mem_used_pct": 12,
+      "unsaved_config": false,
+      "note": "Rebooted 20 minutes before this visit; the device reports the reload as abnormal, not an operator command. Same software version, so not an upgrade. Every change below follows from this reboot."
+    },
     {
       "name": "<wan-device>",
       "kind": "interface",
@@ -64,17 +75,43 @@
       "state": "if-oper-state-ready",
       "last_changed": "2026-08-31T15:41:07Z",
       "in_errors": 0,
-      "in_discards": 412,
       "in_crc_errors": 0,
-      "num_flaps": 2,
-      "rx_kbps": 18,
-      "tx_kbps": 22,
+      "in_discards": 0,
+      "num_flaps": 1,
       "input_acl": null,
       "output_acl": null,
-      "note": "Up now, but flapped twice (last-change 15:41:07Z) and dropped 412 inbound frames since the 10:00 visit with no CRC errors, so this looks like a transient link or far-end event rather than a bad cable. No ACL is bound, so the discards are not policy. The topology map shows the far end is <edge-device>; its board row shows no errors."
+      "note": "One flap, timed with the reboot; no errors since. Nothing here points at the cable."
+    },
+    {
+      "name": "<edge-device>",
+      "kind": "interface",
+      "subject": "<edge-interface>",
+      "keys": ["device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
+      "state": "if-oper-state-ready",
+      "last_changed": "2026-08-31T15:41:09Z",
+      "in_errors": 0,
+      "in_crc_errors": 0,
+      "in_discards": 0,
+      "num_flaps": 1,
+      "input_acl": null,
+      "output_acl": null,
+      "note": "Far end of the <wan-device> link per the topology map; flapped two seconds after it, which is the reboot seen from this side."
+    },
+    {
+      "name": "<wan-device>",
+      "kind": "bgp",
+      "subject": "<neighbor-address>",
+      "keys": ["device:<wan-device>", "device:<edge-device>"],
+      "state": "fsm-established",
+      "last_changed": "2026-08-31T16:00:00Z",
+      "up_time": "00:18:50",
+      "prefixes_received": 3,
+      "remote_as": 65001,
+      "peer": "device:<edge-device>",
+      "note": "Session reset with the reboot and is back with the same prefix count."
     }
   ],
-  "unchanged": 41,
+  "unchanged": 38,
   "baseline_ref": "health/iosxe/2026-08-30T09-00-00Z.json",
   "concerns": [
     { "type": "device", "name": "<wan-device>", "source_ref": "inventory/prod.json" }

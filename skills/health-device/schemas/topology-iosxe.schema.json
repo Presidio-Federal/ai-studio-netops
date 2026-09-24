@@ -63,7 +63,7 @@
         "platform": { "type": ["string", "null"], "description": "prod.json platform." },
         "role": { "type": ["string", "null"], "description": "prod.json role." },
         "node_definition": { "type": ["string", "null"], "description": "prod.json source_metadata.node_definition. Never from the device." },
-        "software_version": { "type": ["string", "null"], "description": "version from the platform call. Null when the call failed." },
+        "software_version": { "type": ["string", "null"], "description": "The token after 'Version ' in device-system-data software-version, e.g. 17.15.1a. Null when the call failed." },
         "probed_at": { "type": ["string", "null"], "description": "When this device's three calls completed. Null when carried over from a prior map because collection failed." },
         "interfaces": {
           "type": "array",

@@ -20,7 +20,7 @@
     "probed": 2,
     "failed": [],
     "neighbor_protocol_absent": [],
-    "detail": "platform, native/interface, cdp-neighbor-details per device, one device at a time"
+    "detail": "system-data, native/interface, cdp-neighbor-details (fields) per device, one device at a time"
   },
   "devices": [
     {

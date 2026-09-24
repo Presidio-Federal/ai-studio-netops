@@ -1,6 +1,6 @@
 {
   "keys": [],
-  "schema": "health-iosxe-check/v4",
+  "schema": "health-iosxe-check/v5",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-01Z",
   "checked_at": "2026-08-31T16:00:01Z",
@@ -24,10 +24,11 @@
       "scope": "estate",
       "oper_not_ready": null,
       "bgp_not_established": null,
+      "num_flaps": null,
       "in_errors": null,
       "in_discards": null,
-      "num_flaps": null,
-      "acls": null
+      "cpu_5m_max": null,
+      "mem_used_pct_max": null
     }
   ],
   "readings": [],

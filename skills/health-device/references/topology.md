@@ -17,9 +17,10 @@ work out who is cabled to whom. A reader does the pairing later.
 
 1. **One device at a time.** Finish device A completely — three
    calls, reduce, write the file — before the first call to device B.
-2. **One IOS-XE call per turn.** Never issue two IOS-XE calls in the
-   same message. Every response must be matched to the port you just
-   passed, and that is only certain when there is one in flight.
+2. **Never two ports in one message.** The three calls for one
+   device share a port and may go in one message; a call for another
+   port may not. A response is attributed to the port you passed, and
+   that is only certain when every call in flight has the same port.
 3. **Write after every device.** The file on disk is your memory. Do
    not hold nine devices in your head.
 4. **Copy, do not reason.** A CDP row becomes a `neighbors[]` row
@@ -45,23 +46,27 @@ prior rows (or []), so a reader knows a map is in progress.
 
 ## Per device — exactly this sequence
 
+Every call carries `params={"fields": ...}` as written (a native
+dict). Never drop the filter.
+
 **Call 1 — version.**
-`iosxe_get_platform_and_yang(port=<port>)` with no other arguments.
-Keep only the `version` string. Do not pass `yang_model` or
-`list_modules`.
+`iosxe_restconf_get(path="Cisco-IOS-XE-device-hardware-oper:device-hardware-data/device-hardware/device-system-data", port=<port>, params={"fields": "software-version"})`.
+`software_version` = the token after `Version ` up to the next comma
+(`... Version 17.15.1a, RELEASE ...` → `17.15.1a`). Ignore the rest
+of the string.
 
 **Call 2 — interfaces.**
-`iosxe_restconf_get(path="Cisco-IOS-XE-native:native/interface", port=<port>)`.
+`iosxe_restconf_get(path="Cisco-IOS-XE-native:native/interface", port=<port>, params={"fields": "GigabitEthernet(name;ip/address/primary);TenGigabitEthernet(name;ip/address/primary);Loopback(name;ip/address/primary);Tunnel(name;ip/address/primary);Vlan(name;ip/address/primary)"})`.
 The payload is grouped by type (`GigabitEthernet[]`, `Loopback[]`,
-`Tunnel[]`, `Vlan[]`, ...). For each entry: `name` = type + `name`
-field (`GigabitEthernet` + `3.51` → `GigabitEthernet3.51`); `cidr` =
-`ip.address.primary.address` + `/` + prefix length of
+...). For each entry: `name` = type + `name` field (`GigabitEthernet`
++ `3.51` → `GigabitEthernet3.51`; `Loopback` + `0` → `Loopback0`);
+`cidr` = `ip.address.primary.address` + `/` + prefix length of
 `ip.address.primary.mask` (255.255.255.252 → /30, .0 → /24, .255 →
-/32), or null when there is no primary address. **Ignore every other
-field.** `description` is prose — never read it, never write it.
+/32), or null when the entry has no `ip`. A type absent from the
+payload has no interfaces of that type.
 
 **Call 3 — neighbors.**
-`iosxe_restconf_get(path="Cisco-IOS-XE-cdp-oper:cdp-neighbor-details", port=<port>)`.
+`iosxe_restconf_get(path="Cisco-IOS-XE-cdp-oper:cdp-neighbor-details", port=<port>, params={"fields": "cdp-neighbor-detail(device-name;local-intf-name;port-id;platform-name)"})`.
 For each `cdp-neighbor-detail[]` entry write one row:
 
 | CDP field | Row field |
@@ -70,11 +75,14 @@ For each `cdp-neighbor-detail[]` entry write one row:
 | `device-name` minus everything from the first `.` | `far_name` |
 | `port-id` (expand `Gi`→`GigabitEthernet`, `Te`→`TenGigabitEthernet`, `Gig 0/0`→`GigabitEthernet0/0`) | `far_port` |
 | `far_name` matched **case-insensitively** to a `prod.json` `name` | `far` = `interface:<that prod.json name>/<far_port>`; no match → null |
-| `platform` | `platform_hint` (null when absent) |
+| `platform-name` | `platform_hint` (null when absent or blank) |
 
 204, 404, or empty → call
-`iosxe_restconf_get(path="Cisco-IOS-XE-lldp-oper:lldp-entries", port=<port>)`
-once; same mapping with `device-id`, `local-interface`, `port-id`.
+`iosxe_restconf_get(path="Cisco-IOS-XE-lldp-oper:lldp-entries", port=<port>, params={"fields": "lldp-entry"})`
+once; same mapping with `device-id`, `local-interface`,
+`connecting-interface` (model leaf names; LLDP is disabled in this
+lab, so unverified). No `lldp-entry[]` in the payload → no neighbor
+protocol.
 Both empty → `neighbors []` and the device goes on
 `coverage.neighbor_protocol_absent`.
 
@@ -125,7 +133,7 @@ the change events in words or "first map". `next_action`: `none`, or
 |------|----:|
 | Workspace reads | 3 |
 | Workspace writes | in-scope devices + 2 |
-| IOS-XE calls (`iosxe_get_platform_and_yang` + `iosxe_restconf_get`) | 4 × in-scope devices, cap 40 |
+| IOS-XE `iosxe_restconf_get` calls | 4 × in-scope devices, cap 40 |
 
 Over budget: finish the current device, write, stop with `gaps` and
 the unprobed devices named in `coverage.detail`.

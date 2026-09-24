@@ -1,16 +1,16 @@
 ---
 name: health-device
-version: "1.10.1"
-description: "v1.10.1 — IOS-XE device visits, GET-only RESTCONF. Health mode diffs against the board on health/metadata-iosxe.json and writes a stamp only when something material moved. Topology mode records each device's version, interfaces, and CDP neighbors to inventory/topology-observed.json, one device at a time, one call per turn, no cross-device reasoning. No CDP on health visits; no counters on topology maps."
+version: "1.11.0"
+description: "v1.11.0 — IOS-XE device visits, GET-only RESTCONF with fields filters. Health mode: five small GETs per device (boot/version, cpu, memory, interface state, BGP sessions), diffed against the board on health/metadata-iosxe.json; stamp only when something material moved. Topology mode records each device's version, interfaces, and CDP neighbors to inventory/topology-observed.json, one device at a time, file rewritten per device, no cross-device reasoning. One tool, iosxe_restconf_get. No ACL oper, no traffic rates, no CDP on health visits."
 ---
 
 # Health Device skill
 
-One IOS-XE visit per conversation, in one of two modes. Tools are
-`iosxe_restconf_get` and (topology mode only) `iosxe_get_platform_and_yang`
-with no YANG arguments, both with `port` from `inventory/prod.json`. Do
-not load `cisco-iosxe-mcp` write or YANG-discovery workflows. Do not
-call other health MCPs.
+One IOS-XE visit per conversation, in one of two modes. One tool:
+`iosxe_restconf_get` with `port` from `inventory/prod.json` and the
+`params={"fields": ...}` filter each recipe prints. Do not load
+`cisco-iosxe-mcp` write or YANG-discovery workflows. Do not call
+`iosxe_get_platform_and_yang` or other health MCPs.
 
 | Task line names | Mode | Reference | Writes |
 |-----------------|------|-----------|--------|
@@ -20,19 +20,25 @@ call other health MCPs.
 `Scope: device:<a> device:<b>` on either task line limits the visit to
 those `prod.json` devices. No scope → every RESTCONF device, ranked.
 
-**Health.** The **board** `health/metadata-iosxe.json` carries
-`current[]` (last-known state of every admin-up interface, BGP
-neighbor, and ACL), `series[]` (one estate row per visit), `visits[]`,
-`last_collected_at`, `last_visit_id`, `baseline_visit_id`. Diff this
-collection against `current[]`. Write a stamp only when there is no
-board, something material moved, or coverage is not complete. Do not
-GET CDP or LLDP on a health visit; far-end context comes from
+**Health.** Five filtered GETs per device — system-data (boot time,
+version, reboot reason), cpu, memory, interfaces, BGP summaries —
+**one device at a time, never two ports in one message**. The
+**board** `health/metadata-iosxe.json` carries `current[]`
+(last-known state: one `device` row per device, every admin-up
+interface, every BGP neighbor), `series[]` (one estate row per
+visit), `visits[]`, `last_collected_at`, `last_visit_id`,
+`baseline_visit_id`. Diff this collection against `current[]`. Write
+a stamp only when there is no board, something material moved, or
+coverage is not complete. Material: a reboot, a state change, flaps
+or errors that increased, a cpu/memory threshold crossed, a BGP reset.
+Not material: discards, traffic rates, unsaved config. Do not GET CDP,
+LLDP, or ACL oper on a health visit; far-end context comes from
 `inventory/topology-observed.json` when it exists.
 
 **Topology.** Per device: version, interface names with addresses,
 and its CDP/LLDP rows copied into `devices[].neighbors[]`. **One
-device at a time, one IOS-XE call per turn, rewrite the file after
-every device.** You never pair two devices' reports, never read
+device at a time, never two ports in one message, rewrite the file
+after every device.** You never pair two devices' reports, never read
 `description`, never use addresses to decide cabling — a reader pairs
 `neighbors[]` rows. A neighbor name not in `prod.json` keeps
 `far_name` with `far` null. `changes[]` is a per-device diff against
@@ -47,9 +53,11 @@ do.` and stop.
 
 ## Hard boundaries
 
-GET only — never PUT/PATCH/DELETE, SSH, save-config. Never
-`iosxe_get_platform_and_yang` on a health visit; on a topology map,
-never with `yang_model` or `list_modules`. Do not write `runs/`,
+GET only — never PUT/PATCH/DELETE, SSH, save-config,
+`iosxe_get_platform_and_yang`, `yang_model`, or `list_modules`. Only
+the paths the references print, each with its `fields` filter — an
+unfiltered CPU or interfaces GET is the payload that breaks the
+visit. Do not write `runs/`,
 `inventory/prod.json`, `inventory/infra-sot.json`,
 `trend-analysis.json`, `remediation-request.json`,
 `state/network-sync.json`, `health/metadata.json`, any metadata file
@@ -91,17 +99,18 @@ Do **not** call `get_folder_structure`. Do **not** list
 before any RESTCONF. Then `inventory/topology-observed.json` if it
 exists. Then `health/metadata-iosxe.json` if it exists; its
 `iosxe.current[]` is what you diff against. Do not open the prior
-stamp unless the board has no `current[]`. Three GETs per device in
-scope (interfaces, BGP, ACL probe). Decide stamp or quiet. Write the
+stamp unless the board has no `current[]`. Then, one device at a
+time, the five filtered GETs from `references/iosxe.md` (system-data,
+cpu, memory=Processor, interfaces, BGP address-families) → reduce to
+that device's rows → next device. Decide stamp or quiet. Write the
 stamp if due and read it back. Rewrite the board.
 
 **Topology map — first tools:** `read_file` `inventory/prod.json`,
 then `inventory/topology-observed.json` if it exists (prior map).
 Write the file once as `partial`. Then for each device in scope, in
-order, one call per turn: `iosxe_get_platform_and_yang(port)` →
-`iosxe_restconf_get` `Cisco-IOS-XE-native:native/interface` →
-`iosxe_restconf_get` `Cisco-IOS-XE-cdp-oper:cdp-neighbor-details`
-(LLDP once on 204) → reduce → `write_file`. Never start the next
+order, the three filtered GETs from `references/topology.md`
+(system-data version → `native/interface` → `cdp-neighbor-details`,
+LLDP once on 204) → reduce → `write_file`. Never start the next
 device before the file is written. Finish, write, read back.
 
 ## Canonical top-level keys
@@ -110,7 +119,7 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machines
 
-Health: READ_PROD → READ_TOPOLOGY → READ_BOARD → COLLECT → DIFF → DECIDE → [WRITE_CHECK → READ_BACK → PRUNE] → WRITE_BOARD → STOP
+Health: READ_PROD → READ_TOPOLOGY → READ_BOARD → (per device: FIVE_GETS → REDUCE)* → DIFF → DECIDE → [WRITE_CHECK → READ_BACK → PRUNE] → WRITE_BOARD → STOP
 
 Topology: READ_PROD → READ_PRIOR_MAP → WRITE_PARTIAL → (per device: VERSION → INTERFACES → NEIGHBORS → REDUCE → DIFF → WRITE_MAP)* → FINISH → WRITE_MAP → READ_BACK → STOP
 

@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-iosxe-check/v4",
+  "$id": "health-iosxe-check/v5",
   "title": "health/iosxe/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "IOS-XE lab slip (Kind observation). Written on the first visit, when something material moved against health/metadata-iosxe.json current[], or when coverage is not complete. metrics are per-device counts. readings are only the rows that moved or are abnormal this visit; the first visit writes every row and becomes baseline_ref. A reading is a board row plus an optional note. unchanged counts the board rows not in readings. vs_prior.changed is structured: one item per field that moved. No RESTCONF body. No topology: physical neighbors live on inventory/topology-observed.json.",
+  "description": "IOS-XE lab slip (Kind observation). Written on the first visit, when something material moved against health/metadata-iosxe.json current[], or when coverage is not complete. metrics are per-device counts. readings are only the rows that moved or are abnormal this visit; the first visit writes every row and becomes baseline_ref. A reading is a board row (device, interface, or bgp) plus an optional note. unchanged counts the board rows not in readings. vs_prior.changed is structured: one item per field that moved. No RESTCONF body. No topology: physical neighbors live on inventory/topology-observed.json.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -27,174 +27,500 @@
     "keys": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
     },
-    "schema": { "type": "string", "const": "health-iosxe-check/v4" },
-    "source": { "type": "string", "const": "iosxe" },
+    "schema": {
+      "type": "string",
+      "const": "health-iosxe-check/v5"
+    },
+    "source": {
+      "type": "string",
+      "const": "iosxe"
+    },
     "watch_id": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
     },
-    "checked_at": { "type": "string", "minLength": 1 },
-    "ok": { "type": ["boolean", "null"] },
-    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
-    "headline": { "type": "string", "minLength": 1, "description": "Quotes measurements: which subject, which field, prior -> current, since when; then the unchanged count and the ACL probe result." },
-    "window": { "type": "string", "minLength": 1 },
+    "checked_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ok": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "degraded",
+        "unknown"
+      ]
+    },
+    "headline": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Quotes measurements: which subject, which field, prior -> current, since when; then the unchanged count."
+    },
+    "window": {
+      "type": "string",
+      "minLength": 1
+    },
     "scope": {
-      "type": ["array", "string"],
-      "items": {"type": "string", "pattern": "^device:[^ ].*$"},
+      "type": [
+        "array",
+        "string"
+      ],
+      "items": {
+        "type": "string",
+        "pattern": "^device:[^ ].*$"
+      },
       "description": "\"all\" when every ranked device was collected; else the device keys the task line named."
     },
-    "coverage": { "$ref": "#/$defs/coverage" },
-    "vs_prior": { "$ref": "#/$defs/vs_prior" },
+    "coverage": {
+      "$ref": "#/$defs/coverage"
+    },
+    "vs_prior": {
+      "$ref": "#/$defs/vs_prior"
+    },
     "concerns": {
       "type": "array",
       "maxItems": 8,
-      "description": "One device entity-ref when a metric on that device is non-zero (acls does not count). Omit healthy devices.",
-      "items": { "$ref": "#/$defs/entity_ref" }
+      "description": "One device entity-ref when that device rebooted since the board, has cpu_5m >= 80 or mem_used_pct >= 85, has unsaved_config true, or has a non-zero oper_not_ready / bgp_not_established / increased errors or flaps. Omit healthy devices.",
+      "items": {
+        "$ref": "#/$defs/entity_ref"
+      }
     },
     "metrics": {
       "type": "array",
       "minItems": 1,
-      "items": { "$ref": "#/$defs/metric_row" },
+      "items": {
+        "$ref": "#/$defs/metric_row"
+      },
       "description": "One row per collected device, scope device:<name>."
     },
     "readings": {
       "type": "array",
       "maxItems": 64,
-      "description": "First visit: every board row. Later visits: only rows with a changed[] item this visit, plus rows abnormal now (oper not ready, BGP not established, a counter that increased, an ACL bound on an interface but absent from the ACL GET). Not the whole estate.",
-      "items": { "$ref": "#/$defs/reading" }
+      "description": "First visit: every board row. Later visits: only rows with a changed[] item this visit, plus rows abnormal now (device rebooted or over a cpu/memory threshold, interface admin-up and oper not ready, BGP not established). Not the whole estate.",
+      "items": {
+        "$ref": "#/$defs/reading"
+      }
     },
     "unchanged": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "description": "Count of board rows not in readings. 0 on the first visit. null when coverage is unavailable."
     },
     "baseline_ref": {
-      "type": ["string", "null"],
-      "description": "health/iosxe/<baseline_visit_id>.json — the first-visit stamp that listed every subject. Null on the first visit itself."
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "health/iosxe/<baseline_visit_id>.json \u2014 the first-visit stamp that listed every subject. Null on the first visit itself."
     },
-    "skipped_reason": { "type": ["string", "null"] }
+    "skipped_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
   },
   "$defs": {
     "entity_ref": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["type", "name"],
+      "required": [
+        "type",
+        "name"
+      ],
       "description": "workspace-handoff entity reference. Do not copy the referenced object. Do not invent id.",
       "properties": {
         "type": {
           "type": "string",
-          "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change"]
+          "enum": [
+            "device",
+            "interface",
+            "site",
+            "service",
+            "test",
+            "control",
+            "incident",
+            "change"
+          ]
         },
-        "name": { "type": "string", "minLength": 1 },
-        "id": { "type": ["string", "null"] },
-        "source_ref": { "type": ["string", "null"] }
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "vs_prior": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["prior_watch_id", "delta", "changed"],
+      "required": [
+        "prior_watch_id",
+        "delta",
+        "changed"
+      ],
       "description": "Diff of this collection against metadata current[]. First visit: prior_watch_id null, delta first, changed []. Later visits: one changed item per material field that moved.",
       "properties": {
-        "prior_watch_id": { "type": ["string", "null"], "description": "metadata last_visit_id at the start of this visit." },
+        "prior_watch_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "metadata last_visit_id at the start of this visit."
+        },
         "delta": {
           "type": "string",
-          "enum": ["first", "unchanged", "worse", "better", "changed"],
-          "description": "worse when any change lowered health (state left ready/established, a counter increased, an ACL was unbound, a peer disappeared). better when every change raised it. changed when neither (new row, ACL bound, first ACE hits)."
+          "enum": [
+            "first",
+            "unchanged",
+            "worse",
+            "better",
+            "changed"
+          ],
+          "description": "worse when any change lowered health (a reboot, state left ready/established, errors or flaps increased, cpu/memory crossed a threshold upward, a peer disappeared). better when every change raised it. changed when neither (new row, software_version changed, ACL bound)."
         },
         "changed": {
           "type": "array",
           "maxItems": 24,
-          "items": { "$ref": "#/$defs/change" }
+          "items": {
+            "$ref": "#/$defs/change"
+          }
         }
       }
     },
     "change": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["keys", "field", "prior", "current", "at"],
+      "required": [
+        "keys",
+        "field",
+        "prior",
+        "current",
+        "at"
+      ],
       "properties": {
         "keys": {
           "type": "array",
           "minItems": 1,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
+          "items": {
+            "type": "string",
+            "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+          },
           "description": "The board row's keys."
         },
         "field": {
           "type": "string",
-          "enum": ["state", "in_errors", "in_discards", "in_crc_errors", "num_flaps", "input_acl", "output_acl", "prefixes_received", "up_time", "peer", "bound_to", "ace_count", "matches_total", "row"]
+          "enum": [
+            "state",
+            "boot_time",
+            "software_version",
+            "cpu_5m",
+            "mem_used_pct",
+            "in_errors",
+            "in_crc_errors",
+            "num_flaps",
+            "input_acl",
+            "output_acl",
+            "prefixes_received",
+            "up_time",
+            "peer",
+            "row"
+          ]
         },
-        "prior": { "description": "Prior value from the board; null when the row is new (field row)." },
-        "current": { "description": "Value this visit; null when the row disappeared (field row)." },
-        "at": { "type": "string", "minLength": 1, "description": "The interface's last-change when the field is state on an interface row; otherwise this visit's checked_at." }
+        "prior": {
+          "description": "Prior value from the board; null when the row is new (field row)."
+        },
+        "current": {
+          "description": "Value this visit; null when the row disappeared (field row)."
+        },
+        "at": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The interface's last-change when the field is state on an interface row; the new boot-time when the field is boot_time; otherwise this visit's checked_at."
+        }
       }
     },
     "coverage": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state"],
+      "required": [
+        "state"
+      ],
       "properties": {
         "state": {
           "type": "string",
-          "enum": ["complete", "unavailable", "not_requested", "partial"]
+          "enum": [
+            "complete",
+            "unavailable",
+            "not_requested",
+            "partial"
+          ]
         },
-        "detail": { "type": "string" }
+        "detail": {
+          "type": "string"
+        }
       }
     },
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["at", "scope", "oper_not_ready", "bgp_not_established", "in_errors", "in_discards", "num_flaps", "acls"],
+      "required": [
+        "at",
+        "scope",
+        "oper_not_ready",
+        "bgp_not_established",
+        "num_flaps",
+        "in_errors",
+        "in_discards",
+        "cpu_5m_max",
+        "mem_used_pct_max"
+      ],
       "properties": {
-        "at": { "type": "string", "minLength": 1 },
-        "scope": { "type": "string", "pattern": "^(estate|device:[^ ].*)$" },
-        "oper_not_ready": { "type": ["integer", "null"] },
-        "bgp_not_established": { "type": ["integer", "null"] },
-        "in_errors": { "type": ["integer", "null"] },
-        "in_discards": { "type": ["integer", "null"] },
-        "num_flaps": { "type": ["integer", "null"] },
-        "acls": { "type": ["integer", "null"], "description": "ACLs present. 0 when the ACL GET returned 204. null when not collected." }
+        "at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "scope": {
+          "type": "string",
+          "pattern": "^(estate|device:[^ ].*)$"
+        },
+        "oper_not_ready": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Board interfaces admin-up and oper not ready."
+        },
+        "bgp_not_established": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "num_flaps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Sum over board interfaces."
+        },
+        "in_errors": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Sum of in_errors + in_crc_errors over board interfaces."
+        },
+        "in_discards": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Sum over board interfaces."
+        },
+        "cpu_5m_max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Highest cpu_5m among collected devices (the device's own value on a device row)."
+        },
+        "mem_used_pct_max": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
       }
     },
     "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "kind", "subject", "keys", "state", "last_changed"],
+      "required": [
+        "name",
+        "kind",
+        "subject",
+        "keys",
+        "state",
+        "last_changed"
+      ],
       "description": "A board row (health-metadata-iosxe row, identical field names) plus an optional note.",
       "properties": {
-        "name": { "type": "string", "minLength": 1, "description": "Device name as inventory/prod.json writes it." },
-        "kind": { "type": "string", "enum": ["interface", "bgp", "acl"] },
-        "subject": { "type": "string", "minLength": 1 },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Device name as inventory/prod.json writes it."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "device",
+            "interface",
+            "bgp"
+          ]
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 1,
+          "description": "device: the device name again. interface: name as the device returns it. bgp: neighbor id."
+        },
         "keys": {
           "type": "array",
           "minItems": 1,
           "maxItems": 16,
           "uniqueItems": true,
-          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
+          "items": {
+            "type": "string",
+            "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+          },
+          "description": "device:<name>; plus interface:<name>/<subject> on interface rows; plus the peer device key on a resolved bgp row."
         },
-        "state": { "type": ["string", "null"] },
-        "last_changed": { "type": "string", "minLength": 1 },
-        "in_errors": { "type": ["integer", "null"] },
-        "in_discards": { "type": ["integer", "null"] },
-        "in_crc_errors": { "type": ["integer", "null"] },
-        "num_flaps": { "type": ["integer", "null"] },
-        "rx_kbps": { "type": ["integer", "null"] },
-        "tx_kbps": { "type": ["integer", "null"] },
-        "input_acl": { "type": ["string", "null"] },
-        "output_acl": { "type": ["string", "null"] },
-        "prefixes_received": { "type": ["integer", "null"] },
-        "up_time": { "type": ["string", "null"] },
-        "remote_as": { "type": ["integer", "null"] },
-        "peer": { "type": ["string", "null"] },
-        "bound_to": { "type": "array", "items": {"type": "string", "pattern": "^interface:[^ ]+/[^ ]+$"} },
-        "ace_count": { "type": ["integer", "null"] },
-        "matches_total": { "type": ["integer", "null"] },
+        "state": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "device: up (it answered). interface: oper-status as returned. bgp: state as returned."
+        },
+        "last_changed": {
+          "type": "string",
+          "minLength": 1,
+          "description": "device: boot-time (moves only on reboot). interface: the device's last-change. bgp: checked_at of the visit that last saw a material field move (or first saw the row)."
+        },
+        "software_version": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "device: the token after 'Version ' in software-version, e.g. 17.15.1a."
+        },
+        "last_reboot_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "device: as returned."
+        },
+        "reason_severity": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "device: normal or abnormal, as returned."
+        },
+        "cpu_5m": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "device: five-minutes CPU percent."
+        },
+        "mem_used_pct": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "device: round(used-memory / total-memory * 100) for the Processor pool."
+        },
+        "unsaved_config": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "device: as returned. Not material; a concern when true."
+        },
+        "in_errors": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "in_crc_errors": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "in_discards": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "interface: last seen. Recorded and summed on the metric; an increase alone is not material."
+        },
+        "num_flaps": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "input_acl": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "interface: input-security-acl name, null when absent or empty string."
+        },
+        "output_acl": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "prefixes_received": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "up_time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "bgp: as returned. Shorter than the board's value means the session reset."
+        },
+        "remote_as": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "peer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "bgp: device:<name> when the neighbor id equals an interface address of a device in inventory/prod.json (from this visit's interface payloads or inventory/topology-observed.json); else null."
+        },
         "note": {
           "type": "string",
           "minLength": 1,
-          "description": "Required when the row changed this visit, is abnormal, or is mismatched (an interface names an ACL the ACL GET did not return; a WAN-role port with no BGP peer). Omit on a healthy unchanged row. The note is the nurse's opinion: what moved, since when, and what the ACL, peer, and far-end columns say about the cause. Do not repeat column values or addresses."
+          "description": "Required when the row changed this visit or is abnormal. Omit on a healthy unchanged row. The note is the nurse's opinion: what moved, since when, and what the ACL, peer, and far-end columns say about the cause. Do not repeat column values or addresses."
         }
       }
     }

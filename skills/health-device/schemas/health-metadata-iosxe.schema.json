@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-metadata-iosxe/v3",
+  "$id": "health-metadata-iosxe/v4",
   "title": "health/metadata-iosxe.json",
-  "description": "IOS-XE plane board (Kind metadata). Health Device only. Rewritten every health visit, including quiet visits. last_visit_id is the last stamp written; last_collected_at is the last completed collection. current[] is the last-known state of every subject and is what the next visit diffs against. A board row has the same shape as a stamp reading, minus note. No port, no host, no credentials. RESTCONF port stays on inventory/prod.json.",
+  "description": "IOS-XE plane board (Kind metadata). Health Device only. Rewritten every health visit, including quiet visits. last_visit_id is the last stamp written; last_collected_at is the last completed collection. current[] is the last-known state of every subject and is what the next visit diffs against. Three row kinds: device (boot, version, cpu, memory), interface (oper state, flaps, errors, ACL bindings), bgp (session). A board row has the same shape as a stamp reading, minus note. No port, no host, no credentials. RESTCONF port stays on inventory/prod.json.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "updated_at", "source_agent", "iosxe"],
@@ -13,7 +13,7 @@
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
       "description": "Union of every key on current[]."
     },
-    "schema": { "type": "string", "const": "health-metadata-iosxe/v3" },
+    "schema": { "type": "string", "const": "health-metadata-iosxe/v4" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-device" },
     "iosxe": {
@@ -39,13 +39,13 @@
           "type": "array",
           "maxItems": 120,
           "items": { "$ref": "#/$defs/row" },
-          "description": "One row per subject the last collection returned. Interfaces: admin-up only, physical and sub-interfaces and Tunnel; never Loopback*, Vlan*, Null*, or admin-down. BGP: every neighbor summary. ACL: one row per ACL the device returned; no row when the ACL GET returned 204. Rows for a device outside this visit's scope, or whose collection failed, are kept as they were."
+          "description": "One row per subject the last collection returned. device: one row per collected device. interface: admin-up only, physical and sub-interfaces and Tunnel; never Loopback*, Vlan*, Null*, or admin-down. bgp: every neighbor summary. Rows for a device outside this visit's scope, or whose collection failed, are kept as they were."
         },
         "series": {
           "type": "array",
           "maxItems": 10,
           "items": { "$ref": "#/$defs/metric_row" },
-          "description": "One estate row per visit, oldest first: sums over the devices collected that visit. Per-device rows live on the stamp."
+          "description": "One estate row per visit, oldest first: sums (or max, for cpu and memory) over the devices collected that visit. Per-device rows live on the stamp."
         },
         "visits": {
           "type": "array",
@@ -61,51 +61,53 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "kind", "subject", "keys", "state", "last_changed"],
-      "description": "Same shape as a stamp reading, without note.",
+      "description": "Same shape as a stamp reading, without note. Fields beyond the required six depend on kind.",
       "properties": {
         "name": { "type": "string", "minLength": 1, "description": "Device name as inventory/prod.json writes it." },
-        "kind": { "type": "string", "enum": ["interface", "bgp", "acl"] },
-        "subject": { "type": "string", "minLength": 1, "description": "Interface name as the device returns it, BGP neighbor id, or ACL name." },
+        "kind": { "type": "string", "enum": ["device", "interface", "bgp"] },
+        "subject": { "type": "string", "minLength": 1, "description": "device: the device name again. interface: name as the device returns it. bgp: neighbor id." },
         "keys": {
           "type": "array",
           "minItems": 1,
           "maxItems": 16,
           "uniqueItems": true,
           "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"},
-          "description": "device:<name>; plus interface:<name>/<subject> on interface rows; plus the peer device key on a resolved bgp row; plus each bound interface key on an acl row."
+          "description": "device:<name>; plus interface:<name>/<subject> on interface rows; plus the peer device key on a resolved bgp row."
         },
-        "state": { "type": ["string", "null"], "description": "interface: oper-status. bgp: session-state. acl: bound or unbound." },
-        "last_changed": { "type": "string", "minLength": 1, "description": "Interface rows: the device's last-change. Other rows: checked_at of the visit that last saw a material field move (or first saw the row)." },
+        "state": { "type": ["string", "null"], "description": "device: up (it answered). interface: oper-status as returned. bgp: state as returned." },
+        "last_changed": { "type": "string", "minLength": 1, "description": "device: boot-time (moves only on reboot). interface: the device's last-change. bgp: checked_at of the visit that last saw a material field move (or first saw the row)." },
+        "software_version": { "type": ["string", "null"], "description": "device: the token after 'Version ' in software-version, e.g. 17.15.1a." },
+        "last_reboot_reason": { "type": ["string", "null"], "description": "device: as returned." },
+        "reason_severity": { "type": ["string", "null"], "description": "device: normal or abnormal, as returned." },
+        "cpu_5m": { "type": ["integer", "null"], "description": "device: five-minutes CPU percent." },
+        "mem_used_pct": { "type": ["integer", "null"], "description": "device: round(used-memory / total-memory * 100) for the Processor pool." },
+        "unsaved_config": { "type": ["boolean", "null"], "description": "device: as returned. Not material; a concern when true." },
         "in_errors": { "type": ["integer", "null"] },
-        "in_discards": { "type": ["integer", "null"] },
         "in_crc_errors": { "type": ["integer", "null"] },
+        "in_discards": { "type": ["integer", "null"], "description": "interface: last seen. Recorded and summed on the metric; an increase alone is not material." },
         "num_flaps": { "type": ["integer", "null"] },
-        "rx_kbps": { "type": ["integer", "null"], "description": "Not material; last seen." },
-        "tx_kbps": { "type": ["integer", "null"] },
-        "input_acl": { "type": ["string", "null"], "description": "interface: input-security-acl name, null when none." },
+        "input_acl": { "type": ["string", "null"], "description": "interface: input-security-acl name, null when absent or empty string." },
         "output_acl": { "type": ["string", "null"] },
         "prefixes_received": { "type": ["integer", "null"] },
         "up_time": { "type": ["string", "null"], "description": "bgp: as returned. Shorter than the board's value means the session reset." },
         "remote_as": { "type": ["integer", "null"] },
-        "peer": { "type": ["string", "null"], "description": "bgp: device:<name> when the neighbor id equals an interface address of a device in inventory/prod.json (from this visit's interface payloads or inventory/topology-observed.json); else null." },
-        "bound_to": { "type": "array", "items": {"type": "string", "pattern": "^interface:[^ ]+/[^ ]+$"}, "description": "acl: interfaces whose input_acl or output_acl names this ACL." },
-        "ace_count": { "type": ["integer", "null"] },
-        "matches_total": { "type": ["integer", "null"], "description": "acl: sum of ACE match counters. Movement after the first hit is not material." }
+        "peer": { "type": ["string", "null"], "description": "bgp: device:<name> when the neighbor id equals an interface address of a device in inventory/prod.json (from this visit's interface payloads or inventory/topology-observed.json); else null." }
       }
     },
     "metric_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["at", "scope", "oper_not_ready", "bgp_not_established", "in_errors", "in_discards", "num_flaps", "acls"],
+      "required": ["at", "scope", "oper_not_ready", "bgp_not_established", "num_flaps", "in_errors", "in_discards", "cpu_5m_max", "mem_used_pct_max"],
       "properties": {
         "at": { "type": "string", "minLength": 1 },
         "scope": { "type": "string", "pattern": "^(estate|device:[^ ].*)$" },
-        "oper_not_ready": { "type": ["integer", "null"] },
+        "oper_not_ready": { "type": ["integer", "null"], "description": "Board interfaces admin-up and oper not ready." },
         "bgp_not_established": { "type": ["integer", "null"] },
-        "in_errors": { "type": ["integer", "null"] },
-        "in_discards": { "type": ["integer", "null"] },
-        "num_flaps": { "type": ["integer", "null"] },
-        "acls": { "type": ["integer", "null"], "description": "ACLs present. 0 when the ACL GET returned 204. null when not collected." }
+        "num_flaps": { "type": ["integer", "null"], "description": "Sum over board interfaces." },
+        "in_errors": { "type": ["integer", "null"], "description": "Sum of in_errors + in_crc_errors over board interfaces." },
+        "in_discards": { "type": ["integer", "null"], "description": "Sum over board interfaces." },
+        "cpu_5m_max": { "type": ["integer", "null"], "description": "Highest cpu_5m among collected devices (the device's own value on a device row)." },
+        "mem_used_pct_max": { "type": ["integer", "null"] }
       }
     },
     "visit_row": {
