@@ -20,8 +20,17 @@ or dispatched; `degraded` when a voting vital consult is degraded;
 `unknown` when no vital observation is usable.
 
 `headline` is one line of `assessment.opinion`. `assessment`,
-`trend_analysis`, and `soap` are required. `next_action` is
-`soap.plan` (named nurse visit, refer Ops/Design, or `none`).
+`trend_analysis`, `soap`, `problems`, `orders`, and `relations`
+are required (arrays may be empty). `next_action` is `soap.plan`,
+the prose of `orders[0]` or `none`.
+
+`problems[]` is carried forward from the prior chart by `id`;
+never renumber or drop an unresolved problem. `series.<plane>` is
+a reference to that nurse's board; copy no points. `read[]` lists
+at most ten paths.
+
+After the write, if `orders[]` holds `Run the relationship compile
+only.` and that writer is attached, invoke it and do not wait.
 
 Do not write visit files under `health/`.
 

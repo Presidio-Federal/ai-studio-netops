@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-state/v5",
+  "$id": "health-state/v6",
   "title": "state/health.json",
-  "description": "Health Analyzer SOAP rollup (Kind state). Sole writer health-analyzer. Envelope status is worst of complete/partial thousandeyes, splunk, iosxe. ServiceNow does not vote. Freshness from observation checked_at + ttl_hours (default 26). series points copied from visit metrics. soap is S/O/A/P; plan is a forward step (named nurse visit, refer Ops/Design, or none) — not an inspect path for a stamp already read. assessment and trend_analysis are this agent's verdict — not pasted visit headlines.",
+  "description": "Health Analyzer chart (Kind state). Sole writer health-analyzer. Envelope status is worst of the vital planes thousandeyes, splunk, iosxe; ServiceNow does not vote. Freshness from each board's last_collected_at + ttl_hours (26); iosxe also per device from visits[].scope. series is by reference to the nurse boards (no copied points). problems[] is the problem list, carried forward across charts and closed only when the board series shows the vital recovered for two visits. orders[] are structured forward steps (agent + task line from workspace-handoff + problem_ref); soap.plan stays prose. relations[] are this agent's asserted edges, each with evidence_ref. assessment and trend_analysis are this agent's verdict, not pasted visit headlines.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -22,6 +22,9 @@
     "assessment",
     "trend_analysis",
     "soap",
+    "problems",
+    "orders",
+    "relations",
     "dispatched",
     "read"
   ],
@@ -29,15 +32,16 @@
     "keys": {
       "type": "array",
       "uniqueItems": true,
-      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
+      "description": "Union of every key on problems[] and relations[] ends. [] when none.",
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
     },
-    "schema": { "type": "string", "const": "health-state/v5" },
+    "schema": { "type": "string", "const": "health-state/v6" },
     "updated_at": { "type": "string", "minLength": 1 },
     "source_agent": { "type": "string", "const": "health-analyzer" },
     "status": {
       "type": "string",
       "enum": ["ok", "degraded", "unknown", "partial", "stale_chart"],
-      "description": "First match. ServiceNow does not vote. unknown when no vital slip is usable. stale_chart when a vital plane is clock-stale or this invoke dispatched one. degraded when a current vital consult is degraded. partial when a vital plane is missing or its coverage is unavailable while another vital slip is usable. ok otherwise."
+      "description": "First match. ServiceNow does not vote. unknown when no vital board is usable. stale_chart when a vital plane is clock-stale or this invoke dispatched one. degraded when a current vital consult is degraded. partial when a vital plane is missing or its coverage is unavailable while another vital board is usable. ok otherwise."
     },
     "headline": {
       "type": "string",
@@ -47,12 +51,9 @@
     "next_action": {
       "type": "string",
       "minLength": 1,
-      "description": "Same string as soap.plan. Named nurse visit, refer Network Ops or Network Design, or none. Not an inspect path. Not a SKU, ticket, git change, or test plan."
+      "description": "Same string as soap.plan."
     },
-    "mode": {
-      "type": "string",
-      "enum": ["assess-now", "refresh-then-assess"]
-    },
+    "mode": { "type": "string", "enum": ["assess-now", "refresh-then-assess"] },
     "analyzed_at": { "type": "string", "minLength": 1 },
     "coverage": { "$ref": "#/$defs/plane_coverage" },
     "freshness": {
@@ -69,6 +70,7 @@
     "consults": {
       "type": "object",
       "additionalProperties": false,
+      "required": ["thousandeyes", "splunk", "iosxe", "servicenow"],
       "properties": {
         "thousandeyes": { "$ref": "#/$defs/consult" },
         "splunk": { "$ref": "#/$defs/consult" },
@@ -80,44 +82,59 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["thousandeyes", "splunk", "iosxe", "servicenow"],
+      "description": "By reference. The nurse board's series[] ring is the series; nothing is copied here.",
       "properties": {
-        "thousandeyes": { "$ref": "#/$defs/series_plane" },
-        "splunk": { "$ref": "#/$defs/series_plane" },
-        "iosxe": { "$ref": "#/$defs/series_plane" },
-        "servicenow": { "$ref": "#/$defs/series_plane" }
+        "thousandeyes": { "$ref": "#/$defs/series_ref" },
+        "splunk": { "$ref": "#/$defs/series_ref" },
+        "iosxe": { "$ref": "#/$defs/series_ref" },
+        "servicenow": { "$ref": "#/$defs/series_ref" }
       }
     },
     "assessment": { "$ref": "#/$defs/assessment" },
     "trend_analysis": { "$ref": "#/$defs/trend_analysis" },
     "soap": { "$ref": "#/$defs/soap" },
+    "problems": {
+      "type": "array",
+      "maxItems": 12,
+      "description": "The problem list. Carried forward from the prior chart by id. A problem is one clinical condition across planes, not one stamp row.",
+      "items": { "$ref": "#/$defs/problem" }
+    },
+    "orders": {
+      "type": "array",
+      "maxItems": 6,
+      "description": "Structured forward steps. Each names the agent and the exact task line from workspace-handoff. soap.plan is the prose form of the first order (or none).",
+      "items": { "$ref": "#/$defs/order" }
+    },
+    "relations": {
+      "type": "array",
+      "maxItems": 12,
+      "description": "This agent's asserted edges. Both ends appear in keys. evidence_ref required. Never restate a nurse's column edge here.",
+      "items": { "$ref": "#/$defs/relation" }
+    },
     "dispatched": {
       "type": "array",
       "maxItems": 8,
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["plane", "agent", "invoked_at"],
+        "required": ["plane", "agent", "invoked_at", "task"],
         "properties": {
-          "plane": {
-            "type": "string",
-            "enum": ["thousandeyes", "splunk", "iosxe", "servicenow"]
-          },
+          "plane": { "type": "string", "enum": ["thousandeyes", "splunk", "iosxe", "servicenow", "topology", "relationships"] },
           "agent": { "type": "string", "minLength": 1 },
+          "task": { "type": "string", "minLength": 1, "description": "The task line sent, verbatim." },
           "invoked_at": { "type": "string", "minLength": 1 }
         }
       }
     },
     "read": {
       "type": "array",
-      "maxItems": 24,
+      "maxItems": 10,
+      "description": "Catalog paths opened this invoke, in order. Ten at most: four boards, up to four stamps, the prior chart, state/relationships.json.",
       "items": { "type": "string", "minLength": 1 }
     }
   },
   "$defs": {
-    "coverage_state": {
-      "type": "string",
-      "enum": ["complete", "unavailable", "not_requested", "partial"]
-    },
+    "coverage_state": { "type": "string", "enum": ["complete", "unavailable", "not_requested", "partial"] },
     "plane_coverage": {
       "type": "object",
       "additionalProperties": false,
@@ -132,245 +149,186 @@
     "freshness_row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["state", "observed_at", "ttl_hours"],
+      "required": ["state", "observed_at", "ttl_hours", "stale_devices"],
       "properties": {
         "state": { "type": "string", "enum": ["current", "stale", "missing"] },
-        "observed_at": { "type": ["string", "null"] },
-        "ttl_hours": { "type": "number", "const": 26 }
+        "observed_at": { "type": ["string", "null"], "description": "Board last_collected_at; else latest stamp checked_at; null when missing." },
+        "ttl_hours": { "type": "number", "const": 26 },
+        "stale_devices": {
+          "type": ["array", "null"],
+          "maxItems": 32,
+          "description": "iosxe only: device keys whose latest covering visit (visits[].scope is all or names the device) is older than the TTL while the plane as a whole is current. [] when none. null on other planes.",
+          "items": { "type": "string", "pattern": "^device:[^ ].*$" }
+        }
       }
     },
-    "series_plane": {
+    "series_ref": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["window", "watermark", "points"],
+      "required": ["series_ref", "rows", "from", "to"],
       "properties": {
-        "window": { "type": "integer", "const": 10 },
-        "watermark": {
-          "type": ["string", "null"],
-          "description": "Last watch_id folded in. Re-invoke with no newer stamps is a no-op on points."
-        },
-        "points": {
-          "type": "array",
-          "maxItems": 10,
-          "items": {
-            "type": "object",
-            "additionalProperties": true,
-            "required": ["at", "scope"],
-            "properties": {
-              "at": { "type": "string", "minLength": 1 },
-              "scope": { "type": "string", "minLength": 1 }
-            }
-          }
-        }
+        "series_ref": { "type": ["string", "null"], "description": "health/metadata-<plane>.json; null when the board is missing." },
+        "rows": { "type": "integer", "minimum": 0, "description": "Length of the board's series[] ring." },
+        "from": { "type": ["string", "null"], "description": "at of the oldest series row." },
+        "to": { "type": ["string", "null"], "description": "at of the newest series row." }
       }
     },
     "assessment": {
       "type": "object",
       "additionalProperties": false,
       "required": ["unhealthy", "healthy", "contradictions", "opinion"],
-      "description": "This agent's verdict from all four planes and the series. Not pasted visit headlines.",
+      "description": "This agent's verdict from all four planes and the board series. Not pasted visit headlines.",
       "properties": {
-        "unhealthy": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "healthy": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "contradictions": {
-          "type": "array",
-          "maxItems": 8,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "opinion": {
-          "type": "string",
-          "minLength": 1,
-          "description": "One verdict. Do not invent an unobserved root cause."
-        }
+        "unhealthy": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1 } },
+        "healthy": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1 } },
+        "contradictions": { "type": "array", "maxItems": 8, "items": { "type": "string", "minLength": 1 } },
+        "opinion": { "type": "string", "minLength": 1, "description": "One verdict. Do not invent an unobserved root cause." }
       }
     },
     "trend_analysis": {
       "type": "object",
       "additionalProperties": false,
       "required": ["narrative", "flips"],
-      "description": "What changed over the series window. Analyzer writing, not a metrics dump.",
       "properties": {
         "narrative": { "type": "string", "minLength": 1 },
-        "flips": {
-          "type": "array",
-          "maxItems": 6,
-          "items": { "type": "string", "minLength": 1 }
-        }
+        "flips": { "type": "array", "maxItems": 6, "items": { "type": "string", "minLength": 1 } }
       }
     },
     "soap": {
       "type": "object",
       "additionalProperties": false,
       "required": ["subjective", "objective", "assessment", "plan"],
-      "description": "Attending SOAP on this chart. Nurses do not write this object.",
       "properties": {
-        "subjective": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Why this analysis ran: the operator ask, or scheduled assess-now / refresh-then-assess."
-        },
-        "objective": {
-          "type": "string",
-          "minLength": 1,
-          "description": "What the lab slips and series measured this visit. Coverage and freshness belong here. Stamp paths stay on consults.*.source_ref — do not put inspect instructions here."
-        },
-        "assessment": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Same verdict as assessment.opinion. One sentence from all four planes and the series."
-        },
-        "plan": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Forward clinical step only: another named nurse visit, refer Network Ops or Network Design, or none. Not 'Inspect health/...json'. Not a SKU, git change, or test plan."
-        }
+        "subjective": { "type": "string", "minLength": 1, "description": "Why this analysis ran: the operator ask, or scheduled assess-now / refresh-then-assess." },
+        "objective": { "type": "string", "minLength": 1, "description": "What the boards and stamps measured this visit: coverage, freshness, vitals, deltas. No inspect instructions." },
+        "assessment": { "type": "string", "minLength": 1, "description": "Same verdict as assessment.opinion." },
+        "plan": { "type": "string", "minLength": 1, "description": "Prose of orders[0] (agent and task), or none. Not an inspect path, SKU, git change, or test plan." }
       }
     },
     "consult": {
       "type": ["object", "null"],
       "additionalProperties": false,
-      "required": [
-        "watch_id",
-        "observed_at",
-        "status",
-        "trend",
-        "trend_note",
-        "impression",
-        "evidence_for",
-        "evidence_against",
-        "source_ref",
-        "inspect_when"
-      ],
+      "required": ["watch_id", "observed_at", "status", "trend", "trend_note", "impression", "evidence_for", "evidence_against", "source_ref", "inspect_when"],
       "properties": {
-        "watch_id": {
-          "type": "string",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-        },
-        "observed_at": { "type": "string", "minLength": 1 },
-        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
-        "trend": {
-          "type": "string",
-          "enum": ["first", "unchanged", "worse", "better", "changed"]
-        },
-        "trend_note": {
-          "type": "string",
-          "minLength": 1,
-          "description": "This agent's read of this plane's series over the window."
-        },
-        "impression": {
-          "type": "string",
-          "minLength": 1,
-          "description": "This agent's verdict for this plane. Not the visit headline."
-        },
-        "evidence_for": {
-          "type": "array",
-          "maxItems": 5,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "evidence_against": {
-          "type": "array",
-          "maxItems": 5,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "source_ref": { "type": "string", "minLength": 1 },
+        "watch_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "Board last_visit_id (the last stamp). Null when the board has none yet." },
+        "observed_at": { "type": "string", "minLength": 1, "description": "Board last_collected_at." },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"], "description": "Latest visits[] row status." },
+        "trend": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"], "description": "Latest visits[] row delta." },
+        "trend_note": { "type": "string", "minLength": 1, "description": "This agent's read of the board series[] over its ring." },
+        "impression": { "type": "string", "minLength": 1, "description": "This agent's verdict for this plane. Not the visit headline." },
+        "evidence_for": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1 } },
+        "evidence_against": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1 } },
+        "source_ref": { "type": ["string", "null"], "minLength": 1, "description": "health/<plane>/<last_visit_id>.json; null when no stamp yet." },
         "inspect_when": { "type": "string", "minLength": 1 }
       }
     },
     "consult_servicenow": {
       "type": ["object", "null"],
       "additionalProperties": false,
-      "required": [
-        "watch_id",
-        "observed_at",
-        "status",
-        "trend",
-        "trend_note",
-        "impression",
-        "evidence_for",
-        "evidence_against",
-        "source_ref",
-        "inspect_when",
-        "collection_status",
-        "ticket_history"
-      ],
+      "required": ["watch_id", "observed_at", "status", "trend", "trend_note", "impression", "evidence_for", "evidence_against", "source_ref", "inspect_when", "collection_status", "ticket_history"],
       "properties": {
-        "watch_id": {
-          "type": "string",
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
-        },
+        "watch_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
         "observed_at": { "type": "string", "minLength": 1 },
-        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
-        "trend": {
-          "type": "string",
-          "enum": ["first", "unchanged", "worse", "better", "changed"]
-        },
-        "trend_note": {
-          "type": "string",
-          "minLength": 1,
-          "description": "This agent's read of this plane's series over the window."
-        },
-        "impression": {
-          "type": "string",
-          "minLength": 1,
-          "description": "This agent's verdict for this plane. Not the visit headline."
-        },
-        "evidence_for": {
-          "type": "array",
-          "maxItems": 5,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "evidence_against": {
-          "type": "array",
-          "maxItems": 5,
-          "items": { "type": "string", "minLength": 1 }
-        },
-        "source_ref": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "unknown"] },
+        "trend": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "trend_note": { "type": "string", "minLength": 1 },
+        "impression": { "type": "string", "minLength": 1 },
+        "evidence_for": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1 } },
+        "evidence_against": { "type": "array", "maxItems": 5, "items": { "type": "string", "minLength": 1 } },
+        "source_ref": { "type": ["string", "null"], "minLength": 1 },
         "inspect_when": { "type": "string", "minLength": 1 },
-        "collection_status": {
-          "type": "string",
-          "enum": ["complete", "unavailable", "partial"]
-        },
-        "threads": {
-          "type": "array",
-          "maxItems": 16,
-          "description": "Copied from the ServiceNow stamp. Each row is keys plus the nurse's note.",
-          "items": {
-            "type": "object",
-            "additionalProperties": false,
-            "required": ["keys", "note"],
-            "properties": {
-              "keys": {
-                "type": "array",
-                "minItems": 1,
-                "items": { "type": "string", "minLength": 1 }
-              },
-              "note": { "type": "string", "minLength": 1 }
-            }
-          }
-        },
+        "collection_status": { "type": "string", "enum": ["complete", "unavailable", "partial"] },
         "ticket_history": {
           "type": "object",
           "additionalProperties": false,
           "required": ["pattern", "summary", "related_records", "prior_resolution"],
+          "description": "This agent's read of the ServiceNow board current[] rows. No copy of the rows: readers open source_ref or the board.",
           "properties": {
             "pattern": { "type": "string", "minLength": 1 },
             "summary": { "type": "string", "minLength": 1 },
             "related_records": {
               "type": "array",
               "maxItems": 10,
-              "items": { "type": "string" }
+              "description": "incident: and change: keys from the board rows that bear on a problem.",
+              "items": { "type": "string", "pattern": "^(incident|change):[^ ].*$" }
             },
-            "prior_resolution": { "type": ["string", "null"] }
+            "prior_resolution": { "type": ["string", "null"], "description": "close_code and first sentence of close_notes of a resolved row that matches an active problem's keys; else null." }
           }
         }
+      }
+    },
+    "problem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "opened_at", "closed_at", "keys", "symptom_refs", "evidence_refs", "hypothesis", "order", "treatment_ref", "outcome"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^P-[0-9]{8}-[0-9]{2}$", "description": "P-<yyyymmdd of opened_at>-<nn>. Never reused; carried forward verbatim." },
+        "status": { "type": "string", "enum": ["active", "watching", "resolved"], "description": "active: a vital board still shows the symptom. watching: the vital recovered on the latest visit, or the only evidence is a ticket. resolved: recovered for two consecutive visits on that board's series/visits; closed_at set." },
+        "opened_at": { "type": "string", "minLength": 1 },
+        "closed_at": { "type": ["string", "null"] },
+        "keys": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }
+        },
+        "symptom_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 6,
+          "description": "Catalog path, optionally #<scope>, of the record where the symptom was first seen or is currently seen: a stamp, a board row, a ticket row.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 6,
+          "description": "Records from other planes that bear on the hypothesis, for or against.",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "hypothesis": { "type": "string", "minLength": 1, "description": "One sentence naming where the fault must lie given the evidence, no more specific than the evidence allows. Rewritten only when evidence moved." },
+        "order": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["agent", "task"],
+          "properties": {
+            "agent": { "type": "string", "minLength": 1 },
+            "task": { "type": "string", "minLength": 1 }
+          }
+        },
+        "treatment_ref": { "type": ["string", "null"], "description": "state/network-ops.json or an operational/runs/ path once a treatment exists; else null." },
+        "outcome": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["state", "checked_at"],
+          "properties": {
+            "state": { "type": "string", "enum": ["too_early", "confirmed", "not_confirmed", "inconclusive"] },
+            "checked_at": { "type": "string", "minLength": 1 }
+          }
+        }
+      }
+    },
+    "order": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agent", "task", "problem_ref", "dispatched"],
+      "properties": {
+        "agent": { "type": "string", "minLength": 1, "description": "Writer name from workspace-handoff." },
+        "task": { "type": "string", "minLength": 1, "description": "Task line verbatim from workspace-handoff, with Scope: when the visit is scoped." },
+        "problem_ref": { "type": ["string", "null"], "pattern": "^P-[0-9]{8}-[0-9]{2}$" },
+        "dispatched": { "type": "boolean", "description": "true when this invoke sent it (also in dispatched[]); false when it waits for the operator or for the previous scoped visit to finish." }
+      }
+    },
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "rel", "basis", "evidence_ref"],
+      "properties": {
+        "from": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
+        "to": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" },
+        "rel": { "type": "string", "enum": ["depends_on", "caused", "impacted", "resolved_by", "changed"] },
+        "basis": { "type": "string", "const": "asserted" },
+        "evidence_ref": { "type": "string", "minLength": 1 }
       }
     }
   }

@@ -1,165 +1,157 @@
 {
-  "keys": [],
-  "schema": "health-state/v5",
-  "updated_at": "2026-09-09T12:00:00Z",
+  "keys": [
+    "test:<test-id>",
+    "device:<wan-edge>",
+    "device:<cloud-edge>",
+    "incident:<inc-a>"
+  ],
+  "schema": "health-state/v6",
+  "updated_at": "2026-09-25T06:20:00Z",
   "source_agent": "health-analyzer",
   "status": "degraded",
-  "headline": "One path's loss rose. Device readings and syslog signals did not move.",
-  "next_action": "Network Ops: the path whose loss rose, not a down device.",
+  "headline": "One WAN test is lossy end to end while both end routers and their syslog are clean; the fault sits between them and an incident for it has been open six weeks.",
+  "next_action": "Health Device: Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>",
   "mode": "assess-now",
-  "analyzed_at": "2026-09-09T12:00:00Z",
+  "analyzed_at": "2026-09-25T06:20:00Z",
   "coverage": {
     "thousandeyes": "complete",
     "splunk": "complete",
     "iosxe": "complete",
-    "servicenow": "not_requested"
+    "servicenow": "complete"
   },
   "freshness": {
-    "thousandeyes": {
-      "state": "current",
-      "observed_at": "2026-08-14T16:05:00Z",
-      "ttl_hours": 26
-    },
-    "splunk": {
-      "state": "current",
-      "observed_at": "2026-08-30T18:45:00Z",
-      "ttl_hours": 26
-    },
-    "iosxe": {
-      "state": "current",
-      "observed_at": "2026-08-31T16:00:00Z",
-      "ttl_hours": 26
-    },
-    "servicenow": {
-      "state": "missing",
-      "observed_at": null,
-      "ttl_hours": 26
-    }
+    "thousandeyes": { "state": "current", "observed_at": "2026-09-25T06:00:00Z", "ttl_hours": 26, "stale_devices": null },
+    "splunk": { "state": "current", "observed_at": "2026-09-25T06:05:00Z", "ttl_hours": 26, "stale_devices": null },
+    "iosxe": { "state": "current", "observed_at": "2026-09-24T12:00:00Z", "ttl_hours": 26, "stale_devices": [] },
+    "servicenow": { "state": "current", "observed_at": "2026-09-25T06:10:00Z", "ttl_hours": 26, "stale_devices": null }
   },
   "consults": {
     "thousandeyes": {
-      "watch_id": "2026-08-14T16-05-00Z",
-      "observed_at": "2026-08-14T16:05:00Z",
+      "watch_id": "2026-09-24T23-02-00Z",
+      "observed_at": "2026-09-25T06:00:00Z",
       "status": "degraded",
-      "trend": "worse",
-      "trend_note": "One test's loss rose against the prior stamp. The other test did not.",
-      "impression": "One test is the unhealthy path. The other test does not share that failure.",
-      "evidence_for": ["loss_pct rose on one test", "vs_prior records that delta"],
-      "evidence_against": ["the other test completed with no loss"],
-      "source_ref": "health/thousandeyes/2026-08-14T16-05-00Z.json",
-      "inspect_when": "Open when per-round error types are needed."
+      "trend": "unchanged",
+      "trend_note": "Three visits on the ring; the lossy row has held the same loss band since the baseline, the other test has stayed clean.",
+      "impression": "One test between <wan-edge> and <cloud-edge> is degraded on loss with no error rounds; the reverse-direction test is clean. This is a one-way path problem, not an agent outage.",
+      "evidence_for": ["board row test:<test-id> state degraded, loss_pct steady in one band", "first_bad_round_at predates the baseline stamp"],
+      "evidence_against": ["the paired test from <cloud-edge> completed every round with no loss"],
+      "source_ref": "health/thousandeyes/2026-09-24T23-02-00Z.json",
+      "inspect_when": "Open when per-round error types or the alert list are needed."
     },
     "splunk": {
-      "watch_id": "2026-08-30T18-45-00Z",
-      "observed_at": "2026-08-30T18:45:00Z",
+      "watch_id": "2026-09-24T23-06-46Z",
+      "observed_at": "2026-09-25T06:05:00Z",
       "status": "ok",
       "trend": "unchanged",
-      "trend_note": "Signal counts did not move against the prior stamp.",
-      "impression": "Syslog signals did not change. This plane does not explain the path loss.",
-      "evidence_for": ["bgp_adjchange, link_updown, and config_i unchanged"],
+      "trend_note": "Two visits; per-device counts flat, no bgp or link row reached the flap threshold.",
+      "impression": "Syslog is quiet on both end routers. This plane neither explains nor contradicts the path loss; it rules out a flapping link or session at either end.",
+      "evidence_for": ["no bgp or link row with count >= 2 on <wan-edge> or <cloud-edge>", "no config row in the window"],
       "evidence_against": [],
-      "source_ref": "health/splunk/2026-08-30T18-45-00Z.json",
-      "inspect_when": "Open when mnemonic samples are needed."
+      "source_ref": "health/splunk/2026-09-24T23-06-46Z.json",
+      "inspect_when": "Open when mnemonic samples or auth events are needed."
     },
     "iosxe": {
-      "watch_id": "2026-08-31T16-00-00Z",
-      "observed_at": "2026-08-31T16:00:00Z",
+      "watch_id": "2026-09-24T12-00-00Z",
+      "observed_at": "2026-09-24T12:00:00Z",
       "status": "ok",
       "trend": "unchanged",
-      "trend_note": "Interface and BGP readings unchanged against the prior stamp.",
-      "impression": "Admin-up interfaces are ready and BGP is established. This plane does not explain the path loss.",
-      "evidence_for": ["0 oper-not-ready", "0 bgp_not_established"],
-      "evidence_against": [],
-      "source_ref": "health/iosxe/2026-08-31T16-00-00Z.json",
-      "inspect_when": "Open when interface counters are needed."
-    },
-    "servicenow": null
-  },
-  "series": {
-    "thousandeyes": {
-      "window": 10,
-      "watermark": "2026-08-14T16-05-00Z",
-      "points": [
-        {
-          "at": "2026-08-14T16:05:00Z",
-          "scope": "test:<test-id>/<agent-name>",
-          "name": "<test-name>",
-          "agent": "<agent-name>",
-          "loss_pct": 16.0,
-          "latency_ms_p95": null,
-          "latency_ms_avg": 1.0,
-          "jitter_ms": 0.5,
-          "ok_rounds": 31,
-          "error_rounds": 0
-        }
-      ]
-    },
-    "splunk": {
-      "window": 10,
-      "watermark": "2026-08-30T18-45-00Z",
-      "points": [
-        {
-          "at": "2026-08-30T18:45:00Z",
-          "scope": "device:<inventory-name>",
-          "name": "<inventory-name>",
-          "bgp_adjchange": 1,
-          "link_updown": 0,
-          "config_i": 0
-        }
-      ]
-    },
-    "iosxe": {
-      "window": 10,
-      "watermark": "2026-08-31T16-00-00Z",
-      "points": [
-        {
-          "at": "2026-08-31T16:00:00Z",
-          "scope": "device:<inventory-name>",
-          "oper_not_ready": 0,
-          "bgp_not_established": 0,
-          "in_errors": 0,
-          "in_discards": 0,
-          "num_flaps": 0
-        }
-      ]
+      "trend_note": "One visit on the ring since the board was reset; no baseline for counters yet.",
+      "impression": "Interfaces up, BGP established, error counters flat on both end routers at the last visit — which is older than the TE symptom by 18 hours.",
+      "evidence_for": ["board rows for <wan-edge> and <cloud-edge> interfaces oper up, bgp established", "in_errors and in_crc_errors 0 on the WAN-facing interfaces"],
+      "evidence_against": ["the last device visit predates the TE degraded rounds seen since"],
+      "source_ref": "health/iosxe/2026-09-24T12-00-00Z.json",
+      "inspect_when": "Open when per-interface counters or ACL hit counts are needed."
     },
     "servicenow": {
-      "window": 10,
-      "watermark": null,
-      "points": []
+      "watch_id": "2026-09-25T00-10-00Z",
+      "observed_at": "2026-09-25T06:10:00Z",
+      "status": "ok",
+      "trend": "unchanged",
+      "trend_note": "Two visits; three open incidents, none moved, no change requests.",
+      "impression": "An incident naming both end routers for this loss has been open six weeks with no change attached; a second incident describes the same symptom generically.",
+      "evidence_for": ["incident:<inc-a> names device:<wan-edge> and device:<cloud-edge> in its title, state In Progress", "incident:<inc-c> describes chronic loss on the same pair"],
+      "evidence_against": ["no change request or rfc on any row"],
+      "source_ref": "health/servicenow/2026-09-25T00-10-00Z.json",
+      "inspect_when": "Open when the nurse's per-ticket notes are needed.",
+      "collection_status": "complete",
+      "ticket_history": {
+        "pattern": "Long-open network incidents with no change attached; one carries typed device fields, two do not.",
+        "summary": "Two incidents describe the WAN loss this chart sees; neither has progressed in the window. One unrelated provisioning ticket is open with typed device fields.",
+        "related_records": ["incident:<inc-a>", "incident:<inc-c>"],
+        "prior_resolution": null
+      }
     }
+  },
+  "series": {
+    "thousandeyes": { "series_ref": "health/metadata-thousandeyes.json", "rows": 3, "from": "2026-09-24T23:02:00Z", "to": "2026-09-25T06:00:00Z" },
+    "splunk": { "series_ref": "health/metadata-splunk.json", "rows": 2, "from": "2026-09-24T23:06:46Z", "to": "2026-09-25T06:05:00Z" },
+    "iosxe": { "series_ref": "health/metadata-iosxe.json", "rows": 1, "from": "2026-09-24T12:00:00Z", "to": "2026-09-24T12:00:00Z" },
+    "servicenow": { "series_ref": "health/metadata-servicenow.json", "rows": 2, "from": "2026-09-25T00:10:00Z", "to": "2026-09-25T06:10:00Z" }
   },
   "assessment": {
     "unhealthy": [
-      "one test loss_pct rose against the prior stamp"
+      "thousandeyes: test:<test-id> from <wan-edge> to <cloud-edge> degraded on loss for the whole ring",
+      "servicenow: incident:<inc-a> for this loss open six weeks, no change attached"
     ],
     "healthy": [
-      "the other test's loss did not move",
-      "syslog signal counts did not move",
-      "admin-up interfaces ready, BGP neighbors still established"
+      "the reverse test completed clean every round",
+      "syslog quiet on both end routers; no flap, no config event",
+      "interfaces up, BGP established, counters flat at the last device visit"
     ],
     "contradictions": [
-      "Path loss rose; device interface and BGP readings did not change"
+      "Path lossy one way while both ends are clean on syslog and device readings — this places the fault on the segment between them, not on either router"
     ],
-    "opinion": "One path's loss rose. Device readings and syslog signals did not move."
+    "opinion": "One WAN test is lossy end to end while both end routers and their syslog are clean; the fault sits between them and an incident for it has been open six weeks."
   },
   "trend_analysis": {
-    "narrative": "One test's loss_pct moved against the prior stamp. Device readings and syslog signals did not.",
-    "flips": ["one path was lower loss, now higher"]
+    "narrative": "Three TE visits hold the same lossy row; Splunk and ServiceNow rings are flat; iosxe has a single visit older than the TE symptom, so device counters have no trend yet.",
+    "flips": []
   },
   "soap": {
     "subjective": "Scheduled assess-now.",
-    "objective": "One test's loss_pct rose against the prior stamp. Syslog signal counts did not move. Interface and BGP readings unchanged. ServiceNow not requested.",
-    "assessment": "One path's loss rose. Device readings and syslog signals did not move.",
-    "plan": "Network Ops: the path whose loss rose, not a down device."
+    "objective": "Four boards current; iosxe last collected 18 hours ago with no stale devices. TE degraded on one row, Splunk and iosxe ok, ServiceNow complete with three open incidents. state/relationships.json not present, so no run evidence.",
+    "assessment": "One WAN test is lossy end to end while both end routers and their syslog are clean; the fault sits between them and an incident for it has been open six weeks.",
+    "plan": "Health Device: Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>"
   },
-  "dispatched": [],
+  "problems": [
+    {
+      "id": "P-20260924-01",
+      "status": "active",
+      "opened_at": "2026-09-24T23:15:00Z",
+      "closed_at": null,
+      "keys": ["test:<test-id>", "device:<wan-edge>", "device:<cloud-edge>", "incident:<inc-a>"],
+      "symptom_refs": [
+        "health/metadata-thousandeyes.json#test:<test-id>/<agent-name>",
+        "health/metadata-servicenow.json#incident:<inc-a>"
+      ],
+      "evidence_refs": [
+        "health/splunk/2026-09-24T23-06-46Z.json",
+        "health/iosxe/2026-09-24T12-00-00Z.json"
+      ],
+      "hypothesis": "Loss is introduced between device:<wan-edge> and device:<cloud-edge>; both ends are clean, so the segment between them, not either router, is where to look.",
+      "order": { "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>" },
+      "treatment_ref": null,
+      "outcome": { "state": "too_early", "checked_at": "2026-09-25T06:20:00Z" }
+    }
+  ],
+  "orders": [
+    { "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>", "problem_ref": "P-20260924-01", "dispatched": true },
+    { "agent": "Network Ops", "task": "Network Ops: loss introduced between device:<wan-edge> and device:<cloud-edge>; both ends clean", "problem_ref": "P-20260924-01", "dispatched": false },
+    { "agent": "Relationship agent", "task": "Run the relationship compile only.", "problem_ref": null, "dispatched": true }
+  ],
+  "relations": [
+    { "from": "incident:<inc-a>", "to": "test:<test-id>", "rel": "impacted", "basis": "asserted", "evidence_ref": "health/thousandeyes/2026-09-24T23-02-00Z.json" }
+  ],
+  "dispatched": [
+    { "plane": "iosxe", "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>", "invoked_at": "2026-09-25T06:20:30Z" },
+    { "plane": "relationships", "agent": "Relationship agent", "task": "Run the relationship compile only.", "invoked_at": "2026-09-25T06:21:00Z" }
+  ],
   "read": [
     "health/metadata-thousandeyes.json",
-    "health/thousandeyes/2026-08-14T16-05-00Z.json",
     "health/metadata-splunk.json",
-    "health/splunk/2026-08-30T18-45-00Z.json",
-    "health/iosxe/2026-08-31T16-00-00Z.json",
-    "state/health.json"
+    "health/metadata-servicenow.json",
+    "health/metadata-iosxe.json",
+    "state/health.json",
+    "health/servicenow/2026-09-25T00-10-00Z.json"
   ]
 }

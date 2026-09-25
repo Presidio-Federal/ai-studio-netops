@@ -21,4 +21,4 @@ Deployed model is **MiniMax** unless noted.
 | Health Monitor | 1.22.0 | MiniMax |
 | Health Device | 1.11.0 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
-| Health Analyzer | 3.1.4 | MiniMax |
+| Health Analyzer | 4.0.0 | MiniMax |
