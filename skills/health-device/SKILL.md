@@ -1,7 +1,7 @@
 ---
 name: health-device
 version: "1.11.0"
-description: "v1.11.0 — IOS-XE device visits, GET-only RESTCONF with fields filters. Health mode: five small GETs per device (boot/version, cpu, memory, interface state, BGP sessions), diffed against the board on health/metadata-iosxe.json; stamp only when something material moved. Topology mode records each device's version, interfaces, and CDP neighbors to inventory/topology-observed.json, one device at a time, file rewritten per device, no cross-device reasoning. One tool, iosxe_restconf_get. No ACL oper, no traffic rates, no CDP on health visits."
+description: "v1.11.0 — Health Device nurse: IOS-XE device visits (health rows per device, BGP peers as columns) and the topology map into inventory/topology-observed.json; board on metadata, stamp only on change; no relations[]."
 ---
 
 # Health Device skill

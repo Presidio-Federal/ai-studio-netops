@@ -1,6 +1,6 @@
 ---
 name: workspace-handoff
-description: "v1.62.0 — Network Ops state v3 (problem_ref, verified_in_git, interfaces, asserted relations); operation-run gains interfaces[]; Ops ServiceNow Operator fills a ticket's typed entity columns (extra_fields) on every INC/CHG write and owns inventory/services.json (confirmed rows only); Nurses write no relations[]: a measured path is the hops[] column on the ThousandEyes row (compiler derives traverses); Health Analyzer chart carries problems[] (carried forward by id), orders[] with handoff task lines, asserted relations[], series by reference; Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory; splunk board carries last syslog state per device/kind/subject; thousandeyes board carries one row per test + agent with src/dst device, hops[] from path-vis-detail (baseline every row, then degraded rows), and optional operator-declared tests[].path; servicenow board carries one row per in-scope ticket with typed entity columns discovered into entity_fields); structured deltas; typed relations[]; edges as columns (a ticket's typed fields are columns, not relations[]); capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
+description: "v1.62.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, relations, edges-as-columns, quiet visits, task lines, and read/write rules."
 version: "1.62.0"
 ---
 

@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
 version: "4.0.2"
-description: "v4.0.2 — treatment_ref joins state/network-ops.json by problem_ref (implement + merged/committed only). Analyze and trend production network health from the four nurse boards (health/metadata-*.json) and at most four latest stamps already on disk. Keep the problem list (problems[] carried forward by id), write structured orders[] with the exact handoff task lines, assert relations with evidence. Series by reference, no copied points, no stamp-chain walk. Write SOAP into state/health.json only."
+description: "v4.0.2 — Health Analyzer: reads the four nurse boards and at most four stamps, keeps the problem list (carried forward by id), writes orders[] with handoff task lines and asserted relations[] to state/health.json."
 ---
 
 # Health Analyzer skill

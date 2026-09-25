@@ -1,7 +1,7 @@
 ---
 name: health-monitor
 version: "1.38.1"
-description: "v1.38.1 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches grouped by device in Splunk, -7d baseline, board written before the stamp, stamp only on a material syslog event; a bgp/link row with count >= 2 in one window is a flap and degrades. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; every row on the baseline and every degraded reading afterwards calls path-vis (10m) then path-vis-detail and stores hops[] (ipAddress matched to topology cidr, array order) as the edge — no relations[]; a change in the resolved device sequence is material; first_bad_round_at carries forward across visits; baseline changed[] is empty; tests[].path stays the operator-declared intended sequence."
+description: "v1.38.1 — Health Monitor nurse: Splunk and ThousandEyes visits. Board on metadata, stamp only on change, TE rows carry src/dst device and hops[] from path-vis-detail; no relations[]."
 ---
 
 # Health Monitor skill

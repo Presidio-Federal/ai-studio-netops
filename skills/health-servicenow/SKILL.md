@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
 version: "2.0.1"
-description: "v2.0.1 — Read-only ServiceNow board visit. Scope is decided in the query (agent-managed inventory device names, marker, match terms) so a shared instance returns only this lab's tickets; typed entity columns are discovered once from sys_dictionary and read as row columns (device, interface, ip, service, rfc — the edges); board on health/metadata-servicenow.json; stamp only when a ticket's state, urgency, typed field, rfc, issue, or update time moved. snow_query_table only; no find/get. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+description: "v2.0.1 — Health ServiceNow nurse: one query per table via snow_query_table, in-scope ticket rows with typed entity columns on the board, stamp only on change; no relations[]."
 ---
 
 # Health ServiceNow skill
