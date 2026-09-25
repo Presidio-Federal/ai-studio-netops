@@ -102,7 +102,7 @@
         "scope": { "type": "string", "const": "lab" },
         "rows": { "type": ["integer", "null"], "description": "In-scope rows returned this visit (incidents + changes)." },
         "open_incidents": { "type": ["integer", "null"], "description": "Returned incident rows with active true." },
-        "open_p1p2": { "type": ["integer", "null"], "description": "Open incidents whose priority or urgency starts with 1 or 2." },
+        "open_p1p2": { "type": ["integer", "null"], "description": "Open incidents whose priority starts with 1 or 2 (urgency alone does not count)." },
         "open_changes": { "type": ["integer", "null"], "description": "Returned change rows with active true." },
         "resolved_rows": { "type": ["integer", "null"], "description": "Returned rows with active false (resolved, closed, or canceled since the window start)." },
         "typed_rows": { "type": ["integer", "null"], "description": "Returned rows whose device column is non-empty. How many tickets carry a typed entity; a capability signal for the operator." }

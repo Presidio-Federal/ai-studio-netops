@@ -41,13 +41,17 @@ Do not open the prior stamp; the board is the prior.
 
 - No `baseline_visit_id` → `checked_at` minus `lookback_days`.
 - Otherwise → board `last_collected_at` minus 1 day (a day of slack
-  covers instance time-zone display and a visit that ran long).
+  covers a visit that ran long and a ticket updated during the run).
 
 ## Scope terms
 
-Build one list `terms` = every `prod.json` `devices[].name` + `marker`
-+ every `match_terms[]` item. For each term `t` write three clauses
-(no spaces around operators; `<dev>` is `entity_fields.device`):
+Build one list `terms` = the `name` of every `prod.json` `devices[]`
+row whose `agent_access` is `true` + `marker` + every `match_terms[]`
+item. Nodes with `agent_access` `false` (LAN switches, servers,
+probes, anything the nurses do not manage) are **not** terms: a
+short or generic node name `LIKE`-matches other tenants' tickets on
+a shared instance. For each term `t` write three clauses (no spaces
+around operators; `<dev>` is `entity_fields.device`):
 
 ```
 short_descriptionLIKE<t>^ORdescriptionLIKE<t>^OR<dev>=<t>
@@ -106,11 +110,18 @@ rows only.
 
 ## Build rows
 
-Each returned row is one board row. Values arrive as display values
-(`state` `"In Progress"`, `urgency` `"2 - Medium"`); reference fields
-arrive as `{sys_id, display}` or a plain string — take `display`.
-Empty string → `null`. Timestamps arrive as `YYYY-MM-DD HH:MM:SS`;
-write them `YYYY-MM-DDTHH:MM:SSZ`.
+Each returned row is one board row. A cell arrives either as a plain
+string or as `{sys_id, display}` (the MCP's shape whenever the stored
+value and its display differ). Rule per column:
+
+- **Date/time columns** (`opened_at`, `sys_updated_on`, `resolved_at`,
+  `closed_at`): take the **`sys_id`** member — it is the stored UTC
+  value; `display` is the instance user's local time. Write it
+  `YYYY-MM-DDTHH:MM:SSZ`.
+- **Every other column** (`state`, `urgency`, `priority`, `cmdb_ci`,
+  `business_service`, `rfc`, …): take the **`display`** member
+  (`"In Progress"`, `"2 - Medium"`, the CI name, the change number).
+- Plain string → as is. Empty string → `null`. `active` → boolean.
 
 | Column | From |
 |--------|------|
@@ -213,15 +224,16 @@ baseline: how long open and whether it names a device or a change.
 Not the columns again; never a cause; never text from `description`.
 `metrics` = one `lab` row: `rows` returned, `open_incidents`
 (incident rows with `active` true), `open_p1p2` (open incidents
-whose `priority` or `urgency` starts with `1` or `2`),
+whose **`priority`** starts with `1` or `2`; urgency alone does not
+count — `2 - Medium` urgency with `3 - Moderate` priority is not P2),
 `open_changes`, `resolved_rows` (rows with `active` false),
 `typed_rows` (rows with a non-null `device`). `unchanged` = board
 rows not replaced. `baseline_ref` =
 `health/servicenow/<baseline_visit_id>.json`. `headline`: which
 tickets moved and how; how long the open ones have been open;
 whether any names a device or a change; then rows unchanged.
-`concerns`: one `{type: incident, name}` per active row with
-`priority` or `urgency` starting `1` or `2`.
+`concerns`: one `{type: incident, name}` per active row whose
+`priority` starts `1` or `2`. Otherwise `[]`.
 
 **Board** (schema `health-metadata-servicenow`) — every visit:
 

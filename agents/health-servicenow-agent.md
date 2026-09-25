@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.8.0"
+version: "1.8.1"
 ---
 
 # Health ServiceNow
 
-Version 1.8.0.
+Version 1.8.1.
 
 ## Identity
 
@@ -92,9 +92,10 @@ Follow `health-servicenow` (`references/watch.md`,
 `references/query.md`, `references/metadata.md`).
 
 The instance is shared. Scope is decided **in the query**: the terms
-are the inventory device names, the metadata marker, and the
-operator's match terms, matched on the ticket title, description,
-and typed device column. What comes back is this lab's; do not
+are the names of the inventory devices the agents manage
+(`agent_access` true), the metadata marker, and the operator's match
+terms, matched on the ticket title, description, and typed device
+column. What comes back is this lab's; do not
 widen the query, and do not classify a wider set yourself.
 
 One row per returned ticket, every column copied from that ticket:

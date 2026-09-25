@@ -20,5 +20,5 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Test | 1.4.2 | MiniMax |
 | Health Monitor | 1.22.0 | MiniMax |
 | Health Device | 1.11.0 | MiniMax |
-| Health ServiceNow | 1.8.0 | MiniMax |
+| Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 3.1.4 | MiniMax |

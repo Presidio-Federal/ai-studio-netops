@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
-version: "2.0.0"
-description: "v2.0.0 — Read-only ServiceNow board visit. Scope is decided in the query (inventory device names, marker, match terms) so a shared instance returns only this lab's tickets; typed entity columns are discovered once from sys_dictionary and read as row columns (device, interface, ip, service, rfc — the edges); board on health/metadata-servicenow.json; stamp only when a ticket's state, urgency, typed field, rfc, issue, or update time moved. snow_query_table only; no find/get. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
+version: "2.0.1"
+description: "v2.0.1 — Read-only ServiceNow board visit. Scope is decided in the query (agent-managed inventory device names, marker, match terms) so a shared instance returns only this lab's tickets; typed entity columns are discovered once from sys_dictionary and read as row columns (device, interface, ip, service, rfc — the edges); board on health/metadata-servicenow.json; stamp only when a ticket's state, urgency, typed field, rfc, issue, or update time moved. snow_query_table only; no find/get. Use when the invoke names the ServiceNow health check. Do not file or update tickets."
 ---
 
 # Health ServiceNow skill
@@ -24,10 +24,14 @@ returned ticket; derive `keys` by the fixed rule; diff against
 `current[]`; stamp when something moved.
 
 **Shared instance.** Most tickets are not this lab's. Scope lives in
-the query, not in your judgment: the terms are `prod.json` device
-names, metadata `marker`, and `match_terms`. Do not widen a query to
-"see what else is there". Do not classify a wider set yourself. Do
-not query by category, caller, or assignment group alone.
+the query, not in your judgment: the terms are the names of
+`prod.json` devices with `agent_access` `true`, metadata `marker`,
+and `match_terms`. Nodes with `agent_access` `false` are not terms —
+a generic node name matches other tenants' tickets. Do not widen a
+query to "see what else is there". Do not classify a wider set
+yourself. Do not query by category, caller, or assignment group
+alone. Date/time cells: take the stored (`sys_id`) member, it is UTC;
+all other cells: `display`.
 
 **Typed columns are the edges.** `device`, `interface`, `ip`,
 `service`, `rfc` on a row are copied from the ticket's own columns
