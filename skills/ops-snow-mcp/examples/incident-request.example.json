@@ -2,7 +2,8 @@
   "schema": "servicenow-request/v1",
   "keys": [
     "device:AI-BRANCH-03",
-    "device:cloud-edge"
+    "device:cloud-edge",
+    "interface:AI-BRANCH-03/GigabitEthernet2"
   ],
   "request_id": "req-inc-bgp-adj-20260812-001",
   "created_at": "2026-08-12T18:05:00Z",
@@ -46,6 +47,12 @@
     "affected_devices": [
       "AI-BRANCH-03",
       "cloud-edge"
-    ]
+    ],
+    "entity": {
+      "device": "AI-BRANCH-03",
+      "interface": "GigabitEthernet2",
+      "ip": null,
+      "service": null
+    }
   }
 }

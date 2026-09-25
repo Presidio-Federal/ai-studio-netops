@@ -22,16 +22,18 @@ headlines into `headline`, `assessment`, or `consult.impression`.
    basis for the new one.
 6. For each plane whose board `last_visit_id` is set **and differs
    from the prior chart's `consults.<plane>.watch_id`**:
-   `health/<plane>/<last_visit_id>.json`. A stamp you already
-   judged on the prior chart is not opened again; the board's
-   `current[]` and `visits[]` carry what you need.
+   `health/<plane>/<last_visit_id>.json`. Equal → **do not open
+   it**; the prior chart already judged that stamp and the board's
+   `current[]` and `visits[]` carry what you need. On a chart with
+   four boards and no moved stamp, `read[]` is five paths.
 7. `state/relationships.json` if present — `edges[]` (`from`,
    `to`, `rel`, `basis`, `last_seen`, `status`) and `drift[]`.
    Absent file: no edge evidence; say so once in `soap.objective`.
 
 Do not walk `vs_prior.prior_watch_id` chains. Do not `ls`
 `health/`, `state/`, or `operational/`. Do not open other
-`state/*.json`. Record paths opened in `read[]`, in order.
+`state/*.json`. `read[]` lists the paths that **returned content**,
+in order; a file that did not exist is not a read.
 
 ## Freshness
 
@@ -163,8 +165,24 @@ is not already covered by an existing problem's `keys`:
   an `acl` deny burst, `auth_failed` on a device
 - A ServiceNow incident row that shares a `device:` /
   `interface:` / `service:` key with any of the above joins that
-  problem as a symptom ref. A ticket **alone** opens a problem only
-  with `status` `watching` (no vital confirms it).
+  problem as a symptom ref. A ticket **alone** opens a problem with
+  `status` **`watching`**, never `active`: `active` means a vital
+  board shows the symptom, and a ticket is not a vital. It becomes
+  `active` only when a TE, iosxe, or Splunk row with one of its
+  keys shows the symptom.
+
+**Join the boards before you write the hypothesis.** When a
+problem's `keys` name a `device:` or `interface:`, find that row on
+the iosxe board `current[]` (interface rows carry `state`,
+`in_errors`, `num_flaps`; BGP rows carry `peer`, `state`) and on
+the Splunk board, and cite them in `evidence_refs` as
+`health/metadata-iosxe.json#<scope>`. A ticket that says an
+interface is down while the iosxe board row for that interface is
+up at a visit **newer than the ticket's `opened_at`** is a
+contradiction: write it in `assessment.contradictions` and let the
+hypothesis say so ("interface up at the last device visit; fault
+downstream or in the report"). Do not leave `evidence_refs` at the
+ticket alone when the device board has the row.
 
 `id` = `P-<yyyymmdd of opened_at>-<nn>`, `nn` counting up within
 that day across the chart. Never reuse an id. `keys` = the joined
@@ -194,15 +212,30 @@ cause no record measured.
 - A ticket-only `watching` problem resolves when its ticket row is
   no longer `active`.
 
-**Outcome.** `order` is the step you ordered for this problem (see
-Orders) or null. `treatment_ref` is `state/network-ops.json` (or an
+**Outcome is about the treatment, not the symptom.** `order` is the
+step you ordered for this problem (see Orders) or null.
+`treatment_ref` is `state/network-ops.json` when that file's
+`problem_ref` equals this problem's `id` **and** its `mode` is
+`implement` with `status` `merged` or `committed` (a
+`recommend` record is advice, not a treatment; a different
+`problem_ref` is someone else's treatment), or an
 `operational/runs/` path when `state/relationships.json` shows a
-`changed` edge to one of the problem's devices) once a treatment
-exists, else null. `outcome.state`: `too_early` while no board
-visit is newer than the treatment or the order; `confirmed` when
-the symptom board shows recovery after it; `not_confirmed` when
-the symptom persists two visits after it; `inconclusive` when the
-symptom board is stale or unavailable. `checked_at` = now.
+`changed` edge to one of the problem's devices. Else null. A
+`resolved_by` row on `state/network-ops.json` whose `from` is one
+of this problem's keys is the same signal. `outcome.state`:
+
+- `treatment_ref` null → **`too_early`**, always. "The symptom is
+  still there" is `status` `active`, not `outcome` `confirmed`.
+- treatment present, no symptom-board visit newer than it →
+  `too_early`
+- treatment present, symptom board recovered after it →
+  `confirmed`
+- treatment present, symptom persists two visits after it →
+  `not_confirmed`
+- treatment present, symptom board stale or `unavailable` →
+  `inconclusive`
+
+`checked_at` = now.
 
 **Unplanned change.** A Splunk `config` row in the window (board
 `current[]` kind `config`, or a stamp reading) on `device:D` is an
@@ -222,25 +255,44 @@ test alone.
 writer name and the task line **verbatim from workspace-handoff**:
 
 - A plane stale or missing → that plane's task line,
-  `problem_ref` null, `dispatched` true in `assess-now` when the
-  writer is attached.
-- A problem whose hypothesis names devices and whose iosxe rows are
-  older than the TE symptom → `Run the network device health check
-  only. Scope: device:<a> device:<b>` with `problem_ref`. Scoped
-  device visits are dispatched **one at a time**: the first is
-  `dispatched` true, any other scoped device order this invoke is
-  `dispatched` false and waits for the next chart.
-- An iosxe stamp `changed[]` item on interface `state`, or a row
-  that appeared or disappeared (`field` `row`) → `Run the network
-  topology map only.`, `problem_ref` to the problem that owns the
-  device, dispatched, not waited on.
+  `problem_ref` null.
+- A problem whose `keys` name devices or an interface, when the
+  iosxe visit covering those devices (`visits[].scope` `all` or
+  naming them) is **older than the symptom** (TE
+  `first_bad_round_at`, Splunk row `at`, ticket `opened_at`) →
+  `Run the network device health check only. Scope: device:<a>
+  device:<b>` with `problem_ref`. When the covering visit is
+  **newer**, do not order it — cite the board row instead (see
+  Join the boards). Scoped device visits are dispatched **one at
+  a time**: the first is `dispatched` true, any other scoped
+  device order this invoke is `dispatched` false and waits for the
+  next chart.
+- An iosxe stamp `changed[]` item whose `keys` hold an
+  `interface:` key and whose `field` is `state` or `row` → `Run
+  the network topology map only.`, `problem_ref` to the problem
+  that owns the device, not waited on. A BGP reset, an up-time
+  change, or a counter change is **not** a topology trigger.
 - A problem with an `active` status, a hypothesis narrowed to a
   device/interface/path, and current vital boards → `Network Ops:
   <hypothesis>` with `problem_ref`, `dispatched` false (Network Ops
-  is not invoked from here).
+  is not invoked from here). A `watching` problem gets no Network
+  Ops order.
+- A `watching` ticket-only problem gets **no nurse order**: the
+  ServiceNow plane is already current, and re-running it does not
+  test the hypothesis. Order the scoped device visit above if the
+  device board is older than the ticket; otherwise `order` null.
 - After writing the chart, when `problems[]` or `relations[]`
-  changed: `Run the relationship compile only.`, dispatched, not
-  waited on, `problem_ref` null.
+  changed: `Run the relationship compile only.`, not waited on,
+  `problem_ref` null.
+
+**Attached or not.** For every order whose writer is attached to
+you (workspace-handoff names the writer; Studio shows the
+attachment), invoke the task line in `assess-now` without waiting,
+set `dispatched` true, and add the row to `dispatched[]`. If the
+writer is **not** attached, `dispatched` false **and** one Gaps
+line in the reply: `<agent>: not attached; order left for the
+operator`. Never leave `dispatched` false silently for an attached
+writer.
 
 `soap.plan` = prose of `orders[0]` ("<agent>: <task>"), or `none`
 when `orders[]` is empty. Envelope `next_action` is the same
@@ -250,15 +302,28 @@ change, or a test plan.
 ## Relations (asserted)
 
 Write a `relations[]` row only when you concluded it from two or
-more records: `from` / `to` in `keys`, `rel` in `depends_on` /
-`caused` / `impacted` / `resolved_by` / `changed`, `basis`
-`asserted`, `evidence_ref` = the record that makes the case (a
-stamp path or ticket key). A service degraded on a TE test between
-two devices → `service:S impacted` only when `service:` is set on
-that TE row (from `inventory/services.json` via the nurse). Do not
-restate a nurse's column edge (BGP `peer`, `src_device`, typed
-ticket `device`) — the compiler already reads those. Empty array
-when nothing is concluded.
+more records: `from` / `to` in `keys`, `basis` `asserted`,
+`evidence_ref` = the record that makes the case (a stamp path or
+ticket key). Each `rel` has one meaning and fixed end types:
+
+| `rel` | `from` → `to` | Means |
+|-------|---------------|-------|
+| `impacted` | `incident:` → `test:` / `service:` / `device:` / `interface:` | this ticket is about that thing (beyond what its typed columns already say) |
+| `depends_on` | `service:` / `test:` → `device:` / `interface:` | the service or test path runs over that device or interface |
+| `caused` | `device:` / `interface:` / `change:` → `test:` / `service:` / `incident:` | the fault there produced this symptom — only after a treatment confirmed it |
+| `resolved_by` | `incident:` / `test:` → **`change:`** | that change closed this problem; `to` is always a `change:` key |
+| `changed` | **`change:`** → `device:` / `interface:` | that change touched this device; `from` is always a `change:` key |
+
+Not a relation: a BGP session reset between two devices (that is
+the iosxe board's `peer` column plus a `changed[]` item — the
+compiler reads it), two tests that disagree (that is
+`assessment.contradictions`), a ticket closing while a test stays
+lossy (that is a contradiction and a `flips` line). A service
+degraded on a TE test between two devices → `service:S impacted`
+only when `service:` is set on that TE row (from
+`inventory/services.json` via the nurse). Do not restate a nurse's
+column edge (BGP `peer`, `src_device` / `dst_device`, typed ticket
+`device`). Empty array when nothing is concluded — most charts.
 
 ## Assessment and trend (required)
 
@@ -324,7 +389,9 @@ Envelope `status`, first match. ServiceNow does not enter this list.
 
 ## Write
 
-`keys` = union of every `problems[].keys` and `relations[]` ends.
-`write_file` `state/health.json` from
+`keys` = union of every `problems[].keys` and `relations[]` ends
+on **this** chart, computed fresh. Do not carry the prior chart's
+`keys`; a key that is on no problem and no relation is not on the
+chart. `write_file` `state/health.json` from
 `schemas/health-state.schema.json`. Read it back. Then dispatch the
 relationship compile if ordered. Stop.

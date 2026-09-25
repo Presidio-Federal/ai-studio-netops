@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.59.0 — Health Analyzer chart carries problems[] (carried forward by id), orders[] with handoff task lines, asserted relations[], series by reference; Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory; splunk board carries last syslog state per device/kind/subject; thousandeyes board carries one row per test + agent with src/dst device and optional operator-declared tests[].path; servicenow board carries one row per in-scope ticket with typed entity columns discovered into entity_fields); structured deltas; typed relations[]; edges as columns (a ticket's typed fields are columns, not relations[]); capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
-version: "1.59.0"
+description: "v1.62.0 — Network Ops state v3 (problem_ref, verified_in_git, interfaces, asserted relations); operation-run gains interfaces[]; Ops ServiceNow Operator fills a ticket's typed entity columns (extra_fields) on every INC/CHG write and owns inventory/services.json (confirmed rows only); Nurses write no relations[]: a measured path is the hops[] column on the ThousandEyes row (compiler derives traverses); Health Analyzer chart carries problems[] (carried forward by id), orders[] with handoff task lines, asserted relations[], series by reference; Quiet visits write metadata only; nurse board on metadata (iosxe board gains device rows: boot time, version, cpu, memory; splunk board carries last syslog state per device/kind/subject; thousandeyes board carries one row per test + agent with src/dst device, hops[] from path-vis-detail (baseline every row, then degraded rows), and optional operator-declared tests[].path; servicenow board carries one row per in-scope ticket with typed entity columns discovered into entity_fields); structured deltas; typed relations[]; edges as columns (a ticket's typed fields are columns, not relations[]); capability-probe rule; services registry and relationships state rows; topology-observed carries per-device neighbors[] (readers pair), no links[]."
+version: "1.62.0"
 ---
 
 # Workspace handoff
@@ -237,11 +237,22 @@ writers on one board lose rows.
 entity (a BGP `peer`, a cable's two ends, a ticket's typed `device` /
 `interface` / `service` / `rfc` columns, a test row's `src_device` /
 `dst_device`), that column *is* the edge; do not also write
-`relations[]`. Use `relations[]` only where no such column exists (a
-measured hop-by-hop path). The Relationship agent reads both forms.
+`relations[]`. A measured hop-by-hop path is also a column: the
+ThousandEyes row's `hops[]` (`{n, ip, device, interface}` in
+measured order). Nurses therefore write **no `relations[]`** at all;
+`relations[]` appears only on Analyzer, Network Ops, and Network
+Design records (`asserted`). The Relationship agent reads every
+column form (`peer`, `neighbors[]`, `src_device`/`dst_device`,
+`hops[]`, typed ticket columns) and the asserted rows.
 An operator-declared expectation (TE `tests[].path`, `prod.json`
 `links[]`) is `intended`; the compiler, not the nurse, turns it into
 edges.
+
+A ticket's typed columns exist only if someone fills them. The Ops
+ServiceNow Operator writes them (`extra_fields`, column names from
+`health/metadata-servicenow.json` `entity_fields`) on every INC/CHG
+create or update that names one entity; Health ServiceNow reads them
+into the row. A ticket filed without them is prose to every reader.
 
 `vs_prior.changed[]` items are `{keys, field, prior, current, at}`;
 `at` is the source event time when the payload has one, else
@@ -266,14 +277,14 @@ visits).
 | `inventory/prod.json` `inventory/dev.json` | snapshot | Ops Network Sync | `ops-network-sync` `schemas/network-access-inventory.schema.json` | `snapshot_id` `collected_at` `published_at` `expires_at` (current iff now < `expires_at`) `status` `coverage` `name` `platform` `role` `tags` `operational_state` `agent_access` `access.restconf` `access.ssh` `source_metadata`. Missing prod.json blocks NetBox bootstrap. |
 | `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` (`cidr` resolves an address to `interface:<device>/<name>`) `cables[]` (intended `connected_to`) `counts` |
 | `inventory/topology-observed.json` | snapshot | Health Device (topology map) | `health-device` `schemas/topology-iosxe.schema.json` | envelope, `coverage.state` (`partial` while a map is in progress) `mapped_at` `prior_mapped_at` `devices[].name` `node_definition` `software_version` `probed_at` `interfaces[]` (`cidr` resolves an address to a device) `neighbors[]` (`local` `far_name` `far_port` `far` — one end's view of a cable; `far` null means the name is not in inventory; readers pair rows across devices) `changes[]`. Task line `Run the network topology map only.` |
-| `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` `owner` `source_ref`. Absent file: write no `service:` key. |
+| `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` (match case-insensitively; never add to them) `owner` `source_ref` `candidates_rejected[]`. Written only after the human confirmed the rows (task line `Set up the services registry.`). Absent file: write no `service:` key. |
 | `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `edges[]` (`from` `to` `rel` `basis` `first_seen` `last_seen` `seen_count` `sources[]` `status`), `drift[]`, `watermarks` |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
 | `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
 | `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |
-| `operational/runs/YYYY-MM-DDTHH-MM-SSZ.json` | result | Pipeline Monitor or GitHub GitOps Change | `github-actions-mcp` `schemas/operation-run.schema.json` | envelope, `operation` `git` `workflow` `result` `devices` `files` `summary` `keys`; never config bodies, patches, or full logs |
+| `operational/runs/YYYY-MM-DDTHH-MM-SSZ.json` | result | Pipeline Monitor or GitHub GitOps Change | `github-actions-mcp` `schemas/operation-run.schema.json` | envelope, `operation` `git` `workflow` `result` `devices` `files` `interfaces[]` (GitOps Change: `<device>/<interface>` stanzas written) `summary` `keys`; `git.commit_sha` + `devices[]` / `interfaces[]` is the change → device / interface edge as columns, no `relations[]`; never config bodies, patches, or full logs |
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
 | `compliance/metadata-testing.json` | metadata | Compliance Test | `compliance-test-runner` `schemas/compliance-test-metadata.schema.json` | `last_visit_id` `last_collected_at` |
 | `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results` row `keys` `risk` |
@@ -285,12 +296,12 @@ visits).
 | `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope, ticket slot |
 | `state/design.json` | state | Network Design | `network-design` `schemas/design-plan.schema.json` | envelope, `assessment` `hardware[]` `software[]` `configuration[]` `compliance[]` `timeline[]` `warehouse` `asks[]` `answers` `horizon` `coverage` `read[]` `roadmap_ref` |
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
-| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `finding` `change` including `operational_ref`, `git` `ci` `pr` `keys` |
+| `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `problem_ref` (the `state/health.json` problem this treats; null when none matched) `finding` (`verified_in_git`) `change` (`devices` `interfaces` `operational_ref` `monitoring_ref`) `git` `ci` `pr` `relations[]` (asserted: `depends_on` / `caused` with the git path as evidence, `resolved_by` to `change:<sha>` on merge) `keys`. The Analyzer joins on `problem_ref` for `treatment_ref` / `outcome`. |
 | `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `bgp` — `peer` is the adjacency; `link`; `config` — `subject` is the user, `source_ip`; `reload`; `acl`; `auth_failed`) `series[]` `visits[]` |
-| `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `window` `tests[]` (`test_id` `test_name` `type` `service` `path` — operator-declared expected device sequence, intended, may be null) `agents[]` (`agent_name` `ip` `device`) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per test + agent: `state` `loss_pct` `latency_ms_avg` `ok_rounds` `bad_rounds` `error_rounds` `first_bad_round_at`; `src_device` / `dst_device` are the ends of the path) `series[]` `visits[]` |
+| `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `window` `tests[]` (`test_id` `test_name` `type` `service` `path` — operator-declared expected device sequence, intended, may be null) `agents[]` (`agent_name` `ip` `device`) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per test + agent: `state` `loss_pct` `latency_ms_avg` `ok_rounds` `bad_rounds` `error_rounds` `first_bad_round_at`; `src_device` / `dst_device` are the ends; `hops[]` is the last measured path — `{n, ip, device, interface}`, device/interface null for an unresolved hop, the row's edge) `series[]` `visits[]` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `lookback_days` `entity_fields` (`device` `interface` `ip` `service` — the instance's typed ticket columns, null when the platform has none) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per in-scope ticket: `scope` `type` `number` `state` `active` `urgency` `priority` `opened_at` `updated_at` `resolved_at` `issue` `close_code` `rfc` `ci` `service` `device` `interface` `ip` — the typed columns and `rfc` are the ticket's edges) `series[]` `visits[]` |
 | `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `device` — boot time, version, cpu, memory; `interface`; `bgp`, whose `peer` is the adjacency) `series[]` `visits[]`. RESTCONF port stays on `inventory/prod.json`. |
-| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `alerts` `keys` `vs_prior` (structured `changed[]`, `field` in `state loss_pct latency_ms_avg error_rounds row`) `concerns`. Written only when a row moved materially. |
+| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `hops` + `note`) `unchanged` `baseline_ref` `alerts` `keys` `vs_prior` (structured `changed[]`, `field` in `state loss_pct latency_ms_avg error_rounds hops row`) `concerns`. No `relations`. Written only when a row moved materially. |
 | `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `window_start` `window_end` `coverage` `metrics` (per-device bucket counts) `readings` (one per material syslog subject this window) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns`. Written only when the window held a material event. |
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `window` (the `since` used) `coverage` `metrics` (one `lab` row) `threads` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `row state urgency device interface ip service rfc issue updated`) `concerns`. Written only when a ticket moved. `status` is `ok`/`unknown`; tickets do not vote on vitals. |
@@ -304,7 +315,7 @@ visits).
 | `state/servicenow.json` | state | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-state.schema.json` | envelope, `open` `history` `trend` |
 | `servicenow/cases/active.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-active.schema.json` | open cases, `devices[]` |
 | `servicenow/cases/index.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-cases-index.schema.json` | numbers this agent has touched |
-| `servicenow/requests/**` | request | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-request.schema.json` | `request_id` `created_at` `requested_by` `operation` `correlation_id` `idempotency_key` `source_refs` `authorization` `record` |
+| `servicenow/requests/**` | request | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-request.schema.json` | `request_id` `created_at` `requested_by` `operation` `correlation_id` `idempotency_key` `source_refs` `authorization` `record` (`record.entity {device interface ip service}` — the one entity the ticket is about; the Operator writes it to the typed columns). No agent writes this queue today; the Operator processes a request the operator hands it. |
 
 ## Writing
 
@@ -320,7 +331,7 @@ visits).
    hypotheticals remain read-only recommendations.
    Each invocation is synchronous: wait for its final response without polling
    status or launching background work. Create/merge the PR on live pass, then
-   replace `state/network-ops.json`.
+   replace `state/network-ops.json` (`problem_ref`, `relations[]`).
    Compliance Intelligence writes its files and stops. Compliance Analyzer
    writes only `state/compliance.json`. Invoke Author only for
    operator-selected INTEL ids.

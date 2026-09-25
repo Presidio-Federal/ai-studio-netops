@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.4.0"
-description: "v4.4.0 — Pipeline Monitor owns exact-SHA watches; GitOps Change records submissions only."
+version: "4.4.1"
+description: "v4.4.1 — operation-run gains optional interfaces[] (GitOps Change: the interface stanzas it wrote, as <device>/<interface>) so the change → interface edge is a column on the run. Pipeline Monitor owns exact-SHA watches; GitOps Change records submissions only."
 ---
 
 # GitHub Actions skill
@@ -51,7 +51,12 @@ or `[]`; never infer from prose. Allowed prefixes are
 `device|interface|site|service|test|control|incident|change`. Location is
 `site:`. When a device is known, use `interface:<device>/<interface>`. Keep
 any nested `keys`.
-The GitOps Change record may include changed paths and a one-line summary.
+The GitOps Change record may include changed paths, a one-line summary, and
+`interfaces[]` — `<device>/<interface>` for every interface stanza the
+prescription's Scope named on a written device (empty for a global scope);
+each adds an `interface:` key. With `devices[]` and `git.commit_sha` that is
+the change → device / interface edge as columns; the record carries no
+`relations[]`.
 Never write config bodies, patches, or full logs. Do not write root `runs/`.
 Map result to envelope status: `pass` → `ok`; `fail` / `failed` → `failed`;
 `submitted` → `ok`; `blocked`, `unknown`, and `no_change` keep the same word.

@@ -28,6 +28,7 @@
       "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
       "at": "2026-09-25T04:00:01Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 1.0, "jitter_ms": 0.4,
       "ok_rounds": 30, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null,
+      "hops": null,
       "note": "Forward direction is clean for the whole window; the reverse still loses 17%, so the fix so far only helped one direction."
     }
   ],

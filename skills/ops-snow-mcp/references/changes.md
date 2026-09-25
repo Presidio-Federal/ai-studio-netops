@@ -4,7 +4,7 @@ Verified change tools exist: `snow_find_changes`, `snow_get_change`, `snow_creat
 
 `snow_query_table` can read `change_request` but dedicated find/get tools are required when they exist.
 
-Change connector fields that matter: `number`, `sys_id`, `short_description`, `description`, `justification`, `implementation_plan`, `risk_impact_analysis` (alias `risk_and_impact_analysis`), `test_plan`, `backout_plan`, `state`, `risk`, `impact`, `type`, `start_date`, `end_date`, `work_notes`, `correlation_id` / `external_id`, `category`, `updated_at`.
+Change connector fields that matter: `number`, `sys_id`, `short_description`, `description`, `justification`, `implementation_plan`, `risk_impact_analysis` (alias `risk_and_impact_analysis`), `test_plan`, `backout_plan`, `state`, `risk`, `impact`, `type`, `start_date`, `end_date`, `work_notes`, `correlation_id` / `external_id`, `category`, `updated_at`, and `extra_fields` (typed `u_` columns, connector ≥ 1.2.0 — see **Typed entity columns**).
 
 `snow_update_change` appends `work_notes` as a journal entry. There is no change `close_notes` parameter; closing notes go in `work_notes`.
 
@@ -57,12 +57,35 @@ plus inventory labels. Rows that do not match are out of scope.
    snow_get_change(number=<CHG…>)
    ```
 
-10. Verify number, sys_id, state, `correlation_id`, and requested material fields (plans, justification, appended validation/deployment notes when applicable).
+   When you passed `extra_fields`, also read those columns back —
+   the get tool does not return them:
+
+   ```text
+   snow_query_table(table="change_request", query="number=<CHG…>", fields="number,<the u_ columns you wrote>", limit=1)
+   ```
+
+10. Verify number, sys_id, state, `correlation_id`, and requested material fields (plans, justification, appended validation/deployment notes when applicable, and every typed column you wrote — same value as the request).
 11. Write the normalized result per `references/workspace-contract.md`.
     Its top-level `keys` contains the source-supported
     `change:<number>` and any explicit `device:<name>` values
     present in that artifact; do not derive keys from markers
     or prose.
+
+## Typed entity columns
+
+`change_request` carries the same typed columns as `incident`
+(`health/metadata-servicenow.json` `servicenow.entity_fields`).
+Apply the **Typed entity columns** section of
+`references/incidents.md` unchanged on `upsert_change`,
+`append_change_validation`, `append_change_deployment`, and
+`close_change`: read `entity_fields`, take `record.entity` (or the
+single `affected_devices` name), check the spelling against
+`inventory/prod.json` / `inventory/services.json`, pass
+`extra_fields` to `snow_create_change` / `snow_update_change`,
+read the columns back with `snow_query_table` on
+`change_request`. A change that names the device it touches is
+the `change:` → `device:` edge the Analyzer's unplanned-change
+rule looks for; a change without it is invisible to that rule.
 
 ## Operation mapping
 

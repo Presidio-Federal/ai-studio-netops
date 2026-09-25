@@ -43,7 +43,7 @@
                 "type": ["array", "null"],
                 "maxItems": 16,
                 "items": { "type": "string", "minLength": 1 },
-                "description": "Operator-declared expected device sequence from source to destination (inventory names), basis intended. The nurse never sets it and never copies it onto a row or its keys; the Relationship agent reads it here. Null or absent when undeclared. The connector exposes no per-hop path-vis, so there is no observed path."
+                "description": "Operator-declared expected device sequence from source to destination (inventory names), basis intended. The nurse never sets it and never copies it onto a row or its keys; the Relationship agent reads it here. Null or absent when undeclared. The measured path is current[].hops, from path-vis-detail."
               }
             }
           }
@@ -92,7 +92,7 @@
     "row": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["scope", "test_id", "name", "agent", "server", "src_device", "dst_device", "keys", "at", "state", "loss_pct", "loss_max_pct", "latency_ms_avg", "jitter_ms", "ok_rounds", "bad_rounds", "error_rounds", "error_type", "first_bad_round_at"],
+      "required": ["scope", "test_id", "name", "agent", "server", "src_device", "dst_device", "keys", "at", "state", "loss_pct", "loss_max_pct", "latency_ms_avg", "jitter_ms", "ok_rounds", "bad_rounds", "error_rounds", "error_type", "first_bad_round_at", "hops"],
       "description": "Same shape as a stamp reading, without note.",
       "properties": {
         "scope": { "type": "string", "pattern": "^test:[^ /]+/[^ ]+$" },
@@ -102,7 +102,8 @@
         "server": { "type": ["string", "null"] },
         "src_device": { "type": ["string", "null"] },
         "dst_device": { "type": ["string", "null"] },
-        "keys": { "type": "array", "uniqueItems": true, "maxItems": 4, "items": { "type": "string", "pattern": "^(test|device|service):[^ ].*$" }, "description": "Exactly test:<test_id>, device:<src_device>, device:<dst_device> (when resolved), service:<service> (when set). Never a device or interface between the ends." },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 16, "items": { "type": "string", "pattern": "^(test|device|interface|service):[^ ].*$" }, "description": "test:<test_id>, device:<src_device>, device:<dst_device> (when resolved), service:<service> (when set), plus device: and interface:<device>/<interface> for each resolved hop." },
+        "hops": { "type": ["array", "null"], "maxItems": 16, "items": { "$ref": "#/$defs/hop" }, "description": "Last measured path for this scope, from path-vis-detail (baseline: every row; later: degraded rows). Carried through when this visit did not remeasure; an ok row keeps it. Null only when never measured." },
         "at": { "type": "string", "minLength": 1 },
         "state": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
         "loss_pct": { "type": ["number", "null"] },
@@ -144,6 +145,17 @@
         "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
         "stamp_written": { "type": "boolean" },
         "window": { "type": "string", "minLength": 1 }
+      }
+    },
+    "hop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "ip", "device", "interface"],
+      "properties": {
+        "n": { "type": "integer" },
+        "ip": { "type": "string", "minLength": 1 },
+        "device": { "type": ["string", "null"] },
+        "interface": { "type": ["string", "null"] }
       }
     }
   }

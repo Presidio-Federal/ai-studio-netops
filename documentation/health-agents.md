@@ -124,8 +124,11 @@ from the agent's IP, `dst_device` from `serverIp`, both through
 `inventory/topology-observed.json` cidr). The board on
 `health/metadata-thousandeyes.json` is the prior; a stamp is written
 only when state, mean loss (10 points), latency (20 ms), or error
-rounds moved, or a row appeared. No path-vis: the connector's
-path-vis result carries hop counts, not hop addresses.
+rounds moved, or a row appeared. A degraded reading then calls
+`path-vis` for `agentId` and `roundId`, then `path-vis-detail`.
+`pathTraces[0].hops[].ipAddress` is matched to a topology cidr and
+stored as `hops` (observed). The summary call still has no hop
+addresses. `tests[].path` remains the operator's intended sequence.
 
 ## Health Device
 

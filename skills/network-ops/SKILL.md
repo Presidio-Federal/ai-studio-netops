@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "2.4.0"
-description: "v2.4.0 — Separate read-only recommendations from explicitly authorized implementation."
+version: "3.0.0"
+description: "v3.0.0 — network-ops-state/v3: start from state/health.json problems[] (problem_ref), finding.verified_in_git, change.interfaces, asserted relations[] (depends_on / caused / resolved_by with the git path as evidence). Read-only recommendations stay separate from explicitly authorized implementation."
 ---
 
 # Network Ops skill
@@ -10,6 +10,16 @@ GitHub is the config SoT. Network Ops reads relevant workspace evidence and
 target/peer configs directly, then decides the exact change. GitHub GitOps
 Change performs only exact full-file edits and `dev` puts. Pipeline Monitor
 owns Actions polling. Network Ops owns `state/network-ops.json`.
+
+The chart comes first. `state/health.json` `problems[]` is the Analyzer's
+problem list; a Network Ops order reads `Network Ops: <hypothesis>` and
+carries a `problem_ref`. Match the ask to one problem, take its `id` as
+`problem_ref`, and read its `symptom_refs` / `evidence_refs` before you list
+configs — they name the device, interface, or path to open in git
+([references/relations.md](references/relations.md)). What you conclude
+from config plus chart is recorded as asserted `relations[]` with the git
+path as evidence; the Analyzer's `outcome` on that problem says whether
+the treatment worked.
 
 ## Route
 
@@ -46,15 +56,18 @@ Send only:
 - exact scope and placement
 - preserve-unrelated-content constraints
 
-Never send a full config to the worker. Read the relevant workspace state and
-detailed visit, list `inventory/configs` on `dev`, then get only the target and
+Never send a full config to the worker. Read `state/health.json` (the
+problem), then the problem's `symptom_refs` / `evidence_refs` (at most four
+files), list `inventory/configs` on `dev`, then get only the target and
 relevant passing/canonical peer paths returned by that listing. Verify the
 finding and derive exact lines, scope, and placement. Ambiguous evidence →
 `blocked`; do not ask the operator for lines already available in Git.
 
 In recommendation mode, write `state/network-ops.json` with
 `mode=recommend`, `status=recommended`, the exact proposed change, evidence
-summary, and canonical keys. Do not invoke either subagent or mutate Git.
+summary, `problem_ref`, `finding.verified_in_git`, the `depends_on` /
+`caused` rows the evidence supports, and canonical keys. Do not invoke
+either subagent or mutate Git.
 
 How to delegate and ship: [references/change.md](references/change.md).
 
@@ -68,20 +81,27 @@ Apply Result `submitted` → invoke Pipeline Monitor once with `apply.yml`,
 delete `dev`. Monitor `fail|unknown`, or apply `no_change|blocked|failed` →
 do not create or merge a PR.
 
+Merged → add the `resolved_by` row (`references/relations.md`).
+
 ## Current operational state
 
 After every terminal outcome, replace `state/network-ops.json` following
-`schemas/network-ops-state.schema.json`. In recommendation mode record the
-bounded proposal/evidence; in implementation mode copy only compact worker
-evidence:
+`schemas/network-ops-state.schema.json` (`network-ops-state/v3`). In
+recommendation mode record the bounded proposal/evidence; in implementation
+mode copy only compact worker evidence:
 
-- devices and changed repository paths
+- `problem_ref` and `finding` (`source`, `headline`, `kind`,
+  `verified_in_git`)
+- devices, `interfaces` (`<device>/<interface>` for every interface stanza
+  the prescription scoped), and changed repository paths
 - one-line change summary plus GitOps and Pipeline Monitor
   `operational/runs/<stamp>.json` references
 - final `dev` commit, CI run/result, and one marker line
 - PR number/URL/merged result
-- top-level `keys` equal to the deduplicated union of exact keys supported by
-  structured fields, or `[]`; never infer from prose
+- `relations[]` — the rows `references/relations.md` allows, nothing else
+- top-level `keys` equal to the union of `change.devices` (`device:`),
+  `change.interfaces` (`interface:`), and every relation end; never infer
+  from prose
 
 Allowed prefixes are `device|interface|site|service|test|control|incident|change`.
 Location is `site:`. When a device is known, use
@@ -89,9 +109,11 @@ Location is `site:`. When a device is known, use
 
 Never copy config bodies, patches, or full pipeline logs. Use
 `examples/network-ops-state.example.json` for shape and `workspace-handoff`
-for ownership.
+for ownership. Validate with `scripts/validate_network_ops.py` when script
+execution is available.
 
 ## Reference routing
 
+- Problem list, relations, keys: `references/relations.md`
 - Edit + ship: `references/change.md`
 - Tools: `references/tools.md`

@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-studio-netops/schemas/services.schema.json",
+  "title": "Services registry (inventory/services.json)",
+  "description": "The only valid spellings of a `service:` key. Written by the Ops ServiceNow Operator after the human confirms each row. Every other agent reads it; none derive a service name from prose.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "keys", "updated_at", "source_agent", "services", "candidates_rejected"],
+  "properties": {
+    "schema": { "const": "services/v1" },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^service:[^ ].*$" },
+      "description": "Exactly one `service:<name>` per services[] row, in the same order."
+    },
+    "updated_at": { "type": "string", "format": "date-time" },
+    "source_agent": { "const": "ops-snow-mcp" },
+    "services": {
+      "type": "array",
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/service" }
+    },
+    "candidates_rejected": {
+      "type": "array",
+      "maxItems": 50,
+      "description": "Candidate strings the human said are not a service (a device, a test that belongs to another row, instance seed data). Kept so the next registry visit does not ask about them again.",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "service": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "aliases", "owner", "source_ref", "confirmed_by", "confirmed_at"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[^ ].*$",
+          "minLength": 2,
+          "maxLength": 80,
+          "description": "Canonical spelling. This exact string follows `service:` on every key in the workspace."
+        },
+        "aliases": {
+          "type": "array",
+          "uniqueItems": true,
+          "maxItems": 12,
+          "items": { "type": "string", "minLength": 1 },
+          "description": "Other strings that mean this service: ThousandEyes test names, the cmdb_ci_service name, ticket wording the human confirmed. Readers match aliases case-insensitively; they never add to this list."
+        },
+        "owner": {
+          "type": ["string", "null"],
+          "description": "Team or person from cmdb_ci_service owned_by / support_group, or what the human said. Null when nobody said."
+        },
+        "source_ref": {
+          "type": "string",
+          "description": "Where the candidate came from: `servicenow:cmdb_ci_service/<sys_id>`, `thousandeyes:test/<testId>` (first test that named it), or `user` when the human typed it.",
+          "pattern": "^(servicenow:cmdb_ci_service/[0-9a-f]{32}|thousandeyes:test/[0-9]+|user)$"
+        },
+        "confirmed_by": { "const": "user" },
+        "confirmed_at": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}

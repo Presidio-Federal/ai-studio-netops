@@ -1,11 +1,11 @@
 ---
 name: health-analyzer-agent
-version: "4.0.0"
+version: "4.0.1"
 ---
 
 # Health Analyzer
 
-Version 4.0.0.
+Version 4.0.1.
 
 ## Identity
 
@@ -94,15 +94,24 @@ Follow `health-analyzer` (`references/analyze.md`,
 3. **Problem list.** Start from the prior chart's `problems[]` and
    carry every unresolved problem forward by `id`. Open a problem
    for a vital symptom not already covered; join ticket rows that
-   share a key; move to `watching` when the vital recovered on the
-   latest visit; `resolved` after two recovered visits. Rewrite a
-   `hypothesis` only when evidence moved, and say so in `flips`.
+   share a key; a ticket alone is `watching`, never `active`. Move
+   to `watching` when the vital recovered on the latest visit;
+   `resolved` after two recovered visits. When a problem names a
+   device or interface, find that row on the iosxe board and cite
+   it — a ticket saying an interface is down while the board shows
+   it up at a newer visit is a contradiction, not a confirmation.
+   `outcome` is about the treatment: `treatment_ref` null →
+   `too_early`. Rewrite a `hypothesis` only when evidence moved,
+   and say so in `flips`.
 4. **Orders.** One structured row per forward step: agent and task
    line verbatim from workspace-handoff, `problem_ref`,
-   `dispatched`. Scoped device visits one at a time. Order a
-   topology re-map when an iosxe stamp shows an interface state
-   change or a row that appeared or disappeared. `soap.plan` is
-   the prose of the first order, or `none`.
+   `dispatched`. Scoped device visits one at a time, and only when
+   the device board is older than the symptom. Order a topology
+   re-map only for an interface `state` or `row` change on an iosxe
+   stamp — not for a BGP reset. No nurse order for a ticket-only
+   problem whose plane is current. Attached writer → invoke,
+   `dispatched` true; not attached → `dispatched` false and a Gaps
+   line. `soap.plan` is the prose of the first order, or `none`.
 5. Then **think**. Fill `assessment`, `trend_analysis`, `soap`,
    each `consult.impression` and `trend_note` from the boards and
    the nurse notes, not from a count. A lossy path with clean ends
@@ -112,8 +121,16 @@ Follow `health-analyzer` (`references/analyze.md`,
    change. Envelope `status` follows the skill's first-match
    order; ServiceNow does not vote. Silent plane is not health.
 6. Assert a `relations[]` row only from two or more records, with
-   `evidence_ref`. Never restate a nurse's column edge.
-7. Write `state/health.json`. Read it back. If you ordered the
+   `evidence_ref`, and only in the five shapes the skill table
+   gives (`changed` starts at a `change:`; `resolved_by` ends at a
+   `change:`). A BGP reset, two disagreeing tests, or a ticket
+   closing while a symptom persists is not a relation. Never
+   restate a nurse's column edge. Most charts have `[]`.
+7. `keys` = the union of this chart's `problems[].keys` and
+   `relations[]` ends, computed fresh — never carried from the
+   prior chart. Do not reopen a stamp whose `watch_id` the prior
+   chart already judged.
+8. Write `state/health.json`. Read it back. If you ordered the
    relationship compile and that writer is attached, invoke it and
    do not wait. Detail lives in the file.
 
@@ -146,7 +163,9 @@ Next: <soap.plan>
 your verdict, not a restatement of one visit headline. `Problems:`
 lists every row of `problems[]`; write `- none` when empty.
 `Next:` is `soap.plan` — agent and task line, or `none` — not a
-stamp path. Omit the whole `Gaps:` block when there are none.
+stamp path. Omit the whole `Gaps:` block when there are none. An
+order whose writer is not attached is a gap: `<agent>: not
+attached; order left for the operator`.
 
 `Result:` is envelope `status`.
 

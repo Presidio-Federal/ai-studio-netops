@@ -8,7 +8,7 @@ import re
 import sys
 from typing import Any
 
-SCHEMA = "network-ops-state/v2"
+SCHEMA = "network-ops-state/v3"
 SOURCE_AGENT = "network-ops"
 STATUSES = {
     "recommended",
@@ -21,7 +21,16 @@ STATUSES = {
     "failed",
 }
 MODES = {"recommend", "implement"}
-KINDS = {"missing_config", "test_bug", "other"}
+KINDS = {"missing_config", "wrong_config", "test_bug", "other"}
+VERIFIED_KINDS = {"missing_config", "wrong_config"}
+RELS = {"depends_on", "caused", "resolved_by"}
+REL_ENDS = {
+    "depends_on": (("service", "test"), ("device", "interface")),
+    "caused": (("device", "interface"), ("test", "service", "incident")),
+    "resolved_by": (("test", "incident"), ("change",)),
+}
+PROBLEM_RE = re.compile(r"^P-\d{8}-\d{2}$")
+INTERFACE_RE = re.compile(r"^[^ /]+/[^ ]+$")
 CI_RESULTS = {"pass", "fail", "unknown", "running"}
 KEY_RE = re.compile(
     r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
@@ -40,10 +49,13 @@ REQUIRED = [
     "headline",
     "next_action",
     "mode",
+    "problem_ref",
+    "finding",
     "change",
     "git",
     "ci",
     "pr",
+    "relations",
     "keys",
 ]
 
@@ -89,12 +101,30 @@ def main() -> None:
     updated = data.get("updated_at")
     if not isinstance(updated, str) or not UTC_RE.match(updated):
         errors.append("updated_at must be UTC ISO-8601")
+    problem_ref = data.get("problem_ref")
+    if problem_ref is not None and (
+        not isinstance(problem_ref, str) or not PROBLEM_RE.match(problem_ref)
+    ):
+        errors.append("problem_ref must be P-<yyyymmdd>-<nn> or null")
     finding = data.get("finding")
-    if finding is not None:
-        if not isinstance(finding, dict):
-            errors.append("finding must be an object")
-        elif finding.get("kind") not in KINDS:
+    verified = False
+    kind = None
+    if not isinstance(finding, dict):
+        errors.append("finding must be an object")
+    else:
+        kind = finding.get("kind")
+        if kind not in KINDS:
             errors.append("finding.kind is not allowed")
+        verified = finding.get("verified_in_git")
+        if not isinstance(verified, bool):
+            errors.append("finding.verified_in_git must be true or false")
+            verified = False
+        if kind in VERIFIED_KINDS and not verified:
+            errors.append(f"finding.kind {kind} requires verified_in_git true")
+        source = finding.get("source")
+        if problem_ref and source != f"health:{problem_ref}":
+            errors.append("finding.source must be health:<problem_ref> when problem_ref is set")
+    status = data.get("status")
     change = data.get("change")
     if not isinstance(change, dict):
         errors.append("change must be an object")
@@ -113,6 +143,13 @@ def main() -> None:
             errors.append("change.monitoring_ref must be operational/runs/<UTC>.json or null")
         if not isinstance(change.get("devices") or [], list):
             errors.append("change.devices must be an array")
+        interfaces = change.get("interfaces")
+        if not isinstance(interfaces, list):
+            errors.append("change.interfaces must be an array")
+        else:
+            for item in interfaces:
+                if not isinstance(item, str) or not INTERFACE_RE.match(item):
+                    errors.append(f"change.interfaces entry must be <device>/<interface>: {item}")
     git = data.get("git")
     if isinstance(git, dict) and git.get("ref") == "main" and data.get("status") != "merged":
         errors.append("git.ref must be dev until merged")
@@ -130,13 +167,54 @@ def main() -> None:
     for key in keys:
         if not isinstance(key, str) or not KEY_RE.match(key):
             errors.append(f"keys contains invalid type:name key: {key}")
+    relations = data.get("relations")
+    relation_keys: set[str] = set()
+    if not isinstance(relations, list):
+        errors.append("relations must be an array")
+        relations = []
+    for index, rel in enumerate(relations):
+        label = f"relations[{index}]"
+        if not isinstance(rel, dict):
+            errors.append(f"{label} must be an object")
+            continue
+        name = rel.get("rel")
+        if name not in RELS:
+            errors.append(f"{label}.rel must be depends_on, caused, or resolved_by")
+            continue
+        if rel.get("basis") != "asserted":
+            errors.append(f"{label}.basis must be asserted")
+        evidence = rel.get("evidence_ref")
+        if not isinstance(evidence, str) or not evidence.strip():
+            errors.append(f"{label}.evidence_ref is required")
+        src, dst = rel.get("from"), rel.get("to")
+        for end, value, allowed in (("from", src, REL_ENDS[name][0]), ("to", dst, REL_ENDS[name][1])):
+            if not isinstance(value, str) or not KEY_RE.match(value):
+                errors.append(f"{label}.{end} must be a canonical key")
+                continue
+            if value.split(":", 1)[0] not in allowed:
+                errors.append(f"{label}.{end} for {name} must be one of {list(allowed)}")
+            relation_keys.add(value)
+        if name == "caused" and not (verified and kind in VERIFIED_KINDS):
+            errors.append(f"{label}: caused requires finding.verified_in_git true and kind missing_config or wrong_config")
+        if name == "resolved_by":
+            if status != "merged":
+                errors.append(f"{label}: resolved_by is only written on a merged change")
+            git_sha = (data.get("git") or {}).get("commit_sha") if isinstance(data.get("git"), dict) else None
+            if isinstance(dst, str) and git_sha and dst != f"change:{git_sha}":
+                errors.append(f"{label}.to must be change:<git.commit_sha>")
     if isinstance(change, dict):
-        expected_keys = set()
+        expected_keys = set(relation_keys)
         for device in change.get("devices") or []:
             if isinstance(device, str):
                 expected_keys.add(f"device:{device}")
+        for interface in change.get("interfaces") or []:
+            if isinstance(interface, str):
+                expected_keys.add(f"interface:{interface}")
         if set(keys) != expected_keys:
-            errors.append("keys must equal the deduplicated union of change.devices")
+            errors.append(
+                "keys must equal the union of change.devices, change.interfaces, and relations ends: "
+                + ", ".join(sorted(expected_keys))
+            )
     if errors:
         for item in errors:
             print(item, file=sys.stderr)

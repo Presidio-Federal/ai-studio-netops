@@ -2,7 +2,7 @@
 
 Use only these verified tools: `snow_find_incidents`, `snow_get_incident`, `snow_create_incident`, `snow_update_incident`.
 
-Incident connector fields that matter: `number`, `sys_id`, `short_description`, `description`, `state`, `urgency`, `impact`, `category`, `work_notes`, `close_notes`, `close_code`, `updated_at`. There is no incident `correlation_id` or `external_id` parameter. Do not pass `jamf_evidence`.
+Incident connector fields that matter: `number`, `sys_id`, `short_description`, `description`, `state`, `urgency`, `impact`, `category`, `work_notes`, `close_notes`, `close_code`, `updated_at`, and `extra_fields` (typed `u_` columns, connector ≥ 1.2.0 — see below). There is no incident `correlation_id` or `external_id` parameter. Do not pass `jamf_evidence`.
 
 `snow_update_incident` sends `work_notes` as a ServiceNow journal field (append). Never PATCH `description` solely to add notes. Do not replace existing work notes.
 
@@ -51,12 +51,75 @@ do not treat the whole instance as this lab.
    snow_get_incident(incident_number=<INC…>)
    ```
 
-10. Verify number, sys_id, state, the automation/correlation markers, and requested material fields (`short_description`, urgency, impact, category, and appended notes when applicable).
+   When you passed `extra_fields`, also read those columns back —
+   the get tool does not return them:
+
+   ```text
+   snow_query_table(table="incident", query="number=<INC…>", fields="number,<the u_ columns you wrote>", limit=1)
+   ```
+
+10. Verify number, sys_id, state, the automation/correlation markers, and requested material fields (`short_description`, urgency, impact, category, appended notes, and every typed column you wrote — same value as the request).
 11. Write the normalized result per `references/workspace-contract.md`.
     Its top-level `keys` contains the source-supported
     `incident:<number>` and any explicit `device:<name>` values
     present in that artifact; do not derive keys from markers
     or prose.
+
+## Typed entity columns (edges as columns)
+
+The instance may carry typed columns on `incident` — a device
+name, an interface, an IP, a service. Health ServiceNow discovers
+their names once and records them in
+`health/metadata-servicenow.json` as `servicenow.entity_fields`
+(`device`, `interface`, `ip`, `service`; each a column name such
+as `u_device_name`, or null when the instance has none). A ticket
+with the device in its typed column is a ticket every reader can
+join on without parsing prose. Filling that column is your job on
+every create and update that names one entity.
+
+Before the mutation, on `upsert_incident`, `append_incident_work_notes`,
+and `resolve_incident`:
+
+1. `read_file` `health/metadata-servicenow.json` if it exists.
+   Absent, or every `entity_fields` value null → skip this section;
+   write nothing extra; do not invent a column name.
+2. Take `record.entity` from the request. Absent or null → if
+   `record.affected_devices` has exactly one name, that name is
+   `entity.device`; two or more → no typed columns (a column holds
+   one value; the others stay in prose and in `keys`).
+3. `entity.device` must be a `devices[].name` in
+   `inventory/prod.json`, `entity.service` a `services[].name` in
+   `inventory/services.json`. A name that matches neither → fail
+   the request (`status=failed`, reason names the value). Do not
+   fix the spelling yourself.
+4. Build `extra_fields`: one `<column>: <value>` per non-null
+   `entity` member whose `entity_fields` column is non-null.
+   Write `interface` only when `device` is also present.
+   Nothing to write → omit `extra_fields`.
+
+```text
+snow_update_incident(incident_number="INC0085085",
+  work_notes="…",
+  extra_fields={"u_device_name": "WAN-04", "u_interface_name": "GigabitEthernet6"})
+```
+
+`extra_fields` is accepted by `snow_create_incident`,
+`snow_update_incident`, `snow_create_change`, `snow_update_change`
+(connector ≥ 1.2.0). Keys must start with `u_`; the connector
+rejects anything else and writes nothing. If the tool answers that
+`extra_fields` is unknown, the connector is older: complete the
+mutation without it, and put `typed columns: connector has no
+extra_fields` in the result `message`. Never put the device name
+into `cmdb_ci` as a substitute — that is a reference field and
+will not resolve.
+
+Read back with `snow_query_table` (step 9). A column that reads
+back different from what you sent is a failure of this step,
+reported in the result; the notes you appended still stand.
+
+The result's `keys` gain `device:<name>` (and
+`interface:<device>/<interface>`, `service:<name>`) from
+`record.entity` — those are explicit identity fields.
 
 ## Operation mapping
 

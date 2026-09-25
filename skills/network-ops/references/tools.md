@@ -1,7 +1,8 @@
 # GitHub tools — Network Ops
 
 Exact names. Do not invent tools. `write_file` is only for
-`state/network-ops.json`.
+`state/network-ops.json`. `read_file` for `state/health.json` and the
+refs it names.
 
 | Tool | When |
 |------|------|

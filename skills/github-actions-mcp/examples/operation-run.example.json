@@ -3,7 +3,7 @@
   "updated_at": "2026-09-22T20:40:00Z",
   "source_agent": "github-gitops-change",
   "status": "ok",
-  "headline": "Added SSH version 2 to two edge configs and submitted the final dev commit",
+  "headline": "Set ip mtu 1400 under GigabitEthernet4 on WAN-01 and submitted the final dev commit",
   "next_action": "Pipeline Monitor must watch apply.yml for this exact commit",
   "operation": "config_change",
   "git": {
@@ -17,7 +17,18 @@
     "marker": null
   },
   "result": "submitted",
-  "devices": ["AI-CLOUD-EDGE", "AI-DC-EDGE"],
-  "summary": "Ensured the exact global command 'ip ssh version 2' was present without changing unrelated content.",
-  "keys": ["device:AI-CLOUD-EDGE", "device:AI-DC-EDGE"]
+  "devices": [
+    "WAN-01"
+  ],
+  "files": [
+    "inventory/configs/WAN-01.cfg"
+  ],
+  "interfaces": [
+    "WAN-01/GigabitEthernet4"
+  ],
+  "summary": "Ensured the exact line 'ip mtu 1400' was present under interface GigabitEthernet4 on WAN-01 without changing unrelated content.",
+  "keys": [
+    "device:WAN-01",
+    "interface:WAN-01/GigabitEthernet4"
+  ]
 }

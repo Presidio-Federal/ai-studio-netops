@@ -13,11 +13,17 @@ Marker: `references/metadata.md`.
 | `servicenow/cases/index.json` | Every invoke — all cases you have touched |
 | `state/servicenow.json` | Every invoke — current board + `history[]` (cap 20) |
 | `servicenow/requests/**` | Mutation queue only |
+| `inventory/services.json` | Registry visit only, after they confirmed the rows (`references/services.md`) |
 
 Read other agents' evidence. Never overwrite it. Never copy
 ServiceNow tables into the workspace. Do not write `health/`,
-`servicenow/trends/`, or top-level `cases/`. Do not write
+`servicenow/trends/`, or top-level `cases/`. Under `inventory/`
+write only `services.json`. Do not write
 under `automations/schedules/`.
+
+Before an INC/CHG mutation that names one entity, `read_file`
+`health/metadata-servicenow.json` for `servicenow.entity_fields`
+(read only) — the typed columns you fill with `extra_fields`.
 
 `write_file` creates parents. Never `mkdir`.
 
@@ -37,7 +43,10 @@ Never derive keys from request IDs, correlation IDs, prose,
 recommendation IDs, source refs, or guessed identities.
 
 For metadata with no entity identity, write `[]`. Requests use
-`record.affected_devices` plus a non-null typed `record.number`.
+`record.affected_devices`, `record.entity` (`device:`,
+`interface:<device>/<interface>`, `service:`), plus a non-null
+typed `record.number`. The registry uses one `service:` per
+`services[]` row.
 Results use their typed `record.number`. Active/index use each
 typed case number and `devices`. State uses `open.devices` and
 typed `last_record`; history device arrays contribute to the

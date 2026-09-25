@@ -214,6 +214,28 @@ def device_keys(values: Any) -> set[str]:
     return {f"device:{value}" for value in values if isinstance(value, str) and value}
 
 
+def entity_keys(entity: Any, errors: Errors) -> set[str]:
+    """record.entity -> device:, interface:<device>/<interface>, service: keys."""
+    if entity is None:
+        return set()
+    if not isinstance(entity, dict):
+        errors.add("record.entity must be an object or null")
+        return set()
+    keys: set[str] = set()
+    device = entity.get("device")
+    interface = entity.get("interface")
+    service = entity.get("service")
+    if isinstance(device, str) and device:
+        keys.add(f"device:{device}")
+        if isinstance(interface, str) and interface:
+            keys.add(f"interface:{device}/{interface}")
+    elif isinstance(interface, str) and interface:
+        errors.add("record.entity.interface requires record.entity.device")
+    if isinstance(service, str) and service:
+        keys.add(f"service:{service}")
+    return keys
+
+
 def validate_authorization(auth: Any, operation: str, errors: Errors) -> None:
     obj = require_object(auth, "authorization", errors)
     if obj is None:
@@ -316,6 +338,7 @@ def validate_request(data: Any, errors: Errors) -> None:
     expected_keys = record_key(record)
     if isinstance(record, dict):
         expected_keys |= device_keys(record.get("affected_devices"))
+        expected_keys |= entity_keys(record.get("entity"), errors)
     if "keys" in obj:
         validate_keys(obj.get("keys"), expected_keys, errors)
 

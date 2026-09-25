@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "1.37.0"
-description: "v1.37.0 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches grouped by device in Splunk, -7d baseline, board written before the stamp, stamp only on a material syslog event; a bgp/link row with count >= 2 in one window is a flap and degrades. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; row keys are the test and its two ends only (no path keys); first_bad_round_at carries forward across visits; baseline changed[] is empty; optional operator-declared tests[].path."
+version: "1.38.1"
+description: "v1.38.1 — One named Splunk or ThousandEyes health visit; both are board visits. Splunk: two fixed searches grouped by device in Splunk, -7d baseline, board written before the stamp, stamp only on a material syslog event; a bgp/link row with count >= 2 in one window is a flap and degrades. ThousandEyes: one network-results call per metadata test, board on health/metadata-thousandeyes.json (one row per test + agent with src/dst device), stamp only when state, loss, latency, or error rounds moved; every row on the baseline and every degraded reading afterwards calls path-vis (10m) then path-vis-detail and stores hops[] (ipAddress matched to topology cidr, array order) as the edge — no relations[]; a change in the resolved device sequence is material; first_bad_round_at carries forward across visits; baseline changed[] is empty; tests[].path stays the operator-declared intended sequence."
 ---
 
 # Health Monitor skill
@@ -40,9 +40,17 @@ per message; one `te_list_alerts`; build one row per test + agent
 (`state` from the fixed rule; `src_device` / `dst_device` from agent
 IP and `serverIp` through topology cidr); diff against
 `current[]` — only `state`, a 10-point loss move, a 20 ms latency
-move, error rounds appearing, or a new row are material. Row `keys`
-are the test and its two end devices (plus `service:` when set) —
-never a router or interface you believe lies between them.
+move, error rounds appearing, a new row, or a change in the
+resolved hop device sequence are material. On the baseline every
+row, and afterwards every `degraded` reading (cap 4), takes
+`path-vis` (`window="10m"`, newest `roundId` for that agent) then
+`path-vis-detail` (hop `ipAddress`, array order — `hopNumber` is
+null). Match each hop to a topology cidr; unresolved hops keep the
+address and a null device. Other rows carry the board's `hops`.
+Row `keys` are the test, the two ends, `service:` when set, and
+each resolved hop. `hops` is the edge; write no `relations[]`. Do
+not invent a hop the detail call did not return. `tests[].path`
+stays the operator's intended sequence.
 `first_bad_round_at` is kept from the board while the row stays
 bad. The baseline stamp has `changed: []`. The stamp's top-level
 names are the schema's (`watch_id`, `coverage {state}`, metric row
@@ -56,7 +64,8 @@ Do not search Splunk `index=*`. Do not `stats` by `severity` or
 `log_level`. Only the SPL `references/splunk.md` prints — no
 sampling raw events, no extra searches. Do not read
 `inventory/infra-sot.json`. Do not build dashboards. Do not use
-`te_raw_api_call`. No path-vis, no `te_get_alert`. ThousandEyes
+`te_raw_api_call`. No `te_get_alert`. Path-vis is only the P+D
+pair in `references/thousandeyes.md`. ThousandEyes
 window is always the metadata `window`; never `7d` or `24h`. Do not
 write `runs/`, `inventory/`, `state/`, `trend-analysis.json`,
 `remediation-request.json`, `state/network-sync.json`, other
@@ -123,8 +132,9 @@ S1 → S2 → RESOLVE_DEVS → DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP 
 READ_BACK → PRUNE → WRITE_BOARD] → STOP
 
 ThousandEyes: READ_BOARD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
-[AGENTS] → (per test: NETWORK)* → ALERTS → BUILD → DIFF → DECIDE →
-[WRITE_STAMP → READ_BACK → PRUNE] → WRITE_BOARD → STOP
+[AGENTS] → (per test: NETWORK)* → ALERTS → BUILD →
+(per row that gets a path: PATH_VIS → PATH_VIS_DETAIL)* → DIFF →
+DECIDE → [WRITE_STAMP → READ_BACK → PRUNE] → WRITE_BOARD → STOP
 
 On collection failure: still write that check (`unavailable`, null
 counts). Do not advance the Splunk watermark.

@@ -56,9 +56,50 @@ Agent-to-agent tests have `direction`; agent-to-server rows may add
 `{id, test_id, state}`. Zero can mean no rule is bound to these
 tests. It is not proof of health; do not write "no alerts, healthy".
 
-Order: setup → [A] → N(test 1) → N(test 2) → … → L → build → diff
-→ write. Nothing else. No path-vis, no `te_get_alert`, no listing
-tests when metadata has them.
+**P and D — the measured path.** Which rows get it this visit:
+
+- **Baseline visit** (board has no `baseline_visit_id`): every row.
+- **Every later visit**: rows whose `state` is `degraded` — cap 4,
+  worst `loss_pct` first; the rest keep the board's `hops`.
+- Any other row: copy `hops` from the board row with the same
+  `scope` (null when the board has none). An `ok` row does **not**
+  reset `hops` to null; the last measured path stays until it is
+  remeasured.
+
+One test at a time. One call per message. P then D per row.
+
+**P** `te_get_test_results(test_id=<test_id>, result_type="path-vis",
+window="10m", aid=<account_id>)`. Ten minutes, not the metadata
+window: this call only finds the newest round. This summary has no
+hop addresses. Take the result rows whose `agent.agentName` equals
+this row's `agent`; from the one with the **highest `roundId`** copy
+`agent.agentId` and `roundId`. No row for that agent → call P once
+more with `window=<window>`; still none → `hops` stays as the board
+had it and you do not call D.
+
+**D** `te_get_test_results(test_id=<test_id>,
+result_type="path-vis-detail", agent_id=<agent.agentId>,
+round_id=<roundId>, aid=<account_id>)`. Read
+`results[0].pathTraces[0].hops[]` **in array order** (the API's
+`hopNumber` is null; do not read it), at most 16. Each hop is
+`{n, ip, device, interface}`: `n` = 1-based position in that
+array, `ip` = `ipAddress`. Resolve `ip` against topology
+`interfaces[].cidr` the same way as `serverIp`. A containing cidr
+sets `device` to that device's `name` and `interface` to that
+interface's `name`. No containing cidr: both null. Do not use
+`rdns`, `location`, `prefix`, or `network` to name a device. Do not
+drop a hop because it did not resolve. A failed D leaves `hops` as
+the board had it; the reading still stands.
+
+**`path_devices`** (not stored; used for the diff) = the sequence
+of non-null `hop.device` values in `n` order, consecutive
+duplicates collapsed. Hop *count* is not compared: unresponsive
+hops make it swing round to round.
+
+Order: setup → [A] → N(test 1) → N(test 2) → … → L → build →
+P+D for each row that gets a path → diff → write. No
+`te_get_alert`, no `te_raw_api_call`, no listing tests when
+metadata has them.
 
 ## Build rows
 
@@ -74,7 +115,7 @@ row each). Group the rounds by `agent.agentName`, then fill:
 | `server` | `serverIp` (same on every round) |
 | `src_device` | metadata `agents[]` row with this `agent_name` → `device` |
 | `dst_device` | topology device whose `cidr` contains `server`; else metadata `agents[]` row with `ip` = `server` → `device`; else null |
-| `keys` | **exactly**: `test:<test_id>`; `device:<src_device>` and `device:<dst_device>` when not null (once when equal); `service:<service>` when metadata sets it. At most 4. |
+| `keys` | `test:<test_id>`; `device:<src_device>` and `device:<dst_device>` when not null (once when equal); `service:<service>` when metadata sets it. After D, also `device:<hop.device>` and `interface:<device>/<interface>` for each hop that resolved. Deduplicate. At most 16. |
 | `at` | newest `date` |
 | `ok_rounds` | rounds without `errorType` |
 | `error_rounds` | rounds with `errorType`; `error_type` = the one seen most, null when none |
@@ -86,12 +127,14 @@ row each). Group the rounds by `agent.agentName`, then fill:
 | `state` | rule below |
 
 There is no `type` column on a row (`type` lives on metadata
-`tests[]`). **No path keys.** The payload names two ends and nothing
-between them: do not add `device:` or `interface:` keys for routers
-you believe sit on the path, from topology, from the prior stamp, or
-from memory. The path is not measured on this visit; an operator may
-declare the expected one on metadata `tests[].path` and the
-Relationship agent reads it there. Do not copy `path` onto a row.
+`tests[]`). **Hops come only from D.** `hops` is null until a D
+call has returned for that `scope`, then it is the last measured
+list (carried on the board). Do not add a device or interface that
+D did not return and topology did not match. An operator may still
+declare the expected sequence on metadata `tests[].path`; copy
+`path` through and do not write it onto a row. That sequence is
+intended. `hops` is the measured path, and it is the edge — no
+`relations[]` on this stamp; the Relationship agent reads `hops`.
 
 **`first_bad_round_at` carry-forward.** Let `w` = the oldest `date`
 in this window with `loss` ≥ 5 or `errorType` (null when none).
@@ -127,11 +170,18 @@ row onto the stamp:
 | `loss_pct` | moved 10 or more points | `loss_pct` |
 | `latency_ms_avg` | moved 20 ms or more | `latency_ms_avg` |
 | `error_rounds` | was 0 and is now > 0, or `error_type` differs | `error_rounds` |
+| `hops` | D ran this visit, the board row already had `hops`, and `path_devices` differs (a device entered or left the resolved sequence, or the order changed) | `hops` |
 | row | scope not on the board (new test or new agent) | `row` |
 
+For a `hops` item, `prior` and `current` are the two
+`path_devices` sequences joined with `>` (e.g.
+`<a>><b>><c>`). A first measurement (board `hops` null) is not a
+change. A hop count that moved with the same device sequence is
+not a change.
+
 Not material: `loss_max_pct`, `jitter_ms`, `bad_rounds`,
-`first_bad_round_at`, `at`, `ok_rounds`, small loss moves. Those
-land on the board only. Loss on this kind of test swings 0–35%
+`first_bad_round_at`, `at`, `ok_rounds`, small loss moves, hop
+count. Those land on the board only. Loss on this kind of test swings 0–35%
 round to round; that is why the loss threshold is 10 points and
 `state` uses the majority of rounds.
 
@@ -141,8 +191,8 @@ the board row (null when the row is new), `current` from this row.
 
 **Delta.** `first` on the baseline. `worse` if any item is `state`
 → `degraded`, `loss_pct` rising, or `error_rounds` appearing.
-`better` if items exist and none is worse. `changed` if only `row`
-or `latency_ms_avg` items. `unchanged` if none.
+`better` if items exist and none is worse. `changed` if only `row`,
+`latency_ms_avg`, or `hops` items. `unchanged` if none.
 
 ## Stamp or quiet
 
@@ -175,7 +225,7 @@ these names and no others:
   "coverage": { "state": "complete|partial|unavailable", "detail": "..." },
   "metrics": [ { "at": "...", "scope": "estate", "tests": 3, "rows": 4, "degraded_rows": 2,
                  "worst_loss_pct": 19, "worst_scope": "test:<id>/<agent>", "error_rounds": 0, "alerts_firing": 0 } ],
-  "readings": [ { "...row columns...", "note": "..." } ],
+  "readings": [ { "...row columns...", "hops": [ { "n": 1, "ip": "...", "device": "...", "interface": "..." } ], "note": "..." } ],
   "unchanged": 0, "baseline_ref": null,
   "alerts": { "firing": 0, "items": [] },
   "vs_prior": { "prior_watch_id": null, "delta": "first", "changed": [] },
@@ -186,8 +236,9 @@ these names and no others:
 It is `watch_id`, not `visit_id`. `coverage` is an object. The
 metric row is `rows` and `error_rounds` (not `rows_measured`,
 `rows_total`, `error_rounds_total`) and carries `at`. `readings` =
-moved rows + `note`; a reading has exactly the row columns plus
-`note`. `metrics` = one `estate` row: `tests` (metadata count),
+moved rows + `hops` + `note`. `hops` is null, or the last measured
+list `[{n, ip, device, interface}]`. There is **no `relations`**
+key on this stamp. `metrics` = one `estate` row: `tests` (metadata count),
 `rows` measured, `degraded_rows`, `worst_loss_pct` + `worst_scope`,
 `error_rounds` sum, `alerts_firing`. `unchanged` = board rows not
 replaced. `baseline_ref` = `health/thousandeyes/<baseline_visit_id>.json`
@@ -199,10 +250,18 @@ rounds, since when; then rows unchanged and alerts firing.
 `note` is one or two sentences about **this row against its board
 row**: which direction, since when (`first_bad_round_at`), whether
 the reverse test agrees, whether latency moved with the loss. Not
-the columns again. Do not name a cause, a hop, a probe protocol, or
-a device that is not `src_device` / `dst_device`; do not conclude
-across tests ("this rules out a path fault") — that is the
-Analyzer's job and it reads every row. No addresses in prose.
+the columns again. Do not list hops or addresses in the note; they
+belong on `hops`. Do not name a cause, a probe protocol, or a
+device that is not `src_device`, `dst_device`, or a resolved hop.
+Do not conclude across tests. No addresses in prose.
+
+`hops` is the edge. Do not write `relations[]` for it, on the stamp
+or the board; the Relationship agent turns `hops` into `traverses`
+edges and compares them with `tests[].path`. Row `keys` gain
+`device:<hop.device>` and `interface:<hop.device>/<hop.interface>`
+for each resolved hop, so a reader can join a hop to a device row
+on another board. When replacing a board row you did not remeasure,
+copy its `hops` through.
 
 **Board** (schema `health-metadata-thousandeyes`) — every visit:
 - `current[]` ← built rows replace rows with the same `scope`;
@@ -228,7 +287,9 @@ stamps in `health/thousandeyes/` only, then write the board.
 |------|----:|
 | Workspace reads | 3 |
 | Workspace writes | 3 (stamp, board, prune) |
-| `te_get_test_results` | one per metadata test, one retry each |
+| `te_get_test_results` network | one per metadata test, one retry each |
+| `te_get_test_results` path-vis | every row on the baseline; then one per degraded reading, max 4; one retry with the metadata window when `10m` returns no row |
+| `te_get_test_results` path-vis-detail | one per path-vis that returned a roundId |
 | `te_list_alerts` | 1 |
 | `te_agents_get_agents` | 1 (baseline / unknown agent only) |
 

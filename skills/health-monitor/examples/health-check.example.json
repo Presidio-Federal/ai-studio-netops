@@ -1,5 +1,19 @@
 {
-  "keys": ["test:<a2a-test-id>", "test:<a2a-reverse-test-id>", "test:<a2s-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
+  "keys": [
+    "test:<a2a-test-id>",
+    "device:<cloud-edge>",
+    "device:<hq-edge>",
+    "interface:<cloud-edge>/GigabitEthernet1",
+    "device:<wan-01>",
+    "interface:<wan-01>/GigabitEthernet4",
+    "interface:<hq-edge>/GigabitEthernet2",
+    "test:<a2a-reverse-test-id>",
+    "interface:<hq-edge>/GigabitEthernet1",
+    "device:<wan-03>",
+    "interface:<wan-03>/GigabitEthernet4",
+    "interface:<cloud-edge>/GigabitEthernet2",
+    "test:<a2s-test-id>"
+  ],
   "schema": "health-thousandeyes-check/v3",
   "source": "thousandeyes",
   "watch_id": "2026-09-24T22-05-00Z",
@@ -10,43 +24,205 @@
   "window": "1h",
   "window_start": "2026-09-24T21:00:01Z",
   "window_end": "2026-09-24T22:00:08Z",
-  "coverage": { "state": "complete", "detail": "network results for 3 metadata tests + alerts" },
+  "coverage": {
+    "state": "complete",
+    "detail": "network results for 3 metadata tests + alerts"
+  },
   "vs_prior": {
     "prior_watch_id": null,
     "delta": "first",
     "changed": []
   },
   "concerns": [
-    { "type": "test", "name": "<a2a-test-name>", "id": "<a2a-test-id>", "source_ref": null },
-    { "type": "test", "name": "<a2a-reverse-test-name>", "id": "<a2a-reverse-test-id>", "source_ref": null }
+    {
+      "type": "test",
+      "name": "<a2a-test-name>",
+      "id": "<a2a-test-id>",
+      "source_ref": null
+    },
+    {
+      "type": "test",
+      "name": "<a2a-reverse-test-name>",
+      "id": "<a2a-reverse-test-id>",
+      "source_ref": null
+    }
   ],
   "metrics": [
-    { "at": "2026-09-24T22:05:00Z", "scope": "estate", "tests": 3, "rows": 3, "degraded_rows": 2, "worst_loss_pct": 19, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 }
+    {
+      "at": "2026-09-24T22:05:00Z",
+      "scope": "estate",
+      "tests": 3,
+      "rows": 3,
+      "degraded_rows": 2,
+      "worst_loss_pct": 19,
+      "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>",
+      "error_rounds": 0,
+      "alerts_firing": 0
+    }
   ],
   "readings": [
     {
-      "scope": "test:<a2a-test-id>/<cloud-agent>", "test_id": "<a2a-test-id>", "name": "<a2a-test-name>", "agent": "<cloud-agent>", "server": "<hq-agent-ip>",
-      "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"],
-      "at": "2026-09-24T22:00:01Z", "state": "degraded", "loss_pct": 12, "loss_max_pct": 34, "latency_ms_avg": 1.0, "jitter_ms": 0.5,
-      "ok_rounds": 31, "bad_rounds": 24, "error_rounds": 0, "error_type": null, "first_bad_round_at": "2026-09-24T21:00:01Z",
+      "scope": "test:<a2a-test-id>/<cloud-agent>",
+      "test_id": "<a2a-test-id>",
+      "name": "<a2a-test-name>",
+      "agent": "<cloud-agent>",
+      "server": "<hq-agent-ip>",
+      "src_device": "<cloud-edge>",
+      "dst_device": "<hq-edge>",
+      "keys": [
+        "test:<a2a-test-id>",
+        "device:<cloud-edge>",
+        "device:<hq-edge>",
+        "interface:<cloud-edge>/GigabitEthernet1",
+        "device:<wan-01>",
+        "interface:<wan-01>/GigabitEthernet4",
+        "interface:<hq-edge>/GigabitEthernet2"
+      ],
+      "at": "2026-09-24T22:00:01Z",
+      "state": "degraded",
+      "loss_pct": 12,
+      "loss_max_pct": 34,
+      "latency_ms_avg": 1.0,
+      "jitter_ms": 0.5,
+      "ok_rounds": 31,
+      "bad_rounds": 24,
+      "error_rounds": 0,
+      "error_type": null,
+      "first_bad_round_at": "2026-09-24T21:00:01Z",
+      "hops": [
+        {
+          "n": 1,
+          "ip": "<cloud-edge-lan-ip>",
+          "device": "<cloud-edge>",
+          "interface": "GigabitEthernet1"
+        },
+        {
+          "n": 2,
+          "ip": "<wan-underlay-ip>",
+          "device": "<wan-01>",
+          "interface": "GigabitEthernet4"
+        },
+        {
+          "n": 3,
+          "ip": "<transit-ip>",
+          "device": null,
+          "interface": null
+        },
+        {
+          "n": 4,
+          "ip": "<hq-edge-wan-ip>",
+          "device": "<hq-edge>",
+          "interface": "GigabitEthernet2"
+        },
+        {
+          "n": 5,
+          "ip": "<hq-agent-ip>",
+          "device": null,
+          "interface": null
+        }
+      ],
       "note": "Baseline. Loss on 24 of 31 rounds across the whole window, never an error round: packets drop on the path, the path itself is up. Latency 1 ms says this is not congestion. Reverse direction sees the same."
     },
     {
-      "scope": "test:<a2a-reverse-test-id>/<hq-agent>", "test_id": "<a2a-reverse-test-id>", "name": "<a2a-reverse-test-name>", "agent": "<hq-agent>", "server": "<cloud-agent-ip>",
-      "src_device": "<hq-edge>", "dst_device": "<cloud-edge>", "keys": ["test:<a2a-reverse-test-id>", "device:<hq-edge>", "device:<cloud-edge>"],
-      "at": "2026-09-24T22:00:01Z", "state": "degraded", "loss_pct": 19, "loss_max_pct": 32, "latency_ms_avg": 1.0, "jitter_ms": 0.5,
-      "ok_rounds": 31, "bad_rounds": 27, "error_rounds": 0, "error_type": null, "first_bad_round_at": "2026-09-24T21:00:01Z",
+      "scope": "test:<a2a-reverse-test-id>/<hq-agent>",
+      "test_id": "<a2a-reverse-test-id>",
+      "name": "<a2a-reverse-test-name>",
+      "agent": "<hq-agent>",
+      "server": "<cloud-agent-ip>",
+      "src_device": "<hq-edge>",
+      "dst_device": "<cloud-edge>",
+      "keys": [
+        "test:<a2a-reverse-test-id>",
+        "device:<hq-edge>",
+        "device:<cloud-edge>",
+        "interface:<hq-edge>/GigabitEthernet1",
+        "device:<wan-03>",
+        "interface:<wan-03>/GigabitEthernet4",
+        "interface:<cloud-edge>/GigabitEthernet2"
+      ],
+      "at": "2026-09-24T22:00:01Z",
+      "state": "degraded",
+      "loss_pct": 19,
+      "loss_max_pct": 32,
+      "latency_ms_avg": 1.0,
+      "jitter_ms": 0.5,
+      "ok_rounds": 31,
+      "bad_rounds": 27,
+      "error_rounds": 0,
+      "error_type": null,
+      "first_bad_round_at": "2026-09-24T21:00:01Z",
+      "hops": [
+        {
+          "n": 1,
+          "ip": "<hq-edge-lan-ip>",
+          "device": "<hq-edge>",
+          "interface": "GigabitEthernet1"
+        },
+        {
+          "n": 2,
+          "ip": "<wan-underlay-ip-b>",
+          "device": "<wan-03>",
+          "interface": "GigabitEthernet4"
+        },
+        {
+          "n": 3,
+          "ip": "<transit-ip-b>",
+          "device": null,
+          "interface": null
+        },
+        {
+          "n": 4,
+          "ip": "<cloud-edge-wan-ip>",
+          "device": "<cloud-edge>",
+          "interface": "GigabitEthernet2"
+        },
+        {
+          "n": 5,
+          "ip": "<cloud-agent-ip>",
+          "device": null,
+          "interface": null
+        }
+      ],
       "note": "Baseline. Worse than the forward direction (19% vs 12%) but the same shape: steady loss, no errors, 1 ms. Both directions bad points at the shared path between <hq-edge> and <cloud-edge>, not one agent."
     },
     {
-      "scope": "test:<a2s-test-id>/<cloud-agent>", "test_id": "<a2s-test-id>", "name": "<a2s-test-name>", "agent": "<cloud-agent>", "server": "<server-ip>",
-      "src_device": "<cloud-edge>", "dst_device": "<cloud-edge>", "keys": ["test:<a2s-test-id>", "device:<cloud-edge>"],
-      "at": "2026-09-24T22:00:08Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 2.3, "jitter_ms": 0.6,
-      "ok_rounds": 62, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null,
+      "scope": "test:<a2s-test-id>/<cloud-agent>",
+      "test_id": "<a2s-test-id>",
+      "name": "<a2s-test-name>",
+      "agent": "<cloud-agent>",
+      "server": "<server-ip>",
+      "src_device": "<cloud-edge>",
+      "dst_device": "<cloud-edge>",
+      "keys": [
+        "test:<a2s-test-id>",
+        "device:<cloud-edge>"
+      ],
+      "at": "2026-09-24T22:00:08Z",
+      "state": "ok",
+      "loss_pct": 0,
+      "loss_max_pct": 0,
+      "latency_ms_avg": 2.3,
+      "jitter_ms": 0.6,
+      "ok_rounds": 62,
+      "bad_rounds": 0,
+      "error_rounds": 0,
+      "error_type": null,
+      "first_bad_round_at": null,
+      "hops": [
+        {
+          "n": 1,
+          "ip": "<splunk-ip>",
+          "device": null,
+          "interface": null
+        }
+      ],
       "note": "Baseline. Clean: 0% on 62 rounds, 2 ms. Source and server sit behind the same edge, so this row says the cloud agent and its LAN are fine; the loss above is beyond <cloud-edge>."
     }
   ],
   "unchanged": 0,
   "baseline_ref": null,
-  "alerts": { "firing": 0, "items": [] }
+  "alerts": {
+    "firing": 0,
+    "items": []
+  }
 }

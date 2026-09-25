@@ -171,6 +171,17 @@
         "affected_devices": {
           "type": "array",
           "items": {"type": "string"}
+        },
+        "entity": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "description": "The one entity this record is about, written to the instance's typed columns (health/metadata-servicenow.json entity_fields). Same spellings as the keys: device is an inventory/prod.json name; interface is the interface name on that device; ip is dotted-quad; service is a services[].name from inventory/services.json. Omit or null when the request is not about one entity.",
+          "properties": {
+            "device": { "type": ["string", "null"], "pattern": "^[^ ].*$" },
+            "interface": { "type": ["string", "null"], "pattern": "^[^ ].*$" },
+            "ip": { "type": ["string", "null"], "pattern": "^[0-9]{1,3}(\\.[0-9]{1,3}){3}$" },
+            "service": { "type": ["string", "null"], "pattern": "^[^ ].*$" }
+          }
         }
       }
     }

@@ -1,0 +1,38 @@
+{
+  "schema": "services/v1",
+  "keys": [
+    "service:DEA-CLOUD-HQ",
+    "service:Splunk"
+  ],
+  "updated_at": "2026-09-25T14:10:00Z",
+  "source_agent": "ops-snow-mcp",
+  "services": [
+    {
+      "name": "DEA-CLOUD-HQ",
+      "aliases": [
+        "DEA-CLOUD-to-HQ",
+        "DEA-HQ-to-CLOUD",
+        "CLOUD-to-HQ"
+      ],
+      "owner": null,
+      "source_ref": "thousandeyes:test/8435764",
+      "confirmed_by": "user",
+      "confirmed_at": "2026-09-25T14:09:30Z"
+    },
+    {
+      "name": "Splunk",
+      "aliases": [
+        "Splunk Connectivity",
+        "Splunk API"
+      ],
+      "owner": "Network Operations",
+      "source_ref": "thousandeyes:test/8460549",
+      "confirmed_by": "user",
+      "confirmed_at": "2026-09-25T14:09:30Z"
+    }
+  ],
+  "candidates_rejected": [
+    "Cloud Management",
+    "1.44.96.0/24"
+  ]
+}

@@ -1,34 +1,37 @@
 {
-  "schema": "network-ops-state/v2",
-  "updated_at": "2026-09-13T16:00:00Z",
+  "schema": "network-ops-state/v3",
+  "updated_at": "2026-09-25T16:00:00Z",
   "source_agent": "network-ops",
   "status": "merged",
-  "headline": "Add WAN NTP peers to five edges that have no ntp stanza in git",
+  "headline": "Set ip mtu 1400 on WAN-01 GigabitEthernet4 to match WAN-03; the CLOUD-to-HQ path lost 13-19% with clean ends",
   "next_action": null,
   "mode": "implement",
+  "problem_ref": "P-20260924-01",
   "finding": {
-    "source": "operator",
-    "headline": "NTP unsynchronized on all five checked edges; WAN not in the fail list",
-    "kind": "missing_config"
+    "source": "health:P-20260924-01",
+    "headline": "WAN-01 GigabitEthernet4 has no ip mtu line; WAN-03 GigabitEthernet4 (passing peer) carries ip mtu 1400",
+    "kind": "missing_config",
+    "verified_in_git": true
   },
   "change": {
     "devices": [
-      "AI-BRANCH-01",
-      "AI-BRANCH-02",
-      "AI-CLOUD-EDGE",
-      "AI-DC-EDGE",
-      "AI-HQ-EDGE"
+      "WAN-01"
     ],
-    "peer": "WAN-01",
-    "files": [],
-    "summary": "Added the approved NTP peer lines to five edge configs without changing unrelated content",
-    "operational_ref": "operational/runs/2026-09-13T15-59-30Z.json",
-    "monitoring_ref": "operational/runs/2026-09-13T16-00-00Z.json"
+    "interfaces": [
+      "WAN-01/GigabitEthernet4"
+    ],
+    "peer": "WAN-03",
+    "files": [
+      "inventory/configs/WAN-01.cfg"
+    ],
+    "summary": "ensure_present 'ip mtu 1400' under interface GigabitEthernet4 on WAN-01; nothing else touched",
+    "operational_ref": "operational/runs/2026-09-25T15-58-10Z.json",
+    "monitoring_ref": "operational/runs/2026-09-25T15-59-40Z.json"
   },
   "git": {
-    "ref": "dev",
-    "commit_sha": "abc123def456",
-    "html_url": "https://github.com/example-org/network-sot/commit/abc123def456"
+    "ref": "main",
+    "commit_sha": "abc123def4567890abc123def4567890abc123de",
+    "html_url": "https://github.com/example-org/network-sot/commit/abc123def4567890abc123def4567890abc123de"
   },
   "ci": {
     "workflow": "apply.yml",
@@ -43,11 +46,33 @@
     "html_url": "https://github.com/example-org/network-sot/pull/42",
     "merged": true
   },
+  "relations": [
+    {
+      "from": "test:8435764",
+      "to": "interface:WAN-01/GigabitEthernet4",
+      "rel": "depends_on",
+      "basis": "asserted",
+      "evidence_ref": "inventory/configs/WAN-01.cfg"
+    },
+    {
+      "from": "interface:WAN-01/GigabitEthernet4",
+      "to": "test:8435764",
+      "rel": "caused",
+      "basis": "asserted",
+      "evidence_ref": "inventory/configs/WAN-01.cfg"
+    },
+    {
+      "from": "test:8435764",
+      "to": "change:abc123def4567890abc123def4567890abc123de",
+      "rel": "resolved_by",
+      "basis": "asserted",
+      "evidence_ref": "https://github.com/example-org/network-sot/pull/42"
+    }
+  ],
   "keys": [
-    "device:AI-BRANCH-01",
-    "device:AI-BRANCH-02",
-    "device:AI-CLOUD-EDGE",
-    "device:AI-DC-EDGE",
-    "device:AI-HQ-EDGE"
+    "device:WAN-01",
+    "interface:WAN-01/GigabitEthernet4",
+    "test:8435764",
+    "change:abc123def4567890abc123def4567890abc123de"
   ]
 }

@@ -1,7 +1,7 @@
 ---
 name: github-gitops-change
-version: "1.3.0"
-description: "v1.3.0 — Mechanically apply an exact Network Ops prescription without polling Actions."
+version: "1.3.1"
+description: "v1.3.1 — Record interfaces[] (<device>/<interface>) on the operation-run for every interface stanza the prescription scoped. Mechanically apply an exact Network Ops prescription without polling Actions."
 ---
 
 # GitHub GitOps Change
@@ -39,11 +39,16 @@ Ambiguous or incomplete prescription → `blocked` before any write.
   under `operational/runs/`, including blocked and no-change outcomes.
 - A successful put records `status=ok`, `result=submitted`, and null workflow
   fields; Pipeline Monitor writes the later watch result.
+- When the prescription's `Scope` is an interface stanza (`interface <name>`),
+  record `interfaces[]` as `<device>/<interface>` for every written target,
+  spelled as in the config; a global or non-interface scope leaves it empty.
+  Do not write `relations[]` on the run — `devices[]`, `interfaces[]`, and
+  `git.commit_sha` are the edge.
 - Set top-level `keys` to the deduplicated union of exact structured entity
   keys, or `[]`; never infer from prose. Allowed prefixes are
   `device|interface|site|service|test|control|incident|change`. Use `site:`
-  for location and `interface:<device>/<interface>` when the device is known.
-  Keep nested `keys`.
+  for location and `interface:<device>/<interface>` for every `interfaces[]`
+  item. Keep nested `keys`.
 
 Exact edit flow: [references/change.md](references/change.md).
 Exact tools: [references/tools.md](references/tools.md).

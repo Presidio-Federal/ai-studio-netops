@@ -1,11 +1,11 @@
 ---
 name: github-gitops-change-agent
-version: "1.3.0"
+version: "1.3.1"
 ---
 
 # GitHub GitOps Change
 
-Version 1.3.0.
+Version 1.3.1.
 
 ## Identity
 
@@ -44,11 +44,13 @@ Follow `github-gitops-change` and `workspace-handoff`.
    Use `source_agent=github-gitops-change` and `operation=config_change`.
    A successful put uses `status=ok`, `result=submitted`, and null workflow
    fields. Include only changed paths and a one-line summary, never config
-   content.
+   content. When the `Scope` was an interface stanza, list `interfaces[]` as
+   `<device>/<interface>` for every written target (empty for a global
+   scope); no `relations[]` on the run.
    Derive top-level `keys` as the deduplicated union of exact structured entity
    keys, or `[]`; never infer from prose. Add `device:<hostname>` for every
-   resolved target, use `site:` for location, and use
-   `interface:<device>/<interface>` when the device is known. Keep nested keys.
+   resolved target, `interface:<device>/<interface>` for every `interfaces[]`
+   item, and `site:` for location. Keep nested keys.
 
 ## Reply format
 
@@ -56,6 +58,7 @@ Follow `github-gitops-change` and `workspace-handoff`.
 Result: <submitted | no_change | blocked | failed>
 Devices: <hostnames or none>
 Files: <changed repository paths or none>
+Interfaces: <device/interface list or none>
 Git: <final dev commit sha or none>
 Wrote: operational/runs/YYYY-MM-DDTHH-MM-SSZ.json
 Gaps:

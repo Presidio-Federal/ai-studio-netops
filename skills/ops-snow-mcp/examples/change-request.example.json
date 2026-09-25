@@ -47,6 +47,12 @@
     "affected_devices": [
       "AI-BRANCH-03",
       "cloud-edge"
-    ]
+    ],
+    "entity": {
+      "device": "AI-BRANCH-03",
+      "interface": null,
+      "ip": null,
+      "service": null
+    }
   }
 }

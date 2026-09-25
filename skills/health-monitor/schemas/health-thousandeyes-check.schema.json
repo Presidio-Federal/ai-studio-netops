@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-thousandeyes-check/v3",
   "title": "health/thousandeyes/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "ThousandEyes lab slip (Kind observation). Written on the first visit, when at least one test row moved materially against the board on health/metadata-thousandeyes.json (state, loss, latency, error rounds, row appeared or vanished), or when coverage is not complete. A quiet visit writes the board only. metrics: one estate row. readings: one row per test + agent that moved, same shape as a board row plus note. vs_prior.changed: one structured item per reading. Do not store rounds.",
+  "description": "ThousandEyes lab slip (Kind observation). Written on the first visit, when at least one test row moved materially against the board on health/metadata-thousandeyes.json (state, loss, latency, error rounds, row appeared or vanished), or when coverage is not complete. A quiet visit writes the board only. metrics: one estate row. readings: one row per test + agent that moved, same shape as a board row plus note. Readings carry hops from path-vis-detail (every row on the baseline, degraded rows afterwards, else carried from the board); hops is the edge — there is no relations[] on this stamp. vs_prior.changed: one structured item per reading. Do not store rounds.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "alerts", "vs_prior"],
@@ -100,8 +100,8 @@
       "additionalProperties": false,
       "required": ["keys", "field", "prior", "current", "at"],
       "properties": {
-        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
-        "field": { "type": "string", "enum": ["state", "loss_pct", "latency_ms_avg", "error_rounds", "row"] },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 16, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" } },
+        "field": { "type": "string", "enum": ["state", "loss_pct", "latency_ms_avg", "error_rounds", "hops", "row"], "description": "hops: the resolved device sequence (path_devices) differs from the board row; prior/current are the two sequences joined with >." },
         "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
         "current": { "type": ["string", "number", "integer", "boolean", "null"] },
         "at": { "type": "string", "minLength": 1 }
@@ -135,7 +135,7 @@
     "reading": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["scope", "test_id", "name", "agent", "server", "src_device", "dst_device", "keys", "at", "state", "loss_pct", "loss_max_pct", "latency_ms_avg", "jitter_ms", "ok_rounds", "bad_rounds", "error_rounds", "error_type", "first_bad_round_at", "note"],
+      "required": ["scope", "test_id", "name", "agent", "server", "src_device", "dst_device", "keys", "at", "state", "loss_pct", "loss_max_pct", "latency_ms_avg", "jitter_ms", "ok_rounds", "bad_rounds", "error_rounds", "error_type", "first_bad_round_at", "hops", "note"],
       "description": "Board row plus note. Numbers come from the network result rounds in this window; state is the nurse's read of those numbers against the fixed rule in references/thousandeyes.md.",
       "properties": {
         "scope": { "type": "string", "pattern": "^test:[^ /]+/[^ ]+$", "description": "test:<testId>/<agentName>. Stable key for the board diff." },
@@ -145,7 +145,8 @@
         "server": { "type": ["string", "null"], "description": "serverIp on the result rows (the far agent's IP on agent-to-agent)." },
         "src_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr contains the agent's IP (metadata agents[].device). Null when unresolved." },
         "dst_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr contains server. Null when unresolved." },
-        "keys": { "type": "array", "uniqueItems": true, "maxItems": 4, "items": { "type": "string", "pattern": "^(test|device|service):[^ ].*$" }, "description": "Exactly test:<testId>, device:<src_device>, device:<dst_device>, service:<metadata service> when set. Never a device or interface between the ends: the path is not measured." },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 16, "items": { "type": "string", "pattern": "^(test|device|interface|service):[^ ].*$" }, "description": "test:<testId>, device:<src_device>, device:<dst_device>, service:<metadata service> when set, plus device: and interface:<device>/<interface> for each hop path-vis-detail returned that matched a topology cidr." },
+        "hops": { "type": ["array", "null"], "maxItems": 16, "items": { "$ref": "#/$defs/hop" }, "description": "results[0].pathTraces[0].hops[] from path-vis-detail in array order (the API hopNumber is null). Measured on the baseline for every row and on degraded rows afterwards; otherwise carried from the board row. Null only when never measured for this scope." },
         "at": { "type": "string", "minLength": 1, "description": "Newest round date." },
         "state": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
         "loss_pct": { "type": ["number", "null"], "description": "Mean loss over ok rounds, whole number. Null when no ok round." },
@@ -157,7 +158,18 @@
         "error_rounds": { "type": ["integer", "null"], "description": "Rounds with errorType set." },
         "error_type": { "type": ["string", "null"], "description": "The errorType seen most; null when none." },
         "first_bad_round_at": { "type": ["string", "null"], "description": "Onset of the current bad stretch: the prior board value when that row was already bad, else the oldest bad round in this window. Null when this window has no bad round." },
-        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: what moved, in which direction, since when, whether the reverse direction agrees, whether latency moved with loss. Not the columns again. No cause, hop, probe protocol, or cross-test conclusion; no addresses." }
+        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: what moved, in which direction, since when, whether the reverse direction agrees, whether latency moved with loss. Not the columns again. No hop list, cause, probe protocol, or cross-test conclusion; no addresses." }
+      }
+    },
+    "hop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["n", "ip", "device", "interface"],
+      "properties": {
+        "n": { "type": "integer", "minimum": 1, "description": "1-based position in the hops array (hopNumber from the API is null)." },
+        "ip": { "type": "string", "minLength": 1, "description": "ipAddress." },
+        "device": { "type": ["string", "null"], "description": "Topology device whose interface cidr contains ip. Null when none." },
+        "interface": { "type": ["string", "null"], "description": "That interface's name. Null when device is null." }
       }
     }
   }

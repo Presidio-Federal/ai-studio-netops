@@ -70,6 +70,13 @@
       "uniqueItems": true,
       "items": { "type": "string" }
     },
+    "interfaces": {
+      "type": "array",
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[^ /]+/[^ ]+$" },
+      "description": "GitOps Change only: `<device>/<interface>` for every interface stanza the prescription's Scope named on a device that was written. Empty for a global scope. With devices[] and git.commit_sha this is the change → device / interface edge as columns; no relations[] on this record."
+    },
     "summary": { "type": "string", "maxLength": 1000 },
     "keys": {
       "type": "array",
@@ -78,7 +85,8 @@
       "items": {
         "type": "string",
         "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
-      }
+      },
+      "description": "device:<d> for every devices[] item and interface:<d>/<i> for every interfaces[] item. Nothing from summary or marker text."
     }
   }
 }

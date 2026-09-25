@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.8.5"
-description: "v3.8.5 — Dispatch/onsite: if they are on a recommend:kb trend ticket, ask to draft a KB. Write Knowledge only after yes. Never the schedule folder."
+version: "3.9.0"
+description: "v3.9.0 — Writer of inventory/services.json (discover from cmdb_ci_service + ThousandEyes test names, ask, write confirmed rows); typed entity columns on every INC/CHG create/update via extra_fields from health/metadata-servicenow.json entity_fields, read back with snow_query_table. Dispatch/onsite: if they are on a recommend:kb trend ticket, ask to draft a KB. Never the schedule folder."
 ---
 
 # Ops ServiceNow Operator skill
@@ -11,6 +11,15 @@ assignment groups plus the latest Trends stamp — no lab marker
 required. Lab cases use `servicenow/metadata-lab.json` plus
 `inventory/prod.json`. You draft Knowledge when they ask this
 turn. You do not run the Trends scan.
+
+You own two edges. A ticket that names its device in the
+instance's typed column (`extra_fields`, columns from
+`health/metadata-servicenow.json` `entity_fields`) is joinable
+without prose parsing — fill it on every create and update that
+names one entity (`references/incidents.md`, **Typed entity
+columns**). `inventory/services.json` is the only source of
+`service:` spellings — you discover candidates, ask, and write
+what they confirmed (`references/services.md`).
 
 A mutation is still one authorized create/update/assign/KB draft
 per invoke, then read-back. You do not diagnose the path. You
@@ -46,12 +55,19 @@ Knowledge: `snow_find_knowledge`, `snow_get_knowledge` on
 recommend. `snow_create_knowledge` / `snow_update_knowledge`
 only per `references/knowledge.md` (draft, this-turn ask).
 
-`snow_query_table` is read-only. Prefer dedicated find/get tools.
+`snow_query_table` is read-only. Prefer dedicated find/get tools;
+use it for exactly two things: reading typed `u_` columns back
+after a write (get tools do not return them), and the
+`cmdb_ci_service` discovery query on a registry visit.
 Catalog and asset tools are out of scope. `snow_find_change_tasks`
 / `snow_upsert_change_task` exist; do not create extra CTASK
 records. Incident tools have no `correlation_id` parameter;
 stamp markers into description / work_notes and search them.
-Change tools accept `correlation_id` / `external_id`. Connector
+Change tools accept `correlation_id` / `external_id`. The four
+create/update tools accept `extra_fields` (a map of `u_` column →
+value, connector ≥ 1.2.0); an older connector answers that the
+parameter is unknown — finish the mutation without it and say so
+in the result. Connector
 summaries return `number`, `sys_id`, `state`, `updated_at`; they
 do not return a record URL.
 
@@ -67,10 +83,16 @@ Paths and catalog: **`workspace-handoff`**. When/how:
 | `servicenow/cases/index.json` | snapshot |
 | `state/servicenow.json` | state |
 | `servicenow/requests/**` | request / result queue |
+| `inventory/services.json` | snapshot — services registry (the only `inventory/` path you write) |
+
+Read only: `health/metadata-servicenow.json` (`entity_fields`),
+`health/metadata-thousandeyes.json` (`tests[]` names on a
+registry visit), `inventory/prod.json`.
 
 Use exactly: `references/dispatch.md`, `references/metadata.md`,
 `references/incidents.md`,
 `references/knowledge.md`, `references/changes.md`,
+`references/services.md`,
 `references/workspace-contract.md`,
 `references/state.md`, `schemas/servicenow-metadata-lab.schema.json`,
 `schemas/servicenow-request.schema.json`,
@@ -78,18 +100,22 @@ Use exactly: `references/dispatch.md`, `references/metadata.md`,
 `schemas/servicenow-state.schema.json`,
 `schemas/servicenow-cases-active.schema.json`,
 `schemas/servicenow-cases-index.schema.json`,
+`schemas/services.schema.json`,
 `examples/servicenow-metadata-lab.example.json`,
 `examples/incident-request.example.json`,
 `examples/change-request.example.json`,
 `examples/result.example.json`,
-`examples/servicenow-state.example.json`.
+`examples/servicenow-state.example.json`,
+`examples/services.example.json`.
 Do not search the workspace for them. Do not pass
 `Internal directory` as a filename.
 
 Every structured JSON write requires top-level `keys`: a
 deduplicated canonical union, or `[]`. Derive `device:` only
-from explicit device fields and derive `incident:` / `change:`
-only from a typed record number in the payload. Keep nested
+from explicit device fields (`affected_devices`, `entity.device`)
+and derive `incident:` / `change:`
+only from a typed record number in the payload. `service:` only
+from `entity.service` or a registry `services[].name`. Keep nested
 identity fields. Never key request IDs, correlation IDs,
 recommendations, prose mentions, or source refs. A location,
 when explicitly present, is `site:` (never `location:`).
@@ -124,7 +150,16 @@ find-groups. Do not stop for a missing lab marker.
 
 **Lab ticket / board:** `read_file` `servicenow/metadata-lab.json`
 if it exists. Then `inventory/prod.json`. Then prior
-`state/servicenow.json` if present.
+`state/servicenow.json` if present. Before a mutation that names
+one entity: `health/metadata-servicenow.json` (`entity_fields`).
+
+**Services registry** (`Set up the services registry.` / `Update
+the services registry.`): `references/services.md`. First tools:
+`read_file` `inventory/services.json`, `inventory/prod.json`,
+`health/metadata-thousandeyes.json`, `servicenow/metadata-lab.json`.
+One `snow_query_table` on `cmdb_ci_service`. Then **ask**. Write
+`inventory/services.json` only after they answer. No INC/CHG
+mutation, no board rewrite on this invoke.
 
 ## State machine
 
@@ -137,9 +172,15 @@ needed) → visit or STOP.
 
 Lab invoke with marker: READ_METADATA → READ_PROD →
 READ_PRIOR_STATE → READ_TRENDS_STAMP → READ_EVIDENCE →
-(recommend | assign | draft KB | mutate one | board) →
+[READ_ENTITY_FIELDS] →
+(recommend | assign | draft KB | mutate one (+ `extra_fields`) | board) →
+READ_BACK (+ `snow_query_table` for typed columns) →
 REFRESH_CASES → WRITE_ACTIVE → WRITE_INDEX → WRITE_STATE →
 WRITE_METADATA → VALIDATE → STOP
+
+Services registry: READ_REGISTRY → READ_PROD → READ_TE_BOARD →
+READ_MARKER → QUERY_SERVICE_CIS → CANDIDATES → ASK → STOP; on
+their answer: WRITE_REGISTRY → READ_BACK → STOP.
 
 On failure: stop before any later mutation. Do not guess missing
 values. Do not retry with invented paths or identifiers. Preserve
@@ -158,7 +199,9 @@ policy: `confirmed-network-incident-v1`,
 authorization. Policy does not authorize KB draft, assign, or
 production change creation, approval, scheduling, implemented,
 or close. Missing authorization: `status=needs_approval`,
-`action=noop`, no mutation.
+`action=noop`, no mutation. The registry write is authorized by
+their answer to the candidate list this conversation — nothing
+else; a registry visit never touches a ServiceNow record.
 
 ## Read-before-write
 
@@ -206,6 +249,9 @@ Validate with `scripts/validate_handoff.py` in `request` or
 - Incident task: `references/incidents.md`
 - KB draft: `references/knowledge.md`
 - Change task: `references/changes.md`
+- Typed device / interface / service columns on a ticket:
+  `references/incidents.md` **Typed entity columns**
+- Services registry: `references/services.md`
 - Board: `references/state.md`
 - Paths: `workspace-handoff` then `references/workspace-contract.md`
 - Do not load `references/assets.md` or `references/catalog.md`

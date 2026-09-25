@@ -64,14 +64,18 @@ on `health/metadata-thousandeyes.json`, stamp or quiet, rewrite the
 board.
 
 Order: READ_BOARD → READ_TOPOLOGY → [AGENTS] → (per test: NETWORK)*
-→ ALERTS → BUILD → DIFF → DECIDE → [WRITE_STAMP → READ_BACK →
+→ ALERTS → BUILD → (per row that gets a path: PATH_VIS →
+PATH_VIS_DETAIL)* → DIFF → DECIDE → [WRITE_STAMP → READ_BACK →
 PRUNE] → WRITE_BOARD → STOP.
 
 Window is always `thousandeyes.window` from metadata (default `1h`);
 no `7d`, no `24h`. State per row comes from the fixed rule (majority
 of rounds with loss ≥ 5, mean loss ≥ 5, or no ok round). Loss moves
 under 10 points are board-only. `alerts.firing` 0 is not proof of
-health. No path-vis, no `te_get_alert`, no `te_raw_api_call`.
+health. Path-vis runs for every row on the baseline and for
+degraded readings afterwards: `path-vis` (`10m`), then
+`path-vis-detail`; `hops` is the edge, no `relations[]`. No
+`te_get_alert`, no `te_raw_api_call`.
 
 ## Stamps
 
@@ -89,7 +93,8 @@ directories. Do not write `health-board.md`. Do not
 | Workspace file read/write | 12 |
 | Splunk collection (`splunk_search`) | 2 (plus one retry each) |
 | Splunk listing (resolve only) | 2 |
-| ThousandEyes `te_get_test_results` | one per metadata test, one retry each |
+| ThousandEyes `te_get_test_results` network | one per metadata test, one retry each |
+| ThousandEyes `te_get_test_results` path-vis + detail | one pair per row on the baseline; then one pair per degraded reading, max 4 |
 | ThousandEyes `te_list_alerts` | 1 |
 | ThousandEyes `te_agents_get_agents` | 1 (baseline / unknown agent) |
 | ThousandEyes listing (resolve only) | 2 |

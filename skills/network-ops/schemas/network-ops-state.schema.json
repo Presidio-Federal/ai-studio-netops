@@ -1,9 +1,10 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "network-ops-state/v2",
+  "$id": "network-ops-state/v3",
   "title": "state/network-ops.json",
-  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke.",
+  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke. v3: problem_ref ties the treatment to a Health Analyzer problem; relations[] carries what Network Ops concluded (asserted) from git plus the chart; change.interfaces names the exact stanzas touched.",
   "type": "object",
+  "additionalProperties": false,
   "required": [
     "schema",
     "updated_at",
@@ -12,16 +13,28 @@
     "headline",
     "next_action",
     "mode",
+    "problem_ref",
+    "finding",
     "change",
     "git",
     "ci",
     "pr",
+    "relations",
     "keys"
   ],
   "properties": {
-    "schema": { "type": "string", "const": "network-ops-state/v2" },
-    "updated_at": { "type": "string", "minLength": 1 },
-    "source_agent": { "type": "string", "const": "network-ops" },
+    "schema": {
+      "type": "string",
+      "const": "network-ops-state/v3"
+    },
+    "updated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_agent": {
+      "type": "string",
+      "const": "network-ops"
+    },
     "status": {
       "type": "string",
       "enum": [
@@ -35,74 +48,369 @@
         "failed"
       ]
     },
-    "headline": { "type": "string", "minLength": 1, "maxLength": 240 },
-    "next_action": { "type": ["string", "null"], "maxLength": 500 },
-    "mode": { "type": "string", "enum": ["recommend", "implement"] },
+    "headline": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 240
+    },
+    "next_action": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 500
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "recommend",
+        "implement"
+      ]
+    },
+    "problem_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^P-[0-9]{8}-[0-9]{2}$",
+      "description": "The state/health.json problems[].id this work treats. Set when the ask matches one problem (the Analyzer's order names it, or the operator named its keys or symptom). Null when the ask is not about a charted problem \u2014 never guessed."
+    },
     "finding": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source",
+        "headline",
+        "kind",
+        "verified_in_git"
+      ],
       "properties": {
-        "source": { "type": "string" },
-        "headline": { "type": "string" },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "description": "`health:<P-id>` when problem_ref is set; `operator`; or the catalog path of the record the finding came from (state/testing.json, a stamp)."
+        },
+        "headline": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
         "kind": {
           "type": "string",
-          "enum": ["missing_config", "test_bug", "other"]
+          "enum": [
+            "missing_config",
+            "wrong_config",
+            "test_bug",
+            "other"
+          ]
+        },
+        "verified_in_git": {
+          "type": "boolean",
+          "description": "true only when the target config body and a passing/canonical peer were both read on dev and the difference named in headline is literally there. false for a hypothesis you could not check in git."
         }
       }
     },
     "change": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "devices",
+        "interfaces",
+        "peer",
+        "files",
+        "summary",
+        "operational_ref",
+        "monitoring_ref"
+      ],
       "properties": {
-        "devices": { "type": "array", "items": { "type": "string" } },
-        "peer": { "type": ["string", "null"] },
-        "files": { "type": "array", "items": { "type": "string" } },
-        "summary": { "type": "string", "maxLength": 1000 },
+        "devices": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Exact target hostnames as spelled in inventory/prod.json."
+        },
+        "interfaces": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[^ /]+/[^ ]+$"
+          },
+          "description": "`<device>/<interface>` for every interface stanza the prescription names as its scope. Empty when the scope is global or a non-interface block."
+        },
+        "peer": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "files": {
+          "type": "array",
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 1000
+        },
         "operational_ref": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^operational/runs/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z\\.json$",
           "description": "Workspace-relative operation record returned by GitOps Change."
         },
         "monitoring_ref": {
-          "type": ["string", "null"],
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^operational/runs/[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z\\.json$",
           "description": "Workspace-relative operation record returned by Pipeline Monitor."
         }
       }
     },
     "git": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "commit_sha",
+        "html_url"
+      ],
       "properties": {
-        "ref": { "type": "string" },
-        "commit_sha": { "type": ["string", "null"] },
-        "html_url": { "type": ["string", "null"] }
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "commit_sha": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "html_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       }
     },
     "ci": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workflow",
+        "ref",
+        "run_id",
+        "html_url",
+        "result",
+        "marker"
+      ],
       "properties": {
-        "workflow": { "type": "string" },
-        "ref": { "type": "string" },
-        "run_id": { "type": ["string", "null"] },
-        "html_url": { "type": ["string", "null"] },
-        "result": {
-          "type": ["string", "null"],
-          "enum": ["pass", "fail", "unknown", "running", null]
+        "workflow": {
+          "type": [
+            "string",
+            "null"
+          ]
         },
-        "marker": { "type": ["string", "null"], "maxLength": 500 }
+        "ref": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "html_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "result": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pass",
+            "fail",
+            "unknown",
+            "running",
+            null
+          ]
+        },
+        "marker": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 500
+        }
       }
     },
     "pr": {
       "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "number",
+        "html_url",
+        "merged"
+      ],
       "properties": {
-        "number": { "type": ["integer", "null"] },
-        "html_url": { "type": ["string", "null"] },
-        "merged": { "type": ["boolean", "null"] }
+        "number": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "html_url": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "merged": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
       }
+    },
+    "relations": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "$ref": "#/$defs/relation"
+      },
+      "description": "What Network Ops concluded, asserted. Both ends in keys. See references/relations.md for the three rows allowed and when."
     },
     "keys": {
       "type": "array",
+      "maxItems": 40,
       "uniqueItems": true,
       "items": {
         "type": "string",
         "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
-      }
+      },
+      "description": "Exactly: device:<d> for change.devices, interface:<d>/<i> for change.interfaces, every relations[].from and .to. Nothing from prose."
+    }
+  },
+  "$defs": {
+    "relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "rel",
+        "basis",
+        "evidence_ref"
+      ],
+      "properties": {
+        "from": {
+          "type": "string",
+          "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+        },
+        "to": {
+          "type": "string",
+          "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+        },
+        "rel": {
+          "type": "string",
+          "enum": [
+            "depends_on",
+            "caused",
+            "resolved_by"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "const": "asserted"
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "depends_on / caused: the git path of the config you read (`inventory/configs/<file>` as listed on dev). resolved_by: the PR html_url or the monitoring operational/runs/ path."
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "depends_on"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(service|test):"
+              },
+              "to": {
+                "pattern": "^(device|interface):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "caused"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(device|interface):"
+              },
+              "to": {
+                "pattern": "^(test|service|incident):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "resolved_by"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(test|incident):"
+              },
+              "to": {
+                "pattern": "^change:"
+              }
+            }
+          }
+        }
+      ]
     }
   }
 }
