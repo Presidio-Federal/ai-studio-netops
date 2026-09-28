@@ -22,3 +22,4 @@ Deployed model is **MiniMax** unless noted.
 | Health Device | 1.11.0 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 4.0.1 | MiniMax |
+| Relationship agent | 1.0.0 | MiniMax |
