@@ -20,18 +20,27 @@ ask to **one** problem:
   (`the CLOUD-to-HQ loss`) and exactly one `active` or `watching`
   problem carries that key or test name.
 
-Two problems fit, or none → `problem_ref` null and say so in
-`Gaps:`. Never pick one to have one.
+Two problems fit the operator's words, or none → `problem_ref` null
+and say so in `Gaps:`. Never pick one to have one. **That is the
+whole effect of a non-match.** The work continues from the other
+evidence source (compliance result rows or the operator's own
+device and feature words — SKILL.md "Evidence sources"); git is
+listed and read exactly as it would be with a match. An
+open-ended ask with no problem named is review mode
+(`references/review.md`), not a non-match.
 
 With a match: `problem_ref` = its `id`; `finding.source` =
 `health:<id>`; `finding.headline` starts from `hypothesis`; read
 its `symptom_refs` and `evidence_refs` (at most four files, the
 newest first) **before** listing configs — they say which device,
 interface, or path to open in git. A `resolved` problem is not
-treated; answer that it is resolved and stop.
+treated as that problem; if the operator still names devices and a
+feature, proceed as an operator-sourced ask and say the problem is
+resolved.
 
-`state/health.json` absent, or no `problems[]` → `problem_ref`
-null, `finding.source` `operator` or the record path you used.
+`state/health.json` absent, no `problems[]`, or no match →
+`problem_ref` null, `finding.source` `state/testing.json` or
+`operator`.
 
 ## `finding.verified_in_git`
 

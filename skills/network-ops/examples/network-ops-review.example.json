@@ -1,0 +1,110 @@
+{
+  "schema": "network-ops-state/v3",
+  "updated_at": "2026-09-29T16:10:00Z",
+  "source_agent": "network-ops",
+  "status": "recommended",
+  "headline": "Review: 3 config-class findings across 4 devices; top is WAN-04 BGP neighbors idle because the neighbor stanza lacks the address-family activation WAN-02 carries",
+  "next_action": "Apply review[1] only with explicit authorization",
+  "mode": "recommend",
+  "problem_ref": "P-20260926-02",
+  "finding": {
+    "source": "health:P-20260926-02",
+    "headline": "WAN-04 router bgp has two neighbors with no 'neighbor <ip> activate' under address-family ipv4; WAN-02 (established peers) carries the line for each neighbor",
+    "kind": "missing_config",
+    "verified_in_git": true
+  },
+  "change": {
+    "devices": [
+      "WAN-04"
+    ],
+    "interfaces": [],
+    "peer": "WAN-02",
+    "files": [
+      "inventory/configs/WAN-04.cfg"
+    ],
+    "summary": "ensure_present 'neighbor 100.64.7.2 activate' and 'neighbor 100.64.8.2 activate' under router bgp 65000 / address-family ipv4 on WAN-04; nothing else touched",
+    "operational_ref": null,
+    "monitoring_ref": null
+  },
+  "git": {
+    "ref": "dev",
+    "commit_sha": null,
+    "html_url": null
+  },
+  "ci": {
+    "workflow": null,
+    "ref": null,
+    "run_id": null,
+    "html_url": null,
+    "result": null,
+    "marker": null
+  },
+  "pr": {
+    "number": null,
+    "html_url": null,
+    "merged": null
+  },
+  "relations": [
+    {
+      "from": "device:WAN-04",
+      "to": "incident:INC0085081",
+      "rel": "caused",
+      "basis": "asserted",
+      "evidence_ref": "inventory/configs/WAN-04.cfg"
+    }
+  ],
+  "review": [
+    {
+      "rank": 1,
+      "problem_ref": "P-20260926-02",
+      "source_ref": "health/metadata-iosxe.json#WAN-04/bgp",
+      "devices": ["WAN-04"],
+      "interfaces": [],
+      "finding": "Two WAN-04 bgp rows idle on the board; git shows the neighbors defined but not activated under address-family ipv4, unlike WAN-02 where every neighbor has 'activate'",
+      "kind": "missing_config",
+      "proposed": "ensure_present 'neighbor 100.64.7.2 activate' and 'neighbor 100.64.8.2 activate' under router bgp 65000 / address-family ipv4 on WAN-04, after the matching 'neighbor <ip> remote-as' lines",
+      "verified_in_git": true,
+      "owner": "Network Ops"
+    },
+    {
+      "rank": 2,
+      "problem_ref": null,
+      "source_ref": "health/metadata-iosxe.json#WAN-04/interface/GigabitEthernet5",
+      "devices": ["WAN-04"],
+      "interfaces": ["WAN-04/GigabitEthernet5"],
+      "finding": "Board shows input_acl BLOCK-PING-SPLUNK bound on GigabitEthernet5; git on dev has no such ACL or binding — the box carries an uncommitted change",
+      "kind": "unplanned_change",
+      "proposed": null,
+      "verified_in_git": true,
+      "owner": "Ops Network Sync"
+    },
+    {
+      "rank": 3,
+      "problem_ref": "P-20260926-03",
+      "source_ref": "state/health.json#P-20260926-03",
+      "devices": ["AI-BRANCH-01", "AI-BRANCH-02"],
+      "interfaces": ["AI-BRANCH-01/GigabitEthernet2"],
+      "finding": "GigabitEthernet2 oper up with clean counters while the branch is reported down; git shows AI-BRANCH-01 lacks the 'ip helper-address' AI-BRANCH-02 carries on its LAN interface",
+      "kind": "missing_config",
+      "proposed": "ensure_present 'ip helper-address 10.40.40.11' under interface GigabitEthernet2 on AI-BRANCH-01, after 'ip address'",
+      "verified_in_git": true,
+      "owner": "Network Ops"
+    },
+    {
+      "rank": 4,
+      "problem_ref": null,
+      "source_ref": "health/metadata-splunk.json#config",
+      "devices": ["WAN-01", "WAN-02", "WAN-03", "WAN-04"],
+      "interfaces": [],
+      "finding": "Nine administrator config commits via vty in the window with no change row on the ServiceNow board; git cannot say what changed on the box",
+      "kind": "unplanned_change",
+      "proposed": null,
+      "verified_in_git": false,
+      "owner": "Ops Network Sync"
+    }
+  ],
+  "keys": [
+    "device:WAN-04",
+    "incident:INC0085081"
+  ]
+}

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "network-ops-state/v3",
   "title": "state/network-ops.json",
-  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke. v3: problem_ref ties the treatment to a Health Analyzer problem; relations[] carries what Network Ops concluded (asserted) from git plus the chart; change.interfaces names the exact stanzas touched.",
+  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke. v3: problem_ref ties the treatment to a Health Analyzer problem; relations[] carries what Network Ops concluded (asserted) from git plus the chart; change.interfaces names the exact stanzas touched. 3.1: optional review[] — the ranked list a review-mode invoke produced; the top row is also this record's finding/change.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -312,9 +312,115 @@
         "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
       },
       "description": "Exactly: device:<d> for change.devices, interface:<d>/<i> for change.interfaces, every relations[].from and .to. Nothing from prose."
+    },
+    "review": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "$ref": "#/$defs/review_row"
+      },
+      "description": "Review mode only (an open-ended ask with no problem named). Ranked config-class findings from the chart, the four boards, and the configs read on dev. Row 1 is this record's problem_ref / finding / change. Rows owned by another agent carry proposed null. Omit the property outside review mode."
     }
   },
   "$defs": {
+    "review_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rank",
+        "problem_ref",
+        "source_ref",
+        "devices",
+        "interfaces",
+        "finding",
+        "kind",
+        "proposed",
+        "verified_in_git",
+        "owner"
+      ],
+      "properties": {
+        "rank": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        "problem_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^P-[0-9]{8}-[0-9]{2}$",
+          "description": "The chart problem this row treats, when one carries the row's device or test key. Null for a board-only finding."
+        },
+        "source_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Where the symptom is: `state/health.json#P-…`, or `health/metadata-<plane>.json#<row scope or device/kind/subject>`."
+        },
+        "devices": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "interfaces": {
+          "type": "array",
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[^ /]+/[^ ]+$"
+          }
+        },
+        "finding": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240,
+          "description": "One line: what the board or chart shows and what git shows for it."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "missing_config",
+            "wrong_config",
+            "unsaved_config",
+            "unplanned_change",
+            "test_bug",
+            "other"
+          ]
+        },
+        "proposed": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 600,
+          "description": "Exact lines, scope, and placement in one string (`ensure_present 'ip mtu 1400' under interface GigabitEthernet4 on WAN-01`). Null when the row's owner is not Network Ops or git gave no exact difference."
+        },
+        "verified_in_git": {
+          "type": "boolean"
+        },
+        "owner": {
+          "type": "string",
+          "enum": [
+            "Network Ops",
+            "Health Device",
+            "Health Monitor",
+            "Health ServiceNow",
+            "Ops Network Sync",
+            "Ops ServiceNow",
+            "Compliance Author",
+            "Network Design",
+            "operator"
+          ],
+          "description": "Network Ops when the fix is config lines in git. Otherwise the agent (workspace-handoff spelling) or `operator` whose action it is; such a row has proposed null."
+        }
+      }
+    },
     "relation": {
       "type": "object",
       "additionalProperties": false,

@@ -4,7 +4,7 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 3.0.0 | Frontier (operator-selected; GitOps orchestration risk) |
+| Network Ops | 3.1.0 | Frontier (operator-selected; GitOps orchestration risk) |
 | GitHub GitOps Change | 1.3.1 | MiniMax |
 | Pipeline Monitor | 1.2.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
