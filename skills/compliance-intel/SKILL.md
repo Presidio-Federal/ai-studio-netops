@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.18.2"
-description: "v1.18.2 — Fixed sandbox path with direct-stdin or exact-heredoc bounded NIST scan."
+version: "1.19.0"
+description: "v1.19.0 — Compliance Intelligence: NIST title delta vs the git catalog; unresolved scan runs the skill script at its Studio-shown path from file_explorer."
 ---
 
 # Compliance intel
@@ -43,32 +43,34 @@ Never `github_put_file`.
 Do not create helper scripts. Do not scrape HTML. **No curl.** Never
 `--output`. No icons/emoji. Do not dump raw tool payloads.
 
-`execute_command` is only this script. **Standard scan is one
-`unresolved` call** — not six `family` calls.
+`execute_command` runs only this skill's `scripts/query_sources.py`.
+**Use the path Studio shows for that attached skill file — copy it, do
+not retype a path from memory.** The transcript may render it as
+`Internal directory`; that is the real path, displayed. Inside the
+sandbox the workspace is the `file_explorer` folder; `cd` there first
+and keep the two workspace arguments relative.
+
+**Standard scan is one `unresolved` call** — not six `family` calls:
 
 ```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json
+cd file_explorer && cat <<'EOF' | python3 <skill>/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
+{"suites":{"compliance":{"checks":[<the compliance suite's checks[] from github_get_file — id and nist only>]}}}
+EOF
 ```
 
-Pass the `github_get_file` catalog JSON on stdin. If `execute_command` has a
-stdin field, use it. Otherwise use exactly one direct heredoc on the Python
-command (not `cat | python`):
-
-```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json <<'CATALOG_JSON'
-<catalog JSON>
-CATALOG_JSON
-```
-
-Never use `Internal directory` as a path. Do not `write_file` the catalog.
-Omit `--coverage` and/or `--intel` when that workspace file is missing.
-Stdout only. Do not redirect into a workspace file.
+Stdin is the `compliance` suite's `checks[]` only (`id`, `nist`). Never
+the whole catalog — `jobs`, `intent_aliases`, and descriptions make the
+command too large and it aborts. A missing coverage or intel file is
+normal on a first scan; the script says so under `warnings` and
+continues. Stdout only. Do not `write_file` the catalog or redirect
+into a workspace file.
 
 `family` and `lookup` are troubleshooting / named-control only. Never
 run `family` AC, AU, CM, IA, SC, SI on a scheduled or gaps visit.
 
-If that `.py` is missing: skip NIST, set `sources_status` `failed`.
-Never invent a path.
+If the command exits non-zero or the file is not found: stop, set
+`sources_status` `failed`, put the error on one line in the reply. Do
+not retype a path, do not `ls`, do not write a copy of the script.
 
 ## CRITICAL RULES
 
@@ -118,19 +120,17 @@ not assume a device that is not in the file.
 | `query_sources.py family AC` | Troubleshooting / they asked to skim one family |
 
 ```text
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json
-python3 /skills/user/compliance-intel/scripts/query_sources.py lookup AC-17
-python3 /skills/user/compliance-intel/scripts/query_sources.py family AC
+cd file_explorer && cat <<'EOF' | python3 <skill>/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
+python3 <skill>/scripts/query_sources.py lookup AC-17
+python3 <skill>/scripts/query_sources.py family AC
 ```
 
-The unresolved script reads coverage and intel from `/workspace`. Built-in
-file tools still use workspace-relative catalog paths without `/workspace/`.
-Do not paste the historical coverage file or the git catalog into
-chat. Evaluate only the returned `controls` list (plus current
-candidates and inventory).
-
-If that `.py` is missing, skip it — do not invent a workspace copy
-of the script.
+`<skill>` is the attached skill's path as Studio shows it. The
+`unresolved` command reads coverage and intel from the sandbox's
+`file_explorer` workspace folder; built-in file tools use the same
+workspace-relative catalog paths with no prefix. Do not paste the
+historical coverage file or the git catalog into chat. Evaluate only
+the returned `controls` list (plus current candidates and inventory).
 
 The skill ships a **pinned NIST OSCAL title index**. That is the standard,
 not our test list. Do not copy it into the workspace.
@@ -169,9 +169,10 @@ If `github_get_file` fails: still write intel with `sources_status: failed`
 6. FULL?    if remaining active candidates = 10:
             skip unresolved. Write coverage (catalog reconcile
             only — keep existing rows) then intel. Reply.
-7. NIST     else one execute_command:
-            unresolved --limit 20 --catalog - [--coverage] [--intel]
-            stdin = catalog JSON. Do not write_file the catalog.
+7. NIST     else one execute_command, the fixed unresolved command
+            above (cd file_explorer; --coverage and --intel always;
+            stdin = compliance checks[] id+nist only). Do not
+            write_file the catalog.
 8. JUDGE    each returned control against this estate
             (applicability, priority, suggested_assert)
 9. MERGE    coverage is accumulated working state — do not rebuild

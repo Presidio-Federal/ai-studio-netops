@@ -15,7 +15,7 @@ Deployed model is **MiniMax** unless noted.
 | Modernization Analysis | 2.0.1 | MiniMax |
 | Modernization Lifecycle | 1.4.1 | MiniMax |
 | Compliance | 1.0.1 | MiniMax |
-| Compliance Intelligence | 2.0.3 | MiniMax |
+| Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
 | Compliance Test | 1.4.2 | MiniMax |
 | Health Monitor | 1.23.1 | MiniMax |

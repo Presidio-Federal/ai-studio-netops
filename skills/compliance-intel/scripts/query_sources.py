@@ -731,10 +731,21 @@ def main(argv: list[str] | None = None) -> int:
     if args.cmd == "family":
         payload = list_family(args.family)
     elif args.cmd == "unresolved":
+        warnings: list[str] = []
         try:
             catalog = load_json_arg(args.catalog, stdin_ok=True)
-            coverage = load_json_arg(args.coverage)
-            intel = load_json_arg(args.intel)
+            # Workspace files are optional: a first scan has neither.
+            # Treat a missing path as empty so the command never changes.
+            try:
+                coverage = load_json_arg(args.coverage)
+            except FileNotFoundError:
+                warnings.append(f"coverage not found: {args.coverage}; treated as empty")
+                coverage = {}
+            try:
+                intel = load_json_arg(args.intel)
+            except FileNotFoundError:
+                warnings.append(f"intel not found: {args.intel}; treated as empty")
+                intel = {}
         except FileNotFoundError as exc:
             payload = {"ok": False, "error": str(exc), "controls": []}
         except json.JSONDecodeError as exc:
@@ -746,6 +757,8 @@ def main(argv: list[str] | None = None) -> int:
                 intel=intel,
                 limit=args.limit,
             )
+            if warnings:
+                payload["warnings"] = warnings
     else:
         coverage = args.coverage.resolve() if args.coverage else None
         git_input = args.input.resolve() if args.input else None
