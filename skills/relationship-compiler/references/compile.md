@@ -8,7 +8,7 @@ no edge.
 Schema: `schemas/relationships-state.schema.json`. Example:
 `examples/relationships-state.example.json`.
 
-## 1. Read (fixed list, this order, ten at most)
+## 1. Read (fixed list, this order, twelve at most)
 
 | # | Path | Take | Watermark |
 |---|------|------|-----------|
@@ -21,13 +21,16 @@ Schema: `schemas/relationships-state.schema.json`. Example:
 | 7 | `state/health.json` | `relations[]`, `updated_at` | `updated_at` |
 | 8 | `state/network-ops.json` | `relations[]`, `git.commit_sha`, `status`, `change.devices`, `change.interfaces`, `change.operational_ref`, `updated_at` | `updated_at` |
 | 9 | the path in `state/network-ops.json` `change.operational_ref` | `git.commit_sha`, `devices[]`, `interfaces[]`, `updated_at` | `updated_at` |
-| 10 | `inventory/prod.json` | `links[]`, `collected_at` | `collected_at` |
+| 10 | `inventory/prod.json` | `links[]` | `collected_at`, else `snapshot_id`, else `updated_at` |
+| 11 | `state/testing.json` | `latest`, `updated_at` | `updated_at` |
+| 12 | the path in `state/testing.json` `latest` | `results.ran[]` rows (`device`, `keys`), `updated_at` | `updated_at` |
 
 A path that does not exist goes in `coverage.missing`; keep going.
-Never list `health/`, `state/`, or `operational/`. Row 9 is the
-only run you open; if row 8 is missing or has no
-`operational_ref`, skip it. `coverage.read[]` lists the paths that
-returned content, in order.
+Never list `health/`, `state/`, or `operational/`. Rows 9 and 12
+are the only run records you open — each named by the state file
+before it; if that state file is missing or the pointer is null,
+skip the run. `coverage.read[]` lists the paths that returned
+content, in order.
 
 **No-op check.** After reading, compare every watermark with the
 prior file's `watermarks`. All equal (and the prior file exists)
@@ -68,12 +71,20 @@ edge with `sides` 2. If only one reports it, `sides` 1.
 | `state/health.json` `relations[]` | every row | `from` | `rel` | `to` | asserted | its `updated_at` |
 | `state/network-ops.json` `relations[]` | every row | `from` | `rel` | `to` | asserted | its `updated_at` |
 | `prod.json` `links[]` | every row | `interface:<a_device>/<a_interface>` | `connected_to` | `interface:<b_device>/<b_interface>` | intended | `collected_at` |
+| testing run (row 12) `results.ran[]` | row has a `test:` key and `device` not null | that `test:` key | `tests` | `device:<device>` | observed | run `updated_at` |
+| testing run (row 12) `results.ran[]` | row `keys` carry a `control:` key and `device` not null | each `control:` key | `checks` | `device:<device>` | observed | run `updated_at` |
+
+A testing row's `status` (PASS / FAIL / SKIP) stays on the run; the
+edge says the check or control was evaluated against the device,
+not how it came out. A row in `results.not_applicable[]` produces
+nothing.
 
 Never: a `device:` key from a ticket whose typed `device` column is
 null (its title keys are prose); a hop with `device` null; a
 neighbor with `far` null; a Splunk `config`/`link`/`reload` row;
-an edge from a note, headline, or `issue` text; a `service:` key
-that is not already on the source row.
+an edge from a note, headline, `issue`, or `detail` text; a
+`service:` key that is not already on the source row; a `control:`
+key from `compliance/intel.json` (no device end).
 
 ## 3. Upsert against the prior file
 
@@ -123,13 +134,13 @@ whose condition no longer holds is dropped.
   what is new since the prior `compiled_at` — new edges, newly
   stale edges, new drift. One line. Names, not addresses.
 - `next_action`: `none`, or `Review drift[]: <n> rows`.
-- `watermarks`: the ten values from step 1 (null for a missing
-  path).
+- `watermarks`: the eleven source values from step 1 (rows 2–12;
+  null for a missing path).
 
 `write_file` `state/relationships.json`, replace in full, read it
 back. One write.
 
 ## Budget
 
-≤ 10 `read_file`, 1 `write_file`, 1 read-back. File ≤ 60 KB for
+≤ 12 `read_file`, 1 `write_file`, 1 read-back. File ≤ 80 KB for
 this lab. No MCP. No `execute_command`.

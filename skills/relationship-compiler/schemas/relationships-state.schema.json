@@ -17,7 +17,7 @@
     "coverage": {
       "type": "object", "additionalProperties": false, "required": ["read", "missing"],
       "properties": {
-        "read": { "type": "array", "maxItems": 10, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Catalog paths that returned content this compile, in read order." },
+        "read": { "type": "array", "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Catalog paths that returned content this compile, in read order." },
         "missing": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Fixed-list sources that did not exist. A reader treats an edge kind whose source is here as 'no evidence', not 'no edge'." }
       }
     },
@@ -34,7 +34,7 @@
       "properties": {
         "from": { "$ref": "#/$defs/key" },
         "to": { "$ref": "#/$defs/key" },
-        "rel": { "type": "string", "enum": ["connected_to", "peers_with", "traverses", "tests", "located_at", "impacted", "depends_on", "caused", "resolved_by", "changed"] },
+        "rel": { "type": "string", "enum": ["connected_to", "peers_with", "traverses", "tests", "checks", "located_at", "impacted", "depends_on", "caused", "resolved_by", "changed"] },
         "basis": { "type": "string", "enum": ["intended", "observed", "asserted"], "description": "Part of the identity: one row per (from, to, rel, basis). intended and observed rows for the same (from, to, rel) coexist; drift compares them." },
         "sides": { "type": ["integer", "null"], "enum": [1, 2, null], "description": "connected_to and peers_with (observed) only: 2 when both devices' own rows name each other, 1 when only one does. null on every other rel or basis." },
         "first_seen": { "type": "string", "minLength": 1, "description": "Source time when this row was first compiled. Never moves." },
@@ -48,13 +48,14 @@
         { "if": { "properties": { "rel": { "const": "peers_with" } } }, "then": { "properties": { "from": { "pattern": "^device:" }, "to": { "pattern": "^device:" } } } },
         { "if": { "properties": { "rel": { "const": "tests" } } }, "then": { "properties": { "from": { "pattern": "^test:" }, "to": { "pattern": "^(device|service):" } } } },
         { "if": { "properties": { "rel": { "const": "traverses" } } }, "then": { "properties": { "from": { "pattern": "^test:" }, "to": { "pattern": "^(device|interface):" } } } },
+        { "if": { "properties": { "rel": { "const": "checks" } } }, "then": { "properties": { "from": { "pattern": "^control:" }, "to": { "pattern": "^(device|interface):" } } } },
         { "if": { "properties": { "rel": { "const": "located_at" } } }, "then": { "properties": { "from": { "pattern": "^(device|interface):" }, "to": { "pattern": "^site:" } } } },
         { "if": { "properties": { "rel": { "const": "impacted" } } }, "then": { "properties": { "from": { "pattern": "^incident:" }, "to": { "pattern": "^(device|interface|service|test):" } } } },
         { "if": { "properties": { "rel": { "const": "depends_on" } } }, "then": { "properties": { "from": { "pattern": "^(service|test):" }, "to": { "pattern": "^(device|interface):" } } } },
         { "if": { "properties": { "rel": { "const": "caused" } } }, "then": { "properties": { "from": { "pattern": "^(device|interface|change):" }, "to": { "pattern": "^(test|service|incident):" } } } },
         { "if": { "properties": { "rel": { "const": "resolved_by" } } }, "then": { "properties": { "from": { "pattern": "^(incident|test):" }, "to": { "pattern": "^change:" } } } },
         { "if": { "properties": { "rel": { "const": "changed" } } }, "then": { "properties": { "from": { "pattern": "^change:" }, "to": { "pattern": "^(device|interface):" } } } },
-        { "if": { "properties": { "rel": { "enum": ["traverses", "tests", "located_at", "impacted", "depends_on", "caused", "resolved_by", "changed"] } } }, "then": { "properties": { "sides": { "type": "null" } } } },
+        { "if": { "properties": { "rel": { "enum": ["traverses", "tests", "checks", "located_at", "impacted", "depends_on", "caused", "resolved_by", "changed"] } } }, "then": { "properties": { "sides": { "type": "null" } } } },
         { "if": { "properties": { "basis": { "enum": ["intended", "asserted"] } } }, "then": { "properties": { "sides": { "type": "null" } } } },
         { "if": { "properties": { "basis": { "const": "intended" } } }, "then": { "properties": { "status": { "const": "current" } } } }
       ]

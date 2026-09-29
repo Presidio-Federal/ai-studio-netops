@@ -1,7 +1,7 @@
 ---
 name: relationship-compiler
-version: "1.0.0"
-description: "v1.0.0 — Relationship agent: reads a fixed list of workspace files, copies edges out of their columns (topology neighbors, bgp peer, TE ends and hops, ticket typed columns, run sha + devices, asserted relations), upserts them with first/last seen, and writes state/relationships.json with intended-vs-observed drift."
+version: "1.1.0"
+description: "v1.1.0 — Relationship agent: reads a fixed list of workspace files, copies edges out of their columns (topology neighbors, bgp peer, TE ends and hops, ticket typed columns, run sha + devices, compliance check/control rows, asserted relations), upserts them with first/last seen, and writes state/relationships.json with drift."
 ---
 
 # Relationship compiler skill
@@ -16,10 +16,12 @@ Three layers, kept apart by `basis`:
 
 - `intended` — an operator or git declared it (`prod.json`
   `links[]`, ThousandEyes `tests[].path`, `tests[].service`).
-- `observed` — a tool payload contained it and a nurse wrote it as
-  a column (CDP neighbor, BGP `peer`, test `src_device` /
+- `observed` — a tool payload contained it and a writer recorded it
+  as a column (CDP neighbor, BGP `peer`, test `src_device` /
   `dst_device` / `hops[]`, a ticket's typed columns and `rfc`, a
-  run's `git.commit_sha` + `devices[]` / `interfaces[]`).
+  run's `git.commit_sha` + `devices[]` / `interfaces[]`, a
+  compliance result row's `device` with its `test:` / `control:`
+  keys).
 - `asserted` — Health Analyzer or Network Ops concluded it
   (`relations[]` on their state files); copied through.
 
@@ -32,9 +34,9 @@ declared.
 
 ## Hard boundaries
 
-Read only the ten paths in `references/compile.md`. Do not list
+Read only the twelve paths in `references/compile.md`. Do not list
 `health/`, `state/`, or `operational/`. Do not open a stamp. Do not
-read `inventory/infra-sot.json`. Do not call an MCP tool. Do not
+read `inventory/infra-sot.json` or `compliance/intel.json`. Do not call an MCP tool. Do not
 `execute_command`. Do not write scripts. Do not write under
 `automations/schedules/`. Write only `state/relationships.json`.
 Do not add an edge from prose (`issue`, `note`, `headline`), from a
@@ -59,7 +61,7 @@ Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
 **First tools:** `read_file` `state/relationships.json` if it
-exists, then the nine sources in `references/compile.md` order,
+exists, then the eleven sources in `references/compile.md` order,
 skipping any that does not exist. Nothing else.
 
 ## Canonical top-level keys
@@ -68,7 +70,7 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machine
 
-READ_PRIOR → READ_SOURCES (≤ 9, fixed order) → NOOP_CHECK
+READ_PRIOR → READ_SOURCES (≤ 11, fixed order) → NOOP_CHECK
 (watermarks unchanged → reply, stop) → COPY_EDGES (table) →
 UPSERT (identity, seen, status, cap) → DRIFT → WRITE → READ_BACK
 → STOP
