@@ -1,0 +1,27 @@
+{
+  "schema": "applications/v1",
+  "keys": ["application:web", "application:api", "application:database", "service:<business-service>", "device:<app-host>"],
+  "updated_at": "2026-10-01T14:00:00Z",
+  "source_agent": "application-map",
+  "status": "ok",
+  "headline": "3 applications, 1 service (registered), 1 host mapped, 1 unmapped, 2 dependencies: web -> api -> database, all on <app-host>; database also declared on <db-host>, which is not in prod.json.",
+  "next_action": "Add to prod.json: <db-host>",
+  "source_updated_at": "2026-10-01 13:41:07",
+  "marker_ref": "servicenow/metadata-lab.json",
+  "applications": [
+    { "name": "web", "source_ref": "servicenow:cmdb_ci_appl/0123456789abcdef0123456789abcdef", "operational_status": "Operational",
+      "service_ci": "<business-service>", "service": "<business-service>", "hosts": ["<app-host>"], "hosts_unmapped": [], "depends_on": ["api"], "notes": null },
+    { "name": "api", "source_ref": "servicenow:cmdb_ci_appl/123456789abcdef0123456789abcdef0", "operational_status": "Operational",
+      "service_ci": null, "service": null, "hosts": ["<app-host>"], "hosts_unmapped": [], "depends_on": ["database"], "notes": null },
+    { "name": "database", "source_ref": "servicenow:cmdb_ci_appl/23456789abcdef0123456789abcdef01", "operational_status": "Operational",
+      "service_ci": null, "service": null, "hosts": ["<app-host>"], "hosts_unmapped": ["<db-host>"], "depends_on": [], "notes": "Runs on <db-host>, not in prod.json." }
+  ],
+  "services": [
+    { "name": "<business-service>", "sys_id": "3456789abcdef0123456789abcdef012", "registered": true }
+  ],
+  "servers": [
+    { "name": "<app-host>", "sys_id": "456789abcdef0123456789abcdef0123", "ip_address": "<address>", "device": "<app-host>" },
+    { "name": "<db-host>", "sys_id": "56789abcdef0123456789abcdef01234", "ip_address": null, "device": null }
+  ],
+  "relations_ignored": 0
+}

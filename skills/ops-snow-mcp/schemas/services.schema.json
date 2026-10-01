@@ -46,7 +46,7 @@
           "uniqueItems": true,
           "maxItems": 12,
           "items": { "type": "string", "minLength": 1 },
-          "description": "Other strings that mean this service: ThousandEyes test names, the cmdb_ci_service name, ticket wording the human confirmed. Readers match aliases case-insensitively; they never add to this list."
+          "description": "Other strings that mean this service: the cmdb_ci_service name when renamed, probe or test names, ticket wording the human confirmed. Readers match aliases case-insensitively; they never add to this list."
         },
         "owner": {
           "type": ["string", "null"],
@@ -54,7 +54,7 @@
         },
         "source_ref": {
           "type": "string",
-          "description": "Where the candidate came from: `servicenow:cmdb_ci_service/<sys_id>`, `thousandeyes:test/<testId>` (first test that named it), or `user` when the human typed it.",
+          "description": "Where the candidate came from: `servicenow:cmdb_ci_service/<sys_id>` (from the CMDB query or the Application Map), `thousandeyes:test/<testId>` (legacy rows), or `user` when the human typed it.",
           "pattern": "^(servicenow:cmdb_ci_service/[0-9a-f]{32}|thousandeyes:test/[0-9]+|user)$"
         },
         "confirmed_by": { "const": "user" },

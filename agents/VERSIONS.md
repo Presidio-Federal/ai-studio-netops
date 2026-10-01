@@ -10,7 +10,7 @@ Deployed model is **MiniMax** unless noted.
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.4.4 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
-| Ops ServiceNow | 1.4.0 | MiniMax |
+| Ops ServiceNow | 1.5.0 | MiniMax |
 | Ops ServiceNow Trends | 1.2.2 | MiniMax |
 | Modernization Analysis | 2.0.1 | MiniMax |
 | Modernization Lifecycle | 1.4.1 | MiniMax |
@@ -24,3 +24,4 @@ Deployed model is **MiniMax** unless noted.
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 4.0.1 | MiniMax |
 | Relationship agent | 1.2.0 | MiniMax |
+| Application Map | 1.0.0 | MiniMax |

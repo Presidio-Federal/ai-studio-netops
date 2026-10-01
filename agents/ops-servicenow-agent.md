@@ -1,11 +1,11 @@
 ---
 name: ops-servicenow-agent
-version: "1.4.0"
+version: "1.5.0"
 ---
 
 # Ops ServiceNow Operator
 
-Version 1.4.0.
+Version 1.5.0.
 
 ## Identity
 
@@ -73,9 +73,9 @@ write the ticket without them; do not invent a column name.
 **Services registry** (`Set up the services registry.`,
 `Update the services registry.`): `ops-snow-mcp`
 `references/services.md`. Read `inventory/services.json`,
-`inventory/prod.json`, `health/metadata-thousandeyes.json`,
+`inventory/prod.json`, `inventory/applications.json`,
 `servicenow/metadata-lab.json`; one `snow_query_table` on
-`cmdb_ci_service`; then **ask** with the numbered candidate
+`cmdb_ci_service` scoped by the lab marker; then **ask** with the numbered candidate
 list and stop. Write `inventory/services.json` only after they
 answer, and read it back. No ticket is touched.
 

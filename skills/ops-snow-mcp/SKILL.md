@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.9.0"
-description: "v3.9.0 — Writer of inventory/services.json (discover from cmdb_ci_service + ThousandEyes test names, ask, write confirmed rows); typed entity columns on every INC/CHG create/update via extra_fields from health/metadata-servicenow.json entity_fields, read back with snow_query_table. Dispatch/onsite: if they are on a recommend:kb trend ticket, ask to draft a KB. Never the schedule folder."
+version: "3.10.0"
+description: "v3.10.0 — Ops ServiceNow Operator: lab INC/CHG desk with typed entity columns, dispatch and KB drafts after a yes, and the services registry (cmdb_ci_service by lab marker + Application Map) written to inventory/services.json."
 ---
 
 # Ops ServiceNow Operator skill
@@ -86,8 +86,8 @@ Paths and catalog: **`workspace-handoff`**. When/how:
 | `inventory/services.json` | snapshot — services registry (the only `inventory/` path you write) |
 
 Read only: `health/metadata-servicenow.json` (`entity_fields`),
-`health/metadata-thousandeyes.json` (`tests[]` names on a
-registry visit), `inventory/prod.json`.
+`inventory/applications.json` (`services[]` on a registry visit),
+`inventory/prod.json`.
 
 Use exactly: `references/dispatch.md`, `references/metadata.md`,
 `references/incidents.md`,
@@ -156,7 +156,7 @@ one entity: `health/metadata-servicenow.json` (`entity_fields`).
 **Services registry** (`Set up the services registry.` / `Update
 the services registry.`): `references/services.md`. First tools:
 `read_file` `inventory/services.json`, `inventory/prod.json`,
-`health/metadata-thousandeyes.json`, `servicenow/metadata-lab.json`.
+`inventory/applications.json`, `servicenow/metadata-lab.json`.
 One `snow_query_table` on `cmdb_ci_service`. Then **ask**. Write
 `inventory/services.json` only after they answer. No INC/CHG
 mutation, no board rewrite on this invoke.

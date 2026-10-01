@@ -81,13 +81,25 @@ device:<b>`; dispatch one at a time.
 Health Analyzer may invoke it after writing `state/health.json` and
 does not wait. It reads a fixed path list — its prior file,
 `inventory/topology-observed.json`, the `health/metadata-*.json`
-boards its skill lists, `state/health.json`, `state/network-ops.json` and the one run
+boards its skill lists, `inventory/applications.json`,
+`state/health.json`, `state/network-ops.json` and the one run
 named in its `change.operational_ref`, `inventory/prod.json`,
 `state/testing.json` and the one run named in its `latest` — and
 writes only `state/relationships.json`. It never lists
 `operational/`. It does not infer edges; it copies the column forms
 named under Edges as columns, a compliance result row's `device`
-with its `test:` / `control:` keys, and the asserted `relations[]`.
+with its `test:` / `control:` keys, the CMDB model's `service` /
+`hosts[]` / `depends_on[]` as `intended`, and the asserted
+`relations[]`.
+
+**Application Map.** Task line `Run the application map only.` Four
+`snow_query_table` reads scoped by the lab marker (`cmdb_ci_service`,
+`cmdb_ci_appl`, `cmdb_ci_server`, `cmdb_rel_ci`), matched by sys_id,
+written to `inventory/applications.json`. `applications[].name` is
+the CMDB spelling and must equal the Grafana `service` label; the
+map never renames. `service` is written only when the service CI
+matched `inventory/services.json`; `hosts[]` only for `prod.json`
+names. It creates nothing in ServiceNow and writes no `relations[]`.
 
 **Network Design.** Read the chart already on disk. Missing or stale
 inputs are reduced coverage; still write `state/design.json`. Warehouse
@@ -307,7 +319,7 @@ visits).
 | `inventory/topology-observed.json` | snapshot | Health Device (topology map) | `health-device` `schemas/topology-iosxe.schema.json` | envelope, `coverage.state` (`partial` while a map is in progress) `mapped_at` `prior_mapped_at` `devices[].name` `node_definition` `software_version` `probed_at` `interfaces[]` (`cidr` resolves an address to a device) `neighbors[]` (`local` `far_name` `far_port` `far` — one end's view of a cable; `far` null means the name is not in inventory; readers pair rows across devices) `changes[]`. Task line `Run the network topology map only.` |
 | `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` (match case-insensitively; never add to them) `owner` `source_ref` `candidates_rejected[]`. Written only after the human confirmed the rows (task line `Set up the services registry.`). Absent file: write no `service:` key. |
 | `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `compiled_at`, `coverage` (`read[]` `missing[]` — a source listed in `missing` means no evidence of that edge kind, not no edge), `edges[]` (`from` `to` `rel` `basis` `sides` `first_seen` `last_seen` `seen_count` `sources[]` `status`; identity is `(from, to, rel, basis)`, so an `intended` and an `observed` row for one cable coexist; `last_seen` is the source's time, never the compile time; a `changed` edge's `sources[]` carries the `operational/runs/` path; a `checks` / compliance `tests` edge's `sources[]` carries the `operational/testing/` path and says the control or check was evaluated against the device — the verdict stays on that run; `sides` 1 on a cable or peering only one end reports), `drift[]` (`from` `to` `rel` `kind` `evidence_ref` `since`; `connected_to` and `depends_on` (application on host) only, empty until `prod.json` `links[]` or `inventory/applications.json` is declared), `watermarks` |
-| `inventory/applications.json` | snapshot | Application Map | `application-map` `schemas/applications.schema.json` | `updated_at` `source_agent` `applications[]` (`name` — the `application:` spelling, matching the Grafana `service` label; `service` — a `services[].name` from `inventory/services.json` or null; `hosts[]` — `inventory/prod.json` device names only; `depends_on[]` — other `applications[].name`; `source_ref` — the CMDB sys_id). Intended layer; the compiler turns it into `depends_on` edges and host drift. Absent file: no intended application edges, no application drift. |
+| `inventory/applications.json` | snapshot | Application Map | `application-map` `schemas/applications.schema.json` | `updated_at` `source_updated_at` `source_agent` `applications[]` (`name` — the `application:` spelling, matching the Grafana `service` label; `service_ci` — CMDB service name as text; `service` — a `services[].name` from `inventory/services.json` or null; `hosts[]` — `inventory/prod.json` device names only; `hosts_unmapped[]` text; `depends_on[]` — other `applications[].name`; `source_ref` — `servicenow:cmdb_ci_appl/<sys_id>`), `services[]`, `servers[]`. Intended layer; the compiler turns `service` / `hosts[]` / `depends_on[]` into `depends_on` edges and host drift. Absent file: no intended application edges, no application drift. |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
