@@ -1,5 +1,5 @@
 {
-  "schema": "network-ops-state/v3",
+  "schema": "network-ops-state/v3.2",
   "updated_at": "2026-09-25T16:00:00Z",
   "source_agent": "network-ops",
   "status": "merged",
@@ -25,6 +25,22 @@
       "inventory/configs/WAN-01.cfg"
     ],
     "summary": "ensure_present 'ip mtu 1400' under interface GigabitEthernet4 on WAN-01; nothing else touched",
+    "blast_radius": {
+      "hosts": [
+        "<app-host>",
+        "WAN-03"
+      ],
+      "applications": [
+        "web",
+        "api"
+      ],
+      "services": [
+        "Order Management"
+      ],
+      "basis": "both",
+      "source_ref": "state/relationships.json"
+    },
+    "annotation_ref": "1042",
     "operational_ref": "operational/runs/2026-09-25T15-58-10Z.json",
     "monitoring_ref": "operational/runs/2026-09-25T15-59-40Z.json"
   },
@@ -67,12 +83,28 @@
       "rel": "resolved_by",
       "basis": "asserted",
       "evidence_ref": "https://github.com/example-org/network-sot/pull/42"
+    },
+    {
+      "from": "change:abc123def4567890abc123def4567890abc123de",
+      "to": "application:web",
+      "rel": "impacted",
+      "basis": "asserted",
+      "evidence_ref": "https://github.com/example-org/network-sot/pull/42"
+    },
+    {
+      "from": "change:abc123def4567890abc123def4567890abc123de",
+      "to": "application:api",
+      "rel": "impacted",
+      "basis": "asserted",
+      "evidence_ref": "https://github.com/example-org/network-sot/pull/42"
     }
   ],
   "keys": [
     "device:WAN-01",
     "interface:WAN-01/GigabitEthernet4",
     "test:8435764",
-    "change:abc123def4567890abc123def4567890abc123de"
+    "change:abc123def4567890abc123def4567890abc123de",
+    "application:web",
+    "application:api"
   ]
 }

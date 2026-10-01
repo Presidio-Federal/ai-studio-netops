@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "3.1.0"
-description: "v3.1.0 — network-ops-state/v3: recommend one charted problem, review every board and config-class symptom into a ranked review[] with exact git-verified lines, or implement with explicit authorization; problem_ref, verified_in_git, asserted relations[]."
+version: "3.2.0"
+description: "v3.2.0 — network-ops-state/v3.2: recommend, review, or implement exact git-verified config changes; change.blast_radius walked from state/relationships.json, one Grafana change annotation after merge, asserted relations[]."
 ---
 
 # Network Ops skill
@@ -40,13 +40,22 @@ What you conclude from config plus evidence is recorded as asserted
 ([references/relations.md](references/relations.md)); the Analyzer's
 `outcome` says whether a charted treatment worked.
 
+Every record also says what the change can reach:
+`change.blast_radius` (hosts, applications, services) is walked
+mechanically from `state/relationships.json`
+([references/blast-radius.md](references/blast-radius.md)) — in every
+mode, before the prescription. It is reported, never a reason to stop.
+A charted problem whose keys carry `application:` or a Linux host is
+treated the same way: the devices to open in git are the ones the
+compiled edges name for that host, never a guess from the hostname.
+
 ## Route
 
 | Intent | How |
 |--------|-----|
 | “How would”, “what should”, recommend, explain — **one** problem, device, or feature named | `recommend`: read evidence and the two configs; return an exact recommendation; no delegation or Git mutation. |
-| Open-ended — “look at everything”, “what should I improve”, “review”, no problem named | `review`: read the chart, the four boards, testing, topology, prod; list configs once, read up to six; return a ranked `review[]` of exact git-verified proposals ([references/review.md](references/review.md)). Read-only. |
-| Change / fix / implement / apply — explicit imperative | `implement`: same reads as `recommend` → decide → GitOps Change commit → Pipeline Monitor → PR. |
+| Open-ended — “look at everything”, “what should I improve”, “review”, no problem named | `review`: read the chart, the five boards, testing, topology, prod, relationships; list configs once, read up to six; return a ranked `review[]` of exact git-verified proposals ([references/review.md](references/review.md)). Read-only. |
+| Change / fix / implement / apply — explicit imperative | `implement`: same reads as `recommend` → blast radius → decide → GitOps Change commit → Pipeline Monitor → PR (body carries the blast radius) → one Grafana annotation. |
 | Check bug | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. |
 | Run a suite with no config change | Compliance Test. |
@@ -60,7 +69,9 @@ imperative such as `apply`, `implement`, `make this change`, `push`, `commit`,
 mutation, pipeline monitoring, and PR merge.
 
 Network Ops may call `github_list_files` and `github_get_file` for config
-discovery. It never calls `github_put_file` or Actions tools. Do not query
+discovery, and `grafana_annotations(action="create")` once after a merge.
+It never calls `github_put_file`, Actions tools, or any other `grafana_*`
+tool. Do not query
 subagent status. Treat each attached agent's final response as the next input.
 Invoke attached agents synchronously and wait in the same run; never launch
 background/autonomous work. Waiting on one invocation is not polling. Use the
@@ -111,12 +122,16 @@ Apply Result `submitted` → invoke Pipeline Monitor once with `apply.yml`,
 delete `dev`. Monitor `fail|unknown`, or apply `no_change|blocked|failed` →
 do not create or merge a PR.
 
-Merged → add the `resolved_by` row (`references/relations.md`).
+Merged → one `grafana_annotations(action="create", …)` tagged
+`change:<sha>` and each `device:<d>`, recorded in `change.annotation_ref`
+([references/blast-radius.md](references/blast-radius.md)); then the
+`resolved_by` row and one `impacted` row per blast-radius application
+(`references/relations.md`).
 
 ## Current operational state
 
 After every terminal outcome, replace `state/network-ops.json` following
-`schemas/network-ops-state.schema.json` (`network-ops-state/v3`). In
+`schemas/network-ops-state.schema.json` (`network-ops-state/v3.2`). In
 recommendation mode record the bounded proposal/evidence; in implementation
 mode copy only compact worker evidence:
 
@@ -124,6 +139,8 @@ mode copy only compact worker evidence:
   `verified_in_git`)
 - devices, `interfaces` (`<device>/<interface>` for every interface stanza
   the prescription scoped), and changed repository paths
+- `change.blast_radius` (hosts, applications, services, basis) and
+  `change.annotation_ref` (merged only, else null)
 - one-line change summary plus GitOps and Pipeline Monitor
   `operational/runs/<stamp>.json` references
 - final `dev` commit, CI run/result, and one marker line
@@ -133,8 +150,9 @@ mode copy only compact worker evidence:
   `change.interfaces` (`interface:`), and every relation end; never infer
   from prose
 
-Allowed prefixes are `device|interface|site|service|test|control|incident|change`.
-Location is `site:`. When a device is known, use
+Allowed prefixes are
+`device|interface|site|service|test|control|incident|change|application`.
+Blast-radius names are never keys. Location is `site:`. When a device is known, use
 `interface:<device>/<interface>`. Keep any nested `keys`.
 
 Never copy config bodies, patches, or full pipeline logs. Use
@@ -146,5 +164,6 @@ execution is available.
 
 - Problem list, relations, keys: `references/relations.md`
 - Review mode (open-ended ask): `references/review.md`
+- Blast radius walk, PR body line, change annotation: `references/blast-radius.md`
 - Edit + ship: `references/change.md`
 - Tools: `references/tools.md`

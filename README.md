@@ -112,6 +112,7 @@ The shared case records material observations, changes, assessments, and current
 | Capability | Question it helps answer | Design notes |
 | --- | --- | --- |
 | Health | What changed, and what needs attention? | [Health agents](documentation/health-agents.md) |
+| Datacenter applications | Which applications and services does a device, a change, or an incident reach? | [Datacenter applications](documentation/datacenter-applications.md) |
 | Compliance | Are relevant controls covered, and are implemented checks passing? | [Compliance agents](documentation/compliance-agents.md) |
 | Source of truth and digital twin | What exists, how is it connected, and can it be reproduced for testing? | [SoT and twin agents](documentation/sot-and-twin-agents.md) |
 | Change and validation | What will a change affect, and what does testing show? | [Change and test agents](documentation/change-and-test-agents.md) |

@@ -21,27 +21,23 @@ rows are out of scope.
 
 ## Resolve — incomplete marker only
 
-Workspace first. Then discover. Then, if you cannot uniquely tell
-which customer/lab string to use, **ask** and show options. Write
-the choice. Do not invent a marker.
+Workspace first. If `servicenow.marker` is already set, keep it.
+If it is missing, set it from `inventory/prod.json`, the same way
+the Health ServiceNow nurse does:
 
-If `servicenow.marker` is missing:
+1. `lab_title` when that string is non-empty.
+2. Else `source.name`.
 
-1. One bounded find (`snow_find_incidents` active, then changes if
-   needed). Use inventory `name` / lab title from `prod.json` only
-   as search hints — not as invented markers.
-2. From those rows plus inventory labels, build a short options
-   list (candidate marker strings, device names, lab title).
-3. Human: ask which option is this lab. Write `servicenow.marker`
-   (`provenance: user` or `discovered` if exactly one fit).
-4. No human and still not unique: stop. Do not invent it.
+Write it with `provenance: discovered` and continue. Do not ask.
+Do not run a find to "confirm" it: the marker is the lab title by
+contract, it is written into `comments` on this lab's CMDB CIs,
+and a ticket set with zero marker hits is a normal state (lab
+tickets are usually matched by device name). A device `name` is
+not the marker. `prod.json` missing both strings: do not invent a
+marker; say so in one line and stop.
 
-```text
-Need: text that identifies this lab’s tickets.
-Options:
-- <from find / inventory>
-Which?
-```
+Only when the operator **types** a different marker on the invoke
+do you write `provenance: user`.
 
 ## Write metadata
 

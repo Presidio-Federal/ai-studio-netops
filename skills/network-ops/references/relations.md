@@ -4,7 +4,7 @@ Network Ops is the one agent that reads both the chart and the
 config. What it concludes from the two is worth recording as
 edges — asserted, with the git path as evidence — so the Analyzer
 can confirm or refute the treatment and the Relationship agent can
-draw the graph. Three rows are allowed. Nothing else.
+draw the graph. Four rows are allowed. Nothing else.
 
 ## Start from the problem list
 
@@ -16,9 +16,9 @@ ask to **one** problem:
 - the Analyzer's order text is `Network Ops: <hypothesis>` — the
   hypothesis string is on the problem, take its `id`;
 - the operator named a key on the problem (`device:`, `test:`,
-  `service:`, `incident:`) or its symptom in plain words
-  (`the CLOUD-to-HQ loss`) and exactly one `active` or `watching`
-  problem carries that key or test name.
+  `service:`, `application:`, `incident:`) or its symptom in plain
+  words (`the database probe`) and exactly one `active` or
+  `watching` problem carries that key or test name.
 
 Two problems fit the operator's words, or none → `problem_ref` null
 and say so in `Gaps:`. Never pick one to have one. **That is the
@@ -53,35 +53,38 @@ counter reset, a test change, a hypothesis). `kind`:
 `missing_config` / `wrong_config` need `verified_in_git` true;
 `test_bug` and `other` may be either.
 
-## The three rows
+## The four rows
 
 All `basis` `asserted`. Both ends in `keys`. `evidence_ref` is the
 git path you read (`inventory/configs/<file>` exactly as listed)
 for the first two, the PR `html_url` or `change.monitoring_ref`
-for the third.
+for the last two.
 
 | rel | from → to | write when |
 |-----|-----------|------------|
-| `depends_on` | `test:<id>` or `service:<name>` (from the problem's `keys`) → `device:<target>` or `interface:<device>/<interface>` (the prescription's targets and scope) | `problem_ref` set and the problem has a `test:` or `service:` key. Both modes. One row per target device or interface, not both for the same device. |
-| `caused` | `device:` / `interface:` (the target) → `test:` / `service:` / `incident:` (from the problem's `keys`) | `finding.verified_in_git` true **and** `kind` is `missing_config` or `wrong_config`. Both modes. The config difference is the cause you are asserting; the Analyzer's `outcome` says whether you were right. |
+| `depends_on` | `test:<id>`, `service:<name>`, or `application:<name>` (from the problem's `keys`) → `device:<target>` or `interface:<device>/<interface>` (the prescription's targets and scope) | `problem_ref` set and the problem has a `test:`, `service:`, or `application:` key. Both modes. One row per target device or interface, not both for the same device. Skip when `state/relationships.json` already holds that edge. |
+| `caused` | `device:` / `interface:` (the target) → `test:` / `service:` / `application:` / `incident:` (from the problem's `keys`) | `finding.verified_in_git` true **and** `kind` is `missing_config` or `wrong_config`. Both modes. The config difference is the cause you are asserting; the Analyzer's `outcome` says whether you were right. |
 | `resolved_by` | `test:` or `incident:` (from the problem's `keys`) → `change:<commit_sha>` | `status` `merged` only. One row per test/incident key on the problem. |
+| `impacted` | `change:<commit_sha>` → `application:<name>` (from `change.blast_radius.applications`) | `status` `merged` only. One row per application in the blast radius; `evidence_ref` the PR `html_url`. Hosts and services get no row. |
 
 Not a relation: the peer you compared against (`change.peer` is
 the column), a device the problem names but you did not touch,
-anything the chart already says (`impacted` is the Analyzer's),
-a hypothesis with `verified_in_git` false (it is `depends_on` at
-most, never `caused`).
+anything the chart already says (incident `impacted` rows are the
+Analyzer's), a blast-radius host or service (`change.blast_radius`
+is the column), a hypothesis with `verified_in_git` false (it is
+`depends_on` at most, never `caused`).
 
 `change:<commit_sha>` is the full SHA `git.commit_sha`. It is a
-key on this record only when a `resolved_by` row uses it.
+key on this record only when a `resolved_by` or `impacted` row uses
+it; an `application:` is a key only when a relation end names it.
 
 ## `keys`
 
 Exactly the union of: `device:<d>` for every `change.devices`
 item, `interface:<d>/<i>` for every `change.interfaces` item,
 and every `relations[].from` / `.to`. Nothing from `headline`,
-`summary`, `finding`, or the problem's own keys unless a relation
-brought them in. `change.interfaces` lists every interface stanza
+`summary`, `finding`, `change.blast_radius`, or the problem's own
+keys unless a relation brought them in. `change.interfaces` lists every interface stanza
 the prescription's `Scope` names — `WAN-01/GigabitEthernet4`
 spelled as in the config — and is empty for a global scope.
 

@@ -1,157 +1,187 @@
 {
   "keys": [
-    "test:<test-id>",
-    "device:<wan-edge>",
-    "device:<cloud-edge>",
-    "incident:<inc-a>"
+    "application:database",
+    "test:probe/database@cloud",
+    "device:<app-host>",
+    "change:<sha>",
+    "incident:<inc-a>",
+    "service:Order Management"
   ],
-  "schema": "health-state/v6",
-  "updated_at": "2026-09-25T06:20:00Z",
+  "schema": "health-state/v7",
+  "updated_at": "2026-10-01T16:20:00Z",
   "source_agent": "health-analyzer",
   "status": "degraded",
-  "headline": "One WAN test is lossy end to end while both end routers and their syslog are clean; the fault sits between them and an incident for it has been open six weeks.",
-  "next_action": "Health Device: Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>",
+  "headline": "The database tier is down from the only vantage and its container is gone on <app-host> while the host, the routers, and the flows are clean; the loss follows change:<sha> on <dc-leaf> and reaches the api and web tiers and the Order Management service.",
+  "next_action": "Network Ops: database container gone on device:<app-host> after change:<sha> on device:<dc-leaf>; host and network rows clean",
   "mode": "assess-now",
-  "analyzed_at": "2026-09-25T06:20:00Z",
+  "analyzed_at": "2026-10-01T16:20:00Z",
   "coverage": {
-    "thousandeyes": "complete",
+    "application": "complete",
+    "netflow": "complete",
     "splunk": "complete",
     "iosxe": "complete",
     "servicenow": "complete"
   },
   "freshness": {
-    "thousandeyes": { "state": "current", "observed_at": "2026-09-25T06:00:00Z", "ttl_hours": 26, "stale_devices": null },
-    "splunk": { "state": "current", "observed_at": "2026-09-25T06:05:00Z", "ttl_hours": 26, "stale_devices": null },
-    "iosxe": { "state": "current", "observed_at": "2026-09-24T12:00:00Z", "ttl_hours": 26, "stale_devices": [] },
-    "servicenow": { "state": "current", "observed_at": "2026-09-25T06:10:00Z", "ttl_hours": 26, "stale_devices": null }
+    "application": { "state": "current", "observed_at": "2026-10-01T16:00:00Z", "ttl_hours": 26, "stale_devices": null },
+    "netflow": { "state": "current", "observed_at": "2026-10-01T16:02:00Z", "ttl_hours": 26, "stale_devices": null },
+    "splunk": { "state": "current", "observed_at": "2026-10-01T16:05:00Z", "ttl_hours": 26, "stale_devices": null },
+    "iosxe": { "state": "current", "observed_at": "2026-10-01T12:00:00Z", "ttl_hours": 26, "stale_devices": [] },
+    "servicenow": { "state": "current", "observed_at": "2026-10-01T16:10:00Z", "ttl_hours": 26, "stale_devices": null }
   },
   "consults": {
-    "thousandeyes": {
-      "watch_id": "2026-09-24T23-02-00Z",
-      "observed_at": "2026-09-25T06:00:00Z",
+    "application": {
+      "watch_id": "2026-10-01T16-00-00Z",
+      "observed_at": "2026-10-01T16:00:00Z",
       "status": "degraded",
-      "trend": "unchanged",
-      "trend_note": "Three visits on the ring; the lossy row has held the same loss band since the baseline, the other test has stayed clean.",
-      "impression": "One test between <wan-edge> and <cloud-edge> is degraded on loss with no error rounds; the reverse-direction test is clean. This is a one-way path problem, not an agent outage.",
-      "evidence_for": ["board row test:<test-id> state degraded, loss_pct steady in one band", "first_bad_round_at predates the baseline stamp"],
-      "evidence_against": ["the paired test from <cloud-edge> completed every round with no loss"],
-      "source_ref": "health/thousandeyes/2026-09-24T23-02-00Z.json",
-      "inspect_when": "Open when per-round error types or the alert list are needed."
+      "trend": "worse",
+      "trend_note": "Three visits on the ring; the baseline and the second visit were clean, this one flipped one probe and lost one container.",
+      "impression": "The database tier stopped answering from the cloud vantage at the same visit its container disappeared from <app-host>; web and api still answer, the host is up with no interface down. This is the container, not the host and not the path.",
+      "evidence_for": ["probe:database@cloud success 1 -> 0, HTTP 200 -> 0", "container:<app-host>/dc-database running -> gone", "annotations[] carries change:<sha> at 15:20, inside the window"],
+      "evidence_against": ["host:<app-host> up, boot_epoch unchanged, interfaces_down empty", "probes web and api up at 200 from the same vantage"],
+      "source_ref": "health/application/2026-10-01T16-00-00Z.json",
+      "inspect_when": "Open when the nurse's per-row notes or the scrape-target errors are needed."
     },
-    "splunk": {
-      "watch_id": "2026-09-24T23-06-46Z",
-      "observed_at": "2026-09-25T06:05:00Z",
+    "netflow": {
+      "watch_id": "2026-10-01T14-00-00Z",
+      "observed_at": "2026-10-01T16:02:00Z",
       "status": "ok",
       "trend": "unchanged",
-      "trend_note": "Two visits; per-device counts flat, no bgp or link row reached the flap threshold.",
-      "impression": "Syslog is quiet on both end routers. This plane neither explains nor contradicts the path loss; it rules out a flapping link or session at either end.",
-      "evidence_for": ["no bgp or link row with count >= 2 on <wan-edge> or <cloud-edge>", "no config row in the window"],
+      "trend_note": "Four visits; both resolved exporters reporting every window, conversation set stable, no 4x byte move.",
+      "impression": "North-south flows toward <app-host> are unchanged; the exporters see nothing different. Consistent with a failure inside the host rather than on the way to it.",
+      "evidence_for": ["exporter rows for <hq-edge> and <branch-01> reporting", "conversation rows with dst_device <app-host> present, bytes within band"],
+      "evidence_against": ["east-west tier traffic is not exported, so the api -> database path is invisible here"],
+      "source_ref": "health/netflow/2026-10-01T14-00-00Z.json",
+      "inspect_when": "Open when per-conversation byte counts are needed."
+    },
+    "splunk": {
+      "watch_id": "2026-09-30T23-06-46Z",
+      "observed_at": "2026-10-01T16:05:00Z",
+      "status": "ok",
+      "trend": "unchanged",
+      "trend_note": "Two visits; per-device counts flat, no bgp or link row reached the flap threshold, no config row.",
+      "impression": "Router syslog is quiet. No config event on <dc-leaf> in the window despite the change annotation, which means the change was applied through the pipeline, not interactively.",
+      "evidence_for": ["no bgp, link, reload, or config row on <dc-leaf> or the edges"],
       "evidence_against": [],
-      "source_ref": "health/splunk/2026-09-24T23-06-46Z.json",
+      "source_ref": "health/splunk/2026-09-30T23-06-46Z.json",
       "inspect_when": "Open when mnemonic samples or auth events are needed."
     },
     "iosxe": {
-      "watch_id": "2026-09-24T12-00-00Z",
-      "observed_at": "2026-09-24T12:00:00Z",
+      "watch_id": "2026-10-01T12-00-00Z",
+      "observed_at": "2026-10-01T12:00:00Z",
       "status": "ok",
       "trend": "unchanged",
       "trend_note": "One visit on the ring since the board was reset; no baseline for counters yet.",
-      "impression": "Interfaces up, BGP established, error counters flat on both end routers at the last visit — which is older than the TE symptom by 18 hours.",
-      "evidence_for": ["board rows for <wan-edge> and <cloud-edge> interfaces oper up, bgp established", "in_errors and in_crc_errors 0 on the WAN-facing interfaces"],
-      "evidence_against": ["the last device visit predates the TE degraded rounds seen since"],
-      "source_ref": "health/iosxe/2026-09-24T12-00-00Z.json",
+      "impression": "Interfaces up, BGP established, counters flat on <dc-leaf> and the edges at the last visit, which is four hours older than the symptom.",
+      "evidence_for": ["board rows for <dc-leaf> interfaces oper up, errors 0"],
+      "evidence_against": ["the last device visit predates change:<sha> and the probe flip"],
+      "source_ref": "health/iosxe/2026-10-01T12-00-00Z.json",
       "inspect_when": "Open when per-interface counters or ACL hit counts are needed."
     },
     "servicenow": {
-      "watch_id": "2026-09-25T00-10-00Z",
-      "observed_at": "2026-09-25T06:10:00Z",
+      "watch_id": "2026-10-01T16-10-00Z",
+      "observed_at": "2026-10-01T16:10:00Z",
       "status": "ok",
-      "trend": "unchanged",
-      "trend_note": "Two visits; three open incidents, none moved, no change requests.",
-      "impression": "An incident naming both end routers for this loss has been open six weeks with no change attached; a second incident describes the same symptom generically.",
-      "evidence_for": ["incident:<inc-a> names device:<wan-edge> and device:<cloud-edge> in its title, state In Progress", "incident:<inc-c> describes chronic loss on the same pair"],
-      "evidence_against": ["no change request or rfc on any row"],
-      "source_ref": "health/servicenow/2026-09-25T00-10-00Z.json",
+      "trend": "changed",
+      "trend_note": "Three visits; one new incident this window naming the database tier, no change request row.",
+      "impression": "A new incident reports orders failing; its typed service column is Order Management and its issue text names the database tier. No CHG covers change:<sha>, so the change is a pipeline commit without a ticket.",
+      "evidence_for": ["incident:<inc-a> service column Order Management, issue names the database tier, opened 15:40, state New"],
+      "evidence_against": ["no change row active, no rfc on the incident"],
+      "source_ref": "health/servicenow/2026-10-01T16-10-00Z.json",
       "inspect_when": "Open when the nurse's per-ticket notes are needed.",
       "collection_status": "complete",
       "ticket_history": {
-        "pattern": "Long-open network incidents with no change attached; one carries typed device fields, two do not.",
-        "summary": "Two incidents describe the WAN loss this chart sees; neither has progressed in the window. One unrelated provisioning ticket is open with typed device fields.",
-        "related_records": ["incident:<inc-a>", "incident:<inc-c>"],
+        "pattern": "Fresh incident on the Order Management service; no change record for the pipeline commit.",
+        "summary": "One new incident on Order Management names the database tier in its issue text; nothing else moved.",
+        "related_records": ["incident:<inc-a>"],
         "prior_resolution": null
       }
     }
   },
   "series": {
-    "thousandeyes": { "series_ref": "health/metadata-thousandeyes.json", "rows": 3, "from": "2026-09-24T23:02:00Z", "to": "2026-09-25T06:00:00Z" },
-    "splunk": { "series_ref": "health/metadata-splunk.json", "rows": 2, "from": "2026-09-24T23:06:46Z", "to": "2026-09-25T06:05:00Z" },
-    "iosxe": { "series_ref": "health/metadata-iosxe.json", "rows": 1, "from": "2026-09-24T12:00:00Z", "to": "2026-09-24T12:00:00Z" },
-    "servicenow": { "series_ref": "health/metadata-servicenow.json", "rows": 2, "from": "2026-09-25T00:10:00Z", "to": "2026-09-25T06:10:00Z" }
+    "application": { "series_ref": "health/metadata-application.json", "rows": 3, "from": "2026-10-01T12:00:00Z", "to": "2026-10-01T16:00:00Z" },
+    "netflow": { "series_ref": "health/metadata-netflow.json", "rows": 4, "from": "2026-10-01T10:00:00Z", "to": "2026-10-01T16:02:00Z" },
+    "splunk": { "series_ref": "health/metadata-splunk.json", "rows": 2, "from": "2026-09-30T23:06:46Z", "to": "2026-10-01T16:05:00Z" },
+    "iosxe": { "series_ref": "health/metadata-iosxe.json", "rows": 1, "from": "2026-10-01T12:00:00Z", "to": "2026-10-01T12:00:00Z" },
+    "servicenow": { "series_ref": "health/metadata-servicenow.json", "rows": 3, "from": "2026-10-01T08:10:00Z", "to": "2026-10-01T16:10:00Z" }
   },
   "assessment": {
     "unhealthy": [
-      "thousandeyes: test:<test-id> from <wan-edge> to <cloud-edge> degraded on loss for the whole ring",
-      "servicenow: incident:<inc-a> for this loss open six weeks, no change attached"
+      "application: probe:database@cloud down and container dc-database gone on <app-host> since the 16:00 visit; impact reaches api, web, and the Order Management service through intended depends_on edges",
+      "servicenow: incident:<inc-a> opened 15:40 for orders failing on service Order Management, joined to the problem through the impact walk"
     ],
     "healthy": [
-      "the reverse test completed clean every round",
-      "syslog quiet on both end routers; no flap, no config event",
-      "interfaces up, BGP established, counters flat at the last device visit"
+      "web and api probes up at 200 from cloud; host <app-host> up with no interface down",
+      "both NetFlow exporters reporting; flows toward <app-host> unchanged",
+      "router syslog quiet; interfaces up and BGP established at the last device visit"
     ],
     "contradictions": [
-      "Path lossy one way while both ends are clean on syslog and device readings — this places the fault on the segment between them, not on either router"
+      "Probe down and container gone while the host, the flows, and the routers are clean: the fault is inside the host at the container, not on the network path"
     ],
-    "opinion": "One WAN test is lossy end to end while both end routers and their syslog are clean; the fault sits between them and an incident for it has been open six weeks."
+    "opinion": "The database tier is down from the only vantage and its container is gone on <app-host> while the host, the routers, and the flows are clean; the loss follows change:<sha> on <dc-leaf> and reaches the api and web tiers and the Order Management service."
   },
   "trend_analysis": {
-    "narrative": "Three TE visits hold the same lossy row; Splunk and ServiceNow rings are flat; iosxe has a single visit older than the TE symptom, so device counters have no trend yet.",
+    "narrative": "Application ring clean for two visits then worse on the third; NetFlow and Splunk rings flat; iosxe has a single visit older than the symptom, so device counters have no trend yet; ServiceNow gained one incident.",
     "flips": []
   },
   "soap": {
     "subjective": "Scheduled assess-now.",
-    "objective": "Four boards current; iosxe last collected 18 hours ago with no stale devices. TE degraded on one row, Splunk and iosxe ok, ServiceNow complete with three open incidents. state/relationships.json not present, so no run evidence.",
-    "assessment": "One WAN test is lossy end to end while both end routers and their syslog are clean; the fault sits between them and an incident for it has been open six weeks.",
-    "plan": "Health Device: Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>"
+    "objective": "Five boards current; iosxe last collected four hours ago with no stale devices. Application degraded on one probe and one container, NetFlow and Splunk and iosxe ok, ServiceNow complete with one new incident. state/relationships.json present with 25 current edges including intended depends_on chains from the CMDB.",
+    "assessment": "The database tier is down from the only vantage and its container is gone on <app-host> while the host, the routers, and the flows are clean; the loss follows change:<sha> on <dc-leaf> and reaches the api and web tiers and the Order Management service.",
+    "plan": "Network Ops: database container gone on device:<app-host> after change:<sha> on device:<dc-leaf>; host and network rows clean"
   },
   "problems": [
     {
-      "id": "P-20260924-01",
+      "id": "P-20261001-01",
       "status": "active",
-      "opened_at": "2026-09-24T23:15:00Z",
+      "opened_at": "2026-10-01T16:00:00Z",
       "closed_at": null,
-      "keys": ["test:<test-id>", "device:<wan-edge>", "device:<cloud-edge>", "incident:<inc-a>"],
+      "keys": ["application:database", "test:probe/database@cloud", "device:<app-host>", "change:<sha>", "incident:<inc-a>", "service:Order Management"],
       "symptom_refs": [
-        "health/metadata-thousandeyes.json#test:<test-id>/<agent-name>",
+        "health/application/2026-10-01T16-00-00Z.json#probe:database@cloud",
+        "health/application/2026-10-01T16-00-00Z.json#container:<app-host>/dc-database",
         "health/metadata-servicenow.json#incident:<inc-a>"
       ],
       "evidence_refs": [
-        "health/splunk/2026-09-24T23-06-46Z.json",
-        "health/iosxe/2026-09-24T12-00-00Z.json"
+        "health/metadata-application.json#host:<app-host>",
+        "health/metadata-netflow.json",
+        "health/metadata-iosxe.json#device:<dc-leaf>",
+        "health/splunk/2026-09-30T23-06-46Z.json"
       ],
-      "hypothesis": "Loss is introduced between device:<wan-edge> and device:<cloud-edge>; both ends are clean, so the segment between them, not either router, is where to look.",
-      "order": { "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>" },
+      "hypothesis": "The database container on device:<app-host> stopped after change:<sha> touched device:<dc-leaf> at 15:20 (changed edge present); host, flows, and routers are clean, so the fault is the container or what the change did to its reachability, not the host or the WAN.",
+      "impact": {
+        "applications": ["database", "api", "web"],
+        "services": ["Order Management"],
+        "hosts": ["<app-host>"],
+        "basis": "both"
+      },
+      "order": { "agent": "Network Ops", "task": "Network Ops: database container gone on device:<app-host> after change:<sha> on device:<dc-leaf>; host and network rows clean" },
       "treatment_ref": null,
-      "outcome": { "state": "too_early", "checked_at": "2026-09-25T06:20:00Z" }
+      "outcome": { "state": "too_early", "checked_at": "2026-10-01T16:20:00Z" }
     }
   ],
   "orders": [
-    { "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>", "problem_ref": "P-20260924-01", "dispatched": true },
-    { "agent": "Network Ops", "task": "Network Ops: loss introduced between device:<wan-edge> and device:<cloud-edge>; both ends clean", "problem_ref": "P-20260924-01", "dispatched": false },
+    { "agent": "Network Ops", "task": "Network Ops: database container gone on device:<app-host> after change:<sha> on device:<dc-leaf>; host and network rows clean", "problem_ref": "P-20261001-01", "dispatched": false },
+    { "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<dc-leaf>", "problem_ref": "P-20261001-01", "dispatched": true },
     { "agent": "Relationship agent", "task": "Run the relationship compile only.", "problem_ref": null, "dispatched": true }
   ],
   "relations": [
-    { "from": "incident:<inc-a>", "to": "test:<test-id>", "rel": "impacted", "basis": "asserted", "evidence_ref": "health/thousandeyes/2026-09-24T23-02-00Z.json" }
+    { "from": "change:<sha>", "to": "application:database", "rel": "impacted", "basis": "asserted", "evidence_ref": "health/application/2026-10-01T16-00-00Z.json" },
+    { "from": "incident:<inc-a>", "to": "application:database", "rel": "impacted", "basis": "asserted", "evidence_ref": "health/metadata-servicenow.json#incident:<inc-a>" }
   ],
   "dispatched": [
-    { "plane": "iosxe", "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<wan-edge> device:<cloud-edge>", "invoked_at": "2026-09-25T06:20:30Z" },
-    { "plane": "relationships", "agent": "Relationship agent", "task": "Run the relationship compile only.", "invoked_at": "2026-09-25T06:21:00Z" }
+    { "plane": "iosxe", "agent": "Health Device", "task": "Run the network device health check only. Scope: device:<dc-leaf>", "invoked_at": "2026-10-01T16:20:30Z" },
+    { "plane": "relationships", "agent": "Relationship agent", "task": "Run the relationship compile only.", "invoked_at": "2026-10-01T16:21:00Z" }
   ],
   "read": [
-    "health/metadata-thousandeyes.json",
+    "health/metadata-application.json",
+    "health/metadata-netflow.json",
     "health/metadata-splunk.json",
-    "health/metadata-servicenow.json",
     "health/metadata-iosxe.json",
+    "health/metadata-servicenow.json",
     "state/health.json",
-    "health/servicenow/2026-09-25T00-10-00Z.json"
+    "health/application/2026-10-01T16-00-00Z.json",
+    "health/servicenow/2026-10-01T16-10-00Z.json",
+    "state/relationships.json"
   ]
 }

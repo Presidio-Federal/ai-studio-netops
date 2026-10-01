@@ -208,29 +208,37 @@ in-scope tickets do not degrade vital status. Filing cases is
 
 ## Health Analyzer
 
-Reasoner. Reads the four boards it still knows (and prior
-`state/health.json`), **folds** new visit `metrics` into `series`
-(last 10 per plane), then writes SOAP. Envelope status is worst of
-ThousandEyes, Splunk, and IOS-XE. ServiceNow does not vote.
+Reasoner. Reads the five boards (application, netflow, splunk,
+iosxe, servicenow), the prior `state/health.json`, at most five new
+stamps, and `state/relationships.json`; twelve reads at most. It
+never opens `inventory/applications.json` — the compiled edges
+already carry the CMDB model. `series` is by reference to each
+board. Envelope status is worst of application, NetFlow, Splunk,
+and IOS-XE. ServiceNow does not vote.
 
-It does not yet open `health/metadata-netflow.json` or
-`health/metadata-application.json`. Those slips are on the chart
-for the next phase. The relationship compiler, the ServiceNow
-registry, and Network Ops review still read
-`health/metadata-thousandeyes.json` the same way. Application
-impact and change blast radius are not on `state/health.json`
-yet.
+Every problem carries **`impact`**: the applications, services, and
+hosts reached by walking `state/relationships.json` upward from the
+problem's keys (`flows_to` / `traverses` into hosts, `depends_on`
+chains into applications, then services), with `basis`
+`intended` / `observed` / `both` / `none`. The walk is mechanical —
+names are copied from edges, never inferred from a hostname. A
+`change:` annotation on the application board plus a `changed`
+edge makes the hypothesis say the symptom *follows* that change;
+the annotation alone says it *coincides*. See
+[Datacenter applications](datacenter-applications.md).
 
 - **S** — why this analysis ran (the ask, or scheduled
   assess-now / refresh-then-assess).
 - **O** — what the slips and series measured, including
   `vs_prior` deltas. Stamp paths stay on `consults.*.source_ref`.
-- **A** — `assessment.opinion` from the four planes it reads. Quiet planes
+- **A** — `assessment.opinion` from the five planes. Quiet planes
   are findings. Contradictions stay contradictions, not an
   invented root cause.
 - **P** — another named nurse visit, refer Network Ops or Network
   Design, or `none`. Not “inspect the stamp already read.” Not a
-  SKU, git change, or test plan.
+  SKU, git change, or test plan. Never a device visit on a Linux
+  host; never a Network Ops order for a container that is simply
+  gone.
 
 Modes: **assess-now** dispatches stale planes if attached and does
 not wait. **refresh-then-assess** waits only for planes that are
@@ -452,42 +460,40 @@ Tickets are history, not vitals.
 
 ### SOAP — attending chart
 
-What Analyzer 4.0.1 writes today, from ThousandEyes, Splunk, and
-IOS-XE. It does not yet name a NetFlow exporter or an application
-probe.
+Trimmed from `skills/health-analyzer/examples/health-state.example.json`
+(Analyzer 5.0.0). The database tier's probe is down and its container
+is gone while the host, the flows, and the routers are clean.
 
 `state/health.json`
 
 ```json
 {
-  "schema": "health-state/v5",
+  "schema": "health-state/v7",
   "source_agent": "health-analyzer",
   "status": "degraded",
-  "headline": "Unhealthy is the WAN path, not the lab syslog or the boxes.",
-  "next_action": "Network Ops: path or config, not a down box.",
-  "soap": {
-    "subjective": "Scheduled assess-now.",
-    "objective": "TE path-b 30/30 error rounds (worse vs prior); path-a 0% loss. Splunk 0 flaps. IOS-XE ranked wan/edge oper-ready. ServiceNow not requested.",
-    "assessment": "Unhealthy is the WAN path, not the lab syslog or the boxes.",
-    "plan": "Network Ops: path or config, not a down box."
-  },
+  "headline": "The database tier is down from the only vantage and its container is gone on <app-host> while the host, the routers, and the flows are clean; the loss follows change:<sha> on <dc-leaf> and reaches the api and web tiers and the Order Management service.",
+  "coverage": { "application": "complete", "netflow": "complete", "splunk": "complete", "iosxe": "complete", "servicenow": "complete" },
   "assessment": {
-    "unhealthy": ["thousandeyes path-b (test t2): 30/30 error rounds this visit"],
-    "healthy": ["splunk: 0 flaps, 0 critical across 7 hosts", "iosxe: ranked wan/edge oper-ready"],
-    "contradictions": ["WAN path-b failed; device plane and syslog are quiet"],
-    "opinion": "Unhealthy is the WAN path, not the lab syslog or the boxes."
+    "unhealthy": ["application: probe:database@cloud down and container dc-database gone on <app-host> since the 16:00 visit; impact reaches api, web, and the Order Management service through intended depends_on edges"],
+    "healthy": ["web and api probes up at 200; host <app-host> up with no interface down", "both NetFlow exporters reporting; flows toward <app-host> unchanged"],
+    "contradictions": ["Probe down and container gone while the host, the flows, and the routers are clean: the fault is inside the host at the container, not on the network path"],
+    "opinion": "…"
   },
-  "trend_analysis": {
-    "narrative": "TE path-b flipped from ok rounds to all errors vs prior stamp; Splunk and IOS-XE stayed quiet."
-  }
+  "problems": [{
+    "id": "P-20261001-01",
+    "status": "active",
+    "keys": ["application:database", "test:probe/database@cloud", "device:<app-host>", "change:<sha>", "incident:<inc-a>", "service:Order Management"],
+    "hypothesis": "The database container on device:<app-host> stopped after change:<sha> touched device:<dc-leaf> at 15:20 (changed edge present); host, flows, and routers are clean …",
+    "impact": { "applications": ["database", "api", "web"], "services": ["Order Management"], "hosts": ["<app-host>"], "basis": "both" },
+    "order": { "agent": "Network Ops", "task": "Network Ops: database container gone on device:<app-host> after change:<sha> on device:<dc-leaf>; host and network rows clean" }
+  }]
 }
 ```
 
 `consults.<plane>` is the attending’s impression of that lab slip,
-not a paste of the nurse headline. `series` is the last ten
-`metrics` points per plane. Stamp path stays on
-`consults.*.source_ref`. The planes in that note are the ones
-Analyzer 4.0.1 still reads.
+not a paste of the nurse headline. `series.<plane>` points at the
+board; no points are copied. `impact` names come from compiled
+edges and are not keys.
 
 ## Invoke lines
 

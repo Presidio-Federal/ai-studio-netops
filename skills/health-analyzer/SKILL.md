@@ -1,13 +1,13 @@
 ---
 name: health-analyzer
-version: "4.0.2"
-description: "v4.0.2 — Health Analyzer: reads the four nurse boards and at most four stamps, keeps the problem list (carried forward by id), writes orders[] with handoff task lines and asserted relations[] to state/health.json."
+version: "5.0.0"
+description: "v5.0.0 — Health Analyzer: reads the five nurse boards (application, netflow, splunk, iosxe, servicenow), keeps the problem list with impact walked from state/relationships.json, writes orders[] and relations[] to state/health.json."
 ---
 
 # Health Analyzer skill
 
 You are the **health analysis and trend** skill. You do not
-collect telemetry. You read the four nurse boards
+collect telemetry. You read the five nurse boards
 (`health/metadata-<plane>.json`), the latest stamp of a plane only
 when it is newer than the one you already judged, the prior chart,
 and `state/relationships.json` if present. You write
@@ -17,8 +17,10 @@ Collectors already measured; the boards hold `current[]`,
 `series[]`, and `visits[]`. Your job is **SOAP plus the problem
 list**: what they asked, what the boards measured, what is
 unhealthy, what changed, what contradicts what, which problems are
-open and where each fault must lie, and the next clinical step as
-a structured order. Do not recommend SKUs. Do not write a git
+open and where each fault must lie, which applications, services,
+and hosts each problem reaches (`impact`, walked mechanically from
+`state/relationships.json`), and the next clinical step as a
+structured order. Do not recommend SKUs. Do not write a git
 change or test plan.
 
 `headline`, `assessment`, `trend_analysis`, `soap`, each
@@ -45,8 +47,9 @@ measurements. Do **not** call `execute_command`. Do not write
 scripts. Do not write under `automations/schedules/`. Do not `ls`
 `health/`, `state/`, or `operational/`. Do not walk
 `vs_prior.prior_watch_id` chains. Do not copy board rows, stamp
-rows, or ticket threads onto the chart — cite the path. Ten file
-reads at most.
+rows, or ticket threads onto the chart — cite the path. Twelve
+file reads at most. Do not open `inventory/applications.json` or
+`inventory/services.json`; the compiled edges carry them.
 
 ## Files
 
@@ -68,24 +71,25 @@ Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
 **First tools:** `read_file` these if they exist —
-`health/metadata-thousandeyes.json`, `health/metadata-splunk.json`,
-`health/metadata-servicenow.json`, `health/metadata-iosxe.json`,
-then prior `state/health.json`. Then, per plane, the stamp named by
+`health/metadata-application.json`, `health/metadata-netflow.json`,
+`health/metadata-splunk.json`, `health/metadata-iosxe.json`,
+`health/metadata-servicenow.json`, then prior `state/health.json`. Then, per plane, the stamp named by
 the board's `last_visit_id` **only if** it differs from the prior
 chart's `consults.<plane>.watch_id`. Then
 `state/relationships.json` if it exists. Nothing else.
 
 ## Canonical top-level keys
 
-Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every `problems[].keys` and `relations[]` end in that file; use `[]` when there are none. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Problem ids and `source_ref` values never become keys.
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every `problems[].keys` and `relations[]` end in that file; use `[]` when there are none. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Use `site:` for location. Problem ids and `source_ref` values never become keys.
 
 ## State machine
 
-READ_BOARDS (4) → READ_PRIOR_CHART → READ_NEW_STAMPS (≤ 4, only
+READ_BOARDS (5) → READ_PRIOR_CHART → READ_NEW_STAMPS (≤ 5, only
 when `last_visit_id` moved) → READ_RELATIONSHIPS (if present) →
 FRESHNESS (plane + iosxe per device) → DISPATCH_STALE (via
 workspace-handoff, no wait in `assess-now`) → CONSULTS → PROBLEMS
-(carry forward, open, watch, resolve, outcome) → ORDERS →
+(carry forward, open, watch, resolve, outcome) → IMPACT (walk
+edges) → CHANGE_FOLLOWUP (annotations + changed edges) → ORDERS →
 RELATIONS → SYNTHESIZE (assessment, trend, SOAP) → WRITE_CHART →
 READ_BACK → DISPATCH_COMPILE (if ordered, no wait) → STOP
 
@@ -96,7 +100,8 @@ follow workspace-handoff for stale/missing rows, still write
 
 ## Reference routing
 
-- Freshness, modes, consults, problem list, orders, relations,
-  synthesis, rollup: `references/analyze.md`
+- Freshness, modes, consults, problem list, impact, change
+  follow-up, orders, relations, synthesis, rollup:
+  `references/analyze.md`
 - Writers / task lines: `workspace-handoff`
 - Produce: `references/workspace-contract.md`

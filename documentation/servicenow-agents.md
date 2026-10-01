@@ -7,8 +7,10 @@ which is read-only and does not vote vitals.
 
 Scope lives in workspace metadata, the same way Health keeps the
 Splunk index, the NetFlow window, and the ServiceNow marker out of
-the prompt. The registry still reads ThousandEyes test names from
-`health/metadata-thousandeyes.json` until that visit is retargeted.
+the prompt. The services registry discovers `cmdb_ci_service` rows
+carrying the lab marker and takes its second candidate list from
+`inventory/applications.json` `services[]` (the Application Map's
+CMDB copy); the marker itself resolves from `prod.json` `lab_title`.
 You point an agent at data by editing that file (or answering
 when it asks). Live ids are not in the prompt.
 

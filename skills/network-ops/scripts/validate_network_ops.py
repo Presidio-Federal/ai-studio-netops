@@ -8,7 +8,7 @@ import re
 import sys
 from typing import Any
 
-SCHEMA = "network-ops-state/v3"
+SCHEMA = "network-ops-state/v3.2"
 SOURCE_AGENT = "network-ops"
 STATUSES = {
     "recommended",
@@ -23,17 +23,19 @@ STATUSES = {
 MODES = {"recommend", "implement"}
 KINDS = {"missing_config", "wrong_config", "test_bug", "other"}
 VERIFIED_KINDS = {"missing_config", "wrong_config"}
-RELS = {"depends_on", "caused", "resolved_by"}
+RELS = {"depends_on", "caused", "resolved_by", "impacted"}
 REL_ENDS = {
-    "depends_on": (("service", "test"), ("device", "interface")),
-    "caused": (("device", "interface"), ("test", "service", "incident")),
+    "depends_on": (("service", "test", "application"), ("device", "interface")),
+    "caused": (("device", "interface"), ("test", "service", "application", "incident")),
     "resolved_by": (("test", "incident"), ("change",)),
+    "impacted": (("change",), ("application",)),
 }
+BLAST_BASIS = {"intended", "observed", "both", "none"}
 PROBLEM_RE = re.compile(r"^P-\d{8}-\d{2}$")
 INTERFACE_RE = re.compile(r"^[^ /]+/[^ ]+$")
 CI_RESULTS = {"pass", "fail", "unknown", "running"}
 KEY_RE = re.compile(
-    r"^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+    r"^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"
 )
 OPERATIONAL_REF_RE = re.compile(
     r"^operational/runs/\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}Z\.json$"
@@ -150,6 +152,25 @@ def main() -> None:
             for item in interfaces:
                 if not isinstance(item, str) or not INTERFACE_RE.match(item):
                     errors.append(f"change.interfaces entry must be <device>/<interface>: {item}")
+        blast = change.get("blast_radius")
+        if not isinstance(blast, dict):
+            errors.append("change.blast_radius must be an object")
+        else:
+            for field in ("hosts", "applications", "services"):
+                items = blast.get(field)
+                if not isinstance(items, list) or any(not isinstance(i, str) or not i for i in items):
+                    errors.append(f"change.blast_radius.{field} must be an array of names")
+                elif len(items) != len(set(items)):
+                    errors.append(f"change.blast_radius.{field} must not contain duplicates")
+            if blast.get("basis") not in BLAST_BASIS:
+                errors.append("change.blast_radius.basis must be intended, observed, both, or none")
+            if blast.get("source_ref") not in (None, "state/relationships.json"):
+                errors.append("change.blast_radius.source_ref must be state/relationships.json or null")
+        annotation_ref = change.get("annotation_ref", "missing")
+        if annotation_ref is not None and not isinstance(annotation_ref, str):
+            errors.append("change.annotation_ref must be a string or null")
+        if annotation_ref is not None and data.get("status") != "merged":
+            errors.append("change.annotation_ref is only set on a merged change")
     git = data.get("git")
     if isinstance(git, dict) and git.get("ref") == "main" and data.get("status") != "merged":
         errors.append("git.ref must be dev until merged")
@@ -179,7 +200,7 @@ def main() -> None:
             continue
         name = rel.get("rel")
         if name not in RELS:
-            errors.append(f"{label}.rel must be depends_on, caused, or resolved_by")
+            errors.append(f"{label}.rel must be depends_on, caused, resolved_by, or impacted")
             continue
         if rel.get("basis") != "asserted":
             errors.append(f"{label}.basis must be asserted")
@@ -196,6 +217,12 @@ def main() -> None:
             relation_keys.add(value)
         if name == "caused" and not (verified and kind in VERIFIED_KINDS):
             errors.append(f"{label}: caused requires finding.verified_in_git true and kind missing_config or wrong_config")
+        if name == "impacted":
+            if status != "merged":
+                errors.append(f"{label}: impacted is only written on a merged change")
+            git_sha = (data.get("git") or {}).get("commit_sha") if isinstance(data.get("git"), dict) else None
+            if isinstance(src, str) and git_sha and src != f"change:{git_sha}":
+                errors.append(f"{label}.from must be change:<git.commit_sha>")
         if name == "resolved_by":
             if status != "merged":
                 errors.append(f"{label}: resolved_by is only written on a merged change")

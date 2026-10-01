@@ -1,5 +1,5 @@
 {
-  "schema": "network-ops-state/v3",
+  "schema": "network-ops-state/v3.2",
   "updated_at": "2026-09-29T16:10:00Z",
   "source_agent": "network-ops",
   "status": "recommended",
@@ -23,6 +23,14 @@
       "inventory/configs/WAN-04.cfg"
     ],
     "summary": "ensure_present 'neighbor 100.64.7.2 activate' and 'neighbor 100.64.8.2 activate' under router bgp 65000 / address-family ipv4 on WAN-04; nothing else touched",
+    "blast_radius": {
+      "hosts": [],
+      "applications": [],
+      "services": [],
+      "basis": "none",
+      "source_ref": "state/relationships.json"
+    },
+    "annotation_ref": null,
     "operational_ref": null,
     "monitoring_ref": null
   },
@@ -58,7 +66,9 @@
       "rank": 1,
       "problem_ref": "P-20260926-02",
       "source_ref": "health/metadata-iosxe.json#WAN-04/bgp",
-      "devices": ["WAN-04"],
+      "devices": [
+        "WAN-04"
+      ],
       "interfaces": [],
       "finding": "Two WAN-04 bgp rows idle on the board; git shows the neighbors defined but not activated under address-family ipv4, unlike WAN-02 where every neighbor has 'activate'",
       "kind": "missing_config",
@@ -70,8 +80,12 @@
       "rank": 2,
       "problem_ref": null,
       "source_ref": "health/metadata-iosxe.json#WAN-04/interface/GigabitEthernet5",
-      "devices": ["WAN-04"],
-      "interfaces": ["WAN-04/GigabitEthernet5"],
+      "devices": [
+        "WAN-04"
+      ],
+      "interfaces": [
+        "WAN-04/GigabitEthernet5"
+      ],
       "finding": "Board shows input_acl BLOCK-PING-SPLUNK bound on GigabitEthernet5; git on dev has no such ACL or binding — the box carries an uncommitted change",
       "kind": "unplanned_change",
       "proposed": null,
@@ -82,8 +96,13 @@
       "rank": 3,
       "problem_ref": "P-20260926-03",
       "source_ref": "state/health.json#P-20260926-03",
-      "devices": ["AI-BRANCH-01", "AI-BRANCH-02"],
-      "interfaces": ["AI-BRANCH-01/GigabitEthernet2"],
+      "devices": [
+        "AI-BRANCH-01",
+        "AI-BRANCH-02"
+      ],
+      "interfaces": [
+        "AI-BRANCH-01/GigabitEthernet2"
+      ],
       "finding": "GigabitEthernet2 oper up with clean counters while the branch is reported down; git shows AI-BRANCH-01 lacks the 'ip helper-address' AI-BRANCH-02 carries on its LAN interface",
       "kind": "missing_config",
       "proposed": "ensure_present 'ip helper-address 10.40.40.11' under interface GigabitEthernet2 on AI-BRANCH-01, after 'ip address'",
@@ -94,7 +113,12 @@
       "rank": 4,
       "problem_ref": null,
       "source_ref": "health/metadata-splunk.json#config",
-      "devices": ["WAN-01", "WAN-02", "WAN-03", "WAN-04"],
+      "devices": [
+        "WAN-01",
+        "WAN-02",
+        "WAN-03",
+        "WAN-04"
+      ],
       "interfaces": [],
       "finding": "Nine administrator config commits via vty in the window with no change row on the ServiceNow board; git cannot say what changed on the box",
       "kind": "unplanned_change",

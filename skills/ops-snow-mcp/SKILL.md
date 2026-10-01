@@ -1,7 +1,7 @@
 ---
 name: ops-snow-mcp
-version: "3.10.0"
-description: "v3.10.0 — Ops ServiceNow Operator: lab INC/CHG desk with typed entity columns, dispatch and KB drafts after a yes, and the services registry (cmdb_ci_service by lab marker + Application Map) written to inventory/services.json."
+version: "3.10.1"
+description: "v3.10.1 — Ops ServiceNow Operator: lab INC/CHG desk with typed entity columns, dispatch and KB drafts after a yes, and the services registry (cmdb_ci_service by lab marker + Application Map) written to inventory/services.json."
 ---
 
 # Ops ServiceNow Operator skill

@@ -22,6 +22,19 @@ returns the exact SHA. Network Ops invokes Pipeline Monitor once for that SHA;
 it never polls subagent status. Live pass → Ops opens `dev` → `main` and
 merges (merge commit; do not delete `dev`).
 
+Before the prescription — in recommend, review, and implement — Network
+Ops reads `state/relationships.json` once and writes
+`change.blast_radius`: the hosts cabled to or routed through the target
+devices (`connected_to`, `traverses`, `flows_to`), the applications
+that `depends_on` those hosts (and the applications that depend on
+them), and the services on top. It is copied from edges, reported on
+a `Blast radius:` line and in the PR body, and never a reason to stop
+an authorized change. After the merge it creates one Grafana annotation
+tagged `change:<sha>` and `device:<d>` so the Health Application nurse
+and the Analyzer can line the change up against the probes, and asserts
+`change:<sha> impacted application:<a>` for each application in the
+radius. See [Datacenter applications](datacenter-applications.md).
+
 Network Ops may load the few relevant config bodies into its reasoning context
 but never copies them into workspace state or its reply. GitOps Change and
 Pipeline Monitor each write one concise relationship-ready

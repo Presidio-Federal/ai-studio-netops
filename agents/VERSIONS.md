@@ -4,13 +4,13 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 3.1.0 | Frontier (operator-selected; GitOps orchestration risk) |
+| Network Ops | 3.2.0 | Frontier (operator-selected; GitOps orchestration risk) |
 | GitHub GitOps Change | 1.3.1 | MiniMax |
 | Pipeline Monitor | 1.2.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.4.4 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
-| Ops ServiceNow | 1.5.0 | MiniMax |
+| Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.2.2 | MiniMax |
 | Modernization Analysis | 2.0.1 | MiniMax |
 | Modernization Lifecycle | 1.4.1 | MiniMax |
@@ -22,6 +22,6 @@ Deployed model is **MiniMax** unless noted.
 | Health Application | 1.0.1 | MiniMax |
 | Health Device | 1.11.0 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
-| Health Analyzer | 4.0.1 | MiniMax |
+| Health Analyzer | 5.0.0 | MiniMax |
 | Relationship agent | 1.2.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |

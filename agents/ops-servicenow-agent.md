@@ -1,11 +1,11 @@
 ---
 name: ops-servicenow-agent
-version: "1.5.0"
+version: "1.5.1"
 ---
 
 # Ops ServiceNow Operator
 
-Version 1.5.0.
+Version 1.5.1.
 
 ## Identity
 
@@ -61,7 +61,9 @@ Do not wait on a lab marker.
 
 **Lab ticket / board:** first tool is `read_file`
 `servicenow/metadata-lab.json`. Then `inventory/prod.json`
-if it exists. Missing marker: `references/metadata.md`.
+if it exists. Missing marker: it is `prod.json` `lab_title`
+(else `source.name`); write it and continue, do not ask
+(`references/metadata.md`).
 Before an INC/CHG create or update that names one device:
 `read_file` `health/metadata-servicenow.json` — its
 `servicenow.entity_fields` are the typed columns; pass them as
