@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.65.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys (incl. application), relations, edges-as-columns, quiet visits, task lines, and read/write rules."
-version: "1.65.0"
+description: "v1.66.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys (incl. application), relations, edges-as-columns, quiet visits, task lines, and read/write rules."
+version: "1.66.0"
 ---
 
 # Workspace handoff
@@ -200,7 +200,8 @@ Writer schemas copy this shape; they do not redefine it.
 ```
 
 - `from`, `to` — strings that also appear in this record's `keys`.
-- `rel` — one of `connected_to` `peers_with` `traverses` `tests`
+- `rel` — one of `connected_to` `peers_with` `flows_to` (client
+  device → server device, from a NetFlow conversation) `traverses` `tests`
   `checks` (a `control:` evaluated against a device or interface)
   `located_at` `impacted` `depends_on` `caused` `resolved_by` `changed`.
 - `basis` — `intended` (git or NetBox says so), `observed` (the tool
@@ -305,7 +306,8 @@ visits).
 | `inventory/infra-sot.json` | snapshot | Ops NetBox SoT | `ops-netbox-mcp` `schemas/infra-sot.schema.json` | envelope, `mode` `seed` `parents.*.id` `devices[].name` `id` `device_type` `software_version` `interfaces[]` (`cidr` resolves an address to `interface:<device>/<name>`) `cables[]` (intended `connected_to`) `counts` |
 | `inventory/topology-observed.json` | snapshot | Health Device (topology map) | `health-device` `schemas/topology-iosxe.schema.json` | envelope, `coverage.state` (`partial` while a map is in progress) `mapped_at` `prior_mapped_at` `devices[].name` `node_definition` `software_version` `probed_at` `interfaces[]` (`cidr` resolves an address to a device) `neighbors[]` (`local` `far_name` `far_port` `far` — one end's view of a cable; `far` null means the name is not in inventory; readers pair rows across devices) `changes[]`. Task line `Run the network topology map only.` |
 | `inventory/services.json` | snapshot | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/services.schema.json` | `updated_at` `source_agent` `services[].name` (the only valid `service:` spellings) `aliases[]` (match case-insensitively; never add to them) `owner` `source_ref` `candidates_rejected[]`. Written only after the human confirmed the rows (task line `Set up the services registry.`). Absent file: write no `service:` key. |
-| `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `compiled_at`, `coverage` (`read[]` `missing[]` — a source listed in `missing` means no evidence of that edge kind, not no edge), `edges[]` (`from` `to` `rel` `basis` `sides` `first_seen` `last_seen` `seen_count` `sources[]` `status`; identity is `(from, to, rel, basis)`, so an `intended` and an `observed` row for one cable coexist; `last_seen` is the source's time, never the compile time; a `changed` edge's `sources[]` carries the `operational/runs/` path; a `checks` / compliance `tests` edge's `sources[]` carries the `operational/testing/` path and says the control or check was evaluated against the device — the verdict stays on that run; `sides` 1 on a cable or peering only one end reports), `drift[]` (`from` `to` `rel` `kind` `evidence_ref` `since`; `connected_to` and `traverses` only, empty until `prod.json` `links[]` or a TE `tests[].path` is declared), `watermarks` |
+| `state/relationships.json` | state | Relationship agent | `relationship-compiler` `schemas/relationships-state.schema.json` | envelope, `compiled_at`, `coverage` (`read[]` `missing[]` — a source listed in `missing` means no evidence of that edge kind, not no edge), `edges[]` (`from` `to` `rel` `basis` `sides` `first_seen` `last_seen` `seen_count` `sources[]` `status`; identity is `(from, to, rel, basis)`, so an `intended` and an `observed` row for one cable coexist; `last_seen` is the source's time, never the compile time; a `changed` edge's `sources[]` carries the `operational/runs/` path; a `checks` / compliance `tests` edge's `sources[]` carries the `operational/testing/` path and says the control or check was evaluated against the device — the verdict stays on that run; `sides` 1 on a cable or peering only one end reports), `drift[]` (`from` `to` `rel` `kind` `evidence_ref` `since`; `connected_to` and `depends_on` (application on host) only, empty until `prod.json` `links[]` or `inventory/applications.json` is declared), `watermarks` |
+| `inventory/applications.json` | snapshot | Application Map | `application-map` `schemas/applications.schema.json` | `updated_at` `source_agent` `applications[]` (`name` — the `application:` spelling, matching the Grafana `service` label; `service` — a `services[].name` from `inventory/services.json` or null; `hosts[]` — `inventory/prod.json` device names only; `depends_on[]` — other `applications[].name`; `source_ref` — the CMDB sys_id). Intended layer; the compiler turns it into `depends_on` edges and host drift. Absent file: no intended application edges, no application drift. |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |

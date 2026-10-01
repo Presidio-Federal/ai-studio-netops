@@ -5,8 +5,10 @@ Cases for **this lab** and ticket trends for a named slice
 **health** watch — that is [Health ServiceNow](health-agents.md),
 which is read-only and does not vote vitals.
 
-Scope lives in workspace metadata, the same way Health keeps
-Splunk index / TE tests / the ServiceNow marker out of the prompt.
+Scope lives in workspace metadata, the same way Health keeps the
+Splunk index, the NetFlow window, and the ServiceNow marker out of
+the prompt. The registry still reads ThousandEyes test names from
+`health/metadata-thousandeyes.json` until that visit is retargeted.
 You point an agent at data by editing that file (or answering
 when it asks). Live ids are not in the prompt.
 

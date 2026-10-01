@@ -63,6 +63,6 @@ models.
 Ops does not wait for a Design `configuration[]` row. Config
 changes prove on git `dev` (Dev lab), then a PR to `main`.
 
-Design does not collect Splunk, ThousandEyes, or Cisco EoX.
+Design does not collect Splunk, NetFlow, application probes, or Cisco EoX.
 It does not run the ServiceNow desk (assign / KB). Warehouse
 and catalog order **are** this agent.

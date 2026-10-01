@@ -127,7 +127,7 @@ GitHub holds approved network configuration; NetBox describes infrastructure ide
 <details>
 <summary><strong>Health</strong> — What is happening, what changed, and what requires attention?</summary>
 
-Health combines observations from operational sources into a current assessment of the environment.
+Health combines observations from operational sources into a current assessment of the environment. Specialists cover syslog, NetFlow, application probes and containers, device state, and lab tickets.
 
 Specialists compare live information with previous observations and record meaningful changes. A higher-level analyzer correlates those observations using a SOAP-inspired model to maintain an assessment and actionable objectives.
 

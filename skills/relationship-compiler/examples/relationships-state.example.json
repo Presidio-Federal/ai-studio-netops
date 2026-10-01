@@ -3,8 +3,8 @@
   "updated_at": "2026-09-25T18:00:00Z",
   "source_agent": "relationship-agent",
   "status": "ok",
-  "headline": "20 edges (19 current, 1 stale) from 11 sources; 2 drift rows: <hq-edge> GigabitEthernet2 is cabled to <wan-03>, not <wan-01> as prod.json declares. New since 2026-09-25T12:00:00Z: 2 changed edges for change:<sha>, 3 compliance edges on <cloud-edge>.",
-  "next_action": "Review drift[]: 2 rows",
+  "headline": "25 edges (24 current, 1 stale) from 13 sources; 4 drift rows: <hq-edge> GigabitEthernet2 is cabled to <wan-03>, not <wan-01> as prod.json declares; application database runs on <app-host> but applications.json does not declare it there. New since 2026-09-25T12:00:00Z: 2 changed edges for change:<sha>, 3 application edges from the application board, 1 flows_to edge from NetFlow.",
+  "next_action": "Review drift[]: 4 rows",
   "compiled_at": "2026-09-25T18:00:00Z",
   "coverage": {
     "read": [
@@ -12,7 +12,9 @@
       "inventory/topology-observed.json",
       "health/metadata-iosxe.json",
       "health/metadata-splunk.json",
-      "health/metadata-thousandeyes.json",
+      "health/metadata-netflow.json",
+      "health/metadata-application.json",
+      "inventory/applications.json",
       "health/metadata-servicenow.json",
       "state/health.json",
       "state/network-ops.json",
@@ -27,7 +29,9 @@
     "inventory/topology-observed.json": "2026-09-25T09:03:10Z",
     "health/metadata-iosxe.json": "2026-09-25T12:00:00Z",
     "health/metadata-splunk.json": "2026-09-25T17:05:00Z",
-    "health/metadata-thousandeyes.json": "2026-09-25T17:00:00Z",
+    "health/metadata-netflow.json": "2026-09-25T17:00:00Z",
+    "health/metadata-application.json": "2026-09-25T17:02:00Z",
+    "inventory/applications.json": "2026-09-25T10:00:00Z",
     "health/metadata-servicenow.json": "2026-09-25T17:10:00Z",
     "state/health.json": "2026-09-25T17:20:00Z",
     "state/network-ops.json": "2026-09-25T16:00:00Z",
@@ -37,40 +41,421 @@
     "operational/testing/2026-09-25T14-17-26Z.json": "2026-09-25T14:17:26Z"
   },
   "edges": [
-    { "from": "interface:<cloud-edge>/GigabitEthernet1", "to": "interface:<wan-01>/GigabitEthernet4", "rel": "connected_to", "basis": "observed", "sides": 2, "first_seen": "2026-09-24T09:01:20Z", "last_seen": "2026-09-25T09:01:20Z", "seen_count": 3, "sources": ["inventory/topology-observed.json"], "status": "current" },
-    { "from": "interface:<cloud-edge>/GigabitEthernet1", "to": "interface:<wan-01>/GigabitEthernet4", "rel": "connected_to", "basis": "intended", "sides": null, "first_seen": "2026-09-24T08:00:00Z", "last_seen": "2026-09-25T08:00:00Z", "seen_count": 3, "sources": ["inventory/prod.json"], "status": "current" },
-    { "from": "interface:<hq-edge>/GigabitEthernet2", "to": "interface:<wan-03>/GigabitEthernet1", "rel": "connected_to", "basis": "observed", "sides": 2, "first_seen": "2026-09-24T09:02:55Z", "last_seen": "2026-09-25T09:02:55Z", "seen_count": 3, "sources": ["inventory/topology-observed.json"], "status": "current" },
-    { "from": "interface:<hq-edge>/GigabitEthernet2", "to": "interface:<wan-01>/GigabitEthernet1", "rel": "connected_to", "basis": "intended", "sides": null, "first_seen": "2026-09-24T08:00:00Z", "last_seen": "2026-09-25T08:00:00Z", "seen_count": 3, "sources": ["inventory/prod.json"], "status": "current" },
-    { "from": "interface:<wan-01>/GigabitEthernet2", "to": "interface:<wan-02>/GigabitEthernet2", "rel": "connected_to", "basis": "observed", "sides": 1, "first_seen": "2026-09-17T09:01:40Z", "last_seen": "2026-09-17T09:01:40Z", "seen_count": 1, "sources": ["inventory/topology-observed.json"], "status": "stale" },
-    { "from": "device:<cloud-edge>", "to": "device:<wan-01>", "rel": "peers_with", "basis": "observed", "sides": 2, "first_seen": "2026-09-24T12:00:00Z", "last_seen": "2026-09-25T17:05:00Z", "seen_count": 3, "sources": ["health/metadata-iosxe.json", "health/metadata-splunk.json"], "status": "current" },
-    { "from": "device:<hq-edge>", "to": "device:<wan-03>", "rel": "peers_with", "basis": "observed", "sides": 2, "first_seen": "2026-09-24T12:00:00Z", "last_seen": "2026-09-25T12:00:00Z", "seen_count": 3, "sources": ["health/metadata-iosxe.json"], "status": "current" },
-    { "from": "test:<a2a-test-id>", "to": "device:<cloud-edge>", "rel": "tests", "basis": "observed", "sides": null, "first_seen": "2026-09-24T22:05:00Z", "last_seen": "2026-09-25T17:00:00Z", "seen_count": 3, "sources": ["health/metadata-thousandeyes.json"], "status": "current" },
-    { "from": "test:<a2a-test-id>", "to": "device:<hq-edge>", "rel": "tests", "basis": "observed", "sides": null, "first_seen": "2026-09-24T22:05:00Z", "last_seen": "2026-09-25T17:00:00Z", "seen_count": 3, "sources": ["health/metadata-thousandeyes.json"], "status": "current" },
-    { "from": "test:<a2a-test-id>", "to": "device:<wan-01>", "rel": "traverses", "basis": "observed", "sides": null, "first_seen": "2026-09-24T22:05:00Z", "last_seen": "2026-09-25T17:00:00Z", "seen_count": 3, "sources": ["health/metadata-thousandeyes.json"], "status": "current" },
-    { "from": "test:<a2a-test-id>", "to": "interface:<wan-01>/GigabitEthernet4", "rel": "traverses", "basis": "observed", "sides": null, "first_seen": "2026-09-24T22:05:00Z", "last_seen": "2026-09-25T17:00:00Z", "seen_count": 3, "sources": ["health/metadata-thousandeyes.json"], "status": "current" },
-    { "from": "incident:<inc-b>", "to": "device:<wan-04>", "rel": "impacted", "basis": "observed", "sides": null, "first_seen": "2026-09-25T00:10:00Z", "last_seen": "2026-09-25T17:10:00Z", "seen_count": 3, "sources": ["health/metadata-servicenow.json"], "status": "current" },
-    { "from": "incident:<inc-b>", "to": "interface:<wan-04>/GigabitEthernet6", "rel": "impacted", "basis": "observed", "sides": null, "first_seen": "2026-09-25T00:10:00Z", "last_seen": "2026-09-25T17:10:00Z", "seen_count": 3, "sources": ["health/metadata-servicenow.json"], "status": "current" },
-    { "from": "incident:<inc-a>", "to": "test:<a2a-test-id>", "rel": "impacted", "basis": "asserted", "sides": null, "first_seen": "2026-09-25T06:20:00Z", "last_seen": "2026-09-25T17:20:00Z", "seen_count": 2, "sources": ["state/health.json"], "status": "current" },
-    { "from": "test:<a2a-test-id>", "to": "interface:<wan-01>/GigabitEthernet4", "rel": "depends_on", "basis": "asserted", "sides": null, "first_seen": "2026-09-25T16:00:00Z", "last_seen": "2026-09-25T16:00:00Z", "seen_count": 1, "sources": ["state/network-ops.json"], "status": "current" },
-    { "from": "change:<sha>", "to": "device:<wan-01>", "rel": "changed", "basis": "observed", "sides": null, "first_seen": "2026-09-25T15:58:10Z", "last_seen": "2026-09-25T16:00:00Z", "seen_count": 1, "sources": ["operational/runs/2026-09-25T15-58-10Z.json", "state/network-ops.json"], "status": "current" },
-    { "from": "change:<sha>", "to": "interface:<wan-01>/GigabitEthernet4", "rel": "changed", "basis": "observed", "sides": null, "first_seen": "2026-09-25T15:58:10Z", "last_seen": "2026-09-25T16:00:00Z", "seen_count": 1, "sources": ["operational/runs/2026-09-25T15-58-10Z.json", "state/network-ops.json"], "status": "current" },
-    { "from": "test:bgp_neighbors_up", "to": "device:<cloud-edge>", "rel": "tests", "basis": "observed", "sides": null, "first_seen": "2026-09-25T14:17:26Z", "last_seen": "2026-09-25T14:17:26Z", "seen_count": 1, "sources": ["operational/testing/2026-09-25T14-17-26Z.json"], "status": "current" },
-    { "from": "test:bgp-receiving-prefixes", "to": "device:<cloud-edge>", "rel": "tests", "basis": "observed", "sides": null, "first_seen": "2026-09-25T14:17:26Z", "last_seen": "2026-09-25T14:17:26Z", "seen_count": 1, "sources": ["operational/testing/2026-09-25T14-17-26Z.json"], "status": "current" },
-    { "from": "control:CM-6", "to": "device:<cloud-edge>", "rel": "checks", "basis": "observed", "sides": null, "first_seen": "2026-09-25T14:17:26Z", "last_seen": "2026-09-25T14:17:26Z", "seen_count": 1, "sources": ["operational/testing/2026-09-25T14-17-26Z.json"], "status": "current" }
+    {
+      "from": "interface:<cloud-edge>/GigabitEthernet1",
+      "to": "interface:<wan-01>/GigabitEthernet4",
+      "rel": "connected_to",
+      "basis": "observed",
+      "sides": 2,
+      "first_seen": "2026-09-24T09:01:20Z",
+      "last_seen": "2026-09-25T09:01:20Z",
+      "seen_count": 3,
+      "sources": [
+        "inventory/topology-observed.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "interface:<cloud-edge>/GigabitEthernet1",
+      "to": "interface:<wan-01>/GigabitEthernet4",
+      "rel": "connected_to",
+      "basis": "intended",
+      "sides": null,
+      "first_seen": "2026-09-24T08:00:00Z",
+      "last_seen": "2026-09-25T08:00:00Z",
+      "seen_count": 3,
+      "sources": [
+        "inventory/prod.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "interface:<hq-edge>/GigabitEthernet2",
+      "to": "interface:<wan-03>/GigabitEthernet1",
+      "rel": "connected_to",
+      "basis": "observed",
+      "sides": 2,
+      "first_seen": "2026-09-24T09:02:55Z",
+      "last_seen": "2026-09-25T09:02:55Z",
+      "seen_count": 3,
+      "sources": [
+        "inventory/topology-observed.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "interface:<hq-edge>/GigabitEthernet2",
+      "to": "interface:<wan-01>/GigabitEthernet1",
+      "rel": "connected_to",
+      "basis": "intended",
+      "sides": null,
+      "first_seen": "2026-09-24T08:00:00Z",
+      "last_seen": "2026-09-25T08:00:00Z",
+      "seen_count": 3,
+      "sources": [
+        "inventory/prod.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "interface:<wan-01>/GigabitEthernet2",
+      "to": "interface:<wan-02>/GigabitEthernet2",
+      "rel": "connected_to",
+      "basis": "observed",
+      "sides": 1,
+      "first_seen": "2026-09-17T09:01:40Z",
+      "last_seen": "2026-09-17T09:01:40Z",
+      "seen_count": 1,
+      "sources": [
+        "inventory/topology-observed.json"
+      ],
+      "status": "stale"
+    },
+    {
+      "from": "device:<cloud-edge>",
+      "to": "device:<wan-01>",
+      "rel": "peers_with",
+      "basis": "observed",
+      "sides": 2,
+      "first_seen": "2026-09-24T12:00:00Z",
+      "last_seen": "2026-09-25T17:05:00Z",
+      "seen_count": 3,
+      "sources": [
+        "health/metadata-iosxe.json",
+        "health/metadata-splunk.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "device:<hq-edge>",
+      "to": "device:<wan-03>",
+      "rel": "peers_with",
+      "basis": "observed",
+      "sides": 2,
+      "first_seen": "2026-09-24T12:00:00Z",
+      "last_seen": "2026-09-25T12:00:00Z",
+      "seen_count": 3,
+      "sources": [
+        "health/metadata-iosxe.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "device:<hq-edge>",
+      "to": "device:<cloud-edge>",
+      "rel": "flows_to",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T17:00:00Z",
+      "last_seen": "2026-09-25T17:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "health/metadata-netflow.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "device:<cloud-edge>",
+      "to": "device:<hq-edge>",
+      "rel": "traverses",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T17:00:00Z",
+      "last_seen": "2026-09-25T17:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "health/metadata-netflow.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "test:probe/web@cloud",
+      "to": "application:web",
+      "rel": "tests",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:00:00Z",
+      "last_seen": "2026-09-25T17:02:00Z",
+      "seen_count": 2,
+      "sources": [
+        "health/metadata-application.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "application:web",
+      "to": "site:datacenter",
+      "rel": "located_at",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:00:00Z",
+      "last_seen": "2026-09-25T17:02:00Z",
+      "seen_count": 2,
+      "sources": [
+        "health/metadata-application.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "application:dc-web",
+      "to": "device:<app-host>",
+      "rel": "depends_on",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:00:00Z",
+      "last_seen": "2026-09-25T17:02:00Z",
+      "seen_count": 2,
+      "sources": [
+        "health/metadata-application.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "application:database",
+      "to": "device:<app-host>",
+      "rel": "depends_on",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:00:00Z",
+      "last_seen": "2026-09-25T17:02:00Z",
+      "seen_count": 2,
+      "sources": [
+        "health/metadata-application.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "device:<app-host>",
+      "to": "site:datacenter",
+      "rel": "located_at",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:00:00Z",
+      "last_seen": "2026-09-25T17:02:00Z",
+      "seen_count": 2,
+      "sources": [
+        "health/metadata-application.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "service:<business-service>",
+      "to": "application:web",
+      "rel": "depends_on",
+      "basis": "intended",
+      "sides": null,
+      "first_seen": "2026-09-25T10:00:00Z",
+      "last_seen": "2026-09-25T10:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "inventory/applications.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "application:web",
+      "to": "application:api",
+      "rel": "depends_on",
+      "basis": "intended",
+      "sides": null,
+      "first_seen": "2026-09-25T10:00:00Z",
+      "last_seen": "2026-09-25T10:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "inventory/applications.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "application:api",
+      "to": "application:database",
+      "rel": "depends_on",
+      "basis": "intended",
+      "sides": null,
+      "first_seen": "2026-09-25T10:00:00Z",
+      "last_seen": "2026-09-25T10:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "inventory/applications.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "application:database",
+      "to": "device:<db-host>",
+      "rel": "depends_on",
+      "basis": "intended",
+      "sides": null,
+      "first_seen": "2026-09-25T10:00:00Z",
+      "last_seen": "2026-09-25T10:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "inventory/applications.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "incident:<inc-b>",
+      "to": "device:<wan-04>",
+      "rel": "impacted",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T00:10:00Z",
+      "last_seen": "2026-09-25T17:10:00Z",
+      "seen_count": 3,
+      "sources": [
+        "health/metadata-servicenow.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "incident:<inc-b>",
+      "to": "interface:<wan-04>/GigabitEthernet6",
+      "rel": "impacted",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T00:10:00Z",
+      "last_seen": "2026-09-25T17:10:00Z",
+      "seen_count": 3,
+      "sources": [
+        "health/metadata-servicenow.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "change:<sha>",
+      "to": "device:<wan-01>",
+      "rel": "changed",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:58:10Z",
+      "last_seen": "2026-09-25T16:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "operational/runs/2026-09-25T15-58-10Z.json",
+        "state/network-ops.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "change:<sha>",
+      "to": "interface:<wan-01>/GigabitEthernet4",
+      "rel": "changed",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T15:58:10Z",
+      "last_seen": "2026-09-25T16:00:00Z",
+      "seen_count": 1,
+      "sources": [
+        "operational/runs/2026-09-25T15-58-10Z.json",
+        "state/network-ops.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "test:bgp_neighbors_up",
+      "to": "device:<cloud-edge>",
+      "rel": "tests",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T14:17:26Z",
+      "last_seen": "2026-09-25T14:17:26Z",
+      "seen_count": 1,
+      "sources": [
+        "operational/testing/2026-09-25T14-17-26Z.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "test:bgp-receiving-prefixes",
+      "to": "device:<cloud-edge>",
+      "rel": "tests",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T14:17:26Z",
+      "last_seen": "2026-09-25T14:17:26Z",
+      "seen_count": 1,
+      "sources": [
+        "operational/testing/2026-09-25T14-17-26Z.json"
+      ],
+      "status": "current"
+    },
+    {
+      "from": "control:CM-6",
+      "to": "device:<cloud-edge>",
+      "rel": "checks",
+      "basis": "observed",
+      "sides": null,
+      "first_seen": "2026-09-25T14:17:26Z",
+      "last_seen": "2026-09-25T14:17:26Z",
+      "seen_count": 1,
+      "sources": [
+        "operational/testing/2026-09-25T14-17-26Z.json"
+      ],
+      "status": "current"
+    }
   ],
   "drift": [
-    { "from": "interface:<hq-edge>/GigabitEthernet2", "to": "interface:<wan-01>/GigabitEthernet1", "rel": "connected_to", "kind": "intended_not_observed", "evidence_ref": "inventory/prod.json", "since": "2026-09-24T12:00:00Z" },
-    { "from": "interface:<hq-edge>/GigabitEthernet2", "to": "interface:<wan-03>/GigabitEthernet1", "rel": "connected_to", "kind": "observed_not_intended", "evidence_ref": "inventory/topology-observed.json", "since": "2026-09-24T12:00:00Z" }
+    {
+      "from": "interface:<hq-edge>/GigabitEthernet2",
+      "to": "interface:<wan-01>/GigabitEthernet1",
+      "rel": "connected_to",
+      "kind": "intended_not_observed",
+      "evidence_ref": "inventory/prod.json",
+      "since": "2026-09-24T12:00:00Z"
+    },
+    {
+      "from": "interface:<hq-edge>/GigabitEthernet2",
+      "to": "interface:<wan-03>/GigabitEthernet1",
+      "rel": "connected_to",
+      "kind": "observed_not_intended",
+      "evidence_ref": "inventory/topology-observed.json",
+      "since": "2026-09-24T12:00:00Z"
+    },
+    {
+      "from": "application:database",
+      "to": "device:<db-host>",
+      "rel": "depends_on",
+      "kind": "intended_not_observed",
+      "evidence_ref": "inventory/applications.json",
+      "since": "2026-09-25T18:00:00Z"
+    },
+    {
+      "from": "application:database",
+      "to": "device:<app-host>",
+      "rel": "depends_on",
+      "kind": "observed_not_intended",
+      "evidence_ref": "health/metadata-application.json",
+      "since": "2026-09-25T18:00:00Z"
+    }
   ],
   "keys": [
-    "interface:<cloud-edge>/GigabitEthernet1", "interface:<wan-01>/GigabitEthernet4",
-    "interface:<hq-edge>/GigabitEthernet2", "interface:<wan-03>/GigabitEthernet1", "interface:<wan-01>/GigabitEthernet1",
-    "interface:<wan-01>/GigabitEthernet2", "interface:<wan-02>/GigabitEthernet2",
-    "device:<cloud-edge>", "device:<wan-01>", "device:<hq-edge>", "device:<wan-03>",
-    "test:<a2a-test-id>",
-    "incident:<inc-b>", "device:<wan-04>", "interface:<wan-04>/GigabitEthernet6",
-    "incident:<inc-a>",
+    "interface:<cloud-edge>/GigabitEthernet1",
+    "interface:<wan-01>/GigabitEthernet4",
+    "interface:<hq-edge>/GigabitEthernet2",
+    "interface:<wan-03>/GigabitEthernet1",
+    "interface:<wan-01>/GigabitEthernet1",
+    "interface:<wan-01>/GigabitEthernet2",
+    "interface:<wan-02>/GigabitEthernet2",
+    "device:<cloud-edge>",
+    "device:<wan-01>",
+    "device:<hq-edge>",
+    "device:<wan-03>",
+    "test:probe/web@cloud",
+    "application:web",
+    "site:datacenter",
+    "application:dc-web",
+    "device:<app-host>",
+    "application:database",
+    "service:<business-service>",
+    "application:api",
+    "device:<db-host>",
+    "incident:<inc-b>",
+    "device:<wan-04>",
+    "interface:<wan-04>/GigabitEthernet6",
     "change:<sha>",
-    "test:bgp_neighbors_up", "test:bgp-receiving-prefixes", "control:CM-6"
+    "test:bgp_neighbors_up",
+    "test:bgp-receiving-prefixes",
+    "control:CM-6"
   ]
 }

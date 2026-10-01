@@ -4,9 +4,11 @@ Health is the first family that implements the
 [patient-chart architecture](patient-chart.md). Nurses query **one**
 telemetry source, compare it to the last visit of that source, and
 write a structured **observation** (lab slip). Health Analyzer
-reads those slips and writes **SOAP** on `state/health.json`.
+reads the slips from the planes it still folds and writes **SOAP**
+on `state/health.json`. NetFlow and application slips are on the
+chart; the analyzer does not open them yet.
 Network Ops and Network Design start from that chart — not from
-four chat recaps.
+chat recaps.
 
 ![Building the Patient Chart](health-patient-chart.svg)
 
@@ -17,7 +19,7 @@ four chat recaps.
 | Shared case | Studio workspace (`workspace-handoff`) |
 | Specialist | One telemetry source per conversation |
 | Observation | Lab slip under `health/<source>/<stamp>.json` |
-| Authoritative source | Splunk, ThousandEyes, IOS-XE RESTCONF, ServiceNow |
+| Authoritative source | Splunk, Grafana (InfluxDB NetFlow, Prometheus probes / containers / hosts), IOS-XE RESTCONF, ServiceNow |
 | Material change | Required `vs_prior` (`delta`, `changed[]`) |
 | Evidence, not dump | `headline`, `coverage`, `metrics` — not MCP JSON |
 | Interpretation | Health Analyzer SOAP on `state/health.json` |
@@ -28,20 +30,21 @@ SOAP is the attending note. Nurses do not write SOAP. SBAR and
 I-PASS are escalation / responsibility patterns in the
 architecture; they are not the visit-file format.
 
-A Splunk visit is labs. A ThousandEyes visit is imaging. An IOS-XE
-visit is examining the patient. ServiceNow is prior-admission
-history. Mixing those in one conversation is one clinician doing
-everyone else’s job.
+A Splunk visit is labs. A NetFlow visit is who is talking to whom.
+An application visit is the tiers on the host: probes, containers,
+and the host OS. An IOS-XE visit is examining the patient.
+ServiceNow is prior-admission history. Mixing those in one
+conversation is one clinician doing everyone else’s job.
 
 ## Specialist loop
 
 ```mermaid
 flowchart TB
     Read["Read Case<br/>Metadata + last stamp for this plane"]
-    Query["Query Source<br/>Splunk, TE, IOS-XE, or ServiceNow — one only"]
+    Query["Query Source<br/>Splunk, NetFlow, Prometheus, IOS-XE, or ServiceNow — one only"]
     Compare["Compare<br/>vs_prior against last_visit_id<br/>(IOS-XE: chart source_ref)"]
     Detect["Detect Change<br/>delta first · unchanged · worse · better"]
-    Write["Write Lab Slip<br/>headline · coverage · metrics · vs_prior"]
+    Write["Write Board<br/>stamp only when material"]
     Exit([Exit])
 
     Read --> Query --> Compare --> Detect --> Write --> Exit
@@ -53,36 +56,37 @@ Analyzer spends tokens on synthesis.
 
 **What is on the slip.** Vitals (`metrics`, same keys every visit,
 `null` when not collected), coverage, and `vs_prior`. The proof of
-a change is `vs_prior.changed` (for example `test:t2 ok_rounds 12 →
-0`), not a copy of `tests[]`, `samples`, or `devices[]` trees.
-Standing-order follow-up (TE path-vis on loss/errors) stays on
-**this** visit. A Splunk finding does not authorize an IOS-XE GET.
+a change is `vs_prior.changed` (for example `application:database`
+success `1 → 0`), not a copy of `tests[]`, `samples`, or
+`devices[]` trees. A Splunk finding does not authorize an IOS-XE
+GET or a Grafana query. A NetFlow visit does not query Prometheus.
+An application visit does not query InfluxDB.
 
 Every structured health write also carries top-level `keys`: the
 deduplicated union of source-supported device, qualified interface, site,
-service, test, incident, and change identities in that record. Nested
+service, test, incident, change, and application identities in that record. Nested
 readings and threads retain their own keys. Unavailable or entity-free writes
 use `keys: []`; agents never infer identities from prose.
 
-**What a named visit still does today.** A completed collection
-still writes a lab slip, including `delta: unchanged` and
-`changed: []`. That is thinner than a telemetry dump, and it keeps
-freshness and the series honest. Skip-write on no change is the
-architecture target (`Write or Exit`); it is not the Health skill
-behavior yet.
+**Quiet visit.** A completed collection with no material change
+writes the board only: `current[]`, `series[]`, `visits[]`, and
+`last_collected_at`. No stamp. A stamp is written when something
+in the material table moved, on the first visit, or when coverage
+is not `complete`.
 
 A successful Splunk search with no BGP ADJCHANGE, LINEPROTO
-UPDOWN, or CONFIG_I is a quiet window: `complete`, signal counts
-0, `readings` [], and the watermark advances to `checked_at`. A
-tool error or an unusable payload is `unavailable`, null counts,
-and the watermark stays put. ThousandEyes with an empty alert
-list means no rule is bound, not a healthy path.
+UPDOWN, or CONFIG_I is a quiet window: `complete`, the board
+advances, and no stamp is written. A tool error or an unusable
+payload is `unavailable`, null counts, and the watermark stays
+put. `grafana_alerts` with no rules bound is not a healthy
+estate; neither nurse designs a visit around it.
 
 ## Who writes what
 
 | Role | Agent | Writes |
 |------|-------|--------|
-| Path / syslog | Health Monitor | Named Splunk **or** ThousandEyes slip + that plane’s metadata |
+| Syslog / flows | Health Monitor | Named Splunk **or** NetFlow slip + that plane’s metadata |
+| Application | Health Application | `health/application/<stamp>.json` + `health/metadata-application.json` |
 | Bedside | Health Device | `health/iosxe/<stamp>.json` |
 | Records | Health ServiceNow | ServiceNow slip + metadata |
 | Attending | Health Analyzer | `state/health.json` only |
@@ -114,21 +118,71 @@ Hosts resolve to devices by parsed hostname, then by address against
 `health/metadata-splunk.json` holds the last state per device, kind,
 and subject; a window with no material event writes the board only.
 
-**ThousandEyes** — path tests. One network-results call per
-metadata test on the metadata `window` (default `1h`), one alerts
-call. One board row per test and agent: `state` from a fixed rule
-(majority of rounds at or above 5% loss, mean loss ≥ 5, or no ok
-round), mean and max loss, latency and jitter on the newest round,
-`first_bad_round_at`, and the devices at each end (`src_device`
-from the agent's IP, `dst_device` from `serverIp`, both through
-`inventory/topology-observed.json` cidr). The board on
-`health/metadata-thousandeyes.json` is the prior; a stamp is written
-only when state, mean loss (10 points), latency (20 ms), or error
-rounds moved, or a row appeared. A degraded reading then calls
-`path-vis` for `agentId` and `roundId`, then `path-vis-detail`.
-`pathTraces[0].hops[].ipAddress` is matched to a topology cidr and
-stored as `hops` (observed). The summary call still has no hop
-addresses. `tests[].path` remains the operator's intended sequence.
+**NetFlow** — Grafana InfluxDB, measurement in metadata (default
+window `1h`). On the baseline, or when an exporter address is not
+already on the board, `grafana_influx_schema` fills `exporters[]`.
+Two Flux queries, `timerange` equal to that window: bytes, flows,
+and last seen per exporter, then the top 40 client-to-server
+conversations. Collector ports and ephemeral destination ports are
+excluded in the query. Rows are `exporter` (`reporting` or
+`silent`) and `conversation` (`present` or `absent`). An address
+becomes a device only through `exporters[].device`, then an
+`exporter_name` that matches `inventory/prod.json`, then a
+topology cidr, then an access host. A port is never an
+application. Material is a state flip, a new row, or bytes at
+least 4× or at most ¼ of the prior. The plane is `degraded` only
+when an exporter is silent. Columns `exporter`, `src_device`,
+`dst_device`, `dst_port`, and `protocol` are the edge. No
+`relations[]`.
+
+## Health Application
+
+One visit. A bare invoke runs it. Grafana Prometheus only: one
+call per message.
+
+Targets (`grafana_prometheus_targets`) are their own rows and also
+name `probe_job`: any target whose scrape URL contains `/probe?`.
+Twelve instant queries follow, all on the metadata window (default
+`1h`):
+
+- **Probes** — success, HTTP status, duration, and success percent
+  over the window, for `{job="<probe_job>"}`.
+- **Containers** — start time, CPU percent, working-set memory, and
+  receive bytes per second. The `application` column and the
+  `application:` key are the Prometheus `service` label, copied
+  as-is. The container's `service` column is the Prometheus
+  `application` label, copied as text, and it is not a key.
+- **Hosts** — boot time, available memory percent, root filesystem
+  free percent, and interfaces up, ignoring loopback, veth, docker,
+  and bridge devices.
+
+Annotations in the window that carry a `change:*` tag are copied
+onto the board (ring of 20). On the baseline only, label values
+for `service`, `site`, `vantage_point`, and `host_name` land in
+`lookup`.
+
+Rows: `probe` (`up` / `down`), `container` (`running` / `gone`),
+`host` (`up` / `unreachable`), `target` (scrape `health`). `host`
+is `host_name`. `device:` is written only when that name is in
+`inventory/prod.json`. Probe keys include
+`test:probe/<service>@<vantage_point>`. Never a `service:` key;
+the registry owns those. A container or host missing from this
+scrape is carried forward as `gone` or `unreachable`.
+
+Material (a stamp): probe success or HTTP code change; container
+restart (start time moved by more than 60 seconds), running↔gone,
+or CPU crossing 80; host reboot, interfaces-down change, memory or
+root filesystem crossing 10 percent free, or up↔unreachable;
+target health change; a new row. The plane is `degraded` when a
+probe is down, a container is gone or restarted this visit, a host
+is unreachable or rebooted or has an interface down, or a target
+is not up. Columns `host`, `device`, and `application` are the
+edge. No `relations[]`.
+
+Probe `service` labels and container `service` labels are whatever
+the datasource returns. When they differ (a probe named `web` and
+a container named `dc-web`), they are two `application:` keys.
+Nothing in this nurse merges them.
 
 ## Health Device
 
@@ -154,16 +208,24 @@ in-scope tickets do not degrade vital status. Filing cases is
 
 ## Health Analyzer
 
-Reasoner. Reads the four latest slips (and prior
+Reasoner. Reads the four boards it still knows (and prior
 `state/health.json`), **folds** new visit `metrics` into `series`
 (last 10 per plane), then writes SOAP. Envelope status is worst of
 ThousandEyes, Splunk, and IOS-XE. ServiceNow does not vote.
+
+It does not yet open `health/metadata-netflow.json` or
+`health/metadata-application.json`. Those slips are on the chart
+for the next phase. The relationship compiler, the ServiceNow
+registry, and Network Ops review still read
+`health/metadata-thousandeyes.json` the same way. Application
+impact and change blast radius are not on `state/health.json`
+yet.
 
 - **S** — why this analysis ran (the ask, or scheduled
   assess-now / refresh-then-assess).
 - **O** — what the slips and series measured, including
   `vs_prior` deltas. Stamp paths stay on `consults.*.source_ref`.
-- **A** — `assessment.opinion` from all four planes. Quiet planes
+- **A** — `assessment.opinion` from the four planes it reads. Quiet planes
   are findings. Contradictions stay contradictions, not an
   invented root cause.
 - **P** — another named nurse visit, refer Network Ops or Network
@@ -204,8 +266,8 @@ skill.
 }
 ```
 
-ThousandEyes metadata holds `account_id` and `tests[]`. ServiceNow
-metadata holds `marker` and `last_visit_id`.
+ServiceNow metadata holds `marker` and `last_visit_id`. NetFlow
+and application boards are below.
 
 ### Observation — Splunk lab slip (material event)
 
@@ -237,36 +299,105 @@ BGP, link, config, reload, ACL log, or failed-auth event.
 }
 ```
 
-### Observation — ThousandEyes (material change)
+### Wristband — NetFlow board
 
-`health/thousandeyes/<stamp>.json` — written only when a row moved.
+`health/metadata-netflow.json`
 
 ```json
 {
-  "schema": "health-thousandeyes-check/v3",
-  "source": "thousandeyes",
-  "watch_id": "2026-09-25T04-05-00Z",
+  "schema": "health-metadata-netflow/v1",
+  "source_agent": "health-monitor",
+  "netflow": {
+    "bucket": "<bucket>",
+    "measurement": "<measurement>",
+    "window": "1h",
+    "exporters": [
+      { "source": "<hq-edge-ip>", "exporter_name": "<hq-edge>", "device": "<hq-edge>" }
+    ],
+    "current": [
+      { "kind": "exporter", "source": "<hq-edge-ip>", "device": "<hq-edge>", "keys": ["device:<hq-edge>"], "state": "reporting", "bytes": 61659, "flows": 255 },
+      { "kind": "conversation", "exporter": "<dc-edge>", "src": "<client-ip>", "dst": "<web-ip>", "dst_port": "80", "protocol": "tcp", "src_device": null, "dst_device": null, "keys": ["device:<dc-edge>"], "state": "present", "bytes": 17000, "flows": 40 }
+    ]
+  }
+}
+```
+
+### Observation — NetFlow (material change)
+
+`health/netflow/<stamp>.json` — written only when an exporter went
+silent or returned, or a conversation appeared, vanished, or moved
+by the fixed factor.
+
+```json
+{
+  "schema": "health-netflow-check/v1",
+  "source": "netflow",
+  "watch_id": "2026-09-30T21-20-00Z",
   "status": "degraded",
-  "headline": "<a2a-test-name> <cloud-agent> -> <hq-agent> recovered: 0% on 30 of 30 ok rounds since 03:12Z, was 12% (max 34%) at the baseline; the reverse still loses 17%. 2 rows unchanged; 0 alerts firing.",
+  "headline": "Exporter at <cloud-edge-ip> silent since 19:41 (unresolved); <hq-edge> client to web :80 vanished. 36 rows unchanged.",
   "window": "1h",
   "coverage": { "state": "complete" },
   "vs_prior": {
-    "prior_watch_id": "2026-09-24T22-05-00Z",
-    "delta": "better",
+    "prior_watch_id": "2026-09-30T15-20-00Z",
+    "delta": "worse",
     "changed": [
-      { "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "field": "state", "prior": "degraded", "current": "ok", "at": "2026-09-25T04:00:01Z" },
-      { "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "field": "loss_pct", "prior": 12, "current": 0, "at": "2026-09-25T04:00:01Z" }
+      { "keys": [], "field": "state", "prior": "reporting", "current": "silent", "at": "2026-09-30T21:20:00Z" },
+      { "keys": ["device:<hq-edge>"], "field": "state", "prior": "present", "current": "absent", "at": "2026-09-30T21:20:00Z" }
     ]
   },
   "metrics": [
-    { "at": "2026-09-25T04:05:00Z", "scope": "estate", "tests": 3, "rows": 3, "degraded_rows": 1, "worst_loss_pct": 17, "worst_scope": "test:<a2a-reverse-test-id>/<hq-agent>", "error_rounds": 0, "alerts_firing": 0 }
-  ],
-  "readings": [
-    { "scope": "test:<a2a-test-id>/<cloud-agent>", "test_id": "<a2a-test-id>", "name": "<a2a-test-name>", "agent": "<cloud-agent>", "server": "<hq-agent-ip>", "src_device": "<cloud-edge>", "dst_device": "<hq-edge>", "keys": ["test:<a2a-test-id>", "device:<cloud-edge>", "device:<hq-edge>"], "at": "2026-09-25T04:00:01Z", "state": "ok", "loss_pct": 0, "loss_max_pct": 0, "latency_ms_avg": 1.0, "jitter_ms": 0.4, "ok_rounds": 30, "bad_rounds": 0, "error_rounds": 0, "error_type": null, "first_bad_round_at": null, "note": "Forward direction is clean for the whole window; the reverse still loses 17%, so the fix so far only helped one direction." }
-  ],
-  "unchanged": 2,
-  "baseline_ref": "health/thousandeyes/2026-09-24T22-05-00Z.json",
-  "alerts": { "firing": 0, "items": [] }
+    { "at": "2026-09-30T21:20:00Z", "scope": "estate", "exporters": 3, "exporters_silent": 1, "conversations": 38, "conversations_absent": 2 }
+  ]
+}
+```
+
+### Wristband — application board
+
+`health/metadata-application.json`
+
+```json
+{
+  "schema": "health-metadata-application/v1",
+  "source_agent": "health-application",
+  "application": {
+    "probe_job": "<probe-job>",
+    "window": "1h",
+    "lookup": { "services": ["web", "api", "database", "dc-web", "dc-api", "dc-database"], "sites": ["datacenter", "cloud"], "vantage_points": ["cloud"], "hosts": ["<app-host>"] },
+    "current": [
+      { "kind": "probe", "application": "web", "vantage_site": "cloud", "state": "up", "success": 1, "http_code": 200, "keys": ["application:web", "test:probe/web@cloud"] },
+      { "kind": "container", "name": "dc-web", "host": "<app-host>", "device": "<app-host>", "application": "dc-web", "service": "<business-service>", "state": "running", "cpu_pct": 0.3, "keys": ["application:dc-web", "device:<app-host>"] },
+      { "kind": "host", "host": "<app-host>", "device": "<app-host>", "state": "up", "mem_available_pct": 71, "fs_root_avail_pct": 82, "interfaces_down": [], "keys": ["device:<app-host>"] }
+    ],
+    "annotations": []
+  }
+}
+```
+
+### Observation — application (material change)
+
+`health/application/<stamp>.json` — written only when a probe,
+container, host, or target row moved.
+
+```json
+{
+  "schema": "health-application-check/v1",
+  "source": "application",
+  "watch_id": "2026-09-29T16-00-00Z",
+  "status": "degraded",
+  "headline": "database probe from cloud down (HTTP 0); container dc-database on <app-host> gone. 7 rows unchanged.",
+  "window": "1h",
+  "coverage": { "state": "complete" },
+  "vs_prior": {
+    "prior_watch_id": "2026-09-29T15-00-00Z",
+    "delta": "worse",
+    "changed": [
+      { "keys": ["application:database", "test:probe/database@cloud"], "field": "success", "prior": 1, "current": 0, "at": "2026-09-29T16:00:00Z" },
+      { "keys": ["application:dc-database", "device:<app-host>"], "field": "state", "prior": "running", "current": "gone", "at": "2026-09-29T16:00:00Z" }
+    ]
+  },
+  "metrics": [
+    { "at": "2026-09-29T16:00:00Z", "scope": "estate", "probes": 3, "probes_down": 1, "containers": 4, "containers_gone": 1, "hosts": 2, "targets_down": 0 }
+  ]
 }
 ```
 
@@ -321,6 +452,10 @@ Tickets are history, not vitals.
 
 ### SOAP — attending chart
 
+What Analyzer 4.0.1 writes today, from ThousandEyes, Splunk, and
+IOS-XE. It does not yet name a NetFlow exporter or an application
+probe.
+
 `state/health.json`
 
 ```json
@@ -351,14 +486,20 @@ Tickets are history, not vitals.
 `consults.<plane>` is the attending’s impression of that lab slip,
 not a paste of the nurse headline. `series` is the last ten
 `metrics` points per plane. Stamp path stays on
-`consults.*.source_ref`.
+`consults.*.source_ref`. The planes in that note are the ones
+Analyzer 4.0.1 still reads.
 
 ## Invoke lines
 
 - `Run the Splunk health check only.`
-- `Run the ThousandEyes health check only.`
+- `Run the NetFlow health check only.`
+- `Run the application health check only.`
 - `Run the network device health check only.`
 - `Run the ServiceNow health check only.`
+
+An unnamed Health Monitor invoke asks which check — Splunk or
+NetFlow — and stops. Health Application has one visit; a bare
+invoke runs it.
 
 Analyzer: an ask to analyze, assess, chart, or trend is
 `assess-now`. Refresh first is `refresh-then-assess`.

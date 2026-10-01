@@ -127,7 +127,7 @@ reasoning.
 
 ### 3. Source Systems Remain Authoritative
 
-The chart is not a replacement for Splunk, ThousandEyes,
+The chart is not a replacement for Splunk, Grafana, ThousandEyes,
 ServiceNow, network devices, or other operational platforms.
 
 Raw data remains in the authoritative system.
@@ -262,6 +262,7 @@ stable, source-supported identities that another record can share:
 - `control:<id>`
 - `incident:<number>`
 - `change:<number>`
+- `application:<name>` (the label the source returned, copied as-is)
 
 Nested data points retain their own keys; the top-level array is their
 deduplicated union plus entities explicitly named by the record. When no

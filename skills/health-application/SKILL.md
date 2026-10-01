@@ -1,7 +1,7 @@
 ---
 name: health-application
-version: "1.0.0"
-description: "v1.0.0 — Health Application nurse: application probes, containers, and host OS from Grafana / Prometheus. Board on metadata, stamp only on change; rows carry host, device, application, site as the edge; no relations[]."
+version: "1.0.1"
+description: "v1.0.1 — Health Application nurse: application probes, containers, and host OS from Grafana / Prometheus. Board on metadata, stamp only on change; rows carry host, device, application, site as the edge; no relations[]."
 ---
 
 # Health Application skill

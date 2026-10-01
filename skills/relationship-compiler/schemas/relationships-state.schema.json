@@ -2,74 +2,560 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "relationships-state.schema.json",
   "title": "relationships-state/v1",
-  "description": "state/relationships.json - the compiled edge set. Every edge is copied from a column another writer already filled (topology neighbors[], a bgp row's peer, a TE row's src_device/dst_device/hops[], a ticket's typed columns and rfc, a run's git.commit_sha + devices[]/interfaces[]), from an operator declaration (prod.json links[], TE tests[].path, tests[].service), or from an asserted relations[] row on state/health.json or state/network-ops.json. The compiler infers nothing.",
+  "description": "state/relationships.json - the compiled edge set. Every edge is copied from a column another writer already filled (topology neighbors[], a bgp row's peer, a NetFlow conversation's src_device/dst_device/exporter, an application board row's application/device/site, a ticket's typed columns and rfc, a run's git.commit_sha + devices[]/interfaces[]), from an operator declaration (prod.json links[], inventory/applications.json service/hosts[]/depends_on[]), or from an asserted relations[] row on state/health.json or state/network-ops.json. The compiler infers nothing.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema", "updated_at", "source_agent", "status", "headline", "next_action", "compiled_at", "coverage", "watermarks", "edges", "drift", "keys"],
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "compiled_at",
+    "coverage",
+    "watermarks",
+    "edges",
+    "drift",
+    "keys"
+  ],
   "properties": {
-    "schema": { "type": "string", "const": "relationships-state/v1" },
-    "updated_at": { "type": "string", "minLength": 1 },
-    "source_agent": { "type": "string", "const": "relationship-agent" },
-    "status": { "type": "string", "enum": ["ok", "partial", "unknown"], "description": "ok: every source that exists was read and compiled. partial: a source that exists returned unusable content. unknown: no source returned content." },
-    "headline": { "type": "string", "minLength": 1 },
-    "next_action": { "type": "string", "minLength": 1, "description": "'none', or 'Review drift[]: <n> rows' when drift is non-empty." },
-    "compiled_at": { "type": "string", "minLength": 1, "description": "When this compile ran. Edge status values are as of this time." },
+    "schema": {
+      "type": "string",
+      "const": "relationships-state/v1"
+    },
+    "updated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_agent": {
+      "type": "string",
+      "const": "relationship-agent"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ok",
+        "partial",
+        "unknown"
+      ],
+      "description": "ok: every source that exists was read and compiled. partial: a source that exists returned unusable content. unknown: no source returned content."
+    },
+    "headline": {
+      "type": "string",
+      "minLength": 1
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "'none', or 'Review drift[]: <n> rows' when drift is non-empty."
+    },
+    "compiled_at": {
+      "type": "string",
+      "minLength": 1,
+      "description": "When this compile ran. Edge status values are as of this time."
+    },
     "coverage": {
-      "type": "object", "additionalProperties": false, "required": ["read", "missing"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "read",
+        "missing"
+      ],
       "properties": {
-        "read": { "type": "array", "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Catalog paths that returned content this compile, in read order." },
-        "missing": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Fixed-list sources that did not exist. A reader treats an edge kind whose source is here as 'no evidence', not 'no edge'." }
+        "read": {
+          "type": "array",
+          "maxItems": 15,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Catalog paths that returned content this compile, in read order."
+        },
+        "missing": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Fixed-list sources that did not exist. A reader treats an edge kind whose source is here as 'no evidence', not 'no edge'."
+        }
       }
     },
-    "watermarks": { "type": "object", "additionalProperties": { "type": ["string", "null"] }, "description": "Catalog path -> the source's own time (board last_collected_at, topology mapped_at, state updated_at, snapshot collected_at, run updated_at). All equal to the prior file's -> no-op, no write." },
-    "edges": { "type": "array", "maxItems": 500, "items": { "$ref": "#/$defs/edge" } },
-    "drift": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/drift" }, "description": "Mechanical intended-vs-observed differences for connected_to and traverses only, and only where an intended edge of that rel exists. Empty when prod.json links[] is empty and no TE test declares path." },
-    "keys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }, "description": "Deduplicated union of every edges[].from and edges[].to." }
+    "watermarks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "string",
+          "null"
+        ]
+      },
+      "description": "Catalog path -> the source's own time (board last_collected_at, topology mapped_at, state updated_at, snapshot collected_at, run updated_at). All equal to the prior file's -> no-op, no write."
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/edge"
+      }
+    },
+    "drift": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "$ref": "#/$defs/drift"
+      },
+      "description": "Mechanical intended-vs-observed differences for connected_to and depends_on (application on host) only, and only where an intended edge of that rel exists. Empty when prod.json links[] is empty and inventory/applications.json is absent."
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"
+      },
+      "description": "Deduplicated union of every edges[].from and edges[].to."
+    }
   },
   "$defs": {
-    "key": { "type": "string", "pattern": "^((device|site|service|test|control|incident|change):[^ ].*|interface:[^ /]+/[^ ].*)$", "description": "Entity key. An interface key is always interface:<device>/<interface>; a bare interface:<name> is rejected." },
+    "key": {
+      "type": "string",
+      "pattern": "^((device|site|service|test|control|incident|change|application):[^ ].*|interface:[^ /]+/[^ ].*)$",
+      "description": "Entity key. An interface key is always interface:<device>/<interface>; a bare interface:<name> is rejected."
+    },
     "edge": {
-      "type": "object", "additionalProperties": false,
-      "required": ["from", "to", "rel", "basis", "sides", "first_seen", "last_seen", "seen_count", "sources", "status"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "rel",
+        "basis",
+        "sides",
+        "first_seen",
+        "last_seen",
+        "seen_count",
+        "sources",
+        "status"
+      ],
       "properties": {
-        "from": { "$ref": "#/$defs/key" },
-        "to": { "$ref": "#/$defs/key" },
-        "rel": { "type": "string", "enum": ["connected_to", "peers_with", "traverses", "tests", "checks", "located_at", "impacted", "depends_on", "caused", "resolved_by", "changed"] },
-        "basis": { "type": "string", "enum": ["intended", "observed", "asserted"], "description": "Part of the identity: one row per (from, to, rel, basis). intended and observed rows for the same (from, to, rel) coexist; drift compares them." },
-        "sides": { "type": ["integer", "null"], "enum": [1, 2, null], "description": "connected_to and peers_with (observed) only: 2 when both devices' own rows name each other, 1 when only one does. null on every other rel or basis." },
-        "first_seen": { "type": "string", "minLength": 1, "description": "Source time when this row was first compiled. Never moves." },
-        "last_seen": { "type": "string", "minLength": 1, "description": "Newest source time that produced this row: board last_collected_at, topology probed_at, state updated_at, run updated_at. Never the compile time." },
-        "seen_count": { "type": "integer", "minimum": 1, "description": "Number of compiles that produced this row." },
-        "sources": { "type": "array", "minItems": 1, "maxItems": 5, "uniqueItems": true, "items": { "type": "string", "minLength": 1 }, "description": "Catalog paths that produced this row, newest last. A changed edge lists the operational/runs/ path the Analyzer uses as treatment_ref." },
-        "status": { "type": "string", "enum": ["current", "stale"], "description": "As of compiled_at: observed stale after 7 days from last_seen, asserted after 30 days, intended never." }
+        "from": {
+          "$ref": "#/$defs/key"
+        },
+        "to": {
+          "$ref": "#/$defs/key"
+        },
+        "rel": {
+          "type": "string",
+          "enum": [
+            "connected_to",
+            "peers_with",
+            "flows_to",
+            "traverses",
+            "tests",
+            "checks",
+            "located_at",
+            "impacted",
+            "depends_on",
+            "caused",
+            "resolved_by",
+            "changed"
+          ]
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "intended",
+            "observed",
+            "asserted"
+          ],
+          "description": "Part of the identity: one row per (from, to, rel, basis). intended and observed rows for the same (from, to, rel) coexist; drift compares them."
+        },
+        "sides": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "enum": [
+            1,
+            2,
+            null
+          ],
+          "description": "connected_to and peers_with (observed) only: 2 when both devices' own rows name each other, 1 when only one does. null on every other rel or basis."
+        },
+        "first_seen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Source time when this row was first compiled. Never moves."
+        },
+        "last_seen": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Newest source time that produced this row: board last_collected_at, topology probed_at, state updated_at, run updated_at. Never the compile time."
+        },
+        "seen_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of compiles that produced this row."
+        },
+        "sources": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Catalog paths that produced this row, newest last. A changed edge lists the operational/runs/ path the Analyzer uses as treatment_ref."
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "current",
+            "stale"
+          ],
+          "description": "As of compiled_at: observed stale after 7 days from last_seen, asserted after 30 days, intended never."
+        }
       },
       "allOf": [
-        { "if": { "properties": { "rel": { "const": "connected_to" } } }, "then": { "properties": { "from": { "pattern": "^interface:" }, "to": { "pattern": "^interface:" } } } },
-        { "if": { "properties": { "rel": { "const": "peers_with" } } }, "then": { "properties": { "from": { "pattern": "^device:" }, "to": { "pattern": "^device:" } } } },
-        { "if": { "properties": { "rel": { "const": "tests" } } }, "then": { "properties": { "from": { "pattern": "^test:" }, "to": { "pattern": "^(device|service):" } } } },
-        { "if": { "properties": { "rel": { "const": "traverses" } } }, "then": { "properties": { "from": { "pattern": "^test:" }, "to": { "pattern": "^(device|interface):" } } } },
-        { "if": { "properties": { "rel": { "const": "checks" } } }, "then": { "properties": { "from": { "pattern": "^control:" }, "to": { "pattern": "^(device|interface):" } } } },
-        { "if": { "properties": { "rel": { "const": "located_at" } } }, "then": { "properties": { "from": { "pattern": "^(device|interface):" }, "to": { "pattern": "^site:" } } } },
-        { "if": { "properties": { "rel": { "const": "impacted" } } }, "then": { "properties": { "from": { "pattern": "^incident:" }, "to": { "pattern": "^(device|interface|service|test):" } } } },
-        { "if": { "properties": { "rel": { "const": "depends_on" } } }, "then": { "properties": { "from": { "pattern": "^(service|test):" }, "to": { "pattern": "^(device|interface):" } } } },
-        { "if": { "properties": { "rel": { "const": "caused" } } }, "then": { "properties": { "from": { "pattern": "^(device|interface|change):" }, "to": { "pattern": "^(test|service|incident):" } } } },
-        { "if": { "properties": { "rel": { "const": "resolved_by" } } }, "then": { "properties": { "from": { "pattern": "^(incident|test):" }, "to": { "pattern": "^change:" } } } },
-        { "if": { "properties": { "rel": { "const": "changed" } } }, "then": { "properties": { "from": { "pattern": "^change:" }, "to": { "pattern": "^(device|interface):" } } } },
-        { "if": { "properties": { "rel": { "enum": ["traverses", "tests", "checks", "located_at", "impacted", "depends_on", "caused", "resolved_by", "changed"] } } }, "then": { "properties": { "sides": { "type": "null" } } } },
-        { "if": { "properties": { "basis": { "enum": ["intended", "asserted"] } } }, "then": { "properties": { "sides": { "type": "null" } } } },
-        { "if": { "properties": { "basis": { "const": "intended" } } }, "then": { "properties": { "status": { "const": "current" } } } }
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "connected_to"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^interface:"
+              },
+              "to": {
+                "pattern": "^interface:"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "peers_with"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^device:"
+              },
+              "to": {
+                "pattern": "^device:"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "flows_to"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^device:"
+              },
+              "to": {
+                "pattern": "^device:"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "tests"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^test:"
+              },
+              "to": {
+                "pattern": "^(device|service|application):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "traverses"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(test|device):"
+              },
+              "to": {
+                "pattern": "^(device|interface):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "checks"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^control:"
+              },
+              "to": {
+                "pattern": "^(device|interface):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "located_at"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(device|interface|application):"
+              },
+              "to": {
+                "pattern": "^site:"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "impacted"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^incident:"
+              },
+              "to": {
+                "pattern": "^(device|interface|service|test|application):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "depends_on"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(service|test|application):"
+              },
+              "to": {
+                "pattern": "^(device|interface|application):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "caused"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(device|interface|change):"
+              },
+              "to": {
+                "pattern": "^(test|service|incident|application):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "resolved_by"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^(incident|test):"
+              },
+              "to": {
+                "pattern": "^change:"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "const": "changed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "from": {
+                "pattern": "^change:"
+              },
+              "to": {
+                "pattern": "^(device|interface|application):"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "rel": {
+                "enum": [
+                  "flows_to",
+                  "traverses",
+                  "tests",
+                  "checks",
+                  "located_at",
+                  "impacted",
+                  "depends_on",
+                  "caused",
+                  "resolved_by",
+                  "changed"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sides": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "basis": {
+                "enum": [
+                  "intended",
+                  "asserted"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "sides": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "basis": {
+                "const": "intended"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "status": {
+                "const": "current"
+              }
+            }
+          }
+        }
       ]
     },
     "drift": {
-      "type": "object", "additionalProperties": false,
-      "required": ["from", "to", "rel", "kind", "evidence_ref", "since"],
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "to",
+        "rel",
+        "kind",
+        "evidence_ref",
+        "since"
+      ],
       "properties": {
-        "from": { "$ref": "#/$defs/key" },
-        "to": { "$ref": "#/$defs/key" },
-        "rel": { "type": "string", "enum": ["connected_to", "traverses"] },
-        "kind": { "type": "string", "enum": ["intended_not_observed", "observed_not_intended"], "description": "intended_not_observed: declared, no current observed row. observed_not_intended: current observed row, not declared, and the source declares at least one edge of this rel (for traverses: for this test)." },
-        "evidence_ref": { "type": "string", "minLength": 1, "description": "The source of the edge that does exist: prod.json / TE board for intended, topology / TE board for observed." },
-        "since": { "type": "string", "minLength": 1, "description": "compiled_at of the first compile that listed this row; carried forward while it persists." }
+        "from": {
+          "$ref": "#/$defs/key"
+        },
+        "to": {
+          "$ref": "#/$defs/key"
+        },
+        "rel": {
+          "type": "string",
+          "enum": [
+            "connected_to",
+            "depends_on"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "intended_not_observed",
+            "observed_not_intended"
+          ],
+          "description": "intended_not_observed: declared, no current observed row. observed_not_intended: current observed row, not declared, and the source declares at least one edge of this rel (for depends_on: the application is named in applications.json)."
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The source of the edge that does exist: prod.json / applications.json for intended, topology / application board for observed."
+        },
+        "since": {
+          "type": "string",
+          "minLength": 1,
+          "description": "compiled_at of the first compile that listed this row; carried forward while it persists."
+        }
       }
     }
   }

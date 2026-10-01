@@ -10,9 +10,11 @@ this file. Do not call `grafana_query_influx`; flows are Health
 Monitor's plane.
 
 Twelve expressions, copied exactly. One call per message. Copy
-numbers; do not reason about the platform. A call that fails is
-retried once; a second failure leaves that kind's board rows as
-they were and sets coverage `partial`.
+numbers; do not reason about the platform. A call that fails
+(including `Connection closed`) is retried once with the same
+arguments; a second failure leaves that kind's board rows as they
+were and sets coverage `partial`. Do not change an argument shape
+to work around an error.
 
 ## Setup (reads, before any Grafana call)
 
@@ -73,11 +75,18 @@ when `host_name` is absent).
 - **H3** `node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} * 100`
 - **H4** `node_network_up{device!~"lo|veth.*|docker.*|br-.*"}`
 
-**A — change annotations. Always, last.**
-`grafana_annotations(action="list", timerange=<window>)`. Keep the
-items that carry at least one tag starting `change:`; copy `time`
-as returned, `tags`, `text`. A failed A leaves the board's
-`annotations[]` alone and does not touch coverage.
+**A — change annotations. Always, last.** Exactly two arguments:
+
+```text
+grafana_annotations(action="list", timerange="<window>")
+```
+
+Do **not** pass `tags`, `text`, `time`, or `time_end`. `tags` is a
+list of exact tag strings and cannot match a prefix, so the list is
+fetched unfiltered. From the result keep the items where at least
+one entry of `tags` starts with `change:`; copy `time` as returned,
+`tags`, `text`. A failed A leaves the board's `annotations[]` alone
+and does not touch coverage.
 
 **L — label spellings (baseline only, or when `lookup` is empty).**
 `grafana_prometheus_labels(label="service")`, then `"site"`,

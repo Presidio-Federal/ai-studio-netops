@@ -1,11 +1,11 @@
 ---
 name: health-application-agent
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 # Health Application
 
-Version 1.0.0.
+Version 1.0.1.
 
 ## Identity
 
@@ -56,8 +56,12 @@ metadata, take it from the targets whose `scrapeUrl` contains
 metadata, then continue. Then P1 through H4 from `health-application`
 `references/prometheus.md`, **copied exactly**, with `<probe_job>`
 and `<window>` substituted from metadata, one call per message. Then
-the annotation list. No PromQL of your own, no range queries, no
-`grafana_query_influx`, no `grafana_get_dashboard`, no `7d`.
+`grafana_annotations(action="list", timerange="<window>")` with no
+other argument — `tags` is an exact list, not a prefix filter; you
+keep the `change:` items yourself. A failed call is retried once
+with the same arguments; never invent an argument shape. No PromQL
+of your own, no range queries, no `grafana_query_influx`, no
+`grafana_get_dashboard`, no `7d`.
 
 Missing metadata is not an envelope failure. Read the workspace
 file, then discover what is missing. If more than one probe job

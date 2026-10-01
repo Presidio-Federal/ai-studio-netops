@@ -1,7 +1,7 @@
 ---
 name: relationship-compiler
-version: "1.1.0"
-description: "v1.1.0 — Relationship agent: reads a fixed list of workspace files, copies edges out of their columns (topology neighbors, bgp peer, TE ends and hops, ticket typed columns, run sha + devices, compliance check/control rows, asserted relations), upserts them with first/last seen, and writes state/relationships.json with drift."
+version: "1.2.0"
+description: "v1.2.0 — Relationship compiler: copies edges from workspace columns (topology, BGP, NetFlow, application board, CMDB applications, tickets, runs, asserted relations) into state/relationships.json with first/last seen and drift."
 ---
 
 # Relationship compiler skill
@@ -15,13 +15,16 @@ edge does not exist.
 Three layers, kept apart by `basis`:
 
 - `intended` — an operator or git declared it (`prod.json`
-  `links[]`, ThousandEyes `tests[].path`, `tests[].service`).
+  `links[]`; `inventory/applications.json` `service`, `hosts[]`,
+  `depends_on[]`).
 - `observed` — a tool payload contained it and a writer recorded it
-  as a column (CDP neighbor, BGP `peer`, test `src_device` /
-  `dst_device` / `hops[]`, a ticket's typed columns and `rfc`, a
-  run's `git.commit_sha` + `devices[]` / `interfaces[]`, a
-  compliance result row's `device` with its `test:` / `control:`
-  keys).
+  as a column (CDP neighbor, BGP `peer`, a NetFlow conversation's
+  `src_device` / `dst_device` / `exporter`, an application probe
+  row's `application` and `site`, a container row's `application`
+  and `device`, a host row's `device` and `site`, a ticket's typed
+  columns and `rfc`, a run's `git.commit_sha` + `devices[]` /
+  `interfaces[]`, a compliance result row's `device` with its
+  `test:` / `control:` keys).
 - `asserted` — Health Analyzer or Network Ops concluded it
   (`relations[]` on their state files); copied through.
 
@@ -30,19 +33,25 @@ An edge lives on `(from, to, rel, basis)` with `first_seen`,
 `sources[]`, `status` (`current` / `stale`), and `sides` (1 or 2)
 on cables and peerings. `drift[]` lists where `intended` and
 `observed` disagree — mechanically, and only where something was
-declared.
+declared: cables against `prod.json` `links[]`, application-on-host
+against `applications.json`.
 
 ## Hard boundaries
 
-Read only the twelve paths in `references/compile.md`. Do not list
-`health/`, `state/`, or `operational/`. Do not open a stamp. Do not
-read `inventory/infra-sot.json` or `compliance/intel.json`. Do not call an MCP tool. Do not
-`execute_command`. Do not write scripts. Do not write under
-`automations/schedules/`. Write only `state/relationships.json`.
-Do not add an edge from prose (`issue`, `note`, `headline`), from a
-ticket key whose typed column is null, from a hop with `device`
-null, or from a neighbor with `far` null. Do not invent a key. Do
-not restate an edge with a different `rel` than the table gives.
+Read only the fifteen paths in `references/compile.md`. Do not list
+`health/`, `state/`, `inventory/`, or `operational/`. Do not open a
+stamp. Do not read `inventory/infra-sot.json`,
+`compliance/intel.json`, or `inventory/services.json`. Do not call
+an MCP tool. Do not `execute_command`. Do not write scripts. Do not
+write under `automations/schedules/`. Write only
+`state/relationships.json`. Do not add an edge from prose (`issue`,
+`note`, `headline`), from a ticket key whose typed column is null,
+from a NetFlow row whose device column is null, from a container
+whose `device` is null, from a container `name` or `service` text,
+or from a neighbor with `far` null. An `application:` key is the
+`application` column as written; a NetFlow row has none. Do not
+invent a key. Do not restate an edge with a different `rel` than
+the table gives.
 
 ## Files
 
@@ -61,16 +70,16 @@ Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
 **First tools:** `read_file` `state/relationships.json` if it
-exists, then the eleven sources in `references/compile.md` order,
+exists, then the fourteen sources in `references/compile.md` order,
 skipping any that does not exist. Nothing else.
 
 ## Canonical top-level keys
 
-Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every `edges[].from` and `edges[].to`; use `[]` when there are none. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Drift rows, paths, and shas never become keys on their own.
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every `edges[].from` and `edges[].to`; use `[]` when there are none. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Drift rows, paths, and shas never become keys on their own.
 
 ## State machine
 
-READ_PRIOR → READ_SOURCES (≤ 11, fixed order) → NOOP_CHECK
+READ_PRIOR → READ_SOURCES (≤ 14, fixed order) → NOOP_CHECK
 (watermarks unchanged → reply, stop) → COPY_EDGES (table) →
 UPSERT (identity, seen, status, cap) → DRIFT → WRITE → READ_BACK
 → STOP
