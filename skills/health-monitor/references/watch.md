@@ -1,22 +1,23 @@
 # Named visit procedure
 
-If the invoke does not name Splunk or ThousandEyes, ask which and
-stop. Do not default. Do not collect.
+If the invoke does not name Splunk or NetFlow, ask which and stop.
+Do not default. Do not collect.
 
 ```text
-Which check: Splunk or ThousandEyes?
+Which check: Splunk or NetFlow?
 ```
 
-A line that names Splunk or ThousandEyes is authorization to run that
+A line that names Splunk or NetFlow is authorization to run that
 visit. Do not confirm.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
 
-Splunk visit: `splunk_search`. Do not call ThousandEyes or other
-health MCPs. ThousandEyes visit: `te_get_test_results` /
-`te_list_alerts` (and `te_agents_get_agents` on the baseline). Do
-not call Splunk or other health MCPs.
+Splunk visit: `splunk_search`. Do not call Grafana or other health
+MCPs. NetFlow visit: `grafana_query_influx` (and
+`grafana_influx_schema` on the baseline or for an unknown
+exporter). Do not call Splunk, `grafana_query_prometheus`, or
+other health MCPs.
 
 ## This plane only
 
@@ -33,8 +34,8 @@ when something material moved, or when coverage is not `complete`.
 The observation is a **lab slip**, not a MCP dump. Required:
 `headline`, `coverage`, `metrics`, `readings`, `unchanged`,
 `baseline_ref`, `vs_prior` (structured `changed[]`). No `summary`,
-`tests[]`, `by_mnemonic`, `samples`, `top_hosts`, `buckets`, or
-rounds.
+`series[]` copies, `samples`, `top_hosts`, raw flow records, or
+buckets.
 
 Required `metrics` on the observation: same keys every visit;
 explicit `null` when not collected.
@@ -55,27 +56,26 @@ A window with no S2 rows is **quiet**. A failed S1 is
 written. SSH NO_MATCH and successful auth are counts, never
 readings.
 
-## ThousandEyes visit
+## NetFlow visit
 
-Everything is in `references/thousandeyes.md`: two reads, one
-network-results call per metadata test (one per message), one
-alerts call, build one row per test + agent, diff against the board
-on `health/metadata-thousandeyes.json`, stamp or quiet, rewrite the
-board.
+Everything is in `references/netflow.md`: three reads, two Flux
+queries already aggregated per exporter and per conversation, an
+address-to-device lookup, one row per exporter and per
+conversation, unseen board rows carried as `silent` / `absent`,
+diff against the board on `health/metadata-netflow.json`, board
+written first, stamp when due.
 
-Order: READ_BOARD → READ_TOPOLOGY → [AGENTS] → (per test: NETWORK)*
-→ ALERTS → BUILD → (per row that gets a path: PATH_VIS →
-PATH_VIS_DETAIL)* → DIFF → DECIDE → [WRITE_STAMP → READ_BACK →
-PRUNE] → WRITE_BOARD → STOP.
+Order: READ_BOARD → READ_PROD → READ_TOPOLOGY → [SCHEMA] → F1 → F2 →
+RESOLVE → BUILD → CARRY → DIFF → WRITE_BOARD → DECIDE →
+[WRITE_STAMP → READ_BACK → PRUNE → WRITE_BOARD] → STOP.
 
-Window is always `thousandeyes.window` from metadata (default `1h`);
-no `7d`, no `24h`. State per row comes from the fixed rule (majority
-of rounds with loss ≥ 5, mean loss ≥ 5, or no ok round). Loss moves
-under 10 points are board-only. `alerts.firing` 0 is not proof of
-health. Path-vis runs for every row on the baseline and for
-degraded readings afterwards: `path-vis` (`10m`), then
-`path-vis-detail`; `hops` is the edge, no `relations[]`. No
-`te_get_alert`, no `te_raw_api_call`.
+`timerange` is always `netflow.window` from metadata (default
+`1h`); no `7d`, no `24h`. State per row is the fixed rule
+(`reporting` / `silent` for an exporter, `present` / `absent` for a
+conversation). Only a state flip, a new row, or a bytes move by 4×
+is material. A failed F1 is `unavailable`: null counts, stamp
+written, board rows untouched. A failed F2 with F1 good is
+`partial`: conversation rows kept as they were.
 
 ## Stamps
 
@@ -93,11 +93,8 @@ directories. Do not write `health-board.md`. Do not
 | Workspace file read/write | 12 |
 | Splunk collection (`splunk_search`) | 2 (plus one retry each) |
 | Splunk listing (resolve only) | 2 |
-| ThousandEyes `te_get_test_results` network | one per metadata test, one retry each |
-| ThousandEyes `te_get_test_results` path-vis + detail | one pair per row on the baseline; then one pair per degraded reading, max 4 |
-| ThousandEyes `te_list_alerts` | 1 |
-| ThousandEyes `te_agents_get_agents` | 1 (baseline / unknown agent) |
-| ThousandEyes listing (resolve only) | 2 |
+| NetFlow `grafana_query_influx` | 2 (plus one retry each) |
+| NetFlow `grafana_influx_schema` | 2 (baseline / unknown exporter only) |
 
 If over budget: stop querying, write what you have. Do not record a
 source as empty if you never collected it.

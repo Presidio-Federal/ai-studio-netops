@@ -1,0 +1,40 @@
+{
+  "keys": ["application:database", "application:dc-database", "site:datacenter", "device:<app-host>", "test:probe/database@cloud"],
+  "schema": "health-application-check/v1",
+  "source": "application",
+  "watch_id": "2026-09-29T16-00-00Z",
+  "checked_at": "2026-09-29T16:00:00Z",
+  "ok": false,
+  "status": "degraded",
+  "headline": "database probe from cloud down (HTTP 0, 0% ok over 1h; up at 200 on the 15:00 baseline); container dc-database on <app-host> gone since the 15:00 baseline; web and api probes up from cloud; hosts <app-host> and <log-host> up, no interfaces down. 7 rows unchanged. One change: annotation (CHG0030042 on <dc-leaf>) fell inside the window.",
+  "window": "1h",
+  "coverage": { "state": "complete", "detail": "T, P1-P4, C1-C4, H1-H4, A all returned." },
+  "metrics": [
+    { "at": "2026-09-29T16:00:00Z", "scope": "estate", "probes": 3, "probes_down": 1, "containers": 4, "containers_restarted": 0, "containers_gone": 1,
+      "hosts": 2, "hosts_rebooted": 0, "interfaces_down": 0, "targets": 7, "targets_down": 0, "change_annotations": 1 }
+  ],
+  "readings": [
+    { "kind": "probe", "scope": "probe:database@cloud", "keys": ["application:database", "site:datacenter", "test:probe/database@cloud"], "at": "2026-09-29T16:00:00Z", "state": "down",
+      "application": "database", "vantage_site": "cloud", "site": "datacenter", "target": "<db-address>:8080", "success": 0, "http_code": 0, "duration_ms": 5001, "success_pct_window": 0,
+      "note": "Up at 200 on the 15:00 baseline; first visit down. Only one vantage point, so no second opinion. Container dc-database on the same board is gone this visit." },
+    { "kind": "container", "scope": "container:<app-host>/dc-database", "keys": ["application:dc-database", "device:<app-host>", "site:datacenter"], "at": "2026-09-29T16:00:00Z", "state": "gone",
+      "name": "dc-database", "host": "<app-host>", "device": "<app-host>", "application": "dc-database", "service": "<business-service>", "site": "datacenter", "image": "<image>",
+      "started_epoch": 1790690000, "cpu_pct": 0.1, "mem_bytes": 8388608, "rx_bytes_s": 40,
+      "note": "Running on the 15:00 baseline; no C1 series this visit. Host <app-host> is up with no interface down, so this is the container, not the host. Annotation change:CHG0030042 at 15:20 falls inside the window." }
+  ],
+  "unchanged": 7,
+  "baseline_ref": "health/application/2026-09-29T15-00-00Z.json",
+  "vs_prior": {
+    "prior_watch_id": "2026-09-29T15-00-00Z",
+    "delta": "worse",
+    "changed": [
+      { "keys": ["application:database", "test:probe/database@cloud"], "field": "success", "prior": 1, "current": 0, "at": "2026-09-29T16:00:00Z" },
+      { "keys": ["application:database", "test:probe/database@cloud"], "field": "http_code", "prior": 200, "current": 0, "at": "2026-09-29T16:00:00Z" },
+      { "keys": ["application:dc-database", "device:<app-host>"], "field": "state", "prior": "running", "current": "gone", "at": "2026-09-29T16:00:00Z" }
+    ]
+  },
+  "concerns": [
+    { "type": "application", "name": "database" },
+    { "type": "application", "name": "dc-database" }
+  ]
+}

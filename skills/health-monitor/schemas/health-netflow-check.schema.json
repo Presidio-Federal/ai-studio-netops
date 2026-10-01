@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-netflow-check/v1",
+  "title": "health/netflow/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "NetFlow lab slip (Kind observation). Written on the first visit, when an exporter went silent or returned, when a conversation appeared, vanished, or moved by the fixed byte factor against the board on health/metadata-netflow.json, or when coverage is not complete. A quiet visit writes the board only. metrics: one estate row. readings: rows that moved, same shape as a board row plus note. The exporter and the resolved src_device / dst_device are the edge — there is no relations[] on this stamp. Do not store individual flow records.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"}
+    },
+    "schema": { "type": "string", "const": "health-netflow-check/v1" },
+    "source": { "type": "string", "const": "netflow" },
+    "watch_id": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+    "checked_at": { "type": "string", "minLength": 1 },
+    "ok": { "type": ["boolean", "null"] },
+    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+    "headline": { "type": "string", "minLength": 1, "description": "Which exporters report and which are silent, the top conversation by device names when resolved, what appeared or vanished; then how many rows are unchanged." },
+    "window": { "type": "string", "minLength": 1, "description": "The timerange passed to the tool, e.g. 1h." },
+    "window_start": { "type": ["string", "null"] },
+    "window_end": { "type": ["string", "null"] },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "vs_prior": { "$ref": "#/$defs/vs_prior" },
+    "concerns": {
+      "type": "array",
+      "maxItems": 8,
+      "description": "One device entity-ref per silent exporter that resolved to a device. Omit others.",
+      "items": { "$ref": "#/$defs/entity_ref" }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" },
+      "description": "One estate row. Nulls when collection failed."
+    },
+    "readings": {
+      "type": "array",
+      "maxItems": 60,
+      "items": { "$ref": "#/$defs/reading" },
+      "description": "Rows that moved materially this visit (every row on the first visit). Empty only when coverage is not complete."
+    },
+    "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
+    "baseline_ref": { "type": ["string", "null"], "description": "health/netflow/<baseline_visit_id>.json. Null on the first visit." },
+    "skipped_reason": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "entity_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "properties": {
+        "type": { "type": "string", "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change", "application"] },
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": ["string", "null"] },
+        "source_ref": { "type": ["string", "null"] }
+      }
+    },
+    "vs_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior_watch_id", "delta", "changed"],
+      "properties": {
+        "prior_watch_id": { "type": ["string", "null"], "description": "Board last_visit_id at the start of this visit." },
+        "delta": {
+          "type": "string",
+          "enum": ["first", "unchanged", "worse", "better", "changed"],
+          "description": "worse: an exporter went silent or a resolved conversation vanished. better: only returns. changed: new rows, byte moves, unresolved pairs vanishing. first on the baseline."
+        },
+        "changed": { "type": "array", "maxItems": 60, "items": { "$ref": "#/$defs/change" } }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "field", "prior", "current", "at"],
+      "properties": {
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" } },
+        "field": { "type": "string", "enum": ["state", "bytes", "row"] },
+        "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "current": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": { "type": "string", "enum": ["complete", "unavailable", "not_requested", "partial"] },
+        "detail": { "type": "string" }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "exporters", "exporters_silent", "exporters_unresolved", "flows", "bytes", "conversations", "conversations_absent", "top_scope"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "estate" },
+        "exporters": { "type": ["integer", "null"], "description": "Exporter addresses that returned an F1 row this window." },
+        "exporters_silent": { "type": ["integer", "null"], "description": "Board exporters with no F1 row this window." },
+        "exporters_unresolved": { "type": ["integer", "null"], "description": "F1 rows whose device is null." },
+        "flows": { "type": ["integer", "null"] },
+        "bytes": { "type": ["integer", "number", "null"] },
+        "conversations": { "type": ["integer", "null"], "description": "F2 rows this window." },
+        "conversations_absent": { "type": ["integer", "null"], "description": "Board conversations carried as absent." },
+        "top_scope": { "type": ["string", "null"], "description": "scope of the largest F2 row." }
+      }
+    },
+    "reading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "scope", "source", "exporter_name", "keys", "at", "state", "bytes", "flows", "note"],
+      "description": "Board row plus note. Numbers come from F1 / F2; state is the fixed rule in references/netflow.md.",
+      "properties": {
+        "kind": { "type": "string", "enum": ["exporter", "conversation"] },
+        "scope": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "exporter_name": { "type": ["string", "null"] },
+        "exporter_site": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"] },
+        "exporter": { "type": ["string", "null"] },
+        "src": { "type": ["string", "null"] },
+        "dst": { "type": ["string", "null"] },
+        "dst_port": { "type": ["string", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "src_device": { "type": ["string", "null"] },
+        "dst_device": { "type": ["string", "null"] },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" } },
+        "at": { "type": "string", "minLength": 1 },
+        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent"] },
+        "bytes": { "type": ["integer", "number", "null"] },
+        "flows": { "type": ["integer", "null"] },
+        "last_flow_at": { "type": ["string", "null"] },
+        "last_seen_at": { "type": ["string", "null"] },
+        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: silent since when, returned after how long, new or vanished pair, bytes up or down by how much. Not the columns again. No application name, cause, or device beyond exporter / src_device / dst_device." }
+      }
+    }
+  }
+}

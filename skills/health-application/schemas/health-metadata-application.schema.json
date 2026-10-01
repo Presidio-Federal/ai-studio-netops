@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-metadata-application/v1",
+  "title": "health/metadata-application.json",
+  "description": "Application plane board (Kind metadata). Health Application only. Rewritten every visit, quiet or not. Carries the lookup (probe_job, window, label spellings), last_visit_id (last stamp), last_collected_at (last completed collection), the change-annotation ring, and the board: current[] last-known row per probe, container, host, and scrape target; series[] one estate metric row per visit; visits[]. Not the five-field envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "application"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"},
+      "description": "Union of every key on current[]."
+    },
+    "schema": { "type": "string", "const": "health-metadata-application/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "health-application" },
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["probe_job", "window", "lookup", "last_visit_id", "last_collected_at", "baseline_visit_id", "current", "annotations", "series", "visits"],
+      "properties": {
+        "datasource_uid": { "type": ["string", "null"], "description": "Grafana Prometheus datasource uid when an operator pinned one; null means the tool default." },
+        "probe_job": { "type": ["string", "null"], "description": "Prometheus job label of the blackbox probe targets (scrapeUrl contains /probe?). Discovered from grafana_prometheus_targets or operator-set. Null when no probe job exists; P1-P4 are skipped." },
+        "window": { "type": "string", "minLength": 1, "description": "timerange passed on every query, the avg_over_time range, and the annotations list window. Default 1h. An operator may set it; the nurse does not change it." },
+        "lookup": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["services", "sites", "vantage_points", "hosts"],
+          "description": "Label spellings seen in the datasource (call L, baseline only). A record, not a filter.",
+          "properties": {
+            "services": { "type": "array", "items": { "type": "string" } },
+            "sites": { "type": "array", "items": { "type": "string" } },
+            "vantage_points": { "type": "array", "items": { "type": "string" } },
+            "hosts": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
+        "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
+        "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+        "current": {
+          "type": "array",
+          "maxItems": 96,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "Last-known row per probe, container, host, and target. A visit replaces every row it measured; containers and hosts it did not see are carried as gone / unreachable."
+        },
+        "annotations": {
+          "type": "array",
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/annotation" },
+          "description": "Grafana annotations inside the window that carry a change:<id> tag, newest first. Replaced every visit call A succeeds."
+        },
+        "series": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/metric_row" },
+          "description": "One estate row per visit, oldest first."
+        },
+        "visits": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/visit_row" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "application": { "type": "string", "enum": ["user", "discovered"] } }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "scope", "keys", "at", "state"],
+      "description": "Same shape as a stamp reading, without note. Four kinds share the shape; columns that do not apply to a kind are omitted or null. Column sources: references/prometheus.md.",
+      "properties": {
+        "kind": { "type": "string", "enum": ["probe", "container", "host", "target"] },
+        "scope": { "type": "string", "minLength": 1, "description": "probe:<service>@<vantage_point> | container:<host>/<name> | host:<host> | target:<job>/<instance>. Stable key for the board diff." },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site|application|test):[^ ].*$" }, "description": "application:<service label> on probe and container rows; device:<device> only when host_name matched inventory/prod.json; site:<site label>; test:probe/<service>@<vantage_point> on probe rows. Never a service: key." },
+        "at": { "type": "string", "minLength": 1, "description": "checked_at of the visit that last measured or carried this row." },
+        "state": { "type": "string", "enum": ["up", "down", "unknown", "running", "gone", "unreachable"], "description": "probe: up/down/unknown. container: running/gone. host: up/unreachable. target: up/down/unknown (= health)." },
+        "application": { "type": ["string", "null"], "description": "service label copied as-is." },
+        "service": { "type": ["string", "null"], "description": "Container rows: the application label text (business name) copied as-is. Not a key." },
+        "vantage_site": { "type": ["string", "null"], "description": "Probe rows: vantage_point label." },
+        "site": { "type": ["string", "null"] },
+        "target": { "type": ["string", "null"], "description": "Probe rows: instance label (the probed address)." },
+        "success": { "type": ["integer", "null"], "enum": [0, 1, null] },
+        "http_code": { "type": ["integer", "null"] },
+        "duration_ms": { "type": ["integer", "null"] },
+        "success_pct_window": { "type": ["integer", "null"] },
+        "name": { "type": ["string", "null"], "description": "Container name label." },
+        "host": { "type": ["string", "null"], "description": "host_name label, else instance." },
+        "device": { "type": ["string", "null"], "description": "inventory/prod.json device the host resolved to. Null when unresolved; the nurse does not guess." },
+        "image": { "type": ["string", "null"] },
+        "started_epoch": { "type": ["integer", "null"] },
+        "cpu_pct": { "type": ["number", "null"] },
+        "mem_bytes": { "type": ["integer", "null"] },
+        "rx_bytes_s": { "type": ["integer", "null"] },
+        "role": { "type": ["string", "null"] },
+        "boot_epoch": { "type": ["integer", "null"] },
+        "mem_available_pct": { "type": ["integer", "null"] },
+        "fs_root_avail_pct": { "type": ["integer", "null"] },
+        "interfaces_down": { "type": ["array", "null"], "items": { "type": "string" } },
+        "interfaces_up": { "type": ["integer", "null"] },
+        "scrape_pool": { "type": ["string", "null"] },
+        "instance": { "type": ["string", "null"] },
+        "health": { "type": ["string", "null"] },
+        "last_error": { "type": ["string", "null"] },
+        "last_scrape": { "type": ["string", "null"] }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["time", "tags", "text"],
+      "properties": {
+        "time": { "type": ["integer", "string"], "description": "As returned by grafana_annotations (epoch ms or ISO)." },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "text": { "type": ["string", "null"] }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "probes", "probes_down", "containers", "containers_restarted", "containers_gone", "hosts", "hosts_rebooted", "interfaces_down", "targets", "targets_down", "change_annotations"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "estate" },
+        "probes": { "type": ["integer", "null"] },
+        "probes_down": { "type": ["integer", "null"] },
+        "containers": { "type": ["integer", "null"] },
+        "containers_restarted": { "type": ["integer", "null"] },
+        "containers_gone": { "type": ["integer", "null"] },
+        "hosts": { "type": ["integer", "null"] },
+        "hosts_rebooted": { "type": ["integer", "null"] },
+        "interfaces_down": { "type": ["integer", "null"] },
+        "targets": { "type": ["integer", "null"] },
+        "targets_down": { "type": ["integer", "null"] },
+        "change_annotations": { "type": ["integer", "null"] }
+      }
+    },
+    "visit_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "window"],
+      "properties": {
+        "watch_id": { "type": ["string", "null"] },
+        "checked_at": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
+        "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "stamp_written": { "type": "boolean" },
+        "window": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

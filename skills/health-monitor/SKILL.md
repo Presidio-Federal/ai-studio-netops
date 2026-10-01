@@ -1,19 +1,21 @@
 ---
 name: health-monitor
-version: "1.38.1"
-description: "v1.38.1 — Health Monitor nurse: Splunk and ThousandEyes visits. Board on metadata, stamp only on change, TE rows carry src/dst device and hops[] from path-vis-detail; no relations[]."
+version: "2.0.0"
+description: "v2.0.0 — Health Monitor nurse: Splunk and NetFlow (Grafana / InfluxDB) visits. Board on metadata, stamp only on change; NetFlow rows carry exporter, src/dst device, port, protocol as the edge; no relations[]."
 ---
 
 # Health Monitor skill
 
 One telemetry source per conversation. The invoke must name Splunk or
-ThousandEyes. If it does not, ask which check and stop. Do not pick a
+NetFlow. If it does not, ask which check and stop. Do not pick a
 default.
 
 Named Splunk → `splunk_search` (and listing only to resolve). Named
-ThousandEyes → `te_get_test_results` / `te_list_alerts`
-(`te_agents_get_agents` on the baseline). Do not call the other
-source on this visit. Do not call other health MCPs.
+NetFlow → `grafana_query_influx` (`grafana_influx_schema` on the
+baseline or for an unknown exporter). Do not call the other source
+on this visit. Do not call `grafana_query_prometheus`; probes,
+containers, and hosts are Health Application's plane. Do not call
+other health MCPs.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
@@ -32,29 +34,19 @@ the stamp; every S2 row is a reading and a `changed[]` item. A bgp
 or link row with `count` ≥ 2 in one window is a flap: it degrades
 even when `latest(state)` reads `Up`. Do not write SPL of your own.
 
-**ThousandEyes.** `references/thousandeyes.md` is the whole visit:
-read the board (`health/metadata-thousandeyes.json`) and
-`topology-observed.json` if present; one `te_get_test_results`
-(`result_type="network"`, metadata `window`) per metadata test, one
-per message; one `te_list_alerts`; build one row per test + agent
-(`state` from the fixed rule; `src_device` / `dst_device` from agent
-IP and `serverIp` through topology cidr); diff against
-`current[]` — only `state`, a 10-point loss move, a 20 ms latency
-move, error rounds appearing, a new row, or a change in the
-resolved hop device sequence are material. On the baseline every
-row, and afterwards every `degraded` reading (cap 4), takes
-`path-vis` (`window="10m"`, newest `roundId` for that agent) then
-`path-vis-detail` (hop `ipAddress`, array order — `hopNumber` is
-null). Match each hop to a topology cidr; unresolved hops keep the
-address and a null device. Other rows carry the board's `hops`.
-Row `keys` are the test, the two ends, `service:` when set, and
-each resolved hop. `hops` is the edge; write no `relations[]`. Do
-not invent a hop the detail call did not return. `tests[].path`
-stays the operator's intended sequence.
-`first_bad_round_at` is kept from the board while the row stays
-bad. The baseline stamp has `changed: []`. The stamp's top-level
-names are the schema's (`watch_id`, `coverage {state}`, metric row
-`rows` / `error_rounds`); do not rename them.
+**NetFlow.** `references/netflow.md` is the whole visit: read the
+board (`health/metadata-netflow.json`), `prod.json`, and
+`topology-observed.json` if present; run F1 (exporters) and F2
+(conversations) exactly as printed with `timerange` = the metadata
+`window`; the queries already exclude collector traffic and
+ephemeral-port reverse flows — you only resolve addresses to
+`prod.json` spellings; build one `exporter` row per source and one
+`conversation` row per F2 row; carry unseen board rows as `silent`
+/ `absent`; diff against `current[]` — only a state flip, a new
+row, or a bytes move by 4× is material. The exporter and the
+resolved `src_device` / `dst_device` are the edge; write no
+`relations[]`. Do not name an application from a port. Do not write
+Flux of your own.
 
 Both: do not dump the MCP result. Do not write `state/`.
 
@@ -62,16 +54,16 @@ Both: do not dump the MCP result. Do not write `state/`.
 
 Do not search Splunk `index=*`. Do not `stats` by `severity` or
 `log_level`. Only the SPL `references/splunk.md` prints — no
-sampling raw events, no extra searches. Do not read
-`inventory/infra-sot.json`. Do not build dashboards. Do not use
-`te_raw_api_call`. No `te_get_alert`. Path-vis is only the P+D
-pair in `references/thousandeyes.md`. ThousandEyes
-window is always the metadata `window`; never `7d` or `24h`. Do not
-write `runs/`, `inventory/`, `state/`, `trend-analysis.json`,
+sampling raw events, no extra searches. Only the Flux
+`references/netflow.md` prints — no per-flow drill-down, no
+`app_id` follow-up, no dashboards, no `grafana_get_dashboard` on a
+visit. Do not read `inventory/infra-sot.json`. NetFlow `timerange`
+is always the metadata `window`; never `7d` or `24h`. Do not write
+`runs/`, `inventory/`, `state/`, `trend-analysis.json`,
 `remediation-request.json`, `state/network-sync.json`, other
 `health/<source>/` directories, or `health-board.md`. Do not invent
 files. Do not invent measurements. Unavailable collection:
-counts/loss **null**, never `0`. Do not write under
+counts/bytes **null**, never `0`. Do not write under
 `automations/schedules/`. Do **not** call `execute_command`. Do not
 write scripts. Do not stamp `expires_at`. Do not emit
 recommendations.
@@ -84,26 +76,25 @@ on catalog paths.
 | Path | Kind | Envelope |
 |------|------|----------|
 | `health/metadata-splunk.json` | metadata | Board. **Every** Splunk visit. Lookup, watermark, `current[]`, `series[]`, `visits[]`. **Not** five-field. |
-| `health/metadata-thousandeyes.json` | metadata | Board. **Every** ThousandEyes visit. Lookup, `window`, `tests[]`, `agents[]`, `current[]`, `series[]`, `visits[]`. **Not** five-field. |
+| `health/metadata-netflow.json` | metadata | Board. **Every** NetFlow visit. Lookup (`bucket`, `measurement`, `window`, `exporters[]`), `current[]`, `series[]`, `visits[]`. **Not** five-field. |
 | `health/splunk/<stamp>.json` | observation | Only when S2 returned rows, on the first visit, or coverage ≠ complete. Never overwrite. |
-| `health/thousandeyes/<stamp>.json` | observation | Only when a row moved materially, on the first visit, or coverage ≠ complete. Never overwrite. |
+| `health/netflow/<stamp>.json` | observation | Only when a row moved materially, on the first visit, or coverage ≠ complete. Never overwrite. |
 
 Both stamps require `metrics`, `readings`, `unchanged`,
 `baseline_ref`, `vs_prior` (structured `changed[]`).
 
 Use exactly: `references/watch.md`, `references/splunk.md`,
-`references/thousandeyes.md`, `references/workspace-contract.md`,
+`references/netflow.md`, `references/workspace-contract.md`,
 `references/metadata.md`.
 Splunk: `schemas/health-splunk-check.schema.json`,
 `schemas/health-metadata-splunk.schema.json`,
 `examples/health-check-splunk.example.json`,
 `examples/health-check-unavailable.example.json`,
 `examples/health-metadata-splunk.example.json`.
-ThousandEyes: `schemas/health-thousandeyes-check.schema.json`,
-`schemas/health-metadata-thousandeyes.schema.json`,
-`examples/health-check.example.json`,
-`examples/health-check-partial.example.json`,
-`examples/health-metadata-thousandeyes.example.json`.
+NetFlow: `schemas/health-netflow-check.schema.json`,
+`schemas/health-metadata-netflow.schema.json`,
+`examples/health-check-netflow.example.json`,
+`examples/health-metadata-netflow.example.json`.
 Do not search the workspace for them.
 
 Do **not** call `get_folder_structure`. Do **not** list
@@ -113,28 +104,28 @@ Do **not** call `get_folder_structure`. Do **not** list
 `health/metadata-splunk.json` (the board), then `inventory/prod.json`,
 then `inventory/topology-observed.json` if it exists.
 
-**Named ThousandEyes — first tools:** `read_file`
-`health/metadata-thousandeyes.json` (the board), then
-`inventory/topology-observed.json` if it exists.
+**Named NetFlow — first tools:** `read_file`
+`health/metadata-netflow.json` (the board), then `inventory/prod.json`,
+then `inventory/topology-observed.json` if it exists.
 
 Neither opens the prior stamp. Never overwrite a timestamped file.
 
 ## Canonical top-level keys
 
-Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change):[^ ].*$`; never infer one. Use `site:` for location. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Use `site:` for location. A NetFlow row writes `device:` and `site:` keys only; never a port, an address, or an application. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 
-If the invoke does not name Splunk or ThousandEyes: ASK_WHICH → STOP.
+If the invoke does not name Splunk or NetFlow: ASK_WHICH → STOP.
 
 Splunk: READ_BOARD → READ_PROD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
 S1 → S2 → RESOLVE_DEVS → DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP →
 READ_BACK → PRUNE → WRITE_BOARD] → STOP
 
-ThousandEyes: READ_BOARD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
-[AGENTS] → (per test: NETWORK)* → ALERTS → BUILD →
-(per row that gets a path: PATH_VIS → PATH_VIS_DETAIL)* → DIFF →
-DECIDE → [WRITE_STAMP → READ_BACK → PRUNE] → WRITE_BOARD → STOP
+NetFlow: READ_BOARD → READ_PROD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
+[SCHEMA] → F1 → F2 → RESOLVE_ADDRS → BUILD → CARRY → DIFF →
+WRITE_BOARD → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE →
+WRITE_BOARD] → STOP
 
 On collection failure: still write that check (`unavailable`, null
 counts). Do not advance the Splunk watermark.
@@ -143,6 +134,6 @@ counts). Do not advance the Splunk watermark.
 
 - Visit steps, budget: `references/watch.md`
 - Splunk searches, resolve, diff, board: `references/splunk.md`
-- ThousandEyes calls, row build, diff, board: `references/thousandeyes.md`
+- NetFlow queries, resolve, rows, diff, board: `references/netflow.md`
 - Resolve ids / windows: `references/metadata.md`
 - Paths: `workspace-handoff`; produce: `references/workspace-contract.md`

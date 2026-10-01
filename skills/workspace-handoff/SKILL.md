@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.64.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, relations, edges-as-columns, quiet visits, task lines, and read/write rules."
-version: "1.64.0"
+description: "v1.65.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys (incl. application), relations, edges-as-columns, quiet visits, task lines, and read/write rules."
+version: "1.65.0"
 ---
 
 # Workspace handoff
@@ -41,11 +41,16 @@ that are both stale and material. Record `dispatched[]` on
 | Plane | Writer | Task line |
 |-------|--------|-----------|
 | `splunk` | Health Monitor | `Run the Splunk health check only.` |
-| `thousandeyes` | Health Monitor | `Run the ThousandEyes health check only.` |
+| `netflow` | Health Monitor | `Run the NetFlow health check only.` |
+| `application` | Health Application | `Run the application health check only.` |
 | `iosxe` | Health Device | `Run the network device health check only.` |
 | `servicenow` | Health ServiceNow | `Run the ServiceNow health check only.` |
 
-Splunk and ThousandEyes are separate invokes.
+Splunk and NetFlow are separate invokes. The `application` plane
+(Prometheus probes, containers, host OS through the Grafana MCP) is
+its own nurse; the `netflow` plane (InfluxDB flows through the same
+MCP) belongs to Health Monitor. Neither nurse writes the other's
+board.
 
 **Modernization Analysis.** If any `state/lifecycle.json` row is missing
 EoX or expired, and Modernization Lifecycle is attached, invoke
@@ -75,8 +80,8 @@ device:<b>`; dispatch one at a time.
 **Relationship agent.** Task line `Run the relationship compile only.`
 Health Analyzer may invoke it after writing `state/health.json` and
 does not wait. It reads a fixed path list — its prior file,
-`inventory/topology-observed.json`, the four `health/metadata-*.json`
-boards, `state/health.json`, `state/network-ops.json` and the one run
+`inventory/topology-observed.json`, the `health/metadata-*.json`
+boards its skill lists, `state/health.json`, `state/network-ops.json` and the one run
 named in its `change.operational_ref`, `inventory/prod.json`,
 `state/testing.json` and the one run named in its `latest` — and
 writes only `state/relationships.json`. It never lists
@@ -87,7 +92,7 @@ with its `test:` / `control:` keys, and the asserted `relations[]`.
 **Network Design.** Read the chart already on disk. Missing or stale
 inputs are reduced coverage; still write `state/design.json`. Warehouse
 check uses this agent's ServiceNow tools. Do not collect Splunk,
-ThousandEyes, or Cisco. Do not write other agents' state files.
+Grafana, or Cisco. Do not write other agents' state files.
 
 ## Paths
 
@@ -153,7 +158,7 @@ When a writer names a thing another agent joins on, use these fields.
 Writer schemas copy this shape. Do not copy the referenced object.
 Do not invent an id. Do not put topology, edges, or cause here.
 
-- `type` (required) — `device` `interface` `site` `service` `test` `control` `incident` `change`
+- `type` (required) — `device` `interface` `site` `service` `test` `control` `incident` `change` `application`
 - `name` (required) — the spelling already in `inventory/prod.json` or `inventory/infra-sot.json`, or the ticket number or API id the tool returned
 - `id` — the source-native id when the file you opened has one; otherwise null
 - `source_ref` — the catalog path or ticket id, not a payload
@@ -163,6 +168,12 @@ always `interface:<device>/<interface>`; a bare `interface:<name>` is invalid.
 Every producer that names an interface knows the device (the GET target, the
 syslog host, the NetBox device). A `service:` key must match a `services[].name`
 in `inventory/services.json`; when that file is absent, write no `service:` key.
+An `application:` key is an application tier or component (a container,
+a probed endpoint's `service` label, a CMDB application CI). Its spelling is
+the label the source returned, copied as-is; until `inventory/applications.json`
+exists, no writer renames or merges two spellings. A host that runs
+applications is a `device:` when its name is in `inventory/prod.json`;
+otherwise the row keeps the host name in a column and writes no key for it.
 When a tool payload contains several entities, write every one on that row's
 `keys` and in the top-level union. A later file joins by sharing the same
 string. Do not invent a key the payload does not contain. Do not drop one.
@@ -183,9 +194,9 @@ of them are related. It is optional on every structured JSON record.
 Writer schemas copy this shape; they do not redefine it.
 
 ```json
-{ "from": "test:8435764", "to": "interface:WAN-01/GigabitEthernet4",
-  "rel": "traverses", "basis": "observed",
-  "evidence_ref": "health/thousandeyes/2026-09-24T14-50-00Z.json" }
+{ "from": "application:api", "to": "device:DC-APP-HOST-01",
+  "rel": "depends_on", "basis": "asserted",
+  "evidence_ref": "health/application/2026-09-29T15-00-00Z.json" }
 ```
 
 - `from`, `to` — strings that also appear in this record's `keys`.
@@ -245,16 +256,24 @@ writers on one board lose rows.
 entity (a BGP `peer`, a cable's two ends, a ticket's typed `device` /
 `interface` / `service` / `rfc` columns, a test row's `src_device` /
 `dst_device`), that column *is* the edge; do not also write
-`relations[]`. A measured hop-by-hop path is also a column: the
-ThousandEyes row's `hops[]` (`{n, ip, device, interface}` in
-measured order). Nurses therefore write **no `relations[]`** at all;
-`relations[]` appears only on Analyzer, Network Ops, and Network
-Design records (`asserted`). The Relationship agent reads every
-column form (`peer`, `neighbors[]`, `src_device`/`dst_device`,
-`hops[]`, typed ticket columns) and the asserted rows.
-An operator-declared expectation (TE `tests[].path`, `prod.json`
-`links[]`) is `intended`; the compiler, not the nurse, turns it into
-edges.
+`relations[]`. A NetFlow conversation is also a column set:
+`exporter`, `src_device`, `dst_device`, `dst_port`, `protocol`; a
+container row's `host` / `device` / `application`. Nurses therefore
+write **no `relations[]`** at all; `relations[]` appears only on
+Analyzer, Network Ops, and Network Design records (`asserted`). The
+Relationship agent reads every column form (`peer`, `neighbors[]`,
+`src_device`/`dst_device`, `exporter`, `host`, `application`, typed
+ticket columns) and the asserted rows. An operator-declared
+expectation (`prod.json` `links[]`, a CMDB dependency) is
+`intended`; the compiler, not the nurse, turns it into edges.
+
+Grafana-sourced rows follow the same rule. A NetFlow conversation
+row's `exporter` (the device that saw it), `src` / `dst` with their
+resolved `src_device` / `dst_device`, `dst_port`, and `protocol` are
+the edge. An application probe row's `application` and
+`vantage_site` are the edge. A container row's `host` and
+`application` are the edge (the container runs on that host and
+belongs to that application). No `relations[]` on those boards.
 
 A ticket's typed columns exist only if someone fills them. The Ops
 ServiceNow Operator writes them (`extra_fields`, column names from
@@ -306,10 +325,12 @@ visits).
 | `design/roadmap.md` | observation | Network Design | `network-design` `references/roadmap.md` | path is `roadmap_ref` |
 | `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `problem_ref` (the `state/health.json` problem this treats; null when none matched) `finding` (`verified_in_git`) `change` (`devices` `interfaces` `operational_ref` `monitoring_ref`) `git` `ci` `pr` `relations[]` (asserted: `depends_on` / `caused` with the git path as evidence, `resolved_by` to `change:<sha>` on merge) `keys`. The Analyzer joins on `problem_ref` for `treatment_ref` / `outcome`. |
 | `health/metadata-splunk.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `collected_through` `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `bgp` — `peer` is the adjacency; `link`; `config` — `subject` is the user, `source_ip`; `reload`; `acl`; `auth_failed`) `series[]` `visits[]` |
-| `health/metadata-thousandeyes.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-thousandeyes.schema.json` | `account_id` `window` `tests[]` (`test_id` `test_name` `type` `service` `path` — operator-declared expected device sequence, intended, may be null) `agents[]` (`agent_name` `ip` `device`) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per test + agent: `state` `loss_pct` `latency_ms_avg` `ok_rounds` `bad_rounds` `error_rounds` `first_bad_round_at`; `src_device` / `dst_device` are the ends; `hops[]` is the last measured path — `{n, ip, device, interface}`, device/interface null for an unresolved hop, the row's edge) `series[]` `visits[]` |
+| `health/metadata-netflow.json` | metadata | Health Monitor | `health-monitor` `schemas/health-metadata-netflow.schema.json` | `bucket` `measurement` `window` `exporters[]` (`source` — the exporter address, `exporter_name` as tagged, `device` — the `inventory/prod.json` name when it matches, else null) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `exporter` — `source` `device` `bytes` `flows` `last_flow_at` `state`; kind `conversation` — `exporter` `source` `src` `dst` `dst_port` `protocol` `src_device` `dst_device` `bytes` `flows` `last_seen_at` `state`; the exporter and the two resolved ends are the row's edge) `series[]` `visits[]` |
+| `health/metadata-application.json` | metadata | Health Application | `health-application` `schemas/health-metadata-application.schema.json` | `datasource_uid` `probe_job` `window` `lookup` (`services[]` `sites[]` `vantage_points[]` `hosts[]` — label spellings discovered once) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `probe` — `application` `vantage_site` `target` `success` `http_code` `duration_ms` `success_pct_window` `state`; kind `container` — `name` `host` `device` `application` `site` `started_epoch` `cpu_pct` `mem_bytes` `rx_bytes_s` `state`; kind `host` — `host` `device` `site` `role` `boot_epoch` `mem_available_pct` `fs_root_avail_pct` `interfaces_down[]` `state`; kind `target` — `scrape_pool` `instance` `health` `last_error`) `annotations[]` (`time` `tags[]` `text` — Grafana annotations tagged `change:*` in the window, copied) `series[]` `visits[]` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `lookback_days` `entity_fields` (`device` `interface` `ip` `service` — the instance's typed ticket columns, null when the platform has none) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per in-scope ticket: `scope` `type` `number` `state` `active` `urgency` `priority` `opened_at` `updated_at` `resolved_at` `issue` `close_code` `rfc` `ci` `service` `device` `interface` `ip` — the typed columns and `rfc` are the ticket's edges) `series[]` `visits[]` |
 | `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `device` — boot time, version, cpu, memory; `interface`; `bgp`, whose `peer` is the adjacency) `series[]` `visits[]`. RESTCONF port stays on `inventory/prod.json`. |
-| `health/thousandeyes/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-thousandeyes-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `hops` + `note`) `unchanged` `baseline_ref` `alerts` `keys` `vs_prior` (structured `changed[]`, `field` in `state loss_pct latency_ms_avg error_rounds hops row`) `concerns`. No `relations`. Written only when a row moved materially. |
+| `health/netflow/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-netflow-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `state bytes row`) `concerns`. No `relations`. Written only when an exporter went silent or returned, or a conversation appeared, vanished, or moved by the fixed factor. |
+| `health/application/<stamp>.json` | observation | Health Application | `health-application` `schemas/health-application-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `state success http_code started_epoch boot_epoch interfaces_down cpu_pct mem_available_pct fs_root_avail_pct health row`) `concerns`. No `relations`. Written only when a probe flipped, a container restarted or appeared / vanished, a host rebooted or an interface went down, a threshold was crossed, or a scrape target left `up`. |
 | `health/splunk/<stamp>.json` | observation | Health Monitor | `health-monitor` `schemas/health-splunk-check.schema.json` | `headline` `window_start` `window_end` `coverage` `metrics` (per-device bucket counts) `readings` (one per material syslog subject this window) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns`. Written only when the window held a material event. |
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `window` (the `since` used) `coverage` `metrics` (one `lab` row) `threads` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `row state urgency device interface ip service rfc issue updated`) `concerns`. Written only when a ticket moved. `status` is `ok`/`unknown`; tickets do not vote on vitals. |

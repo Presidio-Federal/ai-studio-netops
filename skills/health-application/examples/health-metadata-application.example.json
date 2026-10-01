@@ -1,0 +1,51 @@
+{
+  "keys": ["application:web", "application:api", "application:database", "site:datacenter", "site:cloud", "device:<app-host>", "test:probe/web@cloud", "test:probe/api@cloud", "test:probe/database@cloud"],
+  "schema": "health-metadata-application/v1",
+  "updated_at": "2026-09-29T15:00:20Z",
+  "source_agent": "health-application",
+  "application": {
+    "datasource_uid": null,
+    "probe_job": "<probe-job>",
+    "window": "1h",
+    "lookup": {
+      "services": ["api", "database", "dc-api", "dc-database", "dc-web", "web"],
+      "sites": ["cloud", "datacenter"],
+      "vantage_points": ["cloud"],
+      "hosts": ["<app-host>", "<log-host>"]
+    },
+    "last_visit_id": "2026-09-29T15-00-00Z",
+    "last_collected_at": "2026-09-29T15:00:00Z",
+    "baseline_visit_id": "2026-09-29T15-00-00Z",
+    "current": [
+      { "kind": "probe", "scope": "probe:web@cloud", "keys": ["application:web", "site:datacenter", "test:probe/web@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+        "application": "web", "vantage_site": "cloud", "site": "datacenter", "target": "<web-address>:80", "success": 1, "http_code": 200, "duration_ms": 12, "success_pct_window": 100 },
+      { "kind": "probe", "scope": "probe:api@cloud", "keys": ["application:api", "site:datacenter", "test:probe/api@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+        "application": "api", "vantage_site": "cloud", "site": "datacenter", "target": "<api-address>:8080", "success": 1, "http_code": 200, "duration_ms": 9, "success_pct_window": 100 },
+      { "kind": "probe", "scope": "probe:database@cloud", "keys": ["application:database", "site:datacenter", "test:probe/database@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+        "application": "database", "vantage_site": "cloud", "site": "datacenter", "target": "<db-address>:8080", "success": 1, "http_code": 200, "duration_ms": 14, "success_pct_window": 100 },
+      { "kind": "container", "scope": "container:<app-host>/dc-web", "keys": ["application:dc-web", "device:<app-host>", "site:datacenter"], "at": "2026-09-29T15:00:00Z", "state": "running",
+        "name": "dc-web", "host": "<app-host>", "device": "<app-host>", "application": "dc-web", "service": "<business-service>", "site": "datacenter", "image": "nginx:alpine",
+        "started_epoch": 1790690000, "cpu_pct": 0.3, "mem_bytes": 12582912, "rx_bytes_s": 420 },
+      { "kind": "container", "scope": "container:<app-host>/dc-database", "keys": ["application:dc-database", "device:<app-host>", "site:datacenter"], "at": "2026-09-29T15:00:00Z", "state": "running",
+        "name": "dc-database", "host": "<app-host>", "device": "<app-host>", "application": "dc-database", "service": "<business-service>", "site": "datacenter", "image": "<image>",
+        "started_epoch": 1790690000, "cpu_pct": 0.1, "mem_bytes": 8388608, "rx_bytes_s": 40 },
+      { "kind": "host", "scope": "host:<app-host>", "keys": ["device:<app-host>", "site:datacenter"], "at": "2026-09-29T15:00:00Z", "state": "up",
+        "host": "<app-host>", "device": "<app-host>", "site": "datacenter", "role": "application-host", "boot_epoch": 1790600000,
+        "mem_available_pct": 71, "fs_root_avail_pct": 82, "interfaces_down": [], "interfaces_up": 5 },
+      { "kind": "host", "scope": "host:<log-host>", "keys": ["site:cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+        "host": "<log-host>", "device": null, "site": "cloud", "role": "log-collector", "boot_epoch": 1790500000,
+        "mem_available_pct": 55, "fs_root_avail_pct": 64, "interfaces_down": [], "interfaces_up": 1 },
+      { "kind": "target", "scope": "target:<probe-job>/<db-address>:8080", "keys": [], "at": "2026-09-29T15:00:00Z", "state": "up",
+        "scrape_pool": "<probe-job>", "instance": "<db-address>:8080", "host": null, "device": null, "health": "up", "last_error": null, "last_scrape": "2026-09-29T14:59:52Z" }
+    ],
+    "annotations": [],
+    "series": [
+      { "at": "2026-09-29T15:00:00Z", "scope": "estate", "probes": 3, "probes_down": 0, "containers": 4, "containers_restarted": 0, "containers_gone": 0,
+        "hosts": 2, "hosts_rebooted": 0, "interfaces_down": 0, "targets": 7, "targets_down": 0, "change_annotations": 0 }
+    ],
+    "visits": [
+      { "watch_id": "2026-09-29T15-00-00Z", "checked_at": "2026-09-29T15:00:00Z", "status": "ok", "coverage": "complete", "delta": "first", "stamp_written": true, "window": "1h" }
+    ]
+  },
+  "provenance": { "application": "discovered" }
+}

@@ -1,0 +1,120 @@
+{
+  "keys": [
+    "device:<hq-edge>",
+    "device:<branch-edge>",
+    "device:<dc-edge>",
+    "device:<dc-app-host>",
+    "site:<hq-site>",
+    "site:<branch-site>"
+  ],
+  "schema": "health-metadata-netflow/v1",
+  "updated_at": "2026-09-30T21:20:00Z",
+  "source_agent": "health-monitor",
+  "netflow": {
+    "datasource_uid": null,
+    "bucket": "<bucket>",
+    "measurement": "<measurement>",
+    "window": "1h",
+    "last_visit_id": "2026-09-30T21-20-00Z",
+    "last_collected_at": "2026-09-30T21:20:00Z",
+    "baseline_visit_id": "2026-09-30T15-20-00Z",
+    "exporters": [
+      { "source": "<hq-edge-ip>", "exporter_name": "<hq-edge>", "exporter_site": "<hq-site>", "device": "<hq-edge>" },
+      { "source": "<branch-edge-ip>", "exporter_name": "<branch-edge>", "exporter_site": "<branch-site>", "device": "<branch-edge>" },
+      { "source": "<dc-edge-wan-ip>", "exporter_name": "unmapped", "exporter_site": "unknown", "device": "<dc-edge>" },
+      { "source": "<cloud-edge-ip>", "exporter_name": "unmapped", "exporter_site": "unknown", "device": null }
+    ],
+    "current": [
+      {
+        "kind": "exporter",
+        "scope": "exporter:<hq-edge-ip>",
+        "source": "<hq-edge-ip>",
+        "exporter_name": "<hq-edge>",
+        "exporter_site": "<hq-site>",
+        "device": "<hq-edge>",
+        "exporter": null,
+        "src": null, "dst": null, "dst_port": null, "protocol": null,
+        "src_device": null, "dst_device": null,
+        "keys": ["device:<hq-edge>", "site:<hq-site>"],
+        "at": "2026-09-30T21:20:00Z",
+        "state": "reporting",
+        "bytes": 61659,
+        "flows": 255,
+        "last_flow_at": "2026-09-30T21:18:55Z",
+        "last_seen_at": null
+      },
+      {
+        "kind": "exporter",
+        "scope": "exporter:<cloud-edge-ip>",
+        "source": "<cloud-edge-ip>",
+        "exporter_name": "unmapped",
+        "exporter_site": "unknown",
+        "device": null,
+        "exporter": null,
+        "src": null, "dst": null, "dst_port": null, "protocol": null,
+        "src_device": null, "dst_device": null,
+        "keys": [],
+        "at": "2026-09-30T21:20:00Z",
+        "state": "silent",
+        "bytes": 0,
+        "flows": 0,
+        "last_flow_at": "2026-09-30T19:41:02Z",
+        "last_seen_at": null
+      },
+      {
+        "kind": "conversation",
+        "scope": "flow:<dc-edge-wan-ip>/<probe-host-ip>><web-tier-ip>:80/tcp",
+        "source": "<dc-edge-wan-ip>",
+        "exporter_name": "unmapped",
+        "exporter_site": null,
+        "device": null,
+        "exporter": "<dc-edge>",
+        "src": "<probe-host-ip>",
+        "dst": "<web-tier-ip>",
+        "dst_port": "80",
+        "protocol": "tcp",
+        "src_device": null,
+        "dst_device": null,
+        "keys": ["device:<dc-edge>"],
+        "at": "2026-09-30T21:20:00Z",
+        "state": "present",
+        "bytes": 176640,
+        "flows": 539,
+        "last_flow_at": null,
+        "last_seen_at": "2026-09-30T21:19:03Z"
+      },
+      {
+        "kind": "conversation",
+        "scope": "flow:<hq-edge-ip>/<hq-client-ip>><web-tier-ip>:80/tcp",
+        "source": "<hq-edge-ip>",
+        "exporter_name": "<hq-edge>",
+        "exporter_site": null,
+        "device": null,
+        "exporter": "<hq-edge>",
+        "src": "<hq-client-ip>",
+        "dst": "<web-tier-ip>",
+        "dst_port": "80",
+        "protocol": "tcp",
+        "src_device": null,
+        "dst_device": null,
+        "keys": ["device:<hq-edge>"],
+        "at": "2026-09-30T21:20:00Z",
+        "state": "absent",
+        "bytes": 0,
+        "flows": 0,
+        "last_flow_at": null,
+        "last_seen_at": "2026-09-30T18:02:11Z"
+      }
+    ],
+    "series": [
+      { "at": "2026-09-30T15:20:00Z", "scope": "estate", "exporters": 4, "exporters_silent": 0, "exporters_unresolved": 1, "flows": 5392, "bytes": 69370000, "conversations": 40, "conversations_absent": 0, "top_scope": "flow:<dc-edge-wan-ip>/<probe-host-ip>><dc-app-host-ip>:8080/tcp" },
+      { "at": "2026-09-30T21:20:00Z", "scope": "estate", "exporters": 3, "exporters_silent": 1, "exporters_unresolved": 0, "flows": 3011, "bytes": 51600000, "conversations": 38, "conversations_absent": 2, "top_scope": "flow:<dc-edge-wan-ip>/<probe-host-ip>><dc-app-host-ip>:8080/tcp" }
+    ],
+    "visits": [
+      { "watch_id": "2026-09-30T15-20-00Z", "checked_at": "2026-09-30T15:20:00Z", "status": "ok", "coverage": "complete", "delta": "first", "stamp_written": true, "window": "1h" },
+      { "watch_id": null, "checked_at": "2026-09-30T18:20:00Z", "status": "ok", "coverage": "complete", "delta": "unchanged", "stamp_written": false, "window": "1h" },
+      { "watch_id": "2026-09-30T21-20-00Z", "checked_at": "2026-09-30T21:20:00Z", "status": "degraded", "coverage": "complete", "delta": "worse", "stamp_written": true, "window": "1h" }
+    ]
+  },
+  "provenance": { "netflow": "discovered" }
+}

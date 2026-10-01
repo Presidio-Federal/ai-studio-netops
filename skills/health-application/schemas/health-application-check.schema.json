@@ -1,0 +1,158 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-application-check/v1",
+  "title": "health/application/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "Application lab slip (Kind observation). Written on the first visit, when a probe flipped or changed HTTP code, a container restarted, appeared, or vanished, a host rebooted, lost an interface, or crossed a memory / disk threshold, a scrape target changed health, or when coverage is not complete. A quiet visit writes the board only. metrics: one estate row. readings: rows that moved, same shape as a board row plus note. host / device / application / site columns are the edge — there is no relations[] on this stamp. Do not store raw samples.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"}
+    },
+    "schema": { "type": "string", "const": "health-application-check/v1" },
+    "source": { "type": "string", "const": "application" },
+    "watch_id": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+    "checked_at": { "type": "string", "minLength": 1 },
+    "ok": { "type": ["boolean", "null"] },
+    "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+    "headline": { "type": "string", "minLength": 1, "description": "Which probe is down from which vantage and since when, which container restarted or vanished on which host, which host rebooted or lost an interface; then rows unchanged and whether a change: annotation fell inside the window." },
+    "window": { "type": "string", "minLength": 1, "description": "The timerange used, e.g. 1h." },
+    "coverage": { "$ref": "#/$defs/coverage" },
+    "vs_prior": { "$ref": "#/$defs/vs_prior" },
+    "concerns": {
+      "type": "array",
+      "maxItems": 12,
+      "description": "One application entity-ref per probe down or container gone / restarted with an application set; one device entity-ref per host unreachable, rebooted, or with an interface down that resolved to a device.",
+      "items": { "$ref": "#/$defs/entity_ref" }
+    },
+    "metrics": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "items": { "$ref": "#/$defs/metric_row" },
+      "description": "One estate row. Nulls when collection failed."
+    },
+    "readings": {
+      "type": "array",
+      "maxItems": 60,
+      "items": { "$ref": "#/$defs/reading" },
+      "description": "Rows that moved materially this visit (every row on the first visit). Empty only when coverage is not complete."
+    },
+    "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
+    "baseline_ref": { "type": ["string", "null"], "description": "health/application/<baseline_visit_id>.json. Null on the first visit." },
+    "skipped_reason": { "type": ["string", "null"] }
+  },
+  "$defs": {
+    "entity_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "properties": {
+        "type": { "type": "string", "enum": ["device", "interface", "site", "service", "test", "control", "incident", "change", "application"] },
+        "name": { "type": "string", "minLength": 1 },
+        "id": { "type": ["string", "null"] },
+        "source_ref": { "type": ["string", "null"] }
+      }
+    },
+    "vs_prior": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior_watch_id", "delta", "changed"],
+      "properties": {
+        "prior_watch_id": { "type": ["string", "null"], "description": "Board last_visit_id at the start of this visit." },
+        "delta": {
+          "type": "string",
+          "enum": ["first", "unchanged", "worse", "better", "changed"],
+          "description": "worse: probe 1->0, container gone or restarted, host reboot / unreachable / new interface down, target leaving up, threshold crossed downward. better: only recoveries. changed: new rows, http_code moves with success 1, thresholds crossed upward. first on the baseline."
+        },
+        "changed": { "type": "array", "maxItems": 60, "items": { "$ref": "#/$defs/change" } }
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keys", "field", "prior", "current", "at"],
+      "properties": {
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site|application|test):[^ ].*$" } },
+        "field": { "type": "string", "enum": ["success", "http_code", "started_epoch", "state", "cpu_pct", "boot_epoch", "interfaces_down", "mem_available_pct", "fs_root_avail_pct", "health", "row"] },
+        "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "current": { "type": ["string", "number", "integer", "boolean", "null"] },
+        "at": { "type": "string", "minLength": 1 }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state"],
+      "properties": {
+        "state": { "type": "string", "enum": ["complete", "unavailable", "not_requested", "partial"] },
+        "detail": { "type": "string" }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "probes", "probes_down", "containers", "containers_restarted", "containers_gone", "hosts", "hosts_rebooted", "interfaces_down", "targets", "targets_down", "change_annotations"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "estate" },
+        "probes": { "type": ["integer", "null"] },
+        "probes_down": { "type": ["integer", "null"] },
+        "containers": { "type": ["integer", "null"] },
+        "containers_restarted": { "type": ["integer", "null"], "description": "Containers whose started_epoch moved more than 60 s this visit." },
+        "containers_gone": { "type": ["integer", "null"] },
+        "hosts": { "type": ["integer", "null"] },
+        "hosts_rebooted": { "type": ["integer", "null"], "description": "Hosts whose boot_epoch moved more than 60 s this visit." },
+        "interfaces_down": { "type": ["integer", "null"], "description": "Sum of interfaces_down list lengths across hosts." },
+        "targets": { "type": ["integer", "null"] },
+        "targets_down": { "type": ["integer", "null"] },
+        "change_annotations": { "type": ["integer", "null"], "description": "Annotations with a change: tag inside the window." }
+      }
+    },
+    "reading": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "scope", "keys", "at", "state", "note"],
+      "description": "Board row plus note. Numbers come from P/C/H/T; state is the fixed rule in references/prometheus.md.",
+      "properties": {
+        "kind": { "type": "string", "enum": ["probe", "container", "host", "target"] },
+        "scope": { "type": "string", "minLength": 1 },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site|application|test):[^ ].*$" } },
+        "at": { "type": "string", "minLength": 1 },
+        "state": { "type": "string", "enum": ["up", "down", "unknown", "running", "gone", "unreachable"] },
+        "application": { "type": ["string", "null"] },
+        "service": { "type": ["string", "null"] },
+        "vantage_site": { "type": ["string", "null"] },
+        "site": { "type": ["string", "null"] },
+        "target": { "type": ["string", "null"] },
+        "success": { "type": ["integer", "null"], "enum": [0, 1, null] },
+        "http_code": { "type": ["integer", "null"] },
+        "duration_ms": { "type": ["integer", "null"] },
+        "success_pct_window": { "type": ["integer", "null"] },
+        "name": { "type": ["string", "null"] },
+        "host": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"] },
+        "image": { "type": ["string", "null"] },
+        "started_epoch": { "type": ["integer", "null"] },
+        "cpu_pct": { "type": ["number", "null"] },
+        "mem_bytes": { "type": ["integer", "null"] },
+        "rx_bytes_s": { "type": ["integer", "null"] },
+        "role": { "type": ["string", "null"] },
+        "boot_epoch": { "type": ["integer", "null"] },
+        "mem_available_pct": { "type": ["integer", "null"] },
+        "fs_root_avail_pct": { "type": ["integer", "null"] },
+        "interfaces_down": { "type": ["array", "null"], "items": { "type": "string" } },
+        "interfaces_up": { "type": ["integer", "null"] },
+        "scrape_pool": { "type": ["string", "null"] },
+        "instance": { "type": ["string", "null"] },
+        "health": { "type": ["string", "null"] },
+        "last_error": { "type": ["string", "null"] },
+        "last_scrape": { "type": ["string", "null"] },
+        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: down since which visit, how many restarts on this board, whether the reboot lines up with a change: annotation (tag only), whether the other vantage points agree. Not the columns again. No cause outside this board." }
+      }
+    }
+  }
+}

@@ -1,23 +1,23 @@
 # Health metadata — ids, window, boards
 
-Splunk board is `health/metadata-splunk.json`. ThousandEyes board is
-`health/metadata-thousandeyes.json`. **Not** the five-field
-envelope. Workspace first. Do not put live index names or test ids
-in the prompt or this skill. Do not read or write the other source’s
-metadata on this visit.
+Splunk board is `health/metadata-splunk.json`. NetFlow board is
+`health/metadata-netflow.json`. **Not** the five-field envelope.
+Workspace first. Do not put live index names, bucket names, or
+exporter addresses in the prompt or this skill. Do not read or
+write the other source’s metadata on this visit.
 
 ## Read before telemetry MCP
 
 1. `read_file` this visit’s metadata file if it exists.
 2. The metadata file **is** the board (`splunk.current[]` /
-   `thousandeyes.current[]`); do not open the prior stamp.
+   `netflow.current[]`); do not open the prior stamp.
 3. Only if ids are still incomplete: resolve (below). Do not list
    when metadata already has the facts for this visit.
 
 **Splunk visit** needs `splunk.index` and `splunk.sourcetype`.
-**ThousandEyes visit** needs `thousandeyes.account_id`, `window`,
-and at least one `tests[].test_id`. `agents[]` empty is fine — call
-A in `references/thousandeyes.md` fills it.
+**NetFlow visit** needs `netflow.bucket`, `netflow.measurement`,
+and `netflow.window`. `exporters[]` empty is fine — call S in
+`references/netflow.md` fills it on the baseline.
 
 Do not collect another health source. Do not copy PAT into metadata.
 
@@ -40,12 +40,14 @@ Do not collect another health source. Do not copy PAT into metadata.
 Pass the window as MCP `earliest_time` / `latest_time`. Do not put
 `earliest=` in SPL.
 
-## ThousandEyes window
+## NetFlow window
 
-Every ThousandEyes visit, first or later, passes
-`thousandeyes.window` (default `1h`; write `1h` when the field is
-missing). No `7d`, no `24h`, no watermark: the board holds the
-state, the window is how many rounds the state is read from.
+Every NetFlow visit, first or later, passes `netflow.window`
+(default `1h`; write `1h` when the field is missing) as the tool's
+`timerange`. No `7d`, no `24h`, no watermark: the board holds the
+state, the window is how much flow the state is read from. Every
+Flux query keeps `range(start: v.timeRangeStart, stop:
+v.timeRangeStop)`; the tool fills it.
 
 ## Resolve — incomplete for this visit only
 
@@ -60,33 +62,36 @@ and continue. Several → list them as options and ask which index
 and sourcetype. No human (schedule): if exactly one index, use it;
 if several, stop and write what you listed is missing.
 
-**ThousandEyes** missing `account_id` or tests:
-`te_manage_account_groups(action="list")` then `te_tests_get_tests`
-once. Keep enabled tests of type `agent-to-agent` and
-`agent-to-server`; skip `api`, `bgp`, disabled tests. Write each as
-`{test_id, test_name, type, service: null}` (`provenance:
-discovered`) and collect. Several accounts → show options and ask.
-No human: one account → write and run; several → stop. Do not copy
-ids out of this skill. `service` is set by an operator, never by
-you.
+**NetFlow** missing `bucket` / `measurement`: one
+`grafana_influx_schema()` with no measurement lists the
+measurements in the default bucket. Keep the one whose tag keys
+(a second call with `measurement=<name>`) include `src`, `dst`,
+`dst_port`, `protocol`, and `source`; skip `internal_*` and
+`*_options`. Exactly one fits → write `bucket`, `measurement`,
+`window` `1h` (`provenance: discovered`) and continue. Several →
+show options and ask. No human: one → write and run; several →
+stop. `exporters[]` is filled by call S in `references/netflow.md`;
+`device` on each exporter row is resolved there and never guessed.
+An operator may pin `datasource_uid`; otherwise leave it null and
+let the tool default.
 
 Human ask shape (after you have options):
 
 ```text
-Need: <index | sourcetype | TE account | TE tests>
+Need: <index | sourcetype | bucket | measurement>
 Options:
 - <from the listing>
 Which?
 ```
 
-Do not create indexes, dashboards, or tests. Do not `index=*`.
+Do not create indexes, dashboards, buckets, or measurements. Do not
+`index=*`.
 
 ## Write metadata
 
 Splunk: `write_file` `health/metadata-splunk.json` **every visit**
 (it is the board), after resolve and again at the end with the
-watermark, `current[]`, `series[]`, `visits[]`. ThousandEyes: `write_file`
-`health/metadata-thousandeyes.json` **every visit** (it is the
-board), after resolve and again at the end with `current[]`,
-`series[]`, `visits[]`, `agents[]`. Do not copy the other source
-through.
+watermark, `current[]`, `series[]`, `visits[]`. NetFlow: `write_file`
+`health/metadata-netflow.json` **every visit** (it is the board),
+after resolve and again at the end with `current[]`, `series[]`,
+`visits[]`, `exporters[]`. Do not copy the other source through.

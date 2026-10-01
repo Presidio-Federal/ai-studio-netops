@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-metadata-netflow/v1",
+  "title": "health/metadata-netflow.json",
+  "description": "NetFlow plane board (Kind metadata). Health Monitor NetFlow visit only. Rewritten every NetFlow visit, quiet or not. Carries the lookup (bucket, measurement, window, exporters[]), last_visit_id (last stamp), last_collected_at (last completed collection), and the board: current[] last-known row per exporter and per conversation, series[] one estate metric row per visit, visits[]. Not the five-field envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "netflow"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"},
+      "description": "Union of every key on current[]."
+    },
+    "schema": { "type": "string", "const": "health-metadata-netflow/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "health-monitor" },
+    "netflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket", "measurement", "window", "exporters", "last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits"],
+      "properties": {
+        "datasource_uid": { "type": ["string", "null"], "description": "Grafana InfluxDB datasource uid when an operator pinned one; null means the tool default." },
+        "bucket": { "type": "string", "minLength": 1, "description": "InfluxDB bucket, discovered or operator-set." },
+        "measurement": { "type": "string", "minLength": 1, "description": "Flow measurement inside the bucket, discovered or operator-set." },
+        "window": { "type": "string", "minLength": 1, "description": "timerange passed to grafana_query_influx every visit. Default 1h. An operator may set it; the nurse does not change it." },
+        "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
+        "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
+        "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+        "exporters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "exporter_name", "device"],
+            "properties": {
+              "source": { "type": "string", "minLength": 1, "description": "Exporter address as tagged on the flow rows." },
+              "exporter_name": { "type": ["string", "null"], "description": "exporter_name tag as returned (unmapped is a value)." },
+              "exporter_site": { "type": ["string", "null"] },
+              "device": { "type": ["string", "null"], "description": "inventory/prod.json device name this exporter resolves to. Null when unresolved; the nurse does not guess." }
+            }
+          },
+          "description": "Every exporter address seen. Resolved on the baseline (grafana_influx_schema) and again only when an F1 source is not listed here."
+        },
+        "current": {
+          "type": "array",
+          "maxItems": 120,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "Last-known row per exporter and per conversation. A visit replaces every row it measured; exporters and conversations it did not see are carried as silent / absent."
+        },
+        "series": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/metric_row" },
+          "description": "One estate row per visit, oldest first."
+        },
+        "visits": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/visit_row" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "netflow": { "type": "string", "enum": ["user", "discovered"] } }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "scope", "source", "exporter_name", "keys", "at", "state", "bytes", "flows"],
+      "description": "Same shape as a stamp reading, without note. Exporter rows and conversation rows share the shape; conversation-only columns are null on an exporter row.",
+      "properties": {
+        "kind": { "type": "string", "enum": ["exporter", "conversation"] },
+        "scope": { "type": "string", "minLength": 1, "description": "exporter:<source> or flow:<source>/<src>><dst>:<dst_port>/<protocol>. Stable key for the board diff." },
+        "source": { "type": "string", "minLength": 1, "description": "Exporter address." },
+        "exporter_name": { "type": ["string", "null"] },
+        "exporter_site": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"], "description": "Exporter rows: the resolved device. Null on conversation rows (use exporter)." },
+        "exporter": { "type": ["string", "null"], "description": "Conversation rows: the exporter's resolved device, else null." },
+        "src": { "type": ["string", "null"] },
+        "dst": { "type": ["string", "null"] },
+        "dst_port": { "type": ["string", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "src_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr or access host matches src. Null when unresolved." },
+        "dst_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr or access host matches dst. Null when unresolved." },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" }, "description": "device:<device> / device:<exporter> / device:<src_device> / device:<dst_device> when resolved; site:<exporter_site> on exporter rows when tagged. Never an application or a port." },
+        "at": { "type": "string", "minLength": 1, "description": "checked_at of the visit that last measured or carried this row." },
+        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent"], "description": "Exporter rows: reporting / silent. Conversation rows: present / absent." },
+        "bytes": { "type": ["integer", "number", "null"] },
+        "flows": { "type": ["integer", "null"] },
+        "last_flow_at": { "type": ["string", "null"], "description": "Exporter rows: newest flow time seen from this source." },
+        "last_seen_at": { "type": ["string", "null"], "description": "Conversation rows: newest flow time for this pair." }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "exporters", "exporters_silent", "exporters_unresolved", "flows", "bytes", "conversations", "conversations_absent", "top_scope"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "estate" },
+        "exporters": { "type": ["integer", "null"] },
+        "exporters_silent": { "type": ["integer", "null"] },
+        "exporters_unresolved": { "type": ["integer", "null"] },
+        "flows": { "type": ["integer", "null"] },
+        "bytes": { "type": ["integer", "number", "null"] },
+        "conversations": { "type": ["integer", "null"] },
+        "conversations_absent": { "type": ["integer", "null"] },
+        "top_scope": { "type": ["string", "null"] }
+      }
+    },
+    "visit_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "window"],
+      "properties": {
+        "watch_id": { "type": ["string", "null"] },
+        "checked_at": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
+        "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "stamp_written": { "type": "boolean" },
+        "window": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
