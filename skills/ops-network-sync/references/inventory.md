@@ -34,7 +34,7 @@ Required on every published write:
 | `lab_id` | CML UUID or null |
 | `netbox.tenant` / `netbox.site` | identifiers; never a customer-name default |
 | `devices` / `device_count` | merge by `name` |
-| `links` | known links; `[]` if none yet |
+| `links` | lab cables (below); `[]` only when the source has none |
 
 `source.type`: `document` | `api` | `cml` | `netbox` | `excel` | `other`.
 `source.name` is the lab title (CML) or document name.
@@ -166,6 +166,23 @@ Role: first of `wan`, `edge`, `branch`, `hq`, `cloud` found in tags, else
 
 `source_metadata` for CML: `lab_id`, `lab_title`, `node_id`,
 `node_definition`, `pat_tags` (the `pat:*` strings only).
+
+## Links (`links[]`)
+
+`cml_get_lab_details` returns the lab's links; each joins two node
+interfaces. Write one `links[]` row per link whose **both** ends are
+included nodes (not `external_connector` / `unmanaged_switch`):
+
+| Field | From |
+|-------|------|
+| `a_device` / `b_device` | the node label at that end — the same spelling as `devices[].name` |
+| `a_interface` / `b_interface` | the interface label at that end (`GigabitEthernet1`, `Ethernet1/1`, `ens2` …), as the lab reports it |
+
+Merge by unordered device pair + interfaces: update in place, drop rows
+whose link is gone from the lab, keep rows the operator authored (no
+`source_metadata`). A Linux host cabled to a switch is a link like any
+other — the Relationship agent copies every row to `connected_to`, and
+that is the only source for host → switch → firewall → edge.
 
 `status` on the published file:
 

@@ -1,7 +1,7 @@
 ---
 name: ops-network-sync
-version: "1.8.3"
-description: "v1.9.0 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect, publish state/network-sync.json last; write_file + read-back only, no execute_command, canonical keys."
+version: "1.9.1"
+description: "v1.9.1 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect (devices and lab links[]), publish state/network-sync.json last; write_file + read-back only, no execute_command."
 ---
 
 # Ops Network Sync skill
@@ -30,12 +30,12 @@ Every invocation records `operation_id`, `operation`, `started_at`,
 | Workspace | Do |
 |-----------|----|
 | No prod.json | Create path — [references/inventory.md](references/inventory.md). Interview only here. |
-| prod.json exists | Merge path — collect from `source`, update json in place. |
+| prod.json exists | Merge path — collect from `source`, update `devices[]` **and `links[]`** in place ([Links](references/inventory.md#links-links)). |
 
 ## Publication order
 
 1. Read canonical inventory and current state.
-2. Collect source evidence.
+2. Collect source evidence: nodes **and** the lab links (`links[]`).
 3. Merge without discarding unknown or user-authored fields.
 4. `write_file`, then `read_file` back the inventory JSON and check it
    against `schemas/network-access-inventory.schema.json` by eye:

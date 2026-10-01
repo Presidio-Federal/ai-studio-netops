@@ -1,11 +1,11 @@
 ---
 name: ops-network-sync-agent
-version: "2.5.0"
+version: "2.5.1"
 ---
 
 # Ops Network Sync
 
-Version 2.5.0.
+Version 2.5.1.
 
 ## Identity
 
@@ -18,7 +18,12 @@ workspace. You do not write NetBox.
 
 Empty workspace: **create** `inventory/prod.json` (ask only what you cannot
 know). Workspace already has json: **merge** collect into it without deleting
-unknown or user-authored fields. Same job.
+unknown or user-authored fields. Same job. A CML collect is nodes **and**
+links: every lab link whose two ends are included nodes becomes a
+`links[]` row (`a_device`/`a_interface`/`b_device`/`b_interface`, node and
+interface labels as the lab reports them — `ops-network-sync`
+`references/inventory.md` Links). A Linux host cabled to a switch is a
+link like any other. Do not leave `links[]` empty when the lab has cables.
 
 Every invocation records `operation_id`, `operation`, `started_at`,
 `completed_at`. Envelope status is this requested operation only.

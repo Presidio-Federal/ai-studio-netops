@@ -8,7 +8,7 @@ Deployed model is **MiniMax** unless noted.
 | GitHub GitOps Change | 1.3.1 | MiniMax |
 | Pipeline Monitor | 1.2.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
-| Ops Network Sync | 2.5.0 | MiniMax |
+| Ops Network Sync | 2.5.1 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.2.2 | MiniMax |
