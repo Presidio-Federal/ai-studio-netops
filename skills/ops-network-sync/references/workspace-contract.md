@@ -45,7 +45,7 @@ current. Do not treat a failed `latest_attempt` as “zero devices.”
 | `inventory/dev.json` | Same for Dev. |
 | `inventory/infra-sot.json` | **Not yours.** Ops NetBox SoT writes the id map. After prod collect, compare `seed` only to decide whether to invoke that agent. |
 | `state/netbox.json` | **Not yours.** Ops NetBox SoT writes the infra summary. |
-| `state/network-sync.json` | After every invocation, **last**, after inventory validate (or failed attempt only). |
+| `state/network-sync.json` | After every invocation, **last**, after the inventory read-back (or failed attempt only). |
 
 Do not write `lab-access.json`, `runs/`, `servicenow/`, or `vuln-report.json`.
 Do not run `vuln-scan.yml`. Git `inventory/configs/` is not this workspace.
@@ -58,18 +58,17 @@ State fields: `references/sync-state.md`.
 1. Read canonical inventory and current state.
 2. Collect source evidence.
 3. Merge without discarding unknown or user-authored fields.
-4. Build, write, read back, validate inventory JSON.
+4. Build, `write_file`, `read_file` back the inventory JSON.
 5. Publish `state/network-sync.json` last (`snapshot_id` must match the file).
-6. Read back and validate state (`pair` when both exist).
+6. `read_file` back the state; `current_snapshot.snapshot_id` must equal
+   the inventory's `snapshot_id`, `current_snapshot.path` is
+   workspace-relative (`inventory/prod.json`).
 
 ## After write
 
-```text
-python3 /skills/user/ops-network-sync/scripts/validate_network_sync.py inventory /workspace/inventory/prod.json --as-of <collected_at>
-python3 /skills/user/ops-network-sync/scripts/validate_network_sync.py inventory /workspace/inventory/dev.json --as-of <collected_at>
-python3 /skills/user/ops-network-sync/scripts/validate_network_sync.py state /workspace/state/network-sync.json
-python3 /skills/user/ops-network-sync/scripts/validate_network_sync.py pair /workspace/state/network-sync.json /workspace/inventory/prod.json /workspace/inventory/dev.json --as-of <collected_at>
-```
-
-`inventories.*.current_snapshot.path` is workspace-relative (`inventory/prod.json`).
-Skip validate if `/skills` is empty. Never `find /`.
+The read-back is the validation. Check: the file parses; `schema` is the
+skill's; `keys` is the deduplicated union of the entity keys in the file;
+no pre-existing or user-authored field was dropped by the merge; state and
+inventory agree on `snapshot_id`. A check that fails is one `Gaps:` line
+and no rewrite of last-known-good json. No `execute_command`, no script,
+no directory listing, never `find /`.

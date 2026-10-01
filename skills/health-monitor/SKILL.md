@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "2.0.0"
-description: "v2.0.0 — Health Monitor nurse: Splunk and NetFlow (Grafana / InfluxDB) visits. Board on metadata, stamp only on change; NetFlow rows carry exporter, src/dst device, port, protocol as the edge; no relations[]."
+version: "2.1.0"
+description: "v2.1.0 — Health Monitor nurse: Splunk (IOS-XE, NX-OS, ASA syslog) and NetFlow (Grafana / InfluxDB) visits. Board on metadata, stamp only on change; prod.json coverage with silent and unresolved devices; no relations[]."
 ---
 
 # Health Monitor skill

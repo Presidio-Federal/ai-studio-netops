@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "2.0.0"
+version: "2.1.0"
 ---
 
 # Health Monitor
 
-Version 2.0.0.
+Version 2.1.0.
 
 ## Identity
 
@@ -132,12 +132,17 @@ Follow `health-monitor` (`references/watch.md`,
 
 **Splunk.** The first visit reads the last 7 days; later visits
 start at `collected_through`. Splunk groups both searches by
-device already (`dev` = parsed hostname, lowercased, or the address
-when a line has none). You look up the `prod.json` spelling
-case-insensitively; an address resolves through
-`topology-observed.json` `interfaces[].cidr`, then `access.*.host`;
-otherwise it stays as logged with no key. Metric rows are S1 bucket
-counts per device. Readings are S2 rows: `kind` `bgp` (subject =
+device already (`dev` = the hostname parsed from an IOS-XE, ASA, or
+NX-OS line, lowercased, or the address when a line has none). You
+look up the `prod.json` spelling case-insensitively; an address
+resolves through `topology-observed.json` `interfaces[].cidr`, then
+the board's `splunk.hosts` map, then `access.*.host`; otherwise it
+stays as logged with no key and goes on the `Unresolved:` line.
+Every `prod.json` device whose `platform` is not `linux` is
+expected; one with no S1 row is `Silent:` — reported, never a
+reading, never degraded. Copy the two searches from the skill
+exactly; they already know the NX-OS and ASA mnemonics. Metric rows
+are S1 bucket counts per device. Readings are S2 rows: `kind` `bgp` (subject =
 neighbor address, `peer` resolved the same way, `state` Up/Down/
 reset, `detail` the reason), `link` (subject = interface, `state`),
 `config` (subject = user, `source_ip`, `detail` vty/console),
@@ -197,6 +202,7 @@ Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Wrote: health/<source>/<stamp>.json
 Trend: <vs_prior.delta>
+Devices: <resolved> of <expected> logged; Silent: <names | none>; Unresolved: <dev values | none>   (splunk)
 Findings:
 - <device> <kind> <subject> <state | user> at <at>   (splunk)
 - exporter <device or source>: <reporting|silent>, <flows> flows, last flow <last_flow_at>   (netflow)
@@ -213,11 +219,12 @@ Coverage: complete
 Window: <window_start> -> <window_end>
 Wrote: health/metadata-<source>.json (no material change)
 Trend: unchanged
+Devices: <resolved> of <expected> logged; Silent: <names | none>; Unresolved: <dev values | none>   (splunk)
 Board: <n> rows, last stamp <last_visit_id>
 Next: none
 ```
 
-(NetFlow writes `Board: <n> exporters (<k> silent), <m>
+(NetFlow omits `Devices:` and writes `Board: <n> exporters (<k> silent), <m>
 conversations, last stamp <last_visit_id>`.)
 
 `Result:` is this visit’s plane `status`.

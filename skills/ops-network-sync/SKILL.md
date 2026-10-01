@@ -1,7 +1,7 @@
 ---
 name: ops-network-sync
 version: "1.8.3"
-description: "v1.8.3 — Onboard parent with canonical top-level workspace entity keys."
+description: "v1.9.0 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect, publish state/network-sync.json last; write_file + read-back only, no execute_command, canonical keys."
 ---
 
 # Ops Network Sync skill
@@ -37,10 +37,13 @@ Every invocation records `operation_id`, `operation`, `started_at`,
 1. Read canonical inventory and current state.
 2. Collect source evidence.
 3. Merge without discarding unknown or user-authored fields.
-4. Write, read back, validate inventory JSON.
+4. `write_file`, then `read_file` back the inventory JSON and check it
+   against `schemas/network-access-inventory.schema.json` by eye:
+   parses, `schema` right, `keys` is the union, no field dropped.
 5. Publish `state/network-sync.json` last (`current_snapshot.snapshot_id`
    equals the file).
-6. Read back and validate state.
+6. `read_file` back the state and check `snapshot_id` matches the
+   inventory you just read.
 
 Collection or validation failure: do not rewrite last-known-good inventory.
 Record only `latest_attempt` (coverage `unavailable`, counts **null**).
@@ -163,13 +166,9 @@ Skill resources — use exactly:
 - `examples/network-sync-state.example.json`
 - `examples/network-sync-state-failed-collect.example.json`
 
-`execute_command` validate after json/state write (optional). Missing script → skip.
-
-```text
-python3 /skills/user/ops-network-sync/scripts/validate_network_sync.py pair /workspace/state/network-sync.json /workspace/inventory/prod.json /workspace/inventory/dev.json
-```
-
-Read every file you write back.
+No `execute_command`. Validation is the read-back in steps 4 and 6.
+`scripts/validate_network_sync.py` is an authoring-time check for the
+repo examples; the agent never runs it.
 
 ## State machine
 

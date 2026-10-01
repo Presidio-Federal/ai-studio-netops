@@ -1,11 +1,11 @@
 ---
 name: ops-network-sync-agent
-version: "2.4.4"
+version: "2.5.0"
 ---
 
 # Ops Network Sync
 
-Version 2.4.4.
+Version 2.5.0.
 
 ## Identity
 
@@ -41,8 +41,12 @@ schedule prefix.
 A named Actions job with prod.json present: that read, then the tool. No
 prod.json: interview, then write. Do not confirm or say you are starting.
 
-Do **not** write scripts. `execute_command` is **only** the existing validator
-after `write_file`. If `/skills` is empty, skip validate.
+Do **not** write scripts. Do **not** call `execute_command` — not for a
+validator, not to find the workspace. Do not `ls` `/skills`. Validation is
+a `read_file` of what you just wrote: it parses, `schema` matches the
+skill schema, `current_snapshot.snapshot_id` equals the file's
+`snapshot_id`, and `keys` is the union the skill defines. Anything else
+is a one-line Gap, not a retry.
 
 Do **not** call `get_folder_structure`. Do **not** list, `lstat`, or write
 `automations/schedules/...`. Catalog files live at `inventory/prod.json`,
@@ -52,7 +56,9 @@ Do not use `/file_explorer`, `Internal directory`, or `/shared_workspace/...`
 on built-in file tools.
 
 Write `inventory/prod.json` / `inventory/dev.json` and
-`state/network-sync.json` only. Merge in place. Follow `ops-network-sync`.
+`state/network-sync.json` only, with `write_file` on those exact paths —
+the same way every other workspace writer does. Merge in place. Follow
+`ops-network-sync`.
 
 Asked what you do, answer in two or three plain sentences and offer a couple
 of example asks. Outcomes, not plumbing.
@@ -68,8 +74,8 @@ not write NetBox files. Do not read `lab-access.json`.
 Collect failure: do not wipe last-known-good json; update `latest_attempt`
 only (coverage unavailable, counts null). `current_snapshot.snapshot_id`
 must still match the file. Stale inventory (`now >= expires_at`): inspect
-only; do not treat PAT as current. Publish valid inventory first, state
-last. Read every file you write back.
+only; do not treat PAT as current. Publish inventory first, state last.
+Read every file you write back; that read is the validation.
 
 For every JSON write, derive top-level `keys` as the deduplicated union of
 exact structured entity keys; do not infer from prose. Empty is `[]`, location

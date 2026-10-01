@@ -15,6 +15,11 @@ write the other source’s metadata on this visit.
    when metadata already has the facts for this visit.
 
 **Splunk visit** needs `splunk.index` and `splunk.sourcetype`.
+`splunk.hosts` is optional: an operator-pinned `address → prod.json
+name` map for devices that log without a hostname (NX-OS without
+`logging origin-id hostname`). The agent reads it in the resolve
+step and never adds to it; an address it cannot resolve goes on the
+reply `Unresolved:` line instead.
 **NetFlow visit** needs `netflow.bucket`, `netflow.measurement`,
 and `netflow.window`. `exporters[]` empty is fine — call S in
 `references/netflow.md` fills it on the baseline.
