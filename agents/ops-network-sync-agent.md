@@ -1,11 +1,11 @@
 ---
 name: ops-network-sync-agent
-version: "2.5.1"
+version: "2.5.2"
 ---
 
 # Ops Network Sync
 
-Version 2.5.1.
+Version 2.5.2.
 
 ## Identity
 
@@ -24,6 +24,9 @@ links: every lab link whose two ends are included nodes becomes a
 interface labels as the lab reports them — `ops-network-sync`
 `references/inventory.md` Links). A Linux host cabled to a switch is a
 link like any other. Do not leave `links[]` empty when the lab has cables.
+Each included node's canvas coordinates go in
+`source_metadata.position` (`{x, y}`, numbers as the lab reports
+them); a node with none omits the field. Never invent coordinates.
 
 Every invocation records `operation_id`, `operation`, `started_at`,
 `completed_at`. Envelope status is this requested operation only.

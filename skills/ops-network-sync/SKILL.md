@@ -1,7 +1,7 @@
 ---
 name: ops-network-sync
-version: "1.9.1"
-description: "v1.9.1 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect (devices and lab links[]), publish state/network-sync.json last; write_file + read-back only, no execute_command."
+version: "1.9.2"
+description: "v1.9.2 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect (devices, lab links[], CML canvas position), publish state/network-sync.json last; write_file + read-back only."
 ---
 
 # Ops Network Sync skill
@@ -35,7 +35,8 @@ Every invocation records `operation_id`, `operation`, `started_at`,
 ## Publication order
 
 1. Read canonical inventory and current state.
-2. Collect source evidence: nodes **and** the lab links (`links[]`).
+2. Collect source evidence: nodes (CML canvas `position` into
+   `source_metadata`), **and** the lab links (`links[]`).
 3. Merge without discarding unknown or user-authored fields.
 4. `write_file`, then `read_file` back the inventory JSON and check it
    against `schemas/network-access-inventory.schema.json` by eye:

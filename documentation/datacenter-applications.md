@@ -109,9 +109,36 @@ the probes.
    and observed `depends_on`, `flows_to`, `traverses`.
 5. Health Analyzer — `impact` on problems.
 6. Network Ops — `blast_radius` on changes.
+7. Network Map — `reports/network-map.html`, the picture of 1–6.
 
 Until step 4 has run, both walks return `basis none` with empty
 arrays. That is the honest answer, not a gap.
+
+## Names must match
+
+The walks and the map join on names, and three systems spell them:
+the CML node label becomes `prod.json` `devices[].name`; Prometheus
+`host_name` must equal that name for Health Application to resolve
+a host or container to a device; the cAdvisor `service` label must
+equal the CMDB tier name for the container to land on the same
+`application:` node as the probe and the CMDB row. A host whose CML
+label differs from its `host_name` is invisible to every walk.
+
+## Network map
+
+The Network Map agent runs `network-map` `scripts/build_map.py`
+once; the script reads the boards above plus `state/compliance.json`,
+`state/testing.json`, `state/network-ops.json`, `state/servicenow.json`
+and the splunk board, and writes one self-contained interactive HTML.
+Cables come from `prod.json` `links[]` (Ops Network Sync copies
+them from the CML lab), so the host → switch → firewall → edge path
+is drawn even before NetFlow sees it. Node positions come from the
+CML canvas (`source_metadata.position`, Sync 2.5.2) when every device
+has one; otherwise the page lays nodes out by site and role. Click a device for its
+problems, findings, review rows, syslog buckets, cables and compiled
+edges; click an app tier to trace its path to the WAN; click a
+problem or finding to light up its devices. The page is as fresh as
+the boards; its footer lists each board's own timestamp.
 
 ## Not here
 

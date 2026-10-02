@@ -165,7 +165,10 @@ Role: first of `wan`, `edge`, `branch`, `hq`, `cloud` found in tags, else
 `unknown`. Do not invent a role from the hostname.
 
 `source_metadata` for CML: `lab_id`, `lab_title`, `node_id`,
-`node_definition`, `pat_tags` (the `pat:*` strings only).
+`node_definition`, `pat_tags` (the `pat:*` strings only), and
+`position` — `{ "x", "y" }` copied from the node's canvas coordinates
+in the lab details, numbers as the lab reports them. A node with no
+position omits the field. Never invent coordinates.
 
 ## Links (`links[]`)
 
