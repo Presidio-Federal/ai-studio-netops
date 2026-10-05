@@ -213,15 +213,6 @@ def oper_not_ready(row):
     return state != ""
 
 
-def parse_instant(text):
-    if not isinstance(text, str) or not text:
-        return None
-    try:
-        return datetime.fromisoformat(text.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-
-
 def stamp_name(moment):
     return moment.strftime("%Y-%m-%dT%H-%M-%SZ")
 
@@ -930,7 +921,6 @@ def cmd_collect(args):
         print('{"error": "inventory/prod.json missing"}', file=sys.stderr)
         return 1
     now = datetime.now(timezone.utc)
-    expires = parse_instant(prod.get("expires_at"))
     topology = visit_common.load_json(ws, "inventory/topology-observed.json")
     board = visit_common.load_board(ws, "iosxe") or {}
     iosxe = board.get("iosxe") or {}
@@ -957,32 +947,27 @@ def cmd_collect(args):
         scope_value = "all"
 
     at = checked_at(now)
-    stale = expires is None or now >= expires
     collected = {}
     failed = []
-    if stale:
-        failed = [device["name"] for device in targets]
+    budget = visit_common.Budget(240)
+    calls_used = [0]
+    for device in targets:
+        if budget.exhausted() or calls_used[0] >= MAX_CALLS:
+            failed.append(device["name"])
+            continue
+        payloads, errors = collect_device(device, budget, calls_used)
+        if payloads is None:
+            failed.append(device["name"])
+        else:
+            collected[device["name"]] = payloads
+    if targets and len(failed) == len(targets):
+        coverage = "unavailable"
+    elif failed:
+        coverage = "partial"
+    elif not targets:
         coverage = "unavailable"
     else:
-        budget = visit_common.Budget(240)
-        calls_used = [0]
-        for device in targets:
-            if budget.exhausted() or calls_used[0] >= MAX_CALLS:
-                failed.append(device["name"])
-                continue
-            payloads, errors = collect_device(device, budget, calls_used)
-            if payloads is None:
-                failed.append(device["name"])
-            else:
-                collected[device["name"]] = payloads
-        if targets and len(failed) == len(targets):
-            coverage = "unavailable"
-        elif failed:
-            coverage = "partial"
-        elif not targets:
-            coverage = "unavailable"
-        else:
-            coverage = "complete"
+        coverage = "complete"
 
     peers = address_index(collected, topology, prod_names)
     new_by_name = {}
@@ -1091,7 +1076,7 @@ def cmd_collect(args):
             "headline": headline_for(changed, unchanged if unchanged is not None else 0, coverage, failed, first, len(current_rows)),
             "window": "live",
             "scope": scope_value if scope_value else "all",
-            "coverage": {"state": coverage, "detail": _detail(collected, failed, stale)},
+            "coverage": {"state": coverage, "detail": _detail(collected, failed)},
             "metrics": metrics,
             "readings": readings,
             "unchanged": unchanged,
@@ -1199,9 +1184,7 @@ def cmd_collect(args):
     return 0
 
 
-def _detail(collected, failed, stale):
-    if stale:
-        return "inventory/prod.json is missing expires_at or is stale"
+def _detail(collected, failed):
     if not collected and failed:
         return "RESTCONF failed after retry"
     text = f"system-data, cpu, memory, interfaces, bgp on {len(collected)} devices"

@@ -20,8 +20,9 @@ KB; filtered it is 5 lines.
 
 ## Inventory and scope
 
-1. `read_file` `inventory/prod.json`. Missing or `now >= expires_at`:
-   write `unavailable`, ask or stop. Do not guess PAT.
+1. `read_file` `inventory/prod.json`. Missing file: write `unavailable`
+   and stop. Use `access.restconf.host` and `port` as written. Do not
+   stop because `expires_at` has passed. Do not guess a port.
 2. Candidate set = devices with both `access.restconf.host` and
    `access.restconf.port`. Match names case-insensitively; write the
    `prod.json` spelling everywhere. Do not hardcode hostnames or

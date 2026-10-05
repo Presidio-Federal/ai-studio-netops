@@ -27,4 +27,4 @@ Deployed model is **MiniMax** unless noted.
 | Network Map | 1.0.1 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 
-Health Device 1.12.1 (skill 1.12.3): the health-visit command copies the path Studio shows for `visit_iosxe.py`. Inherited board rows are coerced to the current schema or dropped. An older `series` or `current` row cannot fail the visit. Material rules are unchanged. Topology map is unchanged.
+Health Device 1.12.1 (skill 1.12.4): the health visit calls `iosxe_restconf_get` with the host and port in `prod.json`. `expires_at` does not skip the call. Topology map is unchanged.
