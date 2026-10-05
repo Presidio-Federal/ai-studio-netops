@@ -1,7 +1,7 @@
 ---
 name: health-telemetry
-version: "1.0.3"
-description: "v1.0.3 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. The script reads the board lookup, including a flat metadata file."
+version: "1.0.4"
+description: "v1.0.4 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. The script reads the board lookup, including a flat metadata file."
 ---
 
 # Health Telemetry skill

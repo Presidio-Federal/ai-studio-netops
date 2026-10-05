@@ -701,6 +701,22 @@ def save_board(ws, board):
     visit_common.save_board(ws, "netflow", board)
 
 
+def lookup_provenance(board, discovered):
+    """Schema allows provenance.netflow only. The workspace board uses bucket, measurement, and window."""
+    raw = board.get("provenance") if isinstance(board.get("provenance"), dict) else {}
+    marks = [raw.get("netflow"), raw.get("bucket"), raw.get("measurement")]
+    if discovered or "discovered" in marks:
+        return {"netflow": "discovered"}
+    if "user" in marks:
+        return {"netflow": "user"}
+    return None
+
+
+def user_pinned(board):
+    raw = board.get("provenance") if isinstance(board.get("provenance"), dict) else {}
+    return raw.get("netflow") == "user" or raw.get("bucket") == "user" or raw.get("measurement") == "user"
+
+
 def plane_block(board):
     """The lookup and rows. A nested netflow object, or the flat board already in the workspace."""
     nested = board.get("netflow")
@@ -734,7 +750,7 @@ def cmd_collect(args):
         return 1
     board = visit_common.load_board(ws, "netflow") or {}
     netflow = plane_block(board)
-    pinned_user = (board.get("provenance") or {}).get("netflow") == "user"
+    pinned_user = user_pinned(board)
     window = blank(netflow.get("window")) or "1h"
     prior_bucket = blank(netflow.get("bucket")) or ""
     prior_measurement = blank(netflow.get("measurement")) or ""
@@ -1012,11 +1028,9 @@ def cmd_collect(args):
         new_board["netflow"]["datasource_uid"] = datasource
     elif "datasource_uid" in netflow:
         new_board["netflow"]["datasource_uid"] = netflow.get("datasource_uid")
-    if discovered:
-        new_board["provenance"] = dict(board.get("provenance") or {})
-        new_board["provenance"]["netflow"] = "discovered"
-    elif isinstance(board.get("provenance"), dict):
-        new_board["provenance"] = board["provenance"]
+    provenance = lookup_provenance(board, discovered)
+    if provenance:
+        new_board["provenance"] = provenance
     try:
         save_board(ws, new_board)
     except (ValueError, OSError) as exc:

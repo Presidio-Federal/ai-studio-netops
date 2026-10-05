@@ -85,7 +85,8 @@ estate; neither nurse designs a visit around it.
 
 | Role | Agent | Writes |
 |------|-------|--------|
-| Syslog / flows | Health Monitor | Named Splunk **or** NetFlow slip + that plane’s metadata |
+| Syslog | Health Logging | `health/splunk/<stamp>.json` + `health/metadata-splunk.json` |
+| Flows | Health Telemetry | `health/netflow/<stamp>.json` + `health/metadata-netflow.json` |
 | Application | Health Application | `health/application/<stamp>.json` + `health/metadata-application.json` |
 | Bedside | Health Device | `health/iosxe/<stamp>.json` |
 | Records | Health ServiceNow | ServiceNow slip + metadata |
