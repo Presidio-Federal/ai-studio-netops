@@ -6,8 +6,9 @@ execution_type mcp_orchestration, via hai_mcp.call_mcp. The outer
 envelope is the same for every server. result is server-specific.
 unwrap_iosxe is the Health Device probe from 2026-10-03.
 unwrap_splunk is the Health Monitor probe from 2026-10-05.
-unwrap_grafana and unwrap_snow stay unimplemented until a pasted
-probe shows the shape.
+unwrap_grafana uses that same outer envelope and pivots the Grafana
+13 frame body seen from /api/ds/query on 2026-10-05.
+unwrap_snow stays unimplemented until a pasted probe shows the shape.
 """
 import json
 import sys
@@ -121,8 +122,92 @@ def unwrap_splunk(envelope):
     return inner, None
 
 
+def _grafana_frame_rows(frame):
+    """Pivot one Grafana data frame into row dicts.
+
+    Grafana 13 /api/ds/query returns columns in schema.fields and
+    parallel arrays in data.values. Checked 2026-10-05 against the
+    Network Telemetry datasource: F1 columns are source, exporter_name,
+    exporter_site, bytes, flows, last_at.
+    """
+    if not isinstance(frame, dict):
+        return []
+    fields = (frame.get("schema") or {}).get("fields") or []
+    values = (frame.get("data") or {}).get("values") or []
+    names = [field.get("name") for field in fields if isinstance(field, dict)]
+    if not names or not values:
+        return []
+    width = min(len(column) for column in values)
+    rows = []
+    for index in range(width):
+        row = {}
+        for column, name in enumerate(names):
+            if name and column < len(values):
+                row[name] = values[column][index]
+        rows.append(row)
+    return rows
+
+
+def _grafana_frames(inner):
+    frames = []
+    errors = []
+    if isinstance(inner.get("frames"), list):
+        frames.extend(inner["frames"])
+    results = inner.get("results")
+    if isinstance(results, dict):
+        for block in results.values():
+            if not isinstance(block, dict):
+                continue
+            if block.get("error"):
+                errors.append(str(block["error"])[:200])
+            frames.extend(block.get("frames") or [])
+    return frames, errors
+
+
 def unwrap_grafana(envelope):
-    raise NotImplementedError("see docs/mcp-index.md Calling tools from a skill script")
+    """Return (payload, error) for grafana_query_influx.
+
+    Outer envelope matches the 2026-10-05 Splunk probe: result[0] is a
+    JSON string, result[1] is ignored. The inner body is a Grafana
+    query result: results.<ref>.frames[] with columnar values, pivoted
+    into rows. A series[].rows[] list is still accepted.
+    """
+    if not isinstance(envelope, dict) or not envelope.get("success"):
+        err = None if not isinstance(envelope, dict) else envelope.get("error")
+        return None, err or "success false"
+    outer = envelope.get("result")
+    raw = outer[0] if isinstance(outer, list) and outer else outer
+    try:
+        inner = json.loads(raw, strict=False) if isinstance(raw, str) else raw
+    except json.JSONDecodeError:
+        return None, "result[0] not json"
+    if isinstance(inner, list):
+        inner = {"series": inner}
+    if not isinstance(inner, dict):
+        return None, "inner envelope not an object"
+    if inner.get("ok") is False:
+        return None, "grafana ok false"
+    rows = []
+    frames, errors = _grafana_frames(inner)
+    if errors and not frames:
+        return None, errors[0]
+    for frame in frames:
+        rows.extend(_grafana_frame_rows(frame))
+    series = inner.get("series")
+    if series is None and isinstance(inner.get("data"), dict):
+        series = inner["data"].get("series")
+    if isinstance(series, list):
+        for item in series:
+            if isinstance(item, dict) and isinstance(item.get("rows"), list):
+                rows.extend(item["rows"])
+            elif isinstance(item, dict) and "source" in item and "frames" not in item:
+                rows.append(item)
+    if isinstance(inner.get("results"), list) and not rows:
+        rows = [item for item in inner["results"] if isinstance(item, dict)]
+    if not rows and not frames and not series and not isinstance(inner.get("results"), list):
+        keys = ",".join(sorted(inner.keys())[:12])
+        return None, f"grafana rows not found ({keys})"
+    return {"rows": rows, "truncated": bool(inner.get("truncated"))}, None
 
 
 def unwrap_snow(envelope):

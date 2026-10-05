@@ -1,7 +1,7 @@
 ---
 name: health-logging
-version: "1.0.0"
-description: "v1.0.0 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. Board on metadata-splunk, stamp only when the window has a material event; no relations[]."
+version: "1.0.1"
+description: "v1.0.1 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. Board on metadata-splunk, stamp only when the window has a material event; no relations[]."
 ---
 
 # Health Logging skill

@@ -36,8 +36,12 @@ If `needs_note` is non-empty, one `execute_command` with
 `execution_type: "standard"`, same copied path:
 
 ```text
-python3 <skill>/scripts/visit_splunk.py annotate --workspace <file_explorer> --stamp <stamp> --headline "<one sentence>" --note "device:NAME=<one sentence>"
+python3 <copied script path> annotate --workspace <copied file_explorer directory> --stamp health/splunk/2026-10-05T18-29-09Z.json --headline "<one sentence>" --note "device:NAME=<one sentence>"
 ```
+
+`--stamp` is the summary field `stamp`, copied exactly. It starts
+with `health/splunk/` and ends with `.json`. Do not pass the bare
+`watch_id`. Do not put a quote on the end of `--stamp`.
 
 One `--note` per `needs_note` item. The separator is `=`. Several
 keys on one note are joined with `+` before that `=`. If stderr says

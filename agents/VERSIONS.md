@@ -19,7 +19,8 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Author | 1.3.1 | MiniMax |
 | Compliance Test | 1.5.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
-| Health Logging | 1.0.0 | MiniMax |
+| Health Logging | 1.0.1 | MiniMax |
+| Health Telemetry | 1.0.1 | MiniMax |
 | Health Application | 1.0.1 | MiniMax |
 | Health Device | 1.12.3 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
@@ -30,6 +31,8 @@ Deployed model is **MiniMax** unless noted.
 
 Health Device 1.12.3 (skill 1.12.6): each `execute_command` is a new container. `--workspace` is the `file_explorer` directory beside `skills` on the path Studio shows for the script. Notes separate on `=`. Boot times that are the same instant are not a reboot. Only `platform` `iosxe` is collected. Topology map is unchanged.
 
-Health Logging 1.0.0 (skill 1.0.0): Splunk only, split out of Health Monitor. The prompt runs `visit_splunk.py`. Health Monitor 2.2.0 is unchanged.
+Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
 
-workspace-handoff 1.70.1: `unwrap_splunk` from the 2026-10-05 probe. `result[0]` is a JSON string `{ok, results, result_count, truncated}`. `result[1]` is ignored.
+workspace-handoff 1.70.3: `unwrap_grafana` pivots Grafana 13 columnar frames. Live NetFlow for the last hour is bucket `network-v2`, measurement `netflow`, five exporters.
+
+Health Telemetry 1.0.1 (skill 1.0.1): `visit_netflow.py` takes bucket, measurement, and datasource from the board or from optional collect flags. When the board lookup is missing or F1 is empty, and `provenance.netflow` is not `user`, the script lists Influx datasources, lists buckets with `buckets()`, and keeps the measurement whose tags match the flow queries. Health Monitor 2.2.0 is unchanged.

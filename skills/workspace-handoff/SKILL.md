@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.1 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.1"
+description: "v1.70.3 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.3"
 ---
 
 # Workspace handoff
@@ -311,7 +311,8 @@ when due, and prints one JSON summary as the last stdout line.
 `annotate` runs under `standard` and sets `headline` and reading
 notes. `unwrap_splunk` parses the 2026-10-05 `splunk_search` probe:
 `result[0]` is `{ok, results, result_count, truncated}`.
-`unwrap_grafana` and `unwrap_snow` are not implemented.
+`unwrap_grafana` pivots Grafana 13 frames (`schema.fields` plus
+`data.values`) into rows. `unwrap_snow` is not implemented.
 
 ## Catalog
 

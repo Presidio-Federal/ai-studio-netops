@@ -484,8 +484,36 @@ def fresh_stamp_id(ws, moment):
         moment = moment + timedelta(seconds=1)
 
 
+def strip_arg(value):
+    text = str(value or "").strip()
+    return text.strip("'\"")
+
+
+def locate_stamp(ws, given):
+    """Summary stamp is health/splunk/<id>.json. A bare id, or a trailing quote, still resolves."""
+    text = strip_arg(given)
+    if text.endswith(".json'"):
+        text = text[:-1]
+    rel = text[1:] if text.startswith("/") else text
+    name = Path(rel).name
+    if name.endswith(".json"):
+        name = name[:-5]
+    name = strip_arg(name)
+    candidates = []
+    if rel:
+        candidates.append(ws / rel)
+        if not rel.endswith(".json"):
+            candidates.append(ws / f"{rel}.json")
+    if name:
+        candidates.append(ws / "health" / "splunk" / f"{name}.json")
+    for path in candidates:
+        if path.is_file():
+            return path
+    return candidates[-1] if candidates else ws / "health" / "splunk" / "missing.json"
+
+
 def resolve_workspace(given):
-    raw = Path(given)
+    raw = Path(strip_arg(given))
     candidates = [raw]
     if not raw.is_absolute():
         candidates.append(Path.cwd() / raw)
@@ -959,18 +987,23 @@ def cmd_annotate(args):
         return 1
     notes = {}
     for item in args.note or []:
+        item = strip_arg(item)
         if "=" not in item:
             print("note must be <keys joined by +>=<text>", file=sys.stderr)
             return 1
         key, text = item.split("=", 1)
-        notes[key.rstrip(">")] = text
+        notes[strip_arg(key).rstrip(">")] = strip_arg(text)
+    stamp_path = locate_stamp(ws, args.stamp)
+    if not stamp_path.is_file():
+        print(f"stamp not found: {args.stamp}", file=sys.stderr)
+        return 1
     try:
-        stamp_path = Path(args.stamp) if str(args.stamp).startswith("/") else ws / args.stamp
-        visit_common.annotate(stamp_path, args.headline, notes, CHECK_SCHEMA)
+        visit_common.annotate(stamp_path, strip_arg(args.headline), notes, CHECK_SCHEMA)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    print(visit_common.summary({"plane": "splunk", "stamp": args.stamp, "annotated": True}))
+    rel = stamp_path.relative_to(ws) if stamp_path.is_relative_to(ws) else stamp_path
+    print(visit_common.summary({"plane": "splunk", "stamp": str(rel), "annotated": True}))
     return 0
 
 

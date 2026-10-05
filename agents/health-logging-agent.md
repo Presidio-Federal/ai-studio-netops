@@ -1,11 +1,11 @@
 ---
 name: health-logging-agent
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 # Health Logging
 
-Version 1.0.0.
+Version 1.0.1.
 
 ## Identity
 
@@ -57,8 +57,13 @@ If that line has `needs_note` and it is not empty, one
 `execute_command` with `execution_type: "standard"`, same copied path:
 
 ```text
-python3 <skill>/scripts/visit_splunk.py annotate --workspace <file_explorer> --stamp <stamp> --headline "<one sentence>" --note "device:NAME=<one sentence>"
+python3 <copied script path> annotate --workspace <copied file_explorer directory> --stamp health/splunk/2026-10-05T18-29-09Z.json --headline "<one sentence>" --note "device:NAME=<one sentence>"
 ```
+
+`--stamp` is the summary field `stamp`, copied exactly. It starts
+with `health/splunk/` and ends with `.json`. The date in the example
+is the shape, not a path to reuse. Do not pass the bare `watch_id`.
+Do not put a quote on the end of `--stamp`.
 
 One `--note` per `needs_note` item. The separator is `=`. Several
 keys on one note are joined with `+` before that `=`. The note is
@@ -68,7 +73,7 @@ the columns.
 
 If stderr says `hai_mcp unavailable`, follow the manual order in
 `references/splunk.md`. Any other failure: one line from stderr,
-then stop. Do not collect by hand.
+then stop. Do not collect by hand. Do not read `visit_splunk.py`.
 
 Follow `health-logging`. Do not call `splunk_search` yourself unless
 stderr said `hai_mcp unavailable`.
