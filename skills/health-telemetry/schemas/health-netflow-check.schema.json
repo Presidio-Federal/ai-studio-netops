@@ -79,7 +79,7 @@
       "required": ["keys", "field", "prior", "current", "at"],
       "properties": {
         "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" } },
-        "field": { "type": "string", "enum": ["state", "bytes", "row"] },
+        "field": { "type": "string", "enum": ["state", "bytes", "flows", "row"] },
         "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
         "current": { "type": ["string", "number", "integer", "boolean", "null"] },
         "at": { "type": "string", "minLength": 1 }
@@ -117,7 +117,7 @@
       "required": ["kind", "scope", "source", "exporter_name", "keys", "at", "state", "bytes", "flows", "note"],
       "description": "Board row plus note. Numbers come from F1 / F2; state is the fixed rule in references/netflow.md.",
       "properties": {
-        "kind": { "type": "string", "enum": ["exporter", "conversation"] },
+        "kind": { "type": "string", "enum": ["exporter", "conversation", "firewall"] },
         "scope": { "type": "string", "minLength": 1 },
         "source": { "type": "string", "minLength": 1 },
         "exporter_name": { "type": ["string", "null"] },

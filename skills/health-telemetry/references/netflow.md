@@ -86,6 +86,25 @@ from(bucket: "<bucket>")
 ```
 `)`
 
+**F3 — firewall denies. Always, when a measurement in the same bucket has a `fw_event` field.** The script finds that measurement with `schema.measurementFieldKeys`. It does not assume the measurement name. One row per denied pair this window. Created, deleted, and update events are not rows.
+
+`grafana_query_influx(timerange=<window>, query=`
+```
+from(bucket: "<bucket>")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "<firewall>" and r._field == "fw_event")
+  |> filter(fn: (r) => string(v: r._value) =~ /denied/)
+  |> map(fn: (r) => ({ r with event: string(v: r._value) }))
+  |> group(columns: ["source", "exporter_name", "src", "dst", "dst_port", "protocol", "event"])
+  |> count()
+  |> group()
+  |> sort(columns: ["_value"], desc: true)
+  |> limit(n: 40)
+```
+`)`
+
+Row columns: `source`, `exporter_name`, `src`, `dst`, `dst_port`, `protocol`, `event`, `_value` (the deny count).
+
 Row columns: `source`, `exporter_name`, `src`, `dst`, `dst_port`,
 `protocol`, `bytes`, `flows`, `last_at`.
 
@@ -233,6 +252,9 @@ onto the stamp:
 | conversation | `state` differs (`present` ↔ `absent`) | `state` |
 | conversation | scope not on the board | `row` |
 | conversation | both `bytes` > 0 and this `bytes` ≥ 4 × board `bytes` or ≤ board `bytes` / 4 | `bytes` |
+| firewall | `state` differs (`present` ↔ `absent`) | `state` |
+| firewall | scope not on the board | `row` |
+| firewall | deny count differs | `flows` |
 
 Not material: `flows`, `last_*`, `at`, an exporter's byte count
 (collectors dominate it), a bytes move under the factor. Those land
@@ -258,7 +280,7 @@ unresolved conversations vanishing). `unchanged` when none.
   = the rows that moved.
 - Otherwise **quiet**: no stamp. Board only.
 
-Plane `status`: `degraded` when any exporter row is `silent`;
+Plane `status`: `degraded` when any exporter row is `silent` or any firewall row is `present`;
 `unknown` when F1 failed or the lookup is suspect; else `ok`.
 Conversations do not vote plane status. Coverage: `complete` when
 F1 and F2 returned; `partial` when F1 returned and F2 failed

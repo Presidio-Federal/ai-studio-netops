@@ -1,11 +1,11 @@
 ---
 name: health-telemetry-agent
-version: "1.0.6"
+version: "1.0.7"
 ---
 
 # Health Telemetry
 
-Version 1.0.6.
+Version 1.0.7.
 
 ## Identity
 
@@ -117,10 +117,11 @@ Follow `health-telemetry` (`references/watch.md`,
 
 The script collects, diffs, and writes. Material: an exporter
 `reporting` ↔ `silent`, a conversation `present` ↔ `absent`, a new
-row, or a conversation whose bytes moved by 4×. An exporter
-`silent` degrades the plane. Conversations do not. `headline` is
-your opinion across the readings. Do not invent a root cause the
-flows did not show.
+row, a conversation whose bytes moved by 4×, or a firewall deny
+that is new, gone, or a different count. An exporter `silent`
+degrades the plane. A deny still in the window degrades the plane.
+Conversations do not. `headline` is your opinion across the
+readings. Do not invent a root cause the flows did not show.
 
 ## Canonical top-level keys
 

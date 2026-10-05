@@ -111,12 +111,16 @@ def flux_queries():
     flux = [block.strip() + "\n" for block in blocks if block.strip().startswith("from(")]
     if len(flux) < 2:
         print('{"error": "netflow.md is missing F1 and F2"}', file=sys.stderr)
-        return None, None
-    return flux[0], flux[1]
+        return None, None, None
+    f3 = flux[2] if len(flux) > 2 else None
+    return flux[0], flux[1], f3
 
 
-def substitute(query, bucket, measurement):
-    return query.replace("<bucket>", bucket).replace("<measurement>", measurement)
+def substitute(query, bucket, measurement, firewall=None):
+    text = query.replace("<bucket>", bucket).replace("<measurement>", measurement)
+    if firewall:
+        text = text.replace("<firewall>", firewall)
+    return text
 
 
 def window_delta(window):
@@ -141,6 +145,11 @@ buckets()
 // range(start: v.timeRangeStart, stop: v.timeRangeStop)
 """
 FLOW_TAGS = ("source", "src", "dst", "dst_port", "protocol")
+FIELD_KEYS_QUERY = """
+import "influxdata/influxdb/schema"
+schema.measurementFieldKeys(bucket: "<bucket>", measurement: "<measurement>")
+// range(start: v.timeRangeStart, stop: v.timeRangeStop)
+"""
 
 
 def tool_body(label, tool, args):
@@ -232,6 +241,40 @@ def flow_measurements(bucket, uid, preferred):
         if all(tag in keys for tag in FLOW_TAGS):
             kept.append(name)
     return kept
+
+
+def field_names(bucket, measurement, uid):
+    payload, error = grafana_query(
+        "fields", substitute(FIELD_KEYS_QUERY, bucket, measurement), "15m", uid
+    )
+    if error or not payload:
+        return set()
+    found = set()
+    for row in payload.get("rows") or []:
+        if not isinstance(row, dict):
+            continue
+        for key in ("_value", "value", "_field"):
+            text = blank(row.get(key))
+            if text:
+                found.add(text)
+    return found
+
+
+def firewall_measurement(bucket, uid, preferred):
+    """Measurement in this bucket whose fields include fw_event. Name is not fixed."""
+    names = []
+    if preferred:
+        names.append(preferred)
+    for name in schema_values(
+        "measurements",
+        {"bucket": bucket, "datasource_uid": uid} if uid else {"bucket": bucket},
+    ):
+        if name not in names and not name.startswith("internal_") and not name.startswith("_"):
+            names.append(name)
+    for name in names[:12]:
+        if "fw_event" in field_names(bucket, name, uid):
+            return name
+    return None
 
 
 def discover_flows(f1_query, window, uids, preferred_measurement, skip):
@@ -362,7 +405,7 @@ def fit_row(row):
     source = blank(row.get("source"))
     state = row.get("state")
     at = blank(row.get("at"))
-    if kind not in ("exporter", "conversation") or not scope or not source or not at:
+    if kind not in ("exporter", "conversation", "firewall") or not scope or not source or not at:
         return None
     if state not in ("reporting", "silent", "present", "absent"):
         return None
@@ -581,6 +624,52 @@ def conversation_row(raw, at, device_by_source, by_lower, access, nets):
     }
 
 
+def firewall_row(raw, at, by_lower, access, nets):
+    event = blank(raw.get("event"))
+    src = blank(raw.get("src"))
+    dst = blank(raw.get("dst"))
+    dst_port = blank(raw.get("dst_port")) or "0"
+    protocol = blank(raw.get("protocol")) or "ip"
+    source = blank(raw.get("source")) or blank(raw.get("exporter_name"))
+    if not event or not source or "denied" not in event.lower():
+        return None
+    if not src or not dst:
+        return None
+    name = blank(raw.get("exporter_name"))
+    src_device = resolve_flow(src, by_lower, access, nets)
+    dst_device = resolve_flow(dst, by_lower, access, nets)
+    exporter = named_device(name, by_lower)
+    keys = []
+    for key in (device_key(exporter), device_key(src_device), device_key(dst_device)):
+        if key and key not in keys:
+            keys.append(key)
+    count = coerce_int(raw.get("_value"))
+    if count is None:
+        count = coerce_int(raw.get("flows")) or 0
+    return {
+        "kind": "firewall",
+        "scope": f"fw:{source}/{src}>{dst}:{dst_port}/{protocol}/{event}",
+        "source": source,
+        "exporter_name": name,
+        "exporter_site": None,
+        "device": None,
+        "exporter": exporter,
+        "src": src,
+        "dst": dst,
+        "dst_port": dst_port,
+        "protocol": protocol,
+        "src_device": src_device,
+        "dst_device": dst_device,
+        "keys": keys,
+        "at": at,
+        "state": "present",
+        "bytes": None,
+        "flows": count,
+        "last_flow_at": None,
+        "last_seen_at": at,
+    }
+
+
 def carry_exporter(prior, at):
     row = dict(prior)
     row["state"] = "silent"
@@ -616,11 +705,14 @@ def byte_move(prior, current):
 
 def material(row, prior):
     if prior is None:
-        return "row", None, row["state"] if row["kind"] == "exporter" else "present"
+        current = row["state"] if row["kind"] == "exporter" else "present"
+        return "row", None, current
     if row["state"] != prior.get("state"):
         return "state", prior.get("state"), row["state"]
     if row["kind"] == "conversation" and byte_move(prior.get("bytes"), row.get("bytes")):
         return "bytes", prior.get("bytes"), row.get("bytes")
+    if row["kind"] == "firewall" and (coerce_int(prior.get("flows")) or 0) != (coerce_int(row.get("flows")) or 0):
+        return "flows", prior.get("flows"), row.get("flows")
     return None, None, None
 
 
@@ -629,12 +721,20 @@ def is_worse(row, prior):
         return prior is not None
     if row["kind"] == "conversation" and row["state"] == "absent" and (row.get("src_device") or row.get("dst_device")):
         return prior is not None and prior.get("state") != "absent"
+    if row["kind"] == "firewall" and row["state"] == "present" and (prior is None or prior.get("state") != "present"):
+        return True
+    if row["kind"] == "firewall" and prior and (coerce_int(row.get("flows")) or 0) > (coerce_int(prior.get("flows")) or 0):
+        return True
     return False
 
 
 def is_better(row, prior):
     if prior is None:
         return False
+    if row["kind"] == "firewall" and prior.get("state") == "present" and row["state"] == "absent":
+        return True
+    if row["kind"] == "firewall" and (coerce_int(row.get("flows")) or 0) < (coerce_int(prior.get("flows")) or 0):
+        return True
     return (prior.get("state"), row["state"]) in (("silent", "reporting"), ("absent", "present"))
 
 
@@ -665,6 +765,8 @@ def note_for(row, prior, first):
         return "New row."
     if row["kind"] == "conversation":
         return f"Bytes {prior.get('bytes')} -> {row.get('bytes')}."
+    if row["kind"] == "firewall":
+        return f"Denies {prior.get('flows') if prior else 0} -> {row.get('flows')}."
     return f"{prior.get('state')} -> {row['state']}."
 
 
@@ -731,6 +833,7 @@ def plane_block(board):
         "last_visit_id",
         "last_collected_at",
         "baseline_visit_id",
+        "firewall_measurement",
         "current",
         "series",
         "visits",
@@ -762,7 +865,7 @@ def cmd_collect(args):
     measurement = blank(args.measurement) or prior_measurement
     datasource = blank(args.datasource_uid) or blank(netflow.get("datasource_uid"))
     explicit = bool(blank(args.bucket) or blank(args.measurement) or blank(args.datasource_uid))
-    f1_query, f2_query = flux_queries()
+    f1_query, f2_query, f3_query = flux_queries()
     if f1_query is None:
         return 1
 
@@ -861,12 +964,47 @@ def cmd_collect(args):
     else:
         conversations = [row for row in prior_rows if row["kind"] == "conversation"]
 
+    firewall_name = blank(netflow.get("firewall_measurement")) or ""
+    if not firewall_name and bucket:
+        firewall_name = firewall_measurement(bucket, datasource, "") or ""
+    firewalls = []
+    fw_failed = False
+    if firewall_name and f3_query and not budget.exhausted():
+        fw_payload, fw_error = grafana_query(
+            "f3", substitute(f3_query, bucket, measurement, firewall_name), window, datasource
+        )
+        if fw_error or fw_payload is None:
+            fw_failed = True
+        else:
+            truncated = truncated or bool(fw_payload.get("truncated"))
+            for raw in fw_payload.get("rows") or []:
+                if isinstance(raw, dict):
+                    row = firewall_row(raw, at, by_lower, access, nets)
+                    if row:
+                        firewalls.append(row)
+    elif firewall_name and not f3_query:
+        fw_failed = True
+    seen_fw = {row["scope"] for row in firewalls}
+    if not fw_failed:
+        for prior in prior_rows:
+            if prior["kind"] != "firewall" or prior["scope"] in seen_fw:
+                continue
+            if too_old(prior.get("last_seen_at"), now):
+                continue
+            carried_fw = dict(prior)
+            carried_fw["state"] = "absent"
+            carried_fw["flows"] = 0
+            carried_fw["at"] = at
+            firewalls.append(carried_fw)
+    else:
+        firewalls = [row for row in prior_rows if row["kind"] == "firewall"]
+
     carried = []
     seen_exporter_scopes = {row["scope"] for row in built_exporters}
     for prior in prior_rows:
         if prior["kind"] == "exporter" and prior["scope"] not in seen_exporter_scopes:
             carried.append(carry_exporter(prior, at))
-    current_rows = cap_board(built_exporters + carried + conversations)
+    current_rows = cap_board(built_exporters + carried + conversations + firewalls)
     top = None
     present = [row for row in conversations if row["state"] == "present"]
     if present:
@@ -881,8 +1019,10 @@ def cmd_collect(args):
         if field:
             pairs.append((row, prior, field))
 
-    coverage = "partial" if f2_failed or truncated else "complete"
-    status = "degraded" if any(row["kind"] == "exporter" and row["state"] == "silent" for row in current_rows) else "ok"
+    coverage = "partial" if f2_failed or fw_failed or truncated else "complete"
+    denies = any(row["kind"] == "firewall" and row["state"] == "present" for row in current_rows)
+    silent = any(row["kind"] == "exporter" and row["state"] == "silent" for row in current_rows)
+    status = "degraded" if silent or denies else "ok"
     delta = overall_delta(pairs, first)
     write_stamp = first or bool(pairs) or coverage != "complete"
     reading_rows = [row for row, _prior, _field in pairs]
@@ -1015,6 +1155,7 @@ def cmd_collect(args):
             "bucket": bucket,
             "measurement": measurement,
             "window": window,
+            "firewall_measurement": firewall_name or None,
             "exporters": exporters,
             "last_visit_id": watch if write_stamp else prior_watch,
             "last_collected_at": at,
@@ -1044,6 +1185,8 @@ def cmd_collect(args):
                 continue
             if row["kind"] == "conversation" and field == "bytes":
                 continue
+            if row["kind"] == "firewall" and field == "flows" and row["state"] != "present":
+                continue
             if not row["keys"]:
                 continue
             _field, prior_value, current_value = material(row, prior)
@@ -1053,6 +1196,7 @@ def cmd_collect(args):
     exporters_n = sum(1 for row in current_rows if row["kind"] == "exporter")
     silent_n = sum(1 for row in current_rows if row["kind"] == "exporter" and row["state"] == "silent")
     conv_n = sum(1 for row in current_rows if row["kind"] == "conversation")
+    deny_n = sum(1 for row in current_rows if row["kind"] == "firewall" and row["state"] == "present")
     payload = {
         "plane": "netflow",
         "watch_id": watch if write_stamp else None,
@@ -1068,7 +1212,7 @@ def cmd_collect(args):
         "partial": coverage == "partial",
         "board_rows": len(current_rows),
         "last_visit_id": new_board["netflow"]["last_visit_id"],
-        "board": f"{exporters_n} exporters ({silent_n} silent), {conv_n} conversations",
+        "board": f"{exporters_n} exporters ({silent_n} silent), {conv_n} conversations, {deny_n} denies",
     }
     if readings_truncated:
         payload["readings_truncated"] = True
@@ -1146,6 +1290,7 @@ def write_unavailable(ws, board, netflow, at, window, reason):
             "bucket": bucket,
             "measurement": measurement,
             "window": window,
+            "firewall_measurement": blank(netflow.get("firewall_measurement")),
             "exporters": exporters,
             "last_visit_id": watch,
             "last_collected_at": at,
