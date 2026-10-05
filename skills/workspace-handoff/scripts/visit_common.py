@@ -4,8 +4,10 @@
 MCP tools are callable only from execute_command with
 execution_type mcp_orchestration, via hai_mcp.call_mcp. The outer
 envelope is the same for every server. result is server-specific.
-unwrap_iosxe is the Health Device probe from 2026-10-03. The other
-unwrappers stay unimplemented until a pasted probe shows the shape.
+unwrap_iosxe is the Health Device probe from 2026-10-03.
+unwrap_splunk is the Health Monitor probe from 2026-10-05.
+unwrap_grafana and unwrap_snow stay unimplemented until a pasted
+probe shows the shape.
 """
 import json
 import sys
@@ -93,7 +95,30 @@ def unwrap_iosxe(envelope):
 
 
 def unwrap_splunk(envelope):
-    raise NotImplementedError("see docs/mcp-index.md Calling tools from a skill script")
+    """Return (payload, error) for splunk_search.
+
+    Probe 2026-10-05. result is a 2-item list. result[0] is a JSON
+    string with raw newlines, parsed with strict=False. The object is
+    {ok, results, result_count, truncated}. results is a list of row
+    objects. result[1] is a connector_references artifact and is
+    ignored. truncated true means the search hit its cap.
+    """
+    if not isinstance(envelope, dict) or not envelope.get("success"):
+        err = None if not isinstance(envelope, dict) else envelope.get("error")
+        return None, err or "success false"
+    outer = envelope.get("result")
+    raw = outer[0] if isinstance(outer, list) and outer else outer
+    try:
+        inner = json.loads(raw, strict=False) if isinstance(raw, str) else raw
+    except json.JSONDecodeError:
+        return None, "result[0] not json"
+    if not isinstance(inner, dict):
+        return None, "inner envelope not an object"
+    if inner.get("ok") is False:
+        return None, "splunk ok false"
+    if not isinstance(inner.get("results"), list):
+        return None, "results not a list"
+    return inner, None
 
 
 def unwrap_grafana(envelope):
