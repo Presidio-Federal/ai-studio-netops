@@ -696,20 +696,20 @@ def estate(rows, at, top_scope):
     }
 
 
-def save_board(ws, board):
-    visit_common.validate(board, BOARD_SCHEMA)
-    visit_common.save_board(ws, "netflow", board)
-
-
-def lookup_provenance(board, discovered):
-    """Schema allows provenance.netflow only. The workspace board uses bucket, measurement, and window."""
+def schema_provenance(board, discovered):
+    """Board schema allows provenance.netflow only. A flat file uses bucket and measurement."""
     raw = board.get("provenance") if isinstance(board.get("provenance"), dict) else {}
-    marks = [raw.get("netflow"), raw.get("bucket"), raw.get("measurement")]
+    marks = (raw.get("netflow"), raw.get("bucket"), raw.get("measurement"))
     if discovered or "discovered" in marks:
         return {"netflow": "discovered"}
     if "user" in marks:
         return {"netflow": "user"}
     return None
+
+
+def save_board(ws, board):
+    visit_common.validate(board, BOARD_SCHEMA)
+    visit_common.save_board(ws, "netflow", board)
 
 
 def user_pinned(board):
@@ -1028,7 +1028,7 @@ def cmd_collect(args):
         new_board["netflow"]["datasource_uid"] = datasource
     elif "datasource_uid" in netflow:
         new_board["netflow"]["datasource_uid"] = netflow.get("datasource_uid")
-    provenance = lookup_provenance(board, discovered)
+    provenance = schema_provenance(board, discovered)
     if provenance:
         new_board["provenance"] = provenance
     try:
@@ -1157,6 +1157,9 @@ def write_unavailable(ws, board, netflow, at, window, reason):
     }
     if "datasource_uid" in netflow:
         new_board["netflow"]["datasource_uid"] = netflow.get("datasource_uid")
+    provenance = schema_provenance(board, False)
+    if provenance:
+        new_board["provenance"] = provenance
     try:
         save_board(ws, new_board)
     except (ValueError, OSError) as exc:

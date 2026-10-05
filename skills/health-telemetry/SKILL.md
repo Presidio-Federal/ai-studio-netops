@@ -1,7 +1,7 @@
 ---
 name: health-telemetry
-version: "1.0.4"
-description: "v1.0.4 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. The script reads the board lookup, including a flat metadata file."
+version: "1.0.6"
+description: "v1.0.6 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. Board every visit; stamp only when a row moved."
 ---
 
 # Health Telemetry skill
@@ -22,9 +22,12 @@ When those are missing, or F1 returns no rows and
 can feed the flow queries. It writes the lookup that returns rows
 and sets `provenance.netflow` to `discovered`. It runs F1 and F2 from
 `references/netflow.md` exactly, resolves addresses to `prod.json`
-devices, diffs against `netflow.current[]`, and writes the board
-every visit. A stamp is written on the first visit, when an exporter
-or conversation moved materially, or when coverage is not complete.
+devices, diffs against the board's `current[]`, and rewrites the
+nested board every visit. A stamp is written on the first visit,
+when an exporter or conversation moved, or when coverage is not
+complete. A quiet visit rewrites the board only. `annotate` runs
+when `needs_note` is not empty.
+
 An exporter going `silent` degrades the plane. Conversations do not.
 
 If they ask for a different health check: reply `That's not what I
