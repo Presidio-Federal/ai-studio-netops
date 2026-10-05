@@ -18,7 +18,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
 | Compliance Test | 1.5.0 | MiniMax |
-| Health Monitor | 2.2.0 | MiniMax |
+| Health Monitor | 2.2.1 | MiniMax |
 | Health Application | 1.0.1 | MiniMax |
 | Health Device | 1.12.3 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
@@ -28,3 +28,5 @@ Deployed model is **MiniMax** unless noted.
 | Application Map | 1.0.0 | MiniMax |
 
 Health Device 1.12.3 (skill 1.12.6): each `execute_command` is a new container. `--workspace` is the `file_explorer` directory beside `skills` on the path Studio shows for the script. Notes separate on `=`. Boot times that are the same instant are not a reboot. Only `platform` `iosxe` is collected. Topology map is unchanged.
+
+Health Monitor 2.2.1: an operator probe (one `execute_command`, `mcp_orchestration`, no file writes) prints stdout. It is not a visit and not "That's not what I do."
