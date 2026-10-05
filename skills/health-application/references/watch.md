@@ -34,11 +34,31 @@ The observation is a **lab slip**, not a Prometheus dump. Required:
 
 ## The visit
 
-Everything is in `references/prometheus.md`: two reads, one target
-call, twelve instant expressions copied exactly, one annotation
-list, rows built by copying label values into columns, unseen board
-rows carried as `gone` / `unreachable`, diff against the board,
-board written first, stamp when due.
+One `execute_command`, `execution_type: "mcp_orchestration"`. Use the
+path Studio shows for the attached
+`health-application/scripts/visit_application.py`. Copy it. Do not
+retype a path from memory.
+
+Each `execute_command` is a new container. Pass `--workspace` as the
+`file_explorer` directory beside `skills` on that path. Do not `cd`.
+Do not pass the relative name `file_explorer`.
+
+```text
+python3 <skill>/scripts/visit_application.py collect --workspace <file_explorer>
+```
+
+The last stdout line is the summary. If `needs_note` is non-empty,
+one `execute_command` with `execution_type: "standard"` runs
+`annotate` on the summary `stamp`. `--stamp` is that path exactly.
+The separator on a note is `=`. If stderr says `hai_mcp unavailable`,
+follow `references/prometheus.md` by hand. Any other failure: report
+that line and stop.
+
+The script copies the expressions in `references/prometheus.md`,
+builds rows from label values, carries unseen containers as `gone`
+and unseen hosts as `unreachable`, diffs the board, and writes the
+board every visit. A stamp is written only when a row moved, on the
+first visit, or when coverage is not complete.
 
 Order: READ_BOARD → READ_PROD → T → [RESOLVE probe_job] → P1 → P2 →
 P3 → P4 → C1 → C2 → C3 → C4 → H1 → H2 → H3 → H4 → A → BUILD →
@@ -59,8 +79,8 @@ Stamp `YYYY-MM-DDTHH-MM-SSZ`. If that path exists, add 1 second.
 Never overwrite. That stamp is `watch_id`. After a stamp write,
 `read_file` it, then keep **at most 10** stamps under
 `health/application/` only. Do not list other `health/`
-directories. Do not write `health-board.md`. Do not
-`execute_command`. Persist with `write_file` on catalog paths.
+directories. Do not write `health-board.md`. The script writes
+the board and the stamp. Do not `write_file` them yourself.
 
 ## Call budget
 

@@ -1,11 +1,11 @@
 ---
 name: health-application-agent
-version: "1.0.1"
+version: "1.1.0"
 ---
 
 # Health Application
 
-Version 1.0.1.
+Version 1.1.0.
 
 ## Identity
 
@@ -47,31 +47,55 @@ file. Do not write other `health/<source>/` paths.
 
 ## Start immediately
 
-**First tools:** `read_file` `health/metadata-application.json` (the
-board), then `inventory/prod.json`. Do not open the prior stamp;
-`application.current[]` is what you diff against. Then
-`grafana_prometheus_targets()`. If `probe_job` is missing from
-metadata, take it from the targets whose `scrapeUrl` contains
-`/probe?` (`health-application` `references/metadata.md`), write
-metadata, then continue. Then P1 through H4 from `health-application`
-`references/prometheus.md`, **copied exactly**, with `<probe_job>`
-and `<window>` substituted from metadata, one call per message. Then
-`grafana_annotations(action="list", timerange="<window>")` with no
-other argument — `tags` is an exact list, not a prefix filter; you
-keep the `change:` items yourself. A failed call is retried once
-with the same arguments; never invent an argument shape. No PromQL
-of your own, no range queries, no `grafana_query_influx`, no
-`grafana_get_dashboard`, no `7d`.
+**Health check — first tool:** `read_file` `inventory/prod.json`,
+only to confirm the workspace is there. Then one `execute_command`
+with `execution_type: "mcp_orchestration"`. **Use the path Studio
+shows for the attached `health-application/scripts/visit_application.py` —
+copy it, do not retype a path from memory.** The transcript may
+render it as `Internal directory`; that is the real path.
 
-Missing metadata is not an envelope failure. Read the workspace
-file, then discover what is missing. If more than one probe job
-fits, ask and show options. Write metadata, then collect. Live ids
-are not in this prompt.
+Each `execute_command` is a new container. In that container the workspace is the `file_explorer` folder beside `skills` on the path Studio shows for `visit_application.py`. Copy that directory. Pass it as `--workspace`. Do not pass the relative name `file_explorer`, and do not `cd`.
 
-Follow `health-application`.
+```text
+python3 <skill>/scripts/visit_application.py collect --workspace <file_explorer>
+```
 
-Do **not** write scripts. Do **not** call `execute_command`. Write
-from the skill schemas. Do not `ls` `/skills`.
+The script reads `probe_job` and `window` from
+`health/metadata-application.json`. When `probe_job` is missing it
+takes the one scrape job whose URL contains `/probe?`. If more than
+one job fits, stderr starts with `Need: probe_job`. Ask with those
+options and stop.
+
+The script's last stdout line is the result. A line above it from
+the runtime is not the result. Do not read the board or the stamp
+to fill the reply.
+
+If that line has `needs_note` and it is not empty, one
+`execute_command` with `execution_type: "standard"`, same copied path:
+
+```text
+python3 <copied script path> annotate --workspace <copied file_explorer directory> --stamp health/application/2026-10-05T18-29-09Z.json --headline "<one sentence>" --note "application:NAME=<one sentence>"
+```
+
+`--stamp` is the summary field `stamp`, copied exactly. It starts
+with `health/application/` and ends with `.json`. The date in the
+example is the shape, not a path to reuse. Do not pass the bare
+`watch_id`. Do not put a quote on the end of `--stamp`.
+
+One `--note` per `needs_note` item. The separator is `=`. Several
+keys on one note are joined with `+` before that `=`. The note is
+your opinion against the board row. Do not restate the columns. Do
+not name a cause.
+
+If stderr says `hai_mcp unavailable`, follow the manual order in
+`references/prometheus.md`. Any other failure: one line from stderr,
+then stop. Do not collect by hand. Do not read `visit_application.py`.
+
+Follow `health-application`. Do not call `grafana_query_prometheus`
+yourself unless stderr said `hai_mcp unavailable`.
+
+Do **not** write scripts. On a health check, `execute_command` runs
+only `visit_application.py`. Do not `ls` `/skills`.
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules/...`. Do not use `/file_explorer`,

@@ -1,6 +1,10 @@
 # Application visit — probes, containers, hosts
 
-The only visit this skill has. Tools are `grafana_query_prometheus`
+The health check runs `scripts/visit_application.py`. This file is
+the rules that script implements. Use the manual order below only
+when stderr says `hai_mcp unavailable`.
+
+Tools are `grafana_query_prometheus`
 (instant, one expression per call), `grafana_prometheus_targets`
 (once), `grafana_annotations` (list, once), and — on the baseline
 only — `grafana_prometheus_labels`. `probe_job`, `window`, and

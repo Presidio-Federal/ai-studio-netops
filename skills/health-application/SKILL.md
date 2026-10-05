@@ -1,15 +1,16 @@
 ---
 name: health-application
-version: "1.0.1"
-description: "v1.0.1 — Health Application nurse: application probes, containers, and host OS from Grafana / Prometheus. Board on metadata, stamp only on change; rows carry host, device, application, site as the edge; no relations[]."
+version: "1.1.0"
+description: "v1.1.0 — Health Application nurse: probes, containers, and hosts run visit_application.py through Grafana Prometheus. Board every visit; stamp only when a row moved."
 ---
 
 # Health Application skill
 
-One visit type. The application health check reads the Grafana
-Prometheus plane — blackbox probes per application, cAdvisor
-containers, node exporter hosts, and scrape-target health — and
-writes one row per probe, container, host, and target onto a board.
+One visit type. Run `scripts/visit_application.py collect`. The
+script reads the Grafana Prometheus plane — blackbox probes per
+application, cAdvisor containers, node exporter hosts, and
+scrape-target health — and writes one row per probe, container,
+host, and target onto the board.
 
 Tools on a visit: `grafana_prometheus_targets` (once),
 `grafana_query_prometheus` (twelve instant expressions, copied
@@ -57,8 +58,9 @@ not write `runs/`, `inventory/`, `state/`, `trend-analysis.json`,
 `health/metadata-splunk.json`, `health/metadata-netflow.json`, or
 `health-board.md`. Do not invent files. Do not invent measurements.
 Unavailable collection: counts **null**, never `0`. Do not write
-under `automations/schedules/`. Do **not** call `execute_command`.
-Do not write scripts. Do not stamp `expires_at`. Do not emit
+under `automations/schedules/`. On a health visit, call
+`execute_command` only to run `scripts/visit_application.py`. Do
+not write scripts. Do not stamp `expires_at`. Do not emit
 recommendations. Do not decide which application a host serves
 beyond the labels the datasource attached.
 
