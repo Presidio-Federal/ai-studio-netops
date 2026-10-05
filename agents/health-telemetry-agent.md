@@ -1,11 +1,11 @@
 ---
 name: health-telemetry-agent
-version: "1.0.1"
+version: "1.0.3"
 ---
 
 # Health Telemetry
 
-Version 1.0.1.
+Version 1.0.3.
 
 ## Identity
 

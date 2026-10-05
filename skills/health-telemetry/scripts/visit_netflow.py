@@ -701,6 +701,29 @@ def save_board(ws, board):
     visit_common.save_board(ws, "netflow", board)
 
 
+def plane_block(board):
+    """The lookup and rows. A nested netflow object, or the flat board already in the workspace."""
+    nested = board.get("netflow")
+    if isinstance(nested, dict) and (blank(nested.get("bucket")) or nested.get("current") or nested.get("exporters")):
+        return nested
+    flat_keys = (
+        "bucket",
+        "measurement",
+        "window",
+        "datasource_uid",
+        "exporters",
+        "last_visit_id",
+        "last_collected_at",
+        "baseline_visit_id",
+        "current",
+        "series",
+        "visits",
+    )
+    if any(key in board for key in ("bucket", "measurement", "current", "exporters")):
+        return {key: board[key] for key in flat_keys if key in board}
+    return nested if isinstance(nested, dict) else {}
+
+
 def cmd_collect(args):
     ws = resolve_workspace(args.workspace)
     if ws is None:
@@ -710,11 +733,11 @@ def cmd_collect(args):
         print('{"error": "inventory/prod.json missing"}', file=sys.stderr)
         return 1
     board = visit_common.load_board(ws, "netflow") or {}
-    netflow = board.get("netflow") if isinstance(board.get("netflow"), dict) else {}
+    netflow = plane_block(board)
     pinned_user = (board.get("provenance") or {}).get("netflow") == "user"
     window = blank(netflow.get("window")) or "1h"
-    prior_bucket = blank(netflow.get("bucket"))
-    prior_measurement = blank(netflow.get("measurement"))
+    prior_bucket = blank(netflow.get("bucket")) or ""
+    prior_measurement = blank(netflow.get("measurement")) or ""
     if prior_bucket.startswith("<"):
         prior_bucket = ""
     if prior_measurement.startswith("<"):
