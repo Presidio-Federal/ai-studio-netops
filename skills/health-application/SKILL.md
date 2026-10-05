@@ -1,7 +1,7 @@
 ---
 name: health-application
-version: "1.1.0"
-description: "v1.1.0 — Health Application nurse: probes, containers, and hosts run visit_application.py through Grafana Prometheus. Board every visit; stamp only when a row moved."
+version: "1.1.1"
+description: "v1.1.1 — Health Application nurse: probes, containers, and hosts run visit_application.py through Grafana Prometheus. Board every visit; stamp only when a row moved."
 ---
 
 # Health Application skill

@@ -21,7 +21,7 @@ Deployed model is **MiniMax** unless noted.
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.0.1 | MiniMax |
 | Health Telemetry | 1.0.7 | MiniMax |
-| Health Application | 1.1.0 | MiniMax |
+| Health Application | 1.1.1 | MiniMax |
 | Health Device | 1.12.3 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 5.0.0 | MiniMax |
@@ -34,6 +34,8 @@ Health Device 1.12.3 (skill 1.12.6): each `execute_command` is a new container. 
 Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
 
 workspace-handoff 1.70.3: `unwrap_grafana` pivots Grafana 13 columnar frames. Live NetFlow for the last hour is bucket `network-v2`, measurement `netflow`, five exporters.
+
+Health Application 1.1.1 (skill 1.1.1): prior visit rows carried a `scope` the board schema does not allow. The script keeps the visit fields and drops the rest, so an older board still saves.
 
 Health Application 1.1.0 (skill 1.1.0): the visit runs `visit_application.py`. The script calls Prometheus targets, the twelve expressions in `references/prometheus.md`, and the annotation list, then diffs the board. Stamp only when a row moved, on the first visit, or when coverage is not complete. Annotate only when `needs_note` is not empty. Health Monitor is unchanged.
 

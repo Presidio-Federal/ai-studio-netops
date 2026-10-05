@@ -510,6 +510,25 @@ def union_keys(rows):
     return found
 
 
+VISIT_FIELDS = ("watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "window")
+
+
+def fit_visit(row):
+    if not isinstance(row, dict):
+        return None
+    if not blank(row.get("checked_at")) or not blank(row.get("window")):
+        return None
+    if row.get("status") not in ("ok", "degraded", "unknown"):
+        return None
+    if row.get("coverage") not in ("complete", "partial", "unavailable"):
+        return None
+    if row.get("delta") not in ("first", "unchanged", "worse", "better", "changed"):
+        return None
+    if not isinstance(row.get("stamp_written"), bool):
+        return None
+    return {field: row.get(field) for field in VISIT_FIELDS}
+
+
 def ring(items, limit=10):
     return list(items)[-limit:]
 
@@ -890,7 +909,7 @@ def cmd_collect(args):
         "stamp_written": bool(write_stamp),
         "window": window,
     }
-    visits = [row for row in app.get("visits") or [] if isinstance(row, dict)]
+    visits = [item for item in (fit_visit(row) for row in app.get("visits") or []) if item]
     visits.append(visit)
     new_board = {
         "keys": union_keys(current_rows),

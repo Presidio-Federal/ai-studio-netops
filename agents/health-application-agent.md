@@ -1,11 +1,11 @@
 ---
 name: health-application-agent
-version: "1.1.0"
+version: "1.1.1"
 ---
 
 # Health Application
 
-Version 1.1.0.
+Version 1.1.1.
 
 ## Identity
 
