@@ -7,8 +7,8 @@ in references/iosxe.md. Topology mode is not this script.
 
 The agent copies the path Studio shows for this file. Do not hardcode it.
 
-  cd file_explorer && python3 <skill>/scripts/visit_iosxe.py collect --workspace .
-  cd file_explorer && python3 <skill>/scripts/visit_iosxe.py annotate --workspace . \\
+  python3 <skill>/scripts/visit_iosxe.py collect --workspace file_explorer
+  python3 <skill>/scripts/visit_iosxe.py annotate --workspace file_explorer \\
       --stamp health/iosxe/<stamp>.json --headline "..." --note "device:NAME=..."
 """
 import argparse
@@ -221,6 +221,25 @@ def checked_at(moment):
     return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def canon_time(value):
+    """UTC second stamp. Z and +00:00 of the same instant compare equal."""
+    if not isinstance(value, str) or not value.strip():
+        return value
+    text = value.strip()
+    try:
+        moment = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return text
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    moment = moment.astimezone(timezone.utc).replace(microsecond=0)
+    return moment.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def same_instant(left, right):
+    return canon_time(left) == canon_time(right)
+
+
 def row_id(row):
     return (row.get("name"), row.get("kind"), row.get("subject"))
 
@@ -253,7 +272,8 @@ def restconf_devices(prod):
         access = (device.get("access") or {}).get("restconf") or {}
         host = access.get("host")
         port = access.get("port")
-        if host and port and device.get("name"):
+        platform = str(device.get("platform") or "").lower()
+        if platform == "iosxe" and host and port and device.get("name"):
             chosen.append(device)
     chosen.sort(key=rank_key)
     return chosen
@@ -414,7 +434,7 @@ def bgp_rows(body):
 
 def build_rows(name, payloads, peers, checked):
     system = system_fields(payloads.get("system"), name)
-    boot = blank_to_none(system.get("boot-time")) or checked
+    boot = canon_time(blank_to_none(system.get("boot-time"))) or checked
     device_row = {
         "name": name,
         "kind": "device",
@@ -444,7 +464,7 @@ def build_rows(name, payloads, peers, checked):
                 "subject": str(iname),
                 "keys": [f"device:{name}", f"interface:{name}/{iname}"],
                 "state": blank_to_none(iface.get("oper-status")),
-                "last_changed": str(blank_to_none(iface.get("last-change")) or checked),
+                "last_changed": str(canon_time(blank_to_none(iface.get("last-change"))) or checked),
                 "in_errors": coerce_int(stats.get("in-errors")),
                 "in_crc_errors": coerce_int(stats.get("in-crc-errors")),
                 "in_discards": coerce_int(stats.get("in-discards")),
@@ -547,7 +567,7 @@ def _change(row, field, prior, current, at):
 def _material_pairs(old, row):
     pairs = []
     if row["kind"] == "device":
-        if old.get("last_changed") != row.get("last_changed"):
+        if not same_instant(old.get("last_changed"), row.get("last_changed")):
             pairs.append(("boot_time", old.get("last_changed"), row.get("last_changed"), row.get("last_changed")))
         if old.get("software_version") != row.get("software_version"):
             pairs.append(("software_version", old.get("software_version"), row.get("software_version"), None))
@@ -597,7 +617,7 @@ def plane_status(rows, prior_by_id, changed):
     for row in rows:
         if row["kind"] == "device":
             old = prior_by_id.get(row_id(row))
-            if old and old.get("last_changed") != row.get("last_changed"):
+            if old and not same_instant(old.get("last_changed"), row.get("last_changed")):
                 return "degraded"
             if (row.get("cpu_5m") or 0) >= CPU_LINE or (row.get("mem_used_pct") or 0) >= MEM_LINE:
                 return "degraded"
@@ -833,7 +853,7 @@ def concerns_for(names, rows_by_name, prior_by_id, changed):
         if device is None:
             continue
         old = prior_by_id.get(row_id(device))
-        rebooted = bool(old and old.get("last_changed") != device.get("last_changed"))
+        rebooted = bool(old and not same_instant(old.get("last_changed"), device.get("last_changed")))
         hot = (device.get("cpu_5m") or 0) >= CPU_LINE or (device.get("mem_used_pct") or 0) >= MEM_LINE
         unsaved = device.get("unsaved_config") is True
         fault = any(oper_not_ready(row) for row in rows if row["kind"] == "interface")
@@ -1200,7 +1220,7 @@ def cmd_annotate(args):
             print("note must be <keys joined by +>=<text>", file=sys.stderr)
             return 1
         key, text = item.split("=", 1)
-        notes[key] = text
+        notes[key.rstrip(">")] = text
     try:
         visit_common.annotate(Path(args.workspace) / args.stamp if not str(args.stamp).startswith("/") else Path(args.stamp), args.headline, notes, CHECK_SCHEMA)
     except (OSError, ValueError, json.JSONDecodeError) as exc:

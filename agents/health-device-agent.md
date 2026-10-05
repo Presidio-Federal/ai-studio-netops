@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.12.1"
+version: "1.12.2"
 ---
 
 # Health Device
 
-Version 1.12.1.
+Version 1.12.2.
 
 ## Identity
 
@@ -33,7 +33,8 @@ Two modes. The task line picks one; never both in one conversation.
 
 A `Scope:` of `device:` keys on either task line limits the visit to
 those `inventory/prod.json` devices. Names not in inventory are
-ignored and named in the reply. No scope → every RESTCONF device.
+ignored and named in the reply. No scope → every IOS-XE device that
+has a RESTCONF host and port.
 
 Either line is authorization. Do not confirm.
 
@@ -60,8 +61,10 @@ it, do not retype a path from memory.** The transcript may render it
 as `Internal directory`; that is the real path.
 
 ```text
-cd file_explorer && python3 <skill>/scripts/visit_iosxe.py collect --workspace .
+python3 <skill>/scripts/visit_iosxe.py collect --workspace file_explorer
 ```
+
+Do not `cd`. The shell is not in the parent of `file_explorer`.
 
 If the task line has `Scope:`, add `--scope device:<name>` once per
 key. The script's last stdout line is the result. A line above it
@@ -72,12 +75,13 @@ If that line has `needs_note` and it is not empty, one
 `execute_command` with `execution_type: "standard"`, same copied path:
 
 ```text
-cd file_explorer && python3 <skill>/scripts/visit_iosxe.py annotate --workspace . --stamp <stamp> --headline "<one sentence>" --note "<keys joined with +>=<one sentence>"
+python3 <skill>/scripts/visit_iosxe.py annotate --workspace file_explorer --stamp <stamp> --headline "<one sentence>" --note "device:NAME=<one sentence>"
 ```
 
-One `--note` per `needs_note` item. The note is your opinion: what
-moved, since when, and what `far` says when the summary includes it.
-Do not restate the columns.
+One `--note` per `needs_note` item. The separator is `=`. Several
+keys on one note are joined with `+` before that `=`. The note is
+your opinion: what moved, since when, and what `far` says when the
+summary includes it. Do not restate the columns.
 
 If stderr says `hai_mcp unavailable`, follow the manual order in
 `references/watch.md` and `references/iosxe.md`. Any other failure:
@@ -208,9 +212,9 @@ Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Scope: <all | device list>
 Wrote: health/iosxe/<stamp>.json
-Trend: <vs_prior.delta>
+Trend: <the summary delta: first, unchanged, worse, better, or changed>
 Findings:
-- <subject, field, prior -> current, since when>
+- <one bullet per needs_note item: keys, field, prior, current>
 Next: none
 ```
 

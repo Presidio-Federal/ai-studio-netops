@@ -20,11 +20,11 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Test | 1.5.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Application | 1.0.1 | MiniMax |
-| Health Device | 1.12.1 | MiniMax |
+| Health Device | 1.12.2 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 5.0.0 | MiniMax |
 | Relationship agent | 1.2.0 | MiniMax |
 | Network Map | 1.0.1 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 
-Health Device 1.12.1 (skill 1.12.4): the health visit calls `iosxe_restconf_get` with the host and port in `prod.json`. `expires_at` does not skip the call. Topology map is unchanged.
+Health Device 1.12.2 (skill 1.12.5): collect uses `--workspace file_explorer` with no `cd`. Notes separate on `=`. Boot times that are the same instant are not a reboot. Only `platform` `iosxe` is collected. Topology map is unchanged.

@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.12.4"
-description: "v1.12.4 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
+version: "1.12.5"
+description: "v1.12.5 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
 ---
 
 # Health Device skill
@@ -18,7 +18,8 @@ One IOS-XE visit per conversation, in one of two modes. One tool:
 | network topology map | topology | `references/topology.md` | `inventory/topology-observed.json` |
 
 `Scope: device:<a> device:<b>` on either task line limits the visit to
-those `prod.json` devices. No scope → every RESTCONF device, ranked.
+those `prod.json` devices. No scope → every IOS-XE device with a
+RESTCONF host and port, ranked.
 
 **Health.** Run `scripts/visit_iosxe.py collect` (see
 `references/watch.md`). The script does five filtered GETs per

@@ -44,8 +44,10 @@ Copy it. Do not retype a path from memory. The transcript may render
 it as `Internal directory`; that is the real path.
 
 ```text
-cd file_explorer && python3 <skill>/scripts/visit_iosxe.py collect --workspace .
+python3 <skill>/scripts/visit_iosxe.py collect --workspace file_explorer
 ```
+
+Do not `cd`. The shell is not in the parent of `file_explorer`.
 
 Add `--scope device:<name>` once per key when the task line has
 `Scope:`. The last stdout line is the summary. Ignore any runtime
@@ -55,10 +57,11 @@ If `needs_note` is non-empty, one `execute_command` with
 `execution_type: "standard"`, same copied path:
 
 ```text
-cd file_explorer && python3 <skill>/scripts/visit_iosxe.py annotate --workspace . --stamp <stamp> --headline "<one sentence>" --note "<keys joined with +>=<one sentence>"
+python3 <skill>/scripts/visit_iosxe.py annotate --workspace file_explorer --stamp <stamp> --headline "<one sentence>" --note "device:NAME=<one sentence>"
 ```
 
-One `--note` per `needs_note` item. If stderr says `hai_mcp
+One `--note` per `needs_note` item. The separator is `=`. Several
+keys on one note are joined with `+` before that `=`. If stderr says `hai_mcp
 unavailable`, follow the manual order below. Any other failure: report
 that line and stop. Do not collect by hand.
 

@@ -23,10 +23,10 @@ KB; filtered it is 5 lines.
 1. `read_file` `inventory/prod.json`. Missing file: write `unavailable`
    and stop. Use `access.restconf.host` and `port` as written. Do not
    stop because `expires_at` has passed. Do not guess a port.
-2. Candidate set = devices with both `access.restconf.host` and
-   `access.restconf.port`. Match names case-insensitively; write the
-   `prod.json` spelling everywhere. Do not hardcode hostnames or
-   ports in this file.
+2. Candidate set = devices whose `platform` is `iosxe` and that have
+   both `access.restconf.host` and `access.restconf.port`. Match names
+   case-insensitively; write the `prod.json` spelling everywhere. Do
+   not hardcode hostnames or ports in this file.
 3. **Scope.** If the task line has `Scope:` followed by `device:` keys,
    collect only those that are in the candidate set; ignore any other
    name and say so in the reply. No `Scope:` → every candidate, ranked:
