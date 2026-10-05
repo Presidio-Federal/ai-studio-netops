@@ -43,11 +43,11 @@ path Studio shows for the attached `health-device/scripts/visit_iosxe.py`.
 Copy it. Do not retype a path from memory. The transcript may render
 it as `Internal directory`; that is the real path.
 
-```text
-python3 <skill>/scripts/visit_iosxe.py collect --workspace file_explorer
-```
+Each `execute_command` is a new container. In that container the workspace is the `file_explorer` folder beside `skills` on the path Studio shows for `visit_iosxe.py`. Copy that directory. Pass it as `--workspace`. Do not pass the relative name `file_explorer`, and do not `cd`.
 
-Do not `cd`. The shell is not in the parent of `file_explorer`.
+```text
+python3 <skill>/scripts/visit_iosxe.py collect --workspace <file_explorer>
+```
 
 Add `--scope device:<name>` once per key when the task line has
 `Scope:`. The last stdout line is the summary. Ignore any runtime
@@ -57,7 +57,7 @@ If `needs_note` is non-empty, one `execute_command` with
 `execution_type: "standard"`, same copied path:
 
 ```text
-python3 <skill>/scripts/visit_iosxe.py annotate --workspace file_explorer --stamp <stamp> --headline "<one sentence>" --note "device:NAME=<one sentence>"
+python3 <skill>/scripts/visit_iosxe.py annotate --workspace <file_explorer> --stamp <stamp> --headline "<one sentence>" --note "device:NAME=<one sentence>"
 ```
 
 One `--note` per `needs_note` item. The separator is `=`. Several

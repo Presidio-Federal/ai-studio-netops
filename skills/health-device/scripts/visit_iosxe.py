@@ -7,8 +7,8 @@ in references/iosxe.md. Topology mode is not this script.
 
 The agent copies the path Studio shows for this file. Do not hardcode it.
 
-  python3 <skill>/scripts/visit_iosxe.py collect --workspace file_explorer
-  python3 <skill>/scripts/visit_iosxe.py annotate --workspace file_explorer \\
+  python3 <skill>/scripts/visit_iosxe.py collect --workspace <file_explorer>
+  python3 <skill>/scripts/visit_iosxe.py annotate --workspace <file_explorer> \\
       --stamp health/iosxe/<stamp>.json --headline "..." --note "device:NAME=..."
 """
 import argparse
@@ -934,8 +934,40 @@ def fresh_stamp_id(ws, moment):
         moment = moment + timedelta(seconds=1)
 
 
+def resolve_workspace(given):
+    """Directory that contains inventory/prod.json.
+
+    The shell cwd is not stable, so a relative file_explorer often misses.
+    This file is attached at <root>/skills/health-device/scripts/, and the
+    workspace is <root>/file_explorer.
+    """
+    raw = Path(given)
+    candidates = [raw]
+    if not raw.is_absolute():
+        candidates.append(Path.cwd() / raw)
+        candidates.append(Path.cwd())
+    candidates.append(Path(__file__).resolve().parents[3] / "file_explorer")
+    seen = []
+    for path in candidates:
+        try:
+            resolved = path.resolve()
+        except OSError:
+            continue
+        if resolved in seen:
+            continue
+        seen.append(resolved)
+        if (resolved / "inventory" / "prod.json").is_file():
+            print(f"iosxe workspace={resolved}", file=sys.stderr)
+            return resolved
+    print('{"error": "inventory/prod.json missing"}', file=sys.stderr)
+    print("tried " + ", ".join(str(path) for path in seen), file=sys.stderr)
+    return None
+
+
 def cmd_collect(args):
-    ws = args.workspace
+    ws = resolve_workspace(args.workspace)
+    if ws is None:
+        return 1
     prod = visit_common.load_json(ws, "inventory/prod.json")
     if prod is None:
         print('{"error": "inventory/prod.json missing"}', file=sys.stderr)
@@ -1214,6 +1246,9 @@ def _detail(collected, failed):
 
 
 def cmd_annotate(args):
+    ws = resolve_workspace(args.workspace)
+    if ws is None:
+        return 1
     notes = {}
     for item in args.note or []:
         if "=" not in item:
@@ -1222,7 +1257,8 @@ def cmd_annotate(args):
         key, text = item.split("=", 1)
         notes[key.rstrip(">")] = text
     try:
-        visit_common.annotate(Path(args.workspace) / args.stamp if not str(args.stamp).startswith("/") else Path(args.stamp), args.headline, notes, CHECK_SCHEMA)
+        stamp_path = Path(args.stamp) if str(args.stamp).startswith("/") else ws / args.stamp
+        visit_common.annotate(stamp_path, args.headline, notes, CHECK_SCHEMA)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
