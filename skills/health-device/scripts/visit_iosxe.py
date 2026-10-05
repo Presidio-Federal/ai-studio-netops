@@ -658,6 +658,157 @@ def null_metric(name, at):
     }
 
 
+METRIC_FIELDS = (
+    "at",
+    "scope",
+    "oper_not_ready",
+    "bgp_not_established",
+    "num_flaps",
+    "in_errors",
+    "in_discards",
+    "cpu_5m_max",
+    "mem_used_pct_max",
+)
+
+
+KEY_RE = re.compile(r"^(device|interface|site|service|test|control|incident|change):[^ ]+$")
+WATCH_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$")
+METRIC_SCOPE_RE = re.compile(r"^(estate|device:[^ ]+)$")
+ROW_INT = (
+    "cpu_5m", "mem_used_pct", "in_errors", "in_crc_errors", "in_discards",
+    "num_flaps", "prefixes_received", "remote_as",
+)
+ROW_STR = (
+    "software_version", "last_reboot_reason", "reason_severity",
+    "input_acl", "output_acl", "up_time", "peer",
+)
+
+
+def _text(value):
+    if not isinstance(value, str):
+        return None
+    value = value.replace("\r", " ").replace("\n", " ").strip()
+    return value or None
+
+
+def keep_prior(rows, fit, label):
+    """Coerce inherited rows to the current schema. Drop a row that cannot fit.
+
+    A prior board was written by an older visit. An extra field or a missing
+    count on that history must not fail this visit.
+    """
+    kept = []
+    dropped = 0
+    for row in rows or []:
+        fitted = fit(row)
+        if fitted is None:
+            dropped += 1
+        else:
+            kept.append(fitted)
+    if dropped:
+        print(
+            f"iosxe dropped {dropped} prior {label} that did not fit the current schema",
+            file=sys.stderr,
+        )
+    return kept
+
+
+def fit_metric(row):
+    if not isinstance(row, dict):
+        return None
+    at = _text(row.get("at"))
+    scope = _text(row.get("scope"))
+    if not at or not scope or METRIC_SCOPE_RE.match(scope) is None:
+        return None
+    out = {"at": at, "scope": scope}
+    for field in METRIC_FIELDS:
+        if field in ("at", "scope"):
+            continue
+        out[field] = None if field not in row else coerce_int(row.get(field))
+    return out
+
+
+def fit_board_row(row):
+    if not isinstance(row, dict):
+        return None
+    name = _text(row.get("name"))
+    subject = _text(row.get("subject"))
+    kind = row.get("kind")
+    last = _text(row.get("last_changed"))
+    if not name or not subject or kind not in ("device", "interface", "bgp") or not last:
+        return None
+    keys = []
+    for key in row.get("keys") or []:
+        if isinstance(key, str) and KEY_RE.match(key) and key not in keys:
+            keys.append(key)
+    if not keys:
+        return None
+    state = row.get("state")
+    out = {
+        "name": name,
+        "kind": kind,
+        "subject": subject,
+        "keys": keys[:16],
+        "state": None if state is None else _text(state),
+        "last_changed": last,
+    }
+    for field in ROW_INT:
+        if field in row:
+            out[field] = coerce_int(row.get(field))
+    for field in ROW_STR:
+        if field in row:
+            out[field] = _text(row.get(field))
+    if "unsaved_config" in row:
+        out["unsaved_config"] = coerce_bool(row.get("unsaved_config"))
+    return out
+
+
+def fit_visit(row):
+    if not isinstance(row, dict):
+        return None
+    checked = _text(row.get("checked_at"))
+    status = row.get("status")
+    coverage = row.get("coverage")
+    delta = row.get("delta")
+    if not checked or status not in ("ok", "degraded", "unknown"):
+        return None
+    if coverage not in ("complete", "partial", "unavailable"):
+        return None
+    if delta not in ("first", "unchanged", "worse", "better", "changed"):
+        return None
+    if not isinstance(row.get("stamp_written"), bool):
+        return None
+    watch = row.get("watch_id")
+    if watch is not None:
+        watch = _text(watch)
+        if not watch or WATCH_RE.match(watch) is None:
+            return None
+    scope = row.get("scope")
+    if scope != "all":
+        if not isinstance(scope, list) or not scope:
+            return None
+        if not all(isinstance(item, str) and item.startswith("device:") and " " not in item for item in scope):
+            return None
+    return {
+        "watch_id": watch,
+        "checked_at": checked,
+        "status": status,
+        "coverage": coverage,
+        "delta": delta,
+        "stamp_written": row["stamp_written"],
+        "scope": scope,
+    }
+
+
+def watch_or_none(value):
+    text = _text(value) if value is not None else None
+    if text and WATCH_RE.match(text):
+        return text
+    if value:
+        print("iosxe ignored a prior watch id that is not the current stamp form", file=sys.stderr)
+    return None
+
+
 def estate_metric(metrics, at):
     usable = [row for row in metrics if row.get("oper_not_ready") is not None]
     if not usable:
@@ -853,13 +1004,19 @@ def cmd_collect(args):
             current_rows.extend(new_by_name[name])
         else:
             current_rows.extend(
-                {key: value for key, value in row.items() if key != "note"}
-                for row in prior_rows
-                if row.get("name") == name
+                keep_prior(
+                    [row for row in prior_rows if row.get("name") == name],
+                    fit_board_row,
+                    "board rows",
+                )
             )
-    for row in prior_rows:
-        if row.get("name") not in seen_devices:
-            current_rows.append({key: value for key, value in row.items() if key != "note"})
+    current_rows.extend(
+        keep_prior(
+            [row for row in prior_rows if row.get("name") not in seen_devices],
+            fit_board_row,
+            "board rows",
+        )
+    )
     if len(current_rows) > 120:
         print(f"iosxe board rows {len(current_rows)} capped at 120", file=sys.stderr)
         current_rows = current_rows[:120]
@@ -915,7 +1072,7 @@ def cmd_collect(args):
 
     write_stamp = first or bool(changed) or coverage != "complete"
     prior_watch = iosxe.get("last_visit_id")
-    baseline = iosxe.get("baseline_visit_id")
+    baseline = watch_or_none(iosxe.get("baseline_visit_id"))
     watch = None
     stamp_rel = None
     if write_stamp:
@@ -975,9 +1132,9 @@ def cmd_collect(args):
         "stamp_written": bool(write_stamp),
         "scope": scope_value if scope_value else "all",
     }
-    series = list(iosxe.get("series") or [])
+    series = keep_prior(iosxe.get("series") or [], fit_metric, "series rows")
     series.append(estate_metric(metrics, at))
-    visits = list(iosxe.get("visits") or [])
+    visits = keep_prior(iosxe.get("visits") or [], fit_visit, "visit rows")
     visits.append(visit)
     new_board = {
         "keys": union_keys(current_rows),
@@ -985,9 +1142,9 @@ def cmd_collect(args):
         "updated_at": at,
         "source_agent": "health-device",
         "iosxe": {
-            "last_visit_id": watch if write_stamp else prior_watch,
+            "last_visit_id": watch if write_stamp else watch_or_none(prior_watch),
             "last_collected_at": at,
-            "baseline_visit_id": baseline,
+            "baseline_visit_id": watch if first and write_stamp else watch_or_none(baseline),
             "current": current_rows[:120],
             "series": ring(series),
             "visits": ring(visits),

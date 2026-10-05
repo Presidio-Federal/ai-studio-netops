@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.12.1"
-description: "v1.12.1 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
+version: "1.12.3"
+description: "v1.12.3 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
 ---
 
 # Health Device skill
