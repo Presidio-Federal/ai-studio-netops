@@ -40,7 +40,9 @@ Do not collect another health source. Do not copy PAT into metadata.
 - Later Splunk visits: `earliest_time` = `collected_through`. Collect
   newly arrived data — not another rolling 24h.
 - Failed S1: do **not** advance the watermark. Empty successful
-  window (S1 zero rows): **do** advance to `checked_at`; quiet visit.
+  window (S1 zero rows) with `splunk.index` still listed by
+  `splunk_get_indexes`: **do** advance to `checked_at`; quiet visit.
+  Index not listed: do not advance (`references/splunk.md`).
 
 Pass the window as MCP `earliest_time` / `latest_time`. Do not put
 `earliest=` in SPL.
@@ -53,6 +55,21 @@ Every NetFlow visit, first or later, passes `netflow.window`
 state, the window is how much flow the state is read from. Every
 Flux query keeps `range(start: v.timeRangeStart, stop:
 v.timeRangeStop)`; the tool fills it.
+
+## Metadata can go stale
+
+Metadata was right when it was written. A bucket, index, or
+datasource can move. An empty result on a plane that had data is a
+question about the lookup first:
+
+- NetFlow F1 zero rows → `references/netflow.md` "Empty F1".
+- Splunk S1 zero rows → `references/splunk.md` "S1 zero rows".
+
+The operator's correction ("wrong data", "it's in X") beats
+metadata. Confirm a named value with one call, write it with
+`provenance` `user`, and continue. Never repeat a query that already
+came back empty in this conversation, and never argue that the empty
+result is right.
 
 ## Resolve — incomplete for this visit only
 
@@ -69,7 +86,8 @@ if several, stop and write what you listed is missing.
 
 **NetFlow** missing `bucket` / `measurement`: one
 `grafana_influx_schema()` with no measurement lists the
-measurements in the default bucket. Keep the one whose tag keys
+measurements in the default bucket. The default bucket can be
+stale; F1 zero rows afterwards goes to "Empty F1". Keep the one whose tag keys
 (a second call with `measurement=<name>`) include `src`, `dst`,
 `dst_port`, `protocol`, and `source`; skip `internal_*` and
 `*_options`. Exactly one fits → write `bucket`, `measurement`,

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "compliance-test-visit/v1",
+  "$id": "compliance-test-visit/v2",
   "title": "compliance/testing/<stamp>.json",
   "type": "object",
   "additionalProperties": false,
@@ -28,7 +28,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": {"type": "string", "const": "compliance-test-visit/v1"},
+    "schema": {"type": "string", "const": "compliance-test-visit/v2"},
     "visit_id": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
@@ -99,10 +99,14 @@
     "metrics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["at", "scope", "pass", "fail", "error", "skip", "not_applicable", "verified_tests", "failing_tests", "skipped_tests"],
+      "required": ["at", "scope", "visit_id", "environment", "pass", "fail", "error", "skip", "not_applicable", "verified_tests", "failing_tests", "skipped_tests", "tested_posture_pct", "device_check_pass_pct"],
       "properties": {
         "at": {"type": "string", "format": "date-time"},
         "scope": {"type": "string", "const": "suite:compliance"},
+        "visit_id": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"},
+        "environment": {"type": "string", "enum": ["dev", "prod"], "description": "environment.live_lab of this visit."},
+        "tested_posture_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "100 * verified_tests / (verified_tests + failing_tests), one decimal; null when the denominator is 0."},
+        "device_check_pass_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "100 * pass / (pass + fail + error), one decimal; null when the denominator is 0. Moves when some devices of a failing test are fixed."},
         "pass": {"type": "integer", "minimum": 0},
         "fail": {"type": "integer", "minimum": 0},
         "error": {"type": "integer", "minimum": 0},
@@ -116,14 +120,34 @@
     "vs_prior": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["prior_visit_id", "delta", "changed"],
+      "description": "Comparison with the last visit in the same environment (metadata last_visit_by_environment). Never compares Dev with prod.",
+      "required": ["prior_visit_id", "delta", "newly_passing", "newly_failing", "still_failing", "metrics_delta"],
       "properties": {
         "prior_visit_id": {
           "type": ["string", "null"],
-          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$",
+          "description": "Last visit with the same environment.live_lab; null on the first visit in this environment."
         },
-        "delta": {"type": "string", "enum": ["first", "unchanged", "worse", "better", "mixed"]},
-        "changed": {"type": "array", "maxItems": 20, "items": {"type": "string"}}
+        "delta": {
+          "type": "string",
+          "enum": ["first", "unchanged", "worse", "better", "mixed"],
+          "description": "first: no prior. better: newly_passing non-empty, newly_failing empty. worse: newly_failing non-empty, newly_passing empty. mixed: both non-empty. unchanged: both empty."
+        },
+        "newly_passing": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/flip"}, "description": "Prior FAIL or ERROR, now PASS, same test + device."},
+        "newly_failing": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/flip"}, "description": "Prior PASS, now FAIL or ERROR, same test + device."},
+        "still_failing": {"type": "integer", "minimum": 0, "description": "Rows FAIL or ERROR in both visits, same test + device."},
+        "metrics_delta": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["verified_tests", "failing_tests", "tested_posture_pct", "device_check_pass_pct"],
+          "description": "This visit's metric minus the prior's. null on the first visit.",
+          "properties": {
+            "verified_tests": {"type": "integer"},
+            "failing_tests": {"type": "integer"},
+            "tested_posture_pct": {"type": ["number", "null"]},
+            "device_check_pass_pct": {"type": ["number", "null"]}
+          }
+        }
       }
     }
   },
@@ -146,6 +170,18 @@
         "device": {"type": "string"},
         "keys": {"$ref": "#/$defs/keys"},
         "detail": {"type": "string"}
+      }
+    },
+    "flip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test", "device", "from", "to", "keys"],
+      "properties": {
+        "test": {"type": "string", "minLength": 1, "description": "check-id (final segment), as in the row's test: key."},
+        "device": {"type": "string", "minLength": 1},
+        "from": {"type": "string", "enum": ["PASS", "FAIL", "ERROR"]},
+        "to": {"type": "string", "enum": ["PASS", "FAIL", "ERROR"]},
+        "keys": {"$ref": "#/$defs/keys"}
       }
     },
     "na_row": {

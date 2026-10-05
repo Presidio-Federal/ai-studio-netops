@@ -1,22 +1,33 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "compliance-test-metadata/v1",
+  "$id": "compliance-test-metadata/v2",
   "title": "compliance/metadata-testing.json",
   "type": "object",
   "additionalProperties": false,
-  "required": ["keys", "schema", "source_agent", "last_visit_id", "last_collected_at"],
+  "required": ["keys", "schema", "source_agent", "last_visit_id", "last_collected_at", "last_visit_by_environment"],
   "properties": {
     "keys": {
       "type": "array",
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": {"type": "string", "const": "compliance-test-metadata/v1"},
+    "schema": {"type": "string", "const": "compliance-test-metadata/v2"},
     "source_agent": {"type": "string", "const": "compliance-test"},
     "last_visit_id": {
       "type": ["string", "null"],
-      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$",
+      "description": "Newest compliance visit in any environment."
     },
-    "last_collected_at": {"type": ["string", "null"], "format": "date-time"}
+    "last_collected_at": {"type": ["string", "null"], "format": "date-time"},
+    "last_visit_by_environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["dev", "prod"],
+      "description": "Newest compliance visit per environment.live_lab. vs_prior compares against the entry for this visit's environment.",
+      "properties": {
+        "dev": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"},
+        "prod": {"type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"}
+      }
+    }
   }
 }

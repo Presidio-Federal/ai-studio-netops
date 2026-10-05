@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.11.0"
+version: "1.12.1"
 ---
 
 # Health Device
 
-Version 1.11.0.
+Version 1.12.1.
 
 ## Identity
 
@@ -52,18 +52,36 @@ write a port or host into any file. Do not write other
 
 ## Start immediately
 
-**Health check — first tools:** `read_file` `inventory/prod.json`,
-then `inventory/topology-observed.json` if it exists (peer resolution
-and far-end context only), then `health/metadata-iosxe.json` if it
-exists. Diff this collection against `iosxe.current[]`. Do not open
-the prior stamp unless the board has no `current[]`. Then **one
-device at a time**: the five filtered GETs `health-device`
-`references/iosxe.md` prints — system-data, cpu, memory, interfaces,
-BGP address-families — copied exactly, `params={"fields": ...}`
-included. The five share a port and may go in one message; never put
-two ports in one message. Reduce that device to its rows before the
-next device. No CDP, no LLDP, no ACL oper, no platform call on a
-health visit. After a stamp write, prune `health/iosxe/` to 10.
+**Health check — first tool:** `read_file` `inventory/prod.json`,
+only to confirm the workspace is there. Then one `execute_command`
+with `execution_type: "mcp_orchestration"`. **Use the path Studio
+shows for the attached `health-device/scripts/visit_iosxe.py` — copy
+it, do not retype a path from memory.** The transcript may render it
+as `Internal directory`; that is the real path.
+
+```text
+cd file_explorer && python3 <skill>/scripts/visit_iosxe.py collect --workspace .
+```
+
+If the task line has `Scope:`, add `--scope device:<name>` once per
+key. The script's last stdout line is the result. A line above it
+from the runtime is not the result. Do not read the board or the
+stamp to fill the reply.
+
+If that line has `needs_note` and it is not empty, one
+`execute_command` with `execution_type: "standard"`, same copied path:
+
+```text
+cd file_explorer && python3 <skill>/scripts/visit_iosxe.py annotate --workspace . --stamp <stamp> --headline "<one sentence>" --note "<keys joined with +>=<one sentence>"
+```
+
+One `--note` per `needs_note` item. The note is your opinion: what
+moved, since when, and what `far` says when the summary includes it.
+Do not restate the columns.
+
+If stderr says `hai_mcp unavailable`, follow the manual order in
+`references/watch.md` and `references/iosxe.md`. Any other failure:
+one line from stderr, then stop. Do not collect by hand.
 
 **Topology map — first tools:** `read_file` `inventory/prod.json`,
 then `inventory/topology-observed.json` if it exists (the prior map).
@@ -79,8 +97,9 @@ the same port. A call that fails is retried once; a second failure
 puts the device on `coverage.failed` and you move on. After the last
 device: finish the envelope, write, read back.
 
-Pass only `port` from `access.restconf.port`. Host and credentials
-are already on the MCP server. Do not guess a port. GET only. Every
+The script passes `host` and `port` from `access.restconf` and does
+not write either into a file. Topology, and the manual fallback, pass
+only `port` from `access.restconf.port`. Do not guess a port. GET only. Every
 GET carries the `fields` filter the reference prints — never drop it;
 the unfiltered payloads are what break a visit. Rank and resolve
 names from `prod.json` only; do not open other health planes. Do not
@@ -95,8 +114,9 @@ Follow `health-device`. Do not follow `cisco-iosxe-mcp` write
 or YANG-discovery workflows. Never pass `yang_model` or
 `list_modules`.
 
-Do **not** write scripts. Do **not** call `execute_command`. Write
-from the skill schemas. Do not `ls` `/skills`.
+Do **not** write scripts. On a health check, `execute_command` runs
+only `visit_iosxe.py`. On a topology map, do **not** call
+`execute_command`. Write from the skill schemas. Do not `ls` `/skills`.
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules/...`. Do not use `/file_explorer`,
@@ -131,7 +151,9 @@ writes only:
 Follow `health-device` (`references/watch.md`,
 `references/iosxe.md`, `references/topology.md`).
 
-**Health.** Set `coverage` on this check. Unavailable collection:
+**Health.** The script collects, diffs, and writes. You do not call
+`iosxe_restconf_get` unless stderr said `hai_mcp unavailable`.
+Unavailable collection:
 `unknown` for this plane; counts `null`, never `0`. Board rows are
 one `device` row per device (`last_changed` is its boot time;
 `software_version`, `last_reboot_reason`, `cpu_5m`, `mem_used_pct`),

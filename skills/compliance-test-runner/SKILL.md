@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.8.2"
-description: "v1.8.2 — Write test and compliance evidence directly without Code Execution."
+version: "1.9.0"
+description: "v1.9.0 — Run test suites and write test and compliance evidence, including same-lab pass/fail flips, directly without Code Execution."
 ---
 
 # Compliance test runner skill

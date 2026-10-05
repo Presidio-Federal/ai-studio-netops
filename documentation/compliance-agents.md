@@ -16,7 +16,10 @@ their files and writes SOAP to `state/compliance.json`.
 - **Compliance Test** executes suites and writes general testing state. A
   compliance-suite run also writes an append-only compliance-testing visit.
 - **Compliance** is the attending analyzer. It queries no source and runs no
-  test. It trends Intelligence and Test visits, keeps two scores, and writes
+  test. It trends Intelligence and Test visits, keeps three scores (tested
+  posture, device checks, framework coverage), marks each chart
+  improving / worsening / mixed / unchanged from same-lab FAIL↔PASS flips,
+  keeps fixed findings as `remediated` for 7 days, and writes
   `state/compliance.json`.
 
 Agents collaborate through files, not chat awareness.
@@ -69,7 +72,9 @@ Compliance Analyzer writes:
 
 - `state/compliance.json` only
 
-Each evidence plane keeps ten stamps. Metadata provides `last_visit_id`; no
+Each evidence plane keeps ten stamps. Metadata provides `last_visit_id` (testing also keeps
+`last_visit_by_environment` so prod trends against prod and Dev against
+Dev); no
 agent lists directories. Relationship keys such as `control:AC-3`,
 `test:aaa-authorization`, and `device:WAN-01` let later readers join the
 evidence. Every structured write carries the deduplicated top-level union;

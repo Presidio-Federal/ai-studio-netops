@@ -74,20 +74,61 @@ you wrote.
 1. Always: `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` then `state/testing.json`
    (`latest` = that testing path).
 2. If `scope.suites` includes `compliance`: read
-   `compliance/metadata-testing.json` and its latest visit when present.
-   Write `compliance/testing/YYYY-MM-DDTHH-MM-SSZ.json` with stable metrics
-   and `vs_prior`, then replace `compliance/metadata-testing.json`.
+   `compliance/metadata-testing.json`, then the prior visit **for this
+   run's environment**:
+   `compliance/testing/<last_visit_by_environment.<live_lab>>.json`. Write
+   `compliance/testing/YYYY-MM-DDTHH-MM-SSZ.json` with metrics and
+   `vs_prior`, then replace `compliance/metadata-testing.json`
+   (`last_visit_id`, `last_collected_at`, and this environment's
+   `last_visit_by_environment` entry; keep the other environment's entry).
    Do not write `state/compliance.json`; Compliance Analyzer owns it.
 
-For compliance visit metrics, group rows by canonical `test:<check-id>`:
+A v1 metadata file has no `last_visit_by_environment`: open its
+`last_visit_id`; when that visit's `environment.live_lab` matches, it
+is the prior, else there is no prior. Write the v2 metadata with both
+entries (the other one from that visit, or null).
+
+### Metrics
+
+Group rows by canonical `test:<check-id>`:
 
 - any FAIL/ERROR → failing test
 - otherwise at least one PASS → verified test
 - otherwise at least one SKIP → skipped test
 - N/A-only tests are counted only in `not_applicable`
 
-Compare those metrics and keyed result statuses with the prior visit for
-`vs_prior.delta` and `changed[]`. Do not compare prose headlines.
+`tested_posture_pct` = 100 × verified ÷ (verified + failing).
+`device_check_pass_pct` = 100 × pass ÷ (pass + fail + error). One
+decimal; null when the denominator is 0. `visit_id` and `environment`
+copy this visit.
+
+### vs_prior — same environment only
+
+Never compare a Dev visit with a prod visit. No prior for this
+environment → `prior_visit_id` null, `delta` `first`, empty lists,
+`still_failing` 0, `metrics_delta` null.
+
+With a prior, match rows by `test:` + `device:` key. Two lookups, in
+this order:
+
+1. Each **prior** row with `status` FAIL or ERROR: find the same test
+   + device in this run. PASS → `newly_passing` item. FAIL or ERROR →
+   count in `still_failing`. Missing or SKIP → nothing.
+2. Each **current** row with `status` FAIL or ERROR: find the same
+   test + device in the prior. PASS → `newly_failing` item.
+
+Item: `{test, device, from, to, keys}` — `keys` copied from this run's
+row. SKIP, N/A, and pairs present on one side only are not flips.
+
+`delta`: `better` when `newly_passing` is non-empty and
+`newly_failing` empty; `worse` the reverse; `mixed` both non-empty;
+`unchanged` both empty.
+
+`metrics_delta`: this visit's `verified_tests`, `failing_tests`,
+`tested_posture_pct`, `device_check_pass_pct` minus the prior's (null
+for a percent that is null on either side).
+
+Do not compare prose headlines. Do not write any other diff field.
 
 For every `results.ran[]` and `results.not_applicable[]` row:
 

@@ -103,6 +103,15 @@ A search that fails is retried **once**. S1 failing again →
 `unavailable`, null metrics, watermark not advanced. S2 failing with
 S1 good → `partial`, readings `[]`.
 
+**S1 zero rows.** Before calling it a quiet window, one
+`splunk_get_indexes`. `splunk.index` is listed → quiet window as
+usual. Not listed → the lookup moved: `unavailable`, null metrics,
+watermark **not** advanced, reply `Need: index` with the listed
+indexes as options, stop. An operator-named index or sourcetype
+beats metadata: confirm it with S1, write it
+(`provenance.splunk` `user`), finish the visit. Do not re-run the
+old search; do not defend the empty result.
+
 Nothing else. No `head`-sampled raw events, no `by severity`, no
 third search, no follow-up on a mnemonic you found interesting.
 
@@ -251,7 +260,8 @@ Down/reset, a flap, non-admin link down, reload, or auth_failed.
 |------|----:|
 | Workspace reads | 4 |
 | Workspace writes | 4 (board, stamp, prune, board) |
-| `splunk_search` | 2 (plus one retry each) |
+| `splunk_search` | 2 (plus one retry each); +1 S1 for an operator-named index |
+| `splunk_get_indexes` | 1 (S1 zero rows, or resolve) |
 
 ## Reply
 

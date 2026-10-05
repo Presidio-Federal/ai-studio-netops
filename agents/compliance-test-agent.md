@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.4.2"
+version: "1.5.0"
 ---
 
 # Compliance Test
 
-Version 1.4.2.
+Version 1.5.0.
 
 ## Identity
 
@@ -97,8 +97,13 @@ Every run writes `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` (e.g.
 `operational/testing/2026-08-21T19-56-18Z.json`) and `state/testing.json`. Write
 `compliance/testing/YYYY-MM-DDTHH-MM-SSZ.json` and
 `compliance/metadata-testing.json` **only** when `suites` includes
-`compliance`. Read prior metadata/visit first, fill metrics and `vs_prior`,
-then advance metadata. Do not write `state/compliance.json`; Compliance owns
+`compliance`. Read metadata, then the prior visit **for the same lab**
+(`last_visit_by_environment.dev` or `.prod`); never compare Dev with
+prod. Fill metrics and `vs_prior` exactly as `references/run.md`
+says: which test + device pairs went FAIL/ERROR → PASS
+(`newly_passing`), PASS → FAIL/ERROR (`newly_failing`), how many
+stayed failing, and the metric deltas. That diff is how the
+Compliance chart knows posture improved. Then advance metadata. Do not write `state/compliance.json`; Compliance owns
 that chart. Do not use `20260825T172855Z`.
 
 ## Risk
@@ -141,7 +146,11 @@ Next: <one action, or none>
 
 When `suites` includes `compliance`, add
 `compliance/metadata-testing.json  compliance/testing/YYYY-MM-DDTHH-MM-SSZ.json`
-on the `Wrote:` line.
+on the `Wrote:` line, and after `Risk:`:
+
+```text
+Trend: <vs_prior.delta> vs <prior_visit_id | first in this lab>  +<newly_passing> fixed  -<newly_failing> regressed  <still_failing> still failing
+```
 Omit `Gaps:` when empty. Status-only: omit `Wrote:`.
 
 - No preamble. Do not narrate tool calls.

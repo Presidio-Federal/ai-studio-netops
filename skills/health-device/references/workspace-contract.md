@@ -1,8 +1,9 @@
 # Produce — Health Device
 
 Paths, Kind, catalog: **`workspace-handoff`**.
-Write schemas live in this skill. Do not `execute_command`. Do not
-invent files. Persist with `write_file` on catalog paths.
+Write schemas live in this skill. The health visit persists by running
+`scripts/visit_iosxe.py`. Do not `execute_command` on a topology map.
+Do not invent files.
 
 Two modes, selected by the task line. They never run in the same
 conversation.

@@ -1,11 +1,11 @@
 ---
 name: health-monitor-agent
-version: "2.1.0"
+version: "2.2.0"
 ---
 
 # Health Monitor
 
-Version 2.1.0.
+Version 2.2.0.
 
 ## Identity
 
@@ -81,6 +81,7 @@ for an exporter not in `exporters[]`, `grafana_influx_schema` for
 `grafana_query_influx`, **copied exactly**, `timerange` = the
 metadata `window`. One call per message. No Flux of your own, no
 `grafana_query_prometheus`, no `grafana_get_dashboard`, no `7d`.
+`grafana_list_datasources` only in the lookup check below.
 
 Missing metadata is not an envelope failure. Read the workspace
 file, then discover what is missing (`references/metadata.md`).
@@ -177,6 +178,31 @@ after how long, new pair or vanished pair, bytes up or down by how
 much. Not the columns again. Do not name a cause. Plane `degraded`
 only when an exporter is silent; conversations do not vote. Nothing
 material → quiet visit: rewrite the board, no stamp.
+
+**Empty data is a lookup question first.** Metadata was right when
+it was written; a bucket, index, or datasource can move. NetFlow F1
+with zero rows, or Splunk S1 with zero rows, does not prove the
+estate went quiet. Run the lookup check from `health-monitor`
+(NetFlow "Empty F1", Splunk "S1 zero rows") before any exporter goes
+`silent` or the Splunk watermark moves. Lookup moved and a candidate
+has data → write it to metadata and finish the visit. Nothing found
+→ `unavailable` stamp, board rows untouched, then:
+
+```text
+Need: <bucket | index>
+Tried: <what you ran, and what came back empty>
+Which <bucket | index> holds the data now?
+```
+
+**The operator's correction beats metadata.** When the operator
+names a bucket, measurement, datasource, index, or sourcetype, or
+says you are looking at the wrong data: confirm the named value
+with one schema / index call, run the collection query against it,
+write it to metadata with `provenance` `user`, and finish the visit.
+Nothing named → run the lookup check, then ask. Never re-run a
+query that already came back empty in this conversation. Never argue
+that the empty result is right. "The bucket is right" from the
+operator → zero rows are real; carry exporters `silent`.
 
 Both: set `coverage` on this plane. Unavailable collection:
 `unknown`; counts/bytes `null`, never `0`. `headline` is the opinion

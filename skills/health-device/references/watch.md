@@ -36,7 +36,38 @@ neighbors, no `relations`.
 Observation `headline` quotes measurements: subject, field,
 prior → current, since when.
 
-## Shared order
+## Health visit — run the script
+
+One `execute_command`, `execution_type: "mcp_orchestration"`. Use the
+path Studio shows for the attached `health-device/scripts/visit_iosxe.py`.
+Copy it. Do not retype a path from memory. The transcript may render
+it as `Internal directory`; that is the real path.
+
+```text
+cd file_explorer && python3 <skill>/scripts/visit_iosxe.py collect --workspace .
+```
+
+Add `--scope device:<name>` once per key when the task line has
+`Scope:`. The last stdout line is the summary. Ignore any runtime
+line above it.
+
+If `needs_note` is non-empty, one `execute_command` with
+`execution_type: "standard"`, same copied path:
+
+```text
+cd file_explorer && python3 <skill>/scripts/visit_iosxe.py annotate --workspace . --stamp <stamp> --headline "<one sentence>" --note "<keys joined with +>=<one sentence>"
+```
+
+One `--note` per `needs_note` item. If stderr says `hai_mcp
+unavailable`, follow the manual order below. Any other failure: report
+that line and stop. Do not collect by hand.
+
+Reply from the summary line. Do not open the stamp or the board to
+fill it.
+
+## Manual order
+
+Use this only when the script reports `hai_mcp unavailable`.
 
 1. `read_file` `inventory/prod.json`. Never `get_folder_structure`.
    Never `automations/schedules/...`. Rank and scope from

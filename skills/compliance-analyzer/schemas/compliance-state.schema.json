@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "compliance-state/v1",
+  "$id": "compliance-state/v2",
   "title": "state/compliance.json",
   "description": "Compliance Analyzer SOAP rollup. Tested posture and framework coverage remain separate scores.",
   "type": "object",
@@ -33,7 +33,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": {"type": "string", "const": "compliance-state/v1"},
+    "schema": {"type": "string", "const": "compliance-state/v2"},
     "updated_at": {"type": "string", "format": "date-time"},
     "source_agent": {"type": "string", "const": "compliance"},
     "status": {
@@ -77,15 +77,17 @@
       "required": ["intel", "testing"],
       "properties": {
         "intel": {"$ref": "#/$defs/series"},
-        "testing": {"$ref": "#/$defs/series"}
+        "testing": {"$ref": "#/$defs/testing_series"}
       }
     },
     "scores": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["tested_posture", "framework_coverage"],
+      "required": ["environment", "tested_posture", "device_checks", "framework_coverage"],
       "properties": {
+        "environment": {"type": ["string", "null"], "enum": ["prod", "dev", null], "description": "Lab of the test visit the tested scores come from: latest prod visit, else latest dev visit, else null."},
         "tested_posture": {"$ref": "#/$defs/tested_score"},
+        "device_checks": {"$ref": "#/$defs/device_score"},
         "framework_coverage": {"$ref": "#/$defs/framework_score"}
       }
     },
@@ -156,6 +158,74 @@
         "evidence_for": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
         "evidence_against": {"type": "array", "maxItems": 8, "items": {"type": "string"}},
         "source_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "testing_series": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["window", "watermarks", "points"],
+      "properties": {
+        "window": {"type": "integer", "const": 10},
+        "watermarks": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["dev", "prod"],
+          "description": "Newest folded visit per lab.",
+          "properties": {
+            "dev": {"type": ["string", "null"]},
+            "prod": {"type": ["string", "null"]}
+          }
+        },
+        "points": {
+          "type": "array",
+          "maxItems": 10,
+          "description": "Test visit metrics copied verbatim, oldest first, both labs; each point carries visit_id and environment.",
+          "items": {
+            "type": "object",
+            "required": ["at", "scope"],
+            "properties": {
+              "at": {"type": "string", "format": "date-time"},
+              "scope": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": true
+          }
+        }
+      }
+    },
+    "device_score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["percent", "passed", "failing", "denominator", "method"],
+      "properties": {
+        "percent": {"type": ["number", "null"], "minimum": 0, "maximum": 100},
+        "passed": {"type": "integer", "minimum": 0},
+        "failing": {"type": "integer", "minimum": 0},
+        "denominator": {"type": "integer", "minimum": 0},
+        "method": {"type": "string", "const": "pass / (pass + fail + error) device-check rows; SKIP and N/A excluded"}
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prior", "current"],
+      "properties": {
+        "prior": {"type": ["number", "null"]},
+        "current": {"type": ["number", "null"]}
+      }
+    },
+    "flip": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["environment", "test", "device", "from", "to", "direction", "at", "keys"],
+      "properties": {
+        "environment": {"type": "string", "enum": ["dev", "prod"]},
+        "test": {"type": "string", "minLength": 1},
+        "device": {"type": "string", "minLength": 1},
+        "from": {"type": "string", "enum": ["PASS", "FAIL", "ERROR"]},
+        "to": {"type": "string", "enum": ["PASS", "FAIL", "ERROR"]},
+        "direction": {"type": "string", "enum": ["better", "worse"]},
+        "at": {"type": "string", "format": "date-time"},
+        "keys": {"$ref": "#/$defs/keys"}
       }
     },
     "series": {
@@ -245,14 +315,17 @@
     "finding": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "severity", "summary", "keys", "source_refs", "next_owner"],
+      "required": ["kind", "status", "severity", "summary", "keys", "first_seen", "resolved_at", "source_refs", "next_owner"],
       "properties": {
         "kind": {"type": "string", "enum": ["missing_control", "test_failure", "evidence_gap"]},
+        "status": {"type": "string", "enum": ["open", "remediated", "regressed"], "description": "open: still failing or missing. remediated: the evidence that raised it now passes / is covered. regressed: was remediated on an earlier chart and fails again."},
         "severity": {"type": "string", "enum": ["low", "medium", "high", "critical", "unknown"]},
         "summary": {"type": "string", "minLength": 1},
         "keys": {"$ref": "#/$defs/keys"},
+        "first_seen": {"type": "string", "format": "date-time", "description": "checked_at of the visit that first raised it; carried from the prior chart."},
+        "resolved_at": {"type": ["string", "null"], "format": "date-time", "description": "checked_at of the visit that remediated it; null unless status is remediated."},
         "source_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
-        "next_owner": {"type": "string", "enum": ["Compliance Author", "Compliance Test", "Network Ops", "operator"]}
+        "next_owner": {"type": "string", "enum": ["Compliance Author", "Compliance Test", "Network Ops", "operator", "none"]}
       }
     },
     "assessment": {
@@ -270,10 +343,26 @@
     "trend": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["narrative", "flips"],
+      "required": ["direction", "environment", "since_visit_id", "scores", "newly_passing", "newly_failing", "still_failing", "flips", "narrative"],
       "properties": {
-        "narrative": {"type": "string", "minLength": 1},
-        "flips": {"type": "array", "maxItems": 10, "items": {"type": "string"}}
+        "direction": {"type": "string", "enum": ["first", "improving", "worsening", "mixed", "unchanged"], "description": "Mechanical, from the latest test visit's vs_prior and the framework coverage move (references/analyze.md Trend)."},
+        "environment": {"type": ["string", "null"], "enum": ["prod", "dev", null], "description": "Lab the test trend is measured in; equals scores.environment."},
+        "since_visit_id": {"type": ["string", "null"], "description": "The prior same-lab test visit the latest one was compared with."},
+        "scores": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["tested_posture", "device_checks", "framework_coverage"],
+          "properties": {
+            "tested_posture": {"$ref": "#/$defs/pair"},
+            "device_checks": {"$ref": "#/$defs/pair"},
+            "framework_coverage": {"$ref": "#/$defs/pair"}
+          }
+        },
+        "newly_passing": {"type": "integer", "minimum": 0},
+        "newly_failing": {"type": "integer", "minimum": 0},
+        "still_failing": {"type": "integer", "minimum": 0},
+        "flips": {"type": "array", "maxItems": 20, "items": {"$ref": "#/$defs/flip"}, "description": "newly_failing items first, then newly_passing, copied from the latest visit's vs_prior."},
+        "narrative": {"type": "string", "minLength": 1}
       }
     },
     "soap": {

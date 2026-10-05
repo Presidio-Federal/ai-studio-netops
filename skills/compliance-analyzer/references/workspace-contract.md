@@ -7,7 +7,9 @@ Read only fixed catalog paths:
 1. `compliance/metadata-intel.json`, then
    `compliance/intel/<last_visit_id>.json`
 2. `compliance/metadata-testing.json`, then
-   `compliance/testing/<last_visit_id>.json`
+   `compliance/testing/<last_visit_by_environment.prod>.json` and
+   `compliance/testing/<last_visit_by_environment.dev>.json` when set
+   (v1 metadata: `<last_visit_id>` only)
 3. `compliance/coverage.json`
 4. `compliance/intel.json`
 5. prior `state/compliance.json`
@@ -16,8 +18,9 @@ Write only:
 
 - `state/compliance.json` — Kind `state`; replace in full
 
-Do not list directories. Metadata supplies each latest visit. Stamp
-`vs_prior.prior_visit_id` supplies history. Strip a leading `workspace/` or
+Do not list directories. Metadata supplies each latest visit (testing:
+per lab). Stamp `vs_prior.prior_visit_id` supplies history; for testing
+it always points at the same lab. Strip a leading `workspace/` or
 `/workspace/` from a source ref before reading it.
 
 ## Canonical top-level keys

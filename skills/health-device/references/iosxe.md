@@ -1,6 +1,8 @@
 # Health visit — IOS-XE GET recipes
 
-Use on a **health visit** only. Topology map: `references/topology.md`.
+The health visit runs `scripts/visit_iosxe.py`. These steps are what
+that script implements, and the manual fallback when the command
+reports `hai_mcp unavailable`. Topology map: `references/topology.md`.
 Tool is `iosxe_restconf_get`. Host and credentials are already on the
 MCP server. Pass **`port`** from `inventory/prod.json`
 `devices[].access.restconf.port`. Omit `port` and the call hits the CML

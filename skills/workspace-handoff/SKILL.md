@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.68.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys (incl. application), relations, edges-as-columns, quiet visits, task lines, and read/write rules."
-version: "1.68.0"
+description: "v1.70.0 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.0"
 ---
 
 # Workspace handoff
@@ -298,6 +298,20 @@ into the row. A ticket filed without them is prose to every reader.
 `at` is the source event time when the payload has one, else
 `checked_at`.
 
+## Visit scripts
+
+`scripts/visit_common.py` is the helper for a nurse visit that calls
+MCP from code. Health Device health visits run it through
+`health-device` `scripts/visit_iosxe.py`.
+
+`collect` runs under `execution_type: "mcp_orchestration"`. It calls
+`iosxe_restconf_get` with `hai_mcp.call_mcp`, diffs the board, writes
+`health/metadata-iosxe.json`, writes `health/iosxe/<stamp>.json` only
+when due, and prints one JSON summary as the last stdout line.
+`annotate` runs under `standard` and sets `headline` and reading
+notes. `unwrap_splunk`, `unwrap_grafana`, and `unwrap_snow` are not
+implemented.
+
 ## Catalog
 
 Reader uses **rely on**. Writer procedure stays in the writer skill.
@@ -327,7 +341,7 @@ visits).
 | `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |
 | `operational/runs/YYYY-MM-DDTHH-MM-SSZ.json` | result | Pipeline Monitor or GitHub GitOps Change | `github-actions-mcp` `schemas/operation-run.schema.json` | envelope, `operation` `git` `workflow` `result` `devices` `files` `interfaces[]` (GitOps Change: `<device>/<interface>` stanzas written) `summary` `keys`; `git.commit_sha` + `devices[]` / `interfaces[]` is the change → device / interface edge as columns, no `relations[]`; never config bodies, patches, or full logs |
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
-| `compliance/metadata-testing.json` | metadata | Compliance Test | `compliance-test-runner` `schemas/compliance-test-metadata.schema.json` | `last_visit_id` `last_collected_at` |
+| `compliance/metadata-testing.json` | metadata | Compliance Test | `compliance-test-runner` `schemas/compliance-test-metadata.schema.json` | `last_visit_id` `last_collected_at` `last_visit_by_environment` (`dev`, `prod` — newest visit per lab; `vs_prior` compares within one lab) |
 | `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results` row `keys` `risk` |
 | `state/compliance.json` | state | Compliance | `compliance-analyzer` `schemas/compliance-state.schema.json` | envelope, `mode` `freshness` `consults` `series` `scores` `findings` `assessment` `trend_analysis` `soap` `dispatched`; `next_action` is `soap.plan` |
 | `compliance/coverage.json` | snapshot | Compliance Intelligence | `compliance-intel` `schemas/coverage.schema.json` | `updated_at` `source_agent` `rows` `counts`, row `keys` |

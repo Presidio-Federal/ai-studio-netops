@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.11.0"
-description: "v1.11.0 — Health Device nurse: IOS-XE device visits (health rows per device, BGP peers as columns) and the topology map into inventory/topology-observed.json; board on metadata, stamp only on change; no relations[]."
+version: "1.12.1"
+description: "v1.12.1 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
 ---
 
 # Health Device skill
@@ -20,9 +20,10 @@ One IOS-XE visit per conversation, in one of two modes. One tool:
 `Scope: device:<a> device:<b>` on either task line limits the visit to
 those `prod.json` devices. No scope → every RESTCONF device, ranked.
 
-**Health.** Five filtered GETs per device — system-data (boot time,
-version, reboot reason), cpu, memory, interfaces, BGP summaries —
-**one device at a time, never two ports in one message**. The
+**Health.** Run `scripts/visit_iosxe.py collect` (see
+`references/watch.md`). The script does five filtered GETs per
+device — system-data (boot time, version, reboot reason), cpu,
+memory, interfaces, BGP summaries — one device at a time. The
 **board** `health/metadata-iosxe.json` carries `current[]`
 (last-known state: one `device` row per device, every admin-up
 interface, every BGP neighbor), `series[]` (one estate row per
@@ -64,16 +65,18 @@ visit. Do not write `runs/`,
 except `health/metadata-iosxe.json`, other `health/<source>/`
 directories, or `health-board.md`. Do not invent files. Do not invent
 measurements. Unavailable collection: counts **null**, never `0`. Do
-not write under `automations/schedules/`. Do **not** call
-`execute_command`. Do not write scripts. Do not stamp `expires_at`. Do
+not write under `automations/schedules/`. On a health visit, call
+`execute_command` only to run `scripts/visit_iosxe.py`. On a topology
+map, do **not** call `execute_command`. Do not write scripts. Do not stamp `expires_at`. Do
 not emit recommendations. Do not write `relations[]`; edges are the
 `peer` column and `neighbors[].far`.
 
 ## Files
 
 Paths and catalog: **`workspace-handoff`**. When/how:
-`references/workspace-contract.md`. Write from the schemas. Do not
-run a validator. Persist with `write_file` on catalog paths.
+`references/workspace-contract.md`. The health script validates and
+writes the board and the stamp. A topology map persists with
+`write_file`.
 
 | Path | Kind | Envelope |
 |------|------|----------|
@@ -95,15 +98,13 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**Health visit — first tools:** `read_file` `inventory/prod.json`
-before any RESTCONF. Then `inventory/topology-observed.json` if it
-exists. Then `health/metadata-iosxe.json` if it exists; its
-`iosxe.current[]` is what you diff against. Do not open the prior
-stamp unless the board has no `current[]`. Then, one device at a
-time, the five filtered GETs from `references/iosxe.md` (system-data,
-cpu, memory=Processor, interfaces, BGP address-families) → reduce to
-that device's rows → next device. Decide stamp or quiet. Write the
-stamp if due and read it back. Rewrite the board.
+**Health visit — first tool:** `read_file` `inventory/prod.json` to
+confirm the workspace is there. Then one `execute_command`,
+`execution_type: "mcp_orchestration"`, the collect command in
+`references/watch.md`. If the summary `needs_note` is non-empty, one
+`annotate` command under `execution_type: "standard"`. Reply from the
+summary line. If stderr says `hai_mcp unavailable`, follow the manual
+order in `references/watch.md`.
 
 **Topology map — first tools:** `read_file` `inventory/prod.json`,
 then `inventory/topology-observed.json` if it exists (prior map).
@@ -119,7 +120,7 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machines
 
-Health: READ_PROD → READ_TOPOLOGY → READ_BOARD → (per device: FIVE_GETS → REDUCE)* → DIFF → DECIDE → [WRITE_CHECK → READ_BACK → PRUNE] → WRITE_BOARD → STOP
+Health: READ_PROD → COLLECT_SCRIPT → [ANNOTATE] → STOP. Manual fallback, only when hai_mcp is unavailable: READ_PROD → READ_TOPOLOGY → READ_BOARD → (per device: FIVE_GETS → REDUCE)* → DIFF → DECIDE → [WRITE_CHECK → READ_BACK → PRUNE] → WRITE_BOARD → STOP
 
 Topology: READ_PROD → READ_PRIOR_MAP → WRITE_PARTIAL → (per device: VERSION → INTERFACES → NEIGHBORS → REDUCE → DIFF → WRITE_MAP)* → FINISH → WRITE_MAP → READ_BACK → STOP
 

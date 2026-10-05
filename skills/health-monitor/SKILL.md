@@ -1,7 +1,7 @@
 ---
 name: health-monitor
-version: "2.1.0"
-description: "v2.1.0 — Health Monitor nurse: Splunk (IOS-XE, NX-OS, ASA syslog) and NetFlow (Grafana / InfluxDB) visits. Board on metadata, stamp only on change; prod.json coverage with silent and unresolved devices; no relations[]."
+version: "2.2.0"
+description: "v2.2.0 — Health Monitor nurse: Splunk (IOS-XE, NX-OS, ASA syslog) and NetFlow (Grafana / InfluxDB) visits. Board on metadata, stamp only on change; prod.json coverage with silent and unresolved devices; no relations[]."
 ---
 
 # Health Monitor skill
@@ -10,9 +10,19 @@ One telemetry source per conversation. The invoke must name Splunk or
 NetFlow. If it does not, ask which check and stop. Do not pick a
 default.
 
-Named Splunk → `splunk_search` (and listing only to resolve). Named
-NetFlow → `grafana_query_influx` (`grafana_influx_schema` on the
-baseline or for an unknown exporter). Do not call the other source
+Named Splunk → `splunk_search` (`splunk_get_indexes` only to
+resolve or on S1 zero rows). Named NetFlow → `grafana_query_influx`
+(`grafana_influx_schema` on the baseline, for an unknown exporter,
+or in the lookup check; `grafana_list_datasources` in the lookup
+check only).
+
+**Empty is a lookup question first.** Zero F1 rows (NetFlow) or
+zero S1 rows (Splunk) → check that the bucket / index still holds
+the data before any row goes `silent` or the watermark moves
+(`references/netflow.md` "Empty F1", `references/splunk.md` "S1 zero
+rows"). The operator's correction beats metadata: confirm the named
+value, write it with `provenance` `user`, continue. Never re-run a
+query that already came back empty; never argue it is right. Do not call the other source
 on this visit. Do not call `grafana_query_prometheus`; probes,
 containers, and hosts are Health Application's plane. Do not call
 other health MCPs.
@@ -119,13 +129,15 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 If the invoke does not name Splunk or NetFlow: ASK_WHICH → STOP.
 
 Splunk: READ_BOARD → READ_PROD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
-S1 → S2 → RESOLVE_DEVS → DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP →
+S1 → [S1 zero rows: INDEX_CHECK → (moved: ASK → STOP)] → S2 →
+RESOLVE_DEVS → DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP →
 READ_BACK → PRUNE → WRITE_BOARD] → STOP
 
 NetFlow: READ_BOARD → READ_PROD → READ_TOPOLOGY → RESOLVE_IF_NEEDED →
-[SCHEMA] → F1 → F2 → RESOLVE_ADDRS → BUILD → CARRY → DIFF →
-WRITE_BOARD → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE →
-WRITE_BOARD] → STOP
+[SCHEMA] → F1 → [F1 zero rows: LOOKUP_CHECK → (moved: rewrite
+bucket, F1 | suspect: unavailable stamp, ASK → STOP)] → F2 →
+RESOLVE_ADDRS → BUILD → CARRY → DIFF → WRITE_BOARD → DECIDE →
+[WRITE_STAMP → READ_BACK → PRUNE → WRITE_BOARD] → STOP
 
 On collection failure: still write that check (`unavailable`, null
 counts). Do not advance the Splunk watermark.

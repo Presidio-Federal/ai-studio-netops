@@ -250,7 +250,8 @@ def build(ws, template_path):
         "updated_at": comp.get("updated_at"),
         "test_updated": testing.get("updated_at"),
         "scores": comp.get("scores") or {},
-        "findings": [{k: f.get(k) for k in ("kind", "severity", "summary", "keys", "next_owner")} for f in comp.get("findings") or []],
+        "findings": [{k: f.get(k) for k in ("kind", "status", "severity", "summary", "keys", "next_owner")} for f in comp.get("findings") or []],
+        "trend": {k: (comp.get("trend_analysis") or {}).get(k) for k in ("direction", "environment", "newly_passing", "newly_failing", "still_failing")},
         "counts": {k: counts.get(k, 0) for k in ("pass", "fail", "error", "skip")},
         "risk": testing.get("risk") or {},
         "run": testing.get("run") or {},
@@ -279,7 +280,7 @@ def build(ws, template_path):
 
     # ---- application
     probes = defaultdict(dict)   # tier -> site -> row
-    containers = defaultdict(list)  # tier -> rows
+    container_rows = []  # every container Health Application wrote from Grafana
     hosts = {}
     for r in mda.get("current") or []:
         kind = r.get("kind")
@@ -288,12 +289,12 @@ def build(ws, template_path):
                 "up": r.get("state") == "up", "state": r.get("state"), "http": r.get("http_code"),
                 "ms": r.get("duration_ms"), "target": r.get("target"), "pct": r.get("success_pct_window")}
         elif kind == "container":
-            tier = r.get("application") or (r.get("name") or "").replace("dc-", "", 1)
-            containers[tier].append({
+            container_rows.append({
                 "name": r.get("name"), "host": r.get("host"), "device": r.get("device") or resolve(r.get("host")),
+                "application": r.get("application"), "service": r.get("service"),
                 "label": r.get("application"), "state": r.get("state"), "cpu": r.get("cpu_pct"),
                 "mem": round((r.get("mem_bytes") or 0) / 1048576) if r.get("mem_bytes") else None,
-                "start": r.get("started_epoch"), "image": r.get("image")})
+                "rx": r.get("rx_bytes_s"), "start": r.get("started_epoch"), "image": r.get("image")})
         elif kind == "host":
             hn = r.get("device") or resolve(r.get("host")) or r.get("host")
             if hn:
@@ -306,8 +307,14 @@ def build(ws, template_path):
     by_service = defaultdict(list)
     for a in app_rows:
         by_service[a.get("service") or "(no service)"].append(a)
-    if not by_service and (probes or containers):
-        by_service["(from telemetry)"] = [{"name": t} for t in sorted(set(list(probes) + list(containers)))]
+    if not by_service and (probes or container_rows):
+        names = set(probes)
+        for c in container_rows:
+            if c.get("application"):
+                names.add(c["application"])
+            elif c.get("name"):
+                names.add(c["name"])
+        by_service["(from telemetry)"] = [{"name": t} for t in sorted(names)]
 
     def path_to_edge(start):
         """BFS from a host device over non-mgmt links until an iosxe edge/wan device."""
@@ -330,23 +337,75 @@ def build(ws, template_path):
                     q.append(nb)
         return [start]
 
+    def containers_for(name):
+        """Rows whose Grafana service label (`application`) or container `name` equals the tier."""
+        hit = []
+        for c in container_rows:
+            if c.get("_used"):
+                continue
+            if c.get("application") == name or c.get("name") == name:
+                c["_used"] = True
+                hit.append(c)
+        return hit
+
     for svc, rows in sorted(by_service.items()):
         tiers, host_devices = [], []
         for a in rows:
             name = a.get("name")
-            tier_hosts = [resolve(h) or h for h in a.get("hosts") or []]
-            for c in containers.get(name, []):
+            # Application Map files a host as unmapped when it missed prod.json.
+            # Inventory may have the device now. Resolve again and walk from it.
+            tier_hosts, still_unmapped = [], []
+            for h in list(a.get("hosts") or []) + list(a.get("hosts_unmapped") or []):
+                rh = resolve(h)
+                if rh and rh not in tier_hosts:
+                    tier_hosts.append(rh)
+                elif not rh and h not in still_unmapped:
+                    still_unmapped.append(h)
+            tier_containers = containers_for(name)
+            for c in tier_containers:
                 if c.get("device") and c["device"] not in tier_hosts:
                     tier_hosts.append(c["device"])
             for h in tier_hosts:
                 if h not in host_devices:
                     host_devices.append(h)
             tiers.append({"name": name, "depends_on": a.get("depends_on") or [], "hosts": tier_hosts,
-                          "hosts_unmapped": a.get("hosts_unmapped") or [], "status": a.get("operational_status"),
-                          "probes": probes.get(name, {}), "containers": containers.get(name, [])})
+                          "hosts_unmapped": still_unmapped, "status": a.get("operational_status"),
+                          "probes": probes.get(name, {}), "containers": tier_containers})
         host_node = next((h for h in host_devices if h in by_name), None)
         services.append({"service": svc, "tiers": tiers, "hosts": host_devices, "host_node": host_node,
                          "path": path_to_edge(host_node)})
+    # Container rows Health Application wrote that matched no inventory tier.
+    # Keep the Grafana label. Do not rename it.
+    extra = defaultdict(list)
+    for c in container_rows:
+        if c.get("_used"):
+            continue
+        label = c.get("application") or c.get("name") or "(container)"
+        extra[(c.get("service") or "(from telemetry)", label)].append(c)
+    existing = {s["service"]: s for s in services}
+    for (svc, label), rows in sorted(extra.items()):
+        hosts_here = []
+        for c in rows:
+            if c.get("device") and c["device"] not in hosts_here:
+                hosts_here.append(c["device"])
+        tier = {"name": label, "depends_on": [], "hosts": hosts_here,
+                "hosts_unmapped": [], "status": None, "probes": {}, "containers": rows}
+        card = existing.get(svc)
+        if card is None:
+            host_node = next((h for h in hosts_here if h in by_name), None)
+            card = {"service": svc, "tiers": [], "hosts": [], "host_node": host_node,
+                    "path": path_to_edge(host_node)}
+            services.append(card)
+            existing[svc] = card
+        card["tiers"].append(tier)
+        for h in hosts_here:
+            if h not in card["hosts"]:
+                card["hosts"].append(h)
+        if card["host_node"] is None:
+            card["host_node"] = next((h for h in card["hosts"] if h in by_name), None)
+            card["path"] = path_to_edge(card["host_node"])
+    for c in container_rows:
+        c.pop("_used", None)
     app_out = {"present": bool(apps) or bool(mda), "services": services, "hosts": hosts,
                "updated_at": apps.get("updated_at"), "collected_at": mda.get("last_collected_at")}
 

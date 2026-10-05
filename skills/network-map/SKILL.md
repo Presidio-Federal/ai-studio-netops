@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.0.1"
-description: "v1.0.1 — Network Map: compile the workspace boards into one interactive HTML map with the skill script; node positions from the CML canvas when inventory carries them; no hand-written HTML."
+version: "1.1.0"
+description: "v1.1.0 — Network Map: compile the workspace boards into one interactive HTML map with the skill script; node positions from the CML canvas when inventory carries them; no hand-written HTML."
 ---
 
 # Network Map skill

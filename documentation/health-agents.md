@@ -186,12 +186,16 @@ Nothing in this nurse merges them.
 
 ## Health Device
 
-Device plane only, two modes. **Health**: five small filtered GETs
-per device — boot time / version / reboot reason, cpu, memory,
-interface state and flaps/errors, BGP sessions — one device at a
-time, diffed against the board's `current[]`; a stamp only when
-something material moved (reboot, state change, flaps or errors up,
-threshold crossed, BGP reset). No ACL oper, no traffic rates, no CDP.
+Device plane only, two modes. **Health**: one `execute_command` runs
+`health-device` `scripts/visit_iosxe.py collect` under
+`mcp_orchestration`. The script does the five filtered GETs per
+device — boot time / version / reboot reason, cpu, memory, interface
+state and flaps/errors, BGP sessions — diffs `current[]`, and writes
+the board. A stamp only when something material moved (reboot, state
+change, flaps or errors up, threshold crossed, BGP reset), on the
+first visit, or when coverage is not complete. The model sees the
+script's summary line, then `annotate` under `standard` only when
+that line has `needs_note`. No ACL oper, no traffic rates, no CDP.
 **Topology** (`Run the network topology map only.`): version,
 interfaces with addresses, and CDP rows per device to
 `inventory/topology-observed.json`, file rewritten after every

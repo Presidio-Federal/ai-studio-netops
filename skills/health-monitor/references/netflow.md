@@ -96,6 +96,59 @@ measurement=<measurement>, tag="exporter_name")` and once more with
 Nothing else. No third query, no `app_id` follow-up, no per-flow
 drill-down, no dashboards.
 
+## Empty F1 — check the lookup before anything goes silent
+
+F1 `ok` with **zero rows** means every exporter stopped at once, or
+`bucket` / `measurement` / datasource no longer point at the flow
+data. The second is the likelier one. Check the lookup before a
+single row is carried `silent`. Do not run F1 again with the same
+arguments; it returns the same empty result.
+
+1. `grafana_list_datasources()`. Candidates: each `influxdb` entry's
+   `database` that differs from `netflow.bucket`, and each other
+   `influxdb` datasource `uid` (with its `database`).
+2. Per candidate, at most 2: `grafana_influx_schema(bucket=<b>)`
+   (plus `datasource_uid` for a datasource candidate). Lists
+   `netflow.measurement` → F1 against that bucket / uid.
+3. First candidate whose F1 returns rows → the lookup moved. Write
+   `bucket` (and `datasource_uid` for a datasource candidate) to
+   metadata, `provenance.netflow` `discovered`, run F2 there, finish
+   the visit. Coverage `detail` and the headline start with
+   `bucket moved: <old> -> <new>`. When `provenance.netflow` is
+   `user`, do not write: ask with the candidate as the option.
+4. No candidate, or none returns rows → the lookup is **suspect**.
+   `unavailable` path (null estate row, `readings` `[]`, board rows
+   untouched — no exporter becomes `silent`). Coverage `detail`:
+   `F1 empty in <bucket>/<measurement>; tried <candidates | no other bucket listed>`.
+   Reply with the ask and stop. No human (schedule): same, stop.
+
+```text
+Need: bucket
+Tried: <bucket>/<measurement> (empty)<, candidate (empty)>
+Which bucket holds the NetFlow data now?
+```
+
+A baseline with zero F1 rows follows the same steps.
+
+## Operator correction
+
+The operator's word on where the data is beats metadata. The invoke
+or a reply that names a bucket, measurement, or datasource, or says
+you are looking at the wrong data:
+
+- **Names a value** → one `grafana_influx_schema(bucket=<named>)`
+  (`measurement=<m>` too when named) to confirm it, then F1 against
+  it. Rows → write it, `provenance.netflow` `user`, finish the
+  visit. Empty → one line with what you ran, ask again. Do not fall
+  back to the old value.
+- **"Wrong data", nothing named** → the lookup check above if not
+  already run in this conversation, then the `Need: bucket` ask.
+  Do not re-run the old query. Do not defend the empty result.
+- **"The bucket is right"** → zero F1 rows are real: carry every
+  board exporter `silent`, plane `degraded`.
+
+A `user` value is replaced only by the operator.
+
 ## Resolve an address to a device
 
 For an exporter `source`, a flow `src`, or a flow `dst`, in this
@@ -133,7 +186,9 @@ Write the `prod.json` spelling.
 
 A board exporter row whose `source` has **no** F1 row this window
 is carried with `state` `silent`, `bytes` 0, `flows` 0,
-`last_flow_at` kept, `at` `checked_at`.
+`last_flow_at` kept, `at` `checked_at`. When F1 returned zero rows
+in total, carry nothing until the lookup check (above) or the
+operator says the bucket is right.
 
 **Conversation row** (kind `conversation`) — one per F2 row.
 
@@ -196,10 +251,11 @@ unresolved conversations vanishing). `unchanged` when none.
 - Otherwise **quiet**: no stamp. Board only.
 
 Plane `status`: `degraded` when any exporter row is `silent`;
-`unknown` when F1 failed; else `ok`. Conversations do not vote
-plane status. Coverage: `complete` when F1 and F2 returned;
-`partial` when F1 returned and F2 failed (conversation rows kept
-from the board, `at` unchanged); `unavailable` when F1 failed
+`unknown` when F1 failed or the lookup is suspect; else `ok`.
+Conversations do not vote plane status. Coverage: `complete` when
+F1 and F2 returned; `partial` when F1 returned and F2 failed
+(conversation rows kept from the board, `at` unchanged);
+`unavailable` when F1 failed or the lookup is suspect
 (stamp with a single all-null estate metric row, `readings` `[]`,
 board rows untouched, `last_collected_at` still advanced).
 
@@ -267,8 +323,9 @@ then rewrite the board with `last_visit_id`.
 |------|----:|
 | Workspace reads | 3 |
 | Workspace writes | 4 (board, stamp, prune, board) |
-| `grafana_query_influx` | 2 (plus one retry each) |
-| `grafana_influx_schema` | 2 (baseline / unknown source only) |
+| `grafana_query_influx` | 2 (plus one retry each); +2 F1 for the lookup check or an operator value |
+| `grafana_influx_schema` | 2 (baseline / unknown source only); +2 for the lookup check or an operator value |
+| `grafana_list_datasources` | 1 (lookup check only) |
 
 ## Reply
 

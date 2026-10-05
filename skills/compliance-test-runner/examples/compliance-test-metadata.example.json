@@ -1,7 +1,11 @@
 {
   "keys": [],
-  "schema": "compliance-test-metadata/v1",
+  "schema": "compliance-test-metadata/v2",
   "source_agent": "compliance-test",
-  "last_visit_id": "2026-09-22T14-30-00Z",
-  "last_collected_at": "2026-09-22T14:30:00Z"
+  "last_visit_id": "2026-09-29T14-30-00Z",
+  "last_collected_at": "2026-09-29T14:30:00Z",
+  "last_visit_by_environment": {
+    "dev": "2026-09-23T10-00-00Z",
+    "prod": "2026-09-29T14-30-00Z"
+  }
 }

@@ -294,8 +294,8 @@ def validate_compliance(data: Any, errors: Errors) -> None:
         return
     require_fields(obj, COMPLIANCE_REQUIRED, "compliance visit", errors)
     validate_top_level_keys(obj, errors)
-    if obj.get("schema") != "compliance-test-visit/v1":
-        errors.add("compliance visit schema must be compliance-test-visit/v1")
+    if obj.get("schema") != "compliance-test-visit/v2":
+        errors.add("compliance visit schema must be compliance-test-visit/v2")
     if obj.get("source_agent") != SOURCE_AGENT:
         errors.add(f"source_agent must be {SOURCE_AGENT}")
     visit_id = obj.get("visit_id")
@@ -336,12 +336,64 @@ def validate_compliance(data: Any, errors: Errors) -> None:
         ):
             if not isinstance(metrics.get(field), int):
                 errors.add(f"metrics.{field} must be an integer")
+        if metrics.get("visit_id") != visit_id:
+            errors.add("metrics.visit_id must equal visit_id")
+        live_lab = ((obj.get("environment") or {}) if isinstance(obj.get("environment"), dict) else {}).get("live_lab")
+        if metrics.get("environment") != live_lab:
+            errors.add("metrics.environment must equal environment.live_lab")
+        for field in ("tested_posture_pct", "device_check_pass_pct"):
+            value = metrics.get(field)
+            if value is not None and not isinstance(value, (int, float)):
+                errors.add(f"metrics.{field} must be a number or null")
     prior = require_object(obj.get("vs_prior"), "vs_prior", errors) if "vs_prior" in obj else None
-    if prior is not None and prior.get("delta") not in {"first", "unchanged", "worse", "better", "mixed"}:
-        errors.add("vs_prior.delta is invalid")
+    if prior is not None:
+        validate_vs_prior(prior, errors)
     risk = require_object(obj.get("risk"), "risk", errors) if "risk" in obj else None
     if risk is not None:
         validate_risk_block(risk, errors, require_why=True)
+
+
+def validate_vs_prior(prior: dict[str, Any], errors: Errors) -> None:
+    require_fields(
+        prior,
+        ["prior_visit_id", "delta", "newly_passing", "newly_failing", "still_failing", "metrics_delta"],
+        "vs_prior",
+        errors,
+    )
+    delta = prior.get("delta")
+    if delta not in {"first", "unchanged", "worse", "better", "mixed"}:
+        errors.add("vs_prior.delta is invalid")
+    lists: dict[str, list[Any]] = {}
+    for name, to_pass in (("newly_passing", True), ("newly_failing", False)):
+        items = prior.get(name)
+        if not isinstance(items, list):
+            errors.add(f"vs_prior.{name} must be an array")
+            items = []
+        lists[name] = items
+        for item in items:
+            if not isinstance(item, dict):
+                errors.add(f"vs_prior.{name} entries must be objects")
+                continue
+            require_fields(item, ["test", "device", "from", "to", "keys"], f"vs_prior.{name} entry", errors)
+            moved_to_pass = item.get("to") == "PASS" and item.get("from") in {"FAIL", "ERROR"}
+            moved_to_fail = item.get("from") == "PASS" and item.get("to") in {"FAIL", "ERROR"}
+            if (to_pass and not moved_to_pass) or (not to_pass and not moved_to_fail):
+                errors.add(f"vs_prior.{name} entry has from/to that is not a {name} flip")
+            keys = item.get("keys") or []
+            if f"test:{item.get('test')}" not in keys or f"device:{item.get('device')}" not in keys:
+                errors.add(f"vs_prior.{name} entry keys must include its test: and device:")
+    if not isinstance(prior.get("still_failing"), int):
+        errors.add("vs_prior.still_failing must be an integer")
+    up, down = bool(lists["newly_passing"]), bool(lists["newly_failing"])
+    if prior.get("prior_visit_id") is None:
+        if delta != "first" or up or down or prior.get("metrics_delta") is not None:
+            errors.add("vs_prior with no prior must be delta first, empty lists, metrics_delta null")
+        return
+    expected = "mixed" if up and down else "better" if up else "worse" if down else "unchanged"
+    if delta != expected:
+        errors.add(f"vs_prior.delta must be {expected} for these flip lists")
+    if not isinstance(prior.get("metrics_delta"), dict):
+        errors.add("vs_prior.metrics_delta must be an object when a prior exists")
 
 
 def validate_state(data: Any, errors: Errors, file_path: str = "") -> None:

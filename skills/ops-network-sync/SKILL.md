@@ -1,7 +1,7 @@
 ---
 name: ops-network-sync
-version: "1.9.2"
-description: "v1.9.2 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect (devices, lab links[], CML canvas position), publish state/network-sync.json last; write_file + read-back only."
+version: "1.9.4"
+description: "v1.9.4 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect (devices, lab links[], CML canvas position), publish state/network-sync.json last; write_file + read-back only."
 ---
 
 # Ops Network Sync skill
