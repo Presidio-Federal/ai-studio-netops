@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.9.0"
-description: "v1.9.0 — Run test suites and write test and compliance evidence, including same-lab pass/fail flips, directly without Code Execution."
+version: "1.11.1"
+description: "v1.11.1 — Run test.yml with one script that reports static and live progress, then writes the compliance visit."
 ---
 
 # Compliance test runner skill
@@ -13,8 +13,8 @@ file tickets.
 
 | Intent | How |
 |--------|-----|
-| Run live/static/compliance tests | `github-actions-mcp` — `test.yml` |
-| Status of a run | list/get — do not trigger |
+| Run live/static/compliance tests | `scripts/run_suite.py run` under `mcp_orchestration` |
+| Status of a run already started | same script with `--run-id` — do not dispatch again |
 | Author a new check | not this skill — Compliance Author |
 
 ## Hard boundaries
@@ -26,10 +26,9 @@ Do not call `actions_run_trigger`, `get_file_contents`, or
 
 Do not write `runs/`, `servicenow/`, `inventory/`, `risk/`, or `lab-access.json`.
 Do not invent a run id. Do not treat a green job as a pass.
-Write every JSON record directly with the built-in workspace file tool. Never
-use Code Execution, `execute_command`, helper/build scripts, shell commands,
-or `Internal directory`. Do not generate or transform workspace records
-indirectly.
+Do not write a script and do not hand-parse the job log. Run the pre-built
+`scripts/run_suite.py`. It dispatches, polls, and writes the records.
+If stderr says `hai_mcp unavailable`, follow `references/run.md` by hand.
 
 Default lab is **dev**. A Dev pass is not production evidence.
 
@@ -51,8 +50,31 @@ Skill resources — use exactly:
 - `examples/compliance-test-visit.example.json`
 - `examples/compliance-test-metadata.example.json`
 
+## Run script
+
+Copy the path Studio shows for `compliance-test-runner/scripts/run_suite.py`.
+Do not retype it and do not `cd`. `execution_type` is `mcp_orchestration`.
+`timeout` is 300.
+
+```text
+python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environment <dev|prod> --suites <suites> --devices <names> --tags <tags> --mode live --allow-all <true|false> --production-authorized <true|false> --reason <why>
+```
+
+A compliance suite stays `--mode live` and `--suites compliance`. The job
+prints a static report and a live report. The script writes both into the
+visit. A `running` line may include `phase`: `running static tests`,
+`static tests complete`, `running live tests`, or `live tests complete`.
+Those words come from the `Static pytest` and `Live pyATS` steps on the
+job. Say that phase, then resume with `--run-id` and `--phase` copied
+from the line. That does not dispatch again. Up to 12 running replies.
+The last stdout line is the result. Do not read the files to fill the reply.
+
+A compliance suite stays `mode=live`. `tail_lines=200` on a hand poll sees
+only the later live block. The script asks for the longer tail.
+
 Every `results.ran[]` and `results.not_applicable[]` row carries `keys`:
-`test:<check-id>` and exact `device:<inventory-name>`. The report may render
+`test:<check-id>` and exact `device:<inventory-name>`. A compliance row
+also carries `plane` `live` or `static`. The report may render
 the check as `suite/check-id`; use the final `check-id` so it joins the
 catalog and coverage rows. Add `control:<id>` only when the report or
 published catalog supplies that mapping. No whitespace after `:`. Do not
@@ -64,8 +86,9 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machine
 
-READ_INVENTORY → TRIGGER → LIST_RUN → POLL → READ_MARKER → WRITE_RUN →
-WRITE_TESTING_STATE → WRITE_COMPLIANCE_VISIT_IF_SCOPED → STOP
+The script runs TRIGGER → LIST_RUN → POLL → READ_MARKER → WRITE_RUN →
+WRITE_TESTING_STATE → WRITE_COMPLIANCE_VISIT_IF_SCOPED. The agent only
+resolves scope, then reads the summary line.
 
 Never skip READ_INVENTORY. Never invent or prefix a hostname (`WAN-01` stays
 `WAN-01`). `test-request.json` is optional. Missing → continue.

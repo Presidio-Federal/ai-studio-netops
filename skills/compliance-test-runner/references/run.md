@@ -15,8 +15,8 @@ write this file.
 | default / live | `reachability,routing,path` |
 | routing / BGP | `reachability,routing` |
 | path / ping | `path` |
-| compliance | `compliance` (never in the default set) |
-| static | `mode=static` |
+| compliance | `compliance` (never in the default set). Keep `mode=live`. The job runs static pytest, then live pyATS, and prints two reports. |
+| static only | `mode=static` |
 
 `live_lab` defaults to `dev`. Use `prod` only when asked. Resolve names and
 tag groups from `references/scope.md` **before** you trigger.
@@ -36,9 +36,41 @@ a `request_id` — leave it empty. `reason` can be `adhoc`.
 
 Poll: `github_get_action_run(run_id=...)` until `completed`. No sleep script.
 
-Then: `github_get_action_job_logs(job_id=..., tail_lines=200)`.
+Then: `github_get_action_job_logs`. A single-plane run uses `tail_lines=200`.
+A compliance suite uses `tail_lines=4000`, because the job prints two
+`# Network test report` blocks and the static block is the earlier one.
+If that tail does not contain `· static ·`, call again with a larger tail.
+A compliance visit with no static block is `UNKNOWN`. Do not publish the
+live block as the whole result.
 
-Marker prefix: `# Network test report`. Read the suffix.
+Marker prefix: `# Network test report`. Read every block, not only the last.
+
+### Compliance suite — both planes
+
+The header line names the plane: `FAILED · static ·` or `PASSED · live ·`.
+
+**Static block.** Copy `static: pass= fail= error= skip=` into
+`results.counts_by_plane.static`. Each pytest line `Failed: <device> <check-id>:`
+before that block is one `ran` row: `status=FAIL`, `plane=static`,
+`check=static/<check-id>`, `device` copied exactly, `detail` the text after
+the check id. Use the `Failed:` lines only, so the same gap is not copied
+twice. Do not invent PASS rows for the static pass count. The pass count
+stays on the count line.
+
+**Live block.** Copy `counts_ran`, `ran:`, `not_applicable:`, and `gaps:`
+as before. Every live row has `plane=live`. A rolled-up live line
+(`PASS \`check\` · n/total`) is not a device row — do not invent devices.
+
+`results.counts_ran` is the sum of the two count lines. `results.ran` is
+the live rows plus the static FAIL rows. `metrics.pass/fail/error/skip`
+and `metrics.planes` use the count lines. `device_check_pass_pct` uses
+those sums. `verified_tests` / `failing_tests` / `tested_posture_pct`
+group `ran` rows only, so a static check that passed on every device is
+in the static pass count and is not a verified test.
+
+Either plane with fail or error, and the other with any pass → `MIXED`.
+Both planes failing → `FAIL`. Both clean → `PASS`. A missing static block
+on a compliance suite → `UNKNOWN`.
 
 ## Counts
 
@@ -59,7 +91,7 @@ Prove `devices=` from the log. Empty after you asked for a host →
 |----------|-------|--------------|
 | All in-scope passed, no skip gaps | LOW | `proceed_with_caution` |
 | Passed with skip gaps | MEDIUM | `proceed_with_caution` |
-| Fail on reachability, BGP, or path | HIGH | `do_not_push` |
+| Fail on reachability, BGP, path, or either compliance plane | HIGH | `do_not_push` |
 | No report | UNKNOWN | `unknown` |
 
 Never `proceed` for a Dev run.
@@ -90,16 +122,21 @@ entries (the other one from that visit, or null).
 
 ### Metrics
 
-Group rows by canonical `test:<check-id>`:
+`metrics.planes.live` and `.static` copy that plane's count line and its
+own `device_check_pass_pct`. Top-level pass/fail/error/skip are the sums.
+
+Group `ran` rows by canonical `test:<check-id>` (live and static rows
+together):
 
 - any FAIL/ERROR → failing test
 - otherwise at least one PASS → verified test
 - otherwise at least one SKIP → skipped test
 - N/A-only tests are counted only in `not_applicable`
 
-`tested_posture_pct` = 100 × verified ÷ (verified + failing).
-`device_check_pass_pct` = 100 × pass ÷ (pass + fail + error). One
-decimal; null when the denominator is 0. `visit_id` and `environment`
+`tested_posture_pct` = 100 × verified ÷ (verified + failing), from rows.
+`device_check_pass_pct` = 100 × `counts_ran.pass` ÷ (pass + fail + error)
+from the summed count lines, so static passes count even without a row.
+One decimal; null when the denominator is 0. `visit_id` and `environment`
 copy this visit.
 
 ### vs_prior — same environment only
@@ -119,6 +156,8 @@ this order:
 
 Item: `{test, device, from, to, keys}` — `keys` copied from this run's
 row. SKIP, N/A, and pairs present on one side only are not flips.
+A prior static FAIL with no row this visit is not `newly_passing`:
+a static pass has no row, so absence is not proof it passed.
 
 `delta`: `better` when `newly_passing` is non-empty and
 `newly_failing` empty; `worse` the reverse; `mixed` both non-empty;
@@ -132,6 +171,7 @@ Do not compare prose headlines. Do not write any other diff field.
 
 For every `results.ran[]` and `results.not_applicable[]` row:
 
+- `plane` is `live` or `static`
 - `keys` includes `test:<check-id>` and exact `device:<device>`; when the
   report says `suite/check-id`, use the final `check-id` so it joins catalog
   and coverage rows

@@ -1,7 +1,7 @@
 ---
 name: compliance-analyzer
-version: "1.1.0"
-description: "v1.1.0 — Analyze and trend compliance intelligence and test visits: same-lab flips, improving/worsening direction, remediated findings, separate scores, SOAP to state/compliance.json."
+version: "1.1.1"
+description: "v1.1.1 — Analyze and trend compliance intelligence and test visits: same-lab flips, both static and live rows, separate scores, SOAP to state/compliance.json."
 ---
 
 # Compliance Analyzer

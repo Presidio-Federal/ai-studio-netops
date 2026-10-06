@@ -35,8 +35,11 @@ BOARDS = {
     "md_application": "health/metadata-application.json",
     "md_netflow": "health/metadata-netflow.json",
     "md_splunk": "health/metadata-splunk.json",
+    "md_iosxe": "health/metadata-iosxe.json",
     "layout": "inventory/map-layout.json",
 }
+
+VOTING_PLANES = ("application", "netflow", "splunk", "iosxe")
 
 PLATFORM_RANK = {"iosxe": 0, "asa": 1, "nxos": 2, "l2": 2, "linux": 3}
 ROLE_RANK = {"cloud": 0, "wan": 0, "edge": 0, "hq": 1, "branch": 1}
@@ -78,6 +81,98 @@ def _xy(o):
     if isinstance(o, dict) and isinstance(o.get("x"), (int, float)) and isinstance(o.get("y"), (int, float)):
         return o["x"], o["y"]
     return None
+
+
+def _num(v):
+    return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
+
+
+def _ratio(part, whole):
+    part, whole = _num(part), _num(whole)
+    if part is None or whole is None or whole <= 0:
+        return None
+    return round(100.0 * max(0, part) / whole, 1)
+
+
+def posture_pct(point):
+    """Tested posture: verified / (verified + failing), else the checks_*_all shape."""
+    verified, failing = _num(point.get("verified_tests")), _num(point.get("failing_tests"))
+    if verified is not None and failing is not None and verified + failing > 0:
+        return round(100.0 * verified / (verified + failing), 1)
+    passed = _num(point.get("checks_passed_all"))
+    failed = _num(point.get("checks_failed_all"))
+    errored = _num(point.get("checks_errored_all"))
+    if None not in (passed, failed, errored) and passed + failed + errored > 0:
+        return round(100.0 * passed / (passed + failed + errored), 1)
+    return None
+
+
+def check_counts(point):
+    if all(_num(point.get(k)) is not None for k in ("pass", "fail", "error")):
+        return {k: int(point.get(k) or 0) for k in ("pass", "fail", "error", "skip")}
+    return None
+
+
+def plane_series(rows, kind):
+    """One percent per nurse series row. Splunk event totals are not a percent."""
+    out = []
+    for r in rows or []:
+        if not isinstance(r, dict) or not r.get("at"):
+            continue
+        pct = None
+        if kind == "application":
+            probes = _num(r.get("probes"))
+            if probes:
+                pct = _ratio(probes - (_num(r.get("probes_down")) or 0), probes)
+        elif kind == "netflow":
+            exporters = _num(r.get("exporters"))
+            if exporters:
+                pct = _ratio(exporters - (_num(r.get("exporters_silent")) or 0), exporters)
+        elif kind == "iosxe":
+            if _num(r.get("bgp_not_established")) is not None or _num(r.get("oper_not_ready")) is not None:
+                clean = (_num(r.get("bgp_not_established")) or 0) == 0 and (_num(r.get("oper_not_ready")) or 0) == 0
+                pct = 100.0 if clean else 0.0
+        if pct is None:
+            continue
+        out.append({"at": r["at"], "pct": pct})
+    return out
+
+
+def health_score(health):
+    """100 × voting consults that are ok / voting consults present. ServiceNow does not vote."""
+    consults = health.get("consults") or {}
+    present = ok = 0
+    for plane in VOTING_PLANES:
+        row = consults.get(plane)
+        if not isinstance(row, dict) or not row.get("status"):
+            continue
+        present += 1
+        if row.get("status") == "ok":
+            ok += 1
+    if not present:
+        return None
+    return round(100.0 * ok / present, 1)
+
+
+def inherit_service(rows):
+    """A tier with no service takes the service of a tier that depends_on it."""
+    assigned = {}
+    for row in rows:
+        name = row.get("name")
+        if name and row.get("service"):
+            assigned[name] = row["service"]
+    changed = True
+    while changed:
+        changed = False
+        for row in rows:
+            svc = assigned.get(row.get("name"))
+            if not svc:
+                continue
+            for dep in row.get("depends_on") or []:
+                if dep and not assigned.get(dep):
+                    assigned[dep] = svc
+                    changed = True
+    return assigned
 
 
 def layout(nodes, links, override):
@@ -148,6 +243,7 @@ def build(ws, template_path):
     mda = (board("md_application") or {}).get("application") or {}
     mdn = (board("md_netflow") or {}).get("netflow") or {}
     mds = (board("md_splunk") or {}).get("splunk") or {}
+    mdi = (board("md_iosxe") or {}).get("iosxe") or {}
     override = load(ws, BOARDS["layout"])
     if mda:
         sources["md_application"] = mda.get("last_collected_at")
@@ -155,6 +251,8 @@ def build(ws, template_path):
         sources["md_netflow"] = mdn.get("last_collected_at")
     if mds:
         sources["md_splunk"] = mds.get("last_collected_at")
+    if mdi:
+        sources["md_iosxe"] = mdi.get("last_collected_at")
 
     # ---- nodes
     nodes, by_name = [], {}
@@ -239,23 +337,64 @@ def build(ws, template_path):
         "problems": problems,
         "assessment": health.get("assessment") or {},
         "next_action": health.get("next_action"),
+        "score": health_score(health) if health else None,
+        "planes": {
+            "application": plane_series(mda.get("series"), "application"),
+            "netflow": plane_series(mdn.get("series"), "netflow"),
+            "iosxe": plane_series(mdi.get("series"), "iosxe"),
+        },
     }
 
     # ---- compliance + testing
+    findings = [{k: f.get(k) for k in ("kind", "status", "severity", "summary", "keys", "next_owner")} for f in comp.get("findings") or []]
+    series_points = ((comp.get("series") or {}).get("testing") or {}).get("points") or []
     results = testing.get("results") or {}
     counts = results.get("counts_ran") or {}
+    if not counts:
+        for point in reversed(series_points):
+            found = check_counts(point)
+            if found:
+                counts = found
+                break
+    failing = [resolve(x) or x for x in testing.get("failing_devices") or []]
+    if not failing:
+        for f in findings:
+            if f.get("kind") != "test_failure" or f.get("status") == "remediated":
+                continue
+            for key in f.get("keys") or []:
+                if not str(key).startswith("device:"):
+                    continue
+                name = resolve(key[7:]) or key[7:]
+                if name not in failing:
+                    failing.append(name)
+    trend_src = comp.get("trend_analysis") or {}
+    flips = []
+    for flip in trend_src.get("flips") or []:
+        if isinstance(flip, dict) and flip.get("at"):
+            flips.append({k: flip.get(k) for k in ("at", "direction", "test", "device", "from", "to")})
+        elif isinstance(flip, str) and flip.strip():
+            flips.append({"text": flip.strip()})
     comp_out = {
         "present": bool(comp) or bool(testing),
         "headline": comp.get("headline") or testing.get("headline"),
         "updated_at": comp.get("updated_at"),
         "test_updated": testing.get("updated_at"),
         "scores": comp.get("scores") or {},
-        "findings": [{k: f.get(k) for k in ("kind", "status", "severity", "summary", "keys", "next_owner")} for f in comp.get("findings") or []],
-        "trend": {k: (comp.get("trend_analysis") or {}).get(k) for k in ("direction", "environment", "newly_passing", "newly_failing", "still_failing")},
-        "counts": {k: counts.get(k, 0) for k in ("pass", "fail", "error", "skip")},
+        "findings": findings,
+        "trend": {
+            "direction": trend_src.get("direction"),
+            "environment": trend_src.get("environment"),
+            "newly_passing": trend_src.get("newly_passing"),
+            "newly_failing": trend_src.get("newly_failing"),
+            "still_failing": trend_src.get("still_failing"),
+            "narrative": trend_src.get("narrative"),
+            "points": [{"at": p.get("at"), "pct": posture_pct(p)} for p in series_points if p.get("at") and posture_pct(p) is not None],
+            "flips": flips,
+        },
+        "counts": {k: int(counts.get(k) or 0) for k in ("pass", "fail", "error", "skip")},
         "risk": testing.get("risk") or {},
         "run": testing.get("run") or {},
-        "failing_devices": [resolve(x) or x for x in testing.get("failing_devices") or []],
+        "failing_devices": failing,
         "scanned_devices": [resolve(x) or x for x in (testing.get("scope") or {}).get("devices_scanned") or []],
     }
 
@@ -304,9 +443,10 @@ def build(ws, template_path):
 
     services = []
     app_rows = apps.get("applications") or []
+    inherited = inherit_service(app_rows)
     by_service = defaultdict(list)
     for a in app_rows:
-        by_service[a.get("service") or "(no service)"].append(a)
+        by_service[inherited.get(a.get("name")) or a.get("service") or "(no service)"].append(a)
     if not by_service and (probes or container_rows):
         names = set(probes)
         for c in container_rows:
@@ -337,13 +477,28 @@ def build(ws, template_path):
                     q.append(nb)
         return [start]
 
+    tier_names = sorted({a.get("name") for a in app_rows if a.get("name")}, key=len, reverse=True)
+
+    def container_tier(c):
+        """CMDB tier for a container. Exact label, else a hyphen prefix plus the tier (`dc-api` → `api`)."""
+        labels = [c.get("application"), c.get("name")]
+        for label in labels:
+            if label in tier_names:
+                return label
+        for label in labels:
+            if not label:
+                continue
+            for tier in tier_names:
+                if label.endswith("-" + tier):
+                    return tier
+        return None
+
     def containers_for(name):
-        """Rows whose Grafana service label (`application`) or container `name` equals the tier."""
         hit = []
         for c in container_rows:
             if c.get("_used"):
                 continue
-            if c.get("application") == name or c.get("name") == name:
+            if container_tier(c) == name:
                 c["_used"] = True
                 hit.append(c)
         return hit

@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.1.0"
-description: "v1.1.0 — Network Map: compile the workspace boards into one interactive HTML map with the skill script; node positions from the CML canvas when inventory carries them; no hand-written HTML."
+version: "1.2.1"
+description: "v1.2.1 — Network Map: compile workspace boards into one HTML map; standing compliance and health percents, collapsed side cards, and a toggleable trend from the compliance and nurse series."
 ---
 
 # Network Map skill
@@ -54,6 +54,7 @@ the page and a `missing_boards` entry in the summary — not an error.
 | `health/metadata-application.json` | probes, containers, hosts per tier |
 | `health/metadata-netflow.json` | conversations, exporter state |
 | `health/metadata-splunk.json` | per-device syslog buckets (`hosts` map resolves addresses) |
+| `health/metadata-iosxe.json` | `series[]` for the IOS-XE trend line (clean when idle BGP and not-ready interfaces are both zero) |
 | `inventory/map-layout.json` | optional operator x/y overrides; otherwise auto layout |
 
 `references/data-bundle.md` is the column-by-column contract between

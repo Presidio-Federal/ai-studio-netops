@@ -28,13 +28,14 @@ Sync) or run unscoped.
 
 ## Modes
 
-| | `live` (default) | `static` |
-|--|------------------|----------|
-| What runs | pyATS over SSH on the lab | pytest against git `inventory/configs` |
-| Needs PAT / twin | Yes | No |
-| `live_lab` | Required | Ignored |
-| `scan_dir` | unused | `inventory/configs` |
-| Use when | "is it working" | "is it configured" |
+| | `live` (default) | `static` | compliance suite |
+|--|------------------|----------|------------------|
+| What runs | pyATS over SSH on the lab | pytest against git `inventory/configs` | static pytest, then live pyATS, in one job |
+| Needs PAT / twin | Yes | No | Yes (the live half) |
+| `mode` | `live` | `static` | `live` — do not send `static` |
+| `live_lab` | Required | Ignored | Required |
+| `scan_dir` | unused | `inventory/configs` | `inventory/configs` |
+| Use when | "is it working" | "is it configured" only | posture, NIST, STIG, "in compliance" |
 
 Live + no inventory → you cannot resolve a tag group. Unscoped live tests
 the runner's full lab. Say that.
@@ -85,6 +86,8 @@ All strings.
 ```text
 mode=live|static
 environment=dev|prod|none    # live uses dev|prod; static uses none
+# compliance suite: mode=live and suites=compliance. The job runs static
+# and live. mode=static skips the live half.
 devices=                     # comma hostnames, or empty
 tags=                        # edge,wan,branch — only when devices is empty
 suites=                      # see run.md

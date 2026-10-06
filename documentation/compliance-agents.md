@@ -101,9 +101,11 @@ NIST claim.
 
 ## Test evidence
 
-Compliance Test judges the `# Network test report`, not the GitHub green
-check. Every detailed row carries canonical test and exact device keys plus
-source-supported control keys.
+Compliance Test judges every `# Network test report` in the job, not the
+GitHub green check. A compliance suite prints a static block and a live
+block. The visit keeps both: static failures as rows, static passes as a
+count, and the live rows. Every detailed row carries `plane`, canonical
+test and exact device keys, plus source-supported control keys.
 
 A compliance visit records stable metrics and `vs_prior`. PASS/FAIL/ERROR
 ran. N/A is excluded. SKIP is an evidence gap. A Dev result remains proposal

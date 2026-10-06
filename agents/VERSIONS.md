@@ -6,7 +6,7 @@ Deployed model is **MiniMax** unless noted.
 |-------|---------|-------|
 | Network Ops | 3.2.0 | Frontier (operator-selected; GitOps orchestration risk) |
 | GitHub GitOps Change | 1.3.1 | MiniMax |
-| Pipeline Monitor | 1.2.1 | MiniMax |
+| Pipeline Monitor | 2.0.0 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.5.4 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.1.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.5.0 | MiniMax |
+| Compliance Test | 1.7.1 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.0.1 | MiniMax |
 | Health Telemetry | 1.0.7 | MiniMax |
@@ -28,6 +28,16 @@ Deployed model is **MiniMax** unless noted.
 | Relationship agent | 1.2.0 | MiniMax |
 | Network Map | 1.0.1 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
+
+Compliance Test 1.7.1 (skill 1.11.1): a running summary includes `phase` from the job steps `Static pytest` and `Live pyATS`. The agent says that phase and resumes with `--run-id` and `--phase`. The finished visit is unchanged.
+
+Compliance Test 1.7.0 (skill 1.11.0): `scripts/run_suite.py` dispatches `test.yml`, polls, and writes the visit. A compliance job's static block and live block both land in `compliance-test-visit/v3`. The agent reads the script's last line. Static failures are rows; static passes stay on the count line.
+
+Network Map skill 1.2.1: a container joins a CMDB tier when its name is the tier or a hyphen prefix plus the tier (`dc-api`, `prod-api` → `api`). The label is not renamed. Unmatched containers stay on their own row.
+
+Network Map skill 1.2.0 (agent prompt stays 1.0.1, workspace-handoff 1.70.5): the page keeps a tested-posture percent and a voting-plane health percent in the header, side cards start closed, and a Trend toggle draws the compliance series plus application, NetFlow, and IOS-XE percents. Tiers with no service inherit it along `depends_on`. Check counts and failing-device badges fall back to the compliance series and finding keys when `state/testing.json` does not carry them.
 
 Health Device 1.12.3 (skill 1.12.6, workspace-handoff 1.70.4): a `call_mcp` raise is a failed GET, not a dead visit. Tool-not-found is not retried. Topology map is unchanged.
 

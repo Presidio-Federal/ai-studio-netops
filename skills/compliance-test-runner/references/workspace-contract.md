@@ -9,7 +9,8 @@ they do not load a second copy from workspace-handoff.
 
 ## When to write
 
-Every live or static run writes both:
+Every run writes both. A compliance suite is one job with a static report
+and a live report; both planes go in the same files:
 
 - `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` — this run; never overwrite
   (e.g. `operational/testing/2026-08-21T19-56-18Z.json`)
@@ -38,9 +39,8 @@ health flagged, `compliance/intel.json`, `compliance/coverage.json`.
 
 Scope: `references/scope.md`. Trigger/extract: `references/run.md`.
 
-Write each record directly with the built-in workspace file tool. Never create
-or run a helper script, use Code Execution or `execute_command`, invoke a
-shell, or write through `Internal directory`.
+`scripts/run_suite.py` writes these records. The agent runs that script and
+does not write the JSON itself. Do not add another script.
 
 ## Canonical top-level keys
 

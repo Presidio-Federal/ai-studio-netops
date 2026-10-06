@@ -19,6 +19,7 @@ Paths are `workspace-handoff` catalog rows. Nothing else.
 | `health/metadata-application.json` | Health Application | no |
 | `health/metadata-netflow.json` | Health Monitor | no |
 | `health/metadata-splunk.json` | Health Monitor | no |
+| `health/metadata-iosxe.json` | Health Device | no |
 
 You, the agent, read at most one file yourself: `state/health.json`
 (headline, for the reply). Everything else is the script's business.

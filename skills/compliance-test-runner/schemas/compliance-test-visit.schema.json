@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "compliance-test-visit/v2",
+  "$id": "compliance-test-visit/v3",
   "title": "compliance/testing/<stamp>.json",
   "type": "object",
   "additionalProperties": false,
@@ -28,7 +28,7 @@
       "uniqueItems": true,
       "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"}
     },
-    "schema": {"type": "string", "const": "compliance-test-visit/v2"},
+    "schema": {"type": "string", "const": "compliance-test-visit/v3"},
     "visit_id": {
       "type": "string",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
@@ -61,16 +61,19 @@
     },
     "results": {
       "type": "object",
-      "required": ["counts_ran", "ran", "not_applicable", "gaps"],
+      "required": ["counts_ran", "counts_by_plane", "ran", "not_applicable", "gaps"],
       "properties": {
         "counts_ran": {
+          "$ref": "#/$defs/counts",
+          "description": "Sum of counts_by_plane.live and counts_by_plane.static. Taken from the two report count lines, not from the length of ran."
+        },
+        "counts_by_plane": {
           "type": "object",
-          "required": ["pass", "fail", "error", "skip"],
+          "additionalProperties": false,
+          "required": ["live", "static"],
           "properties": {
-            "pass": {"type": "integer", "minimum": 0},
-            "fail": {"type": "integer", "minimum": 0},
-            "error": {"type": "integer", "minimum": 0},
-            "skip": {"type": "integer", "minimum": 0}
+            "live": {"$ref": "#/$defs/counts"},
+            "static": {"$ref": "#/$defs/counts"}
           }
         },
         "counts_na": {"type": "integer", "minimum": 0},
@@ -99,14 +102,23 @@
     "metrics": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["at", "scope", "visit_id", "environment", "pass", "fail", "error", "skip", "not_applicable", "verified_tests", "failing_tests", "skipped_tests", "tested_posture_pct", "device_check_pass_pct"],
+        "required": ["at", "scope", "visit_id", "environment", "pass", "fail", "error", "skip", "not_applicable", "verified_tests", "failing_tests", "skipped_tests", "tested_posture_pct", "device_check_pass_pct", "planes"],
       "properties": {
         "at": {"type": "string", "format": "date-time"},
         "scope": {"type": "string", "const": "suite:compliance"},
         "visit_id": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"},
         "environment": {"type": "string", "enum": ["dev", "prod"], "description": "environment.live_lab of this visit."},
         "tested_posture_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "100 * verified_tests / (verified_tests + failing_tests), one decimal; null when the denominator is 0."},
-        "device_check_pass_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "100 * pass / (pass + fail + error), one decimal; null when the denominator is 0. Moves when some devices of a failing test are fixed."},
+        "device_check_pass_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100, "description": "100 * counts_ran.pass / (pass + fail + error) across both planes, one decimal; null when the denominator is 0."},
+        "planes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["live", "static"],
+          "properties": {
+            "live": {"$ref": "#/$defs/plane_metrics"},
+            "static": {"$ref": "#/$defs/plane_metrics"}
+          }
+        },
         "pass": {"type": "integer", "minimum": 0},
         "fail": {"type": "integer", "minimum": 0},
         "error": {"type": "integer", "minimum": 0},
@@ -152,6 +164,29 @@
     }
   },
   "$defs": {
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "error", "skip"],
+      "properties": {
+        "pass": {"type": "integer", "minimum": 0},
+        "fail": {"type": "integer", "minimum": 0},
+        "error": {"type": "integer", "minimum": 0},
+        "skip": {"type": "integer", "minimum": 0}
+      }
+    },
+    "plane_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pass", "fail", "error", "skip", "device_check_pass_pct"],
+      "properties": {
+        "pass": {"type": "integer", "minimum": 0},
+        "fail": {"type": "integer", "minimum": 0},
+        "error": {"type": "integer", "minimum": 0},
+        "skip": {"type": "integer", "minimum": 0},
+        "device_check_pass_pct": {"type": ["number", "null"], "minimum": 0, "maximum": 100}
+      }
+    },
     "keys": {
       "type": "array",
       "minItems": 2,
@@ -163,9 +198,10 @@
     },
     "result_row": {
       "type": "object",
-      "required": ["status", "check", "device", "keys"],
+      "required": ["status", "plane", "check", "device", "keys"],
       "properties": {
         "status": {"type": "string", "enum": ["PASS", "FAIL", "ERROR", "SKIP"]},
+        "plane": {"type": "string", "enum": ["live", "static"], "description": "Which report block this row came from."},
         "check": {"type": "string"},
         "device": {"type": "string"},
         "keys": {"$ref": "#/$defs/keys"},

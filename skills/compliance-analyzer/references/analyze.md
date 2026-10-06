@@ -70,7 +70,9 @@ Never blend these scores. `scores.environment` = the primary visit's lab.
 
 ### Tested posture
 
-From the primary visit, by canonical test id:
+From the primary visit's `results.ran` rows, live and static together, by
+canonical test id. A static pass has no row; it is not a verified test.
+The static pass count stays on `results.counts_by_plane.static`.
 
 - verified test: all executed rows for that test PASS
 - failing test: any row for that test is FAIL or ERROR
@@ -82,7 +84,9 @@ From the primary visit, by canonical test id:
 
 ### Device checks
 
-From the primary visit's `results.counts_ran`:
+From the primary visit's `results.counts_ran` (the sum of both planes
+when `counts_by_plane` is present; do not recount `ran`, which omits
+static passes):
 `passed = pass`, `failing = fail + error`,
 `denominator = passed + failing`, `percent = 100 * passed / denominator`,
 one decimal; null when 0. This score moves when some devices of a

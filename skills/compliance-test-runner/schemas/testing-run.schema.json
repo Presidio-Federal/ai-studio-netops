@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "compliance-run/v1",
   "title": "operational/testing/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "One general live or static run extract under operational/testing/. Compliance history uses the dedicated compliance-test-visit schema.",
+  "description": "One run extract under operational/testing/. A compliance suite carries both planes. Compliance history uses the dedicated compliance-test-visit schema.",
   "type": "object",
   "required": [
     "keys",
@@ -62,11 +62,36 @@
         "counts_ran": {
           "type": "object",
           "required": ["pass", "fail", "error", "skip"],
+          "description": "For a compliance suite, the sum of the live and static count lines.",
           "properties": {
             "pass": { "type": "integer" },
             "fail": { "type": "integer" },
             "error": { "type": "integer" },
             "skip": { "type": "integer" }
+          }
+        },
+        "counts_by_plane": {
+          "type": "object",
+          "description": "Present when the job printed both a static and a live report. Omitted on a single-plane run.",
+          "properties": {
+            "live": {
+              "type": "object",
+              "properties": {
+                "pass": { "type": "integer" },
+                "fail": { "type": "integer" },
+                "error": { "type": "integer" },
+                "skip": { "type": "integer" }
+              }
+            },
+            "static": {
+              "type": "object",
+              "properties": {
+                "pass": { "type": "integer" },
+                "fail": { "type": "integer" },
+                "error": { "type": "integer" },
+                "skip": { "type": "integer" }
+              }
+            }
           }
         },
         "counts_na": { "type": "integer" },
@@ -77,6 +102,7 @@
             "required": ["status", "check", "device", "keys"],
             "properties": {
               "status": { "type": "string", "enum": ["PASS", "FAIL", "ERROR", "SKIP"] },
+              "plane": { "type": "string", "enum": ["live", "static"] },
               "check": { "type": "string" },
               "device": { "type": "string" },
               "keys": {
