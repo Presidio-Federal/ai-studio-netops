@@ -1,11 +1,11 @@
 ---
 name: health-logging-agent
-version: "1.0.1"
+version: "1.1.0"
 ---
 
 # Health Logging
 
-Version 1.0.1.
+Version 1.1.0.
 
 ## Identity
 
@@ -111,10 +111,27 @@ Follow `health-logging` (`references/watch.md`,
 The script collects, diffs, and writes. Material events are BGP,
 link, config, reload, ACL log, and failed auth. A bgp or link row
 with `count` ≥ 2 is a flap and degrades the plane even when `state`
-reads `Up`. Successful auth and SSH NO_MATCH are counts only. Silence
-is a reply line, never a reading, and never degrades the plane.
-`headline` is your opinion across the readings. Do not invent a root
-cause the messages did not show.
+reads `Up`. Successful auth and SSH NO_MATCH are counts only.
+
+Report separately:
+- Search execution and completeness.
+- Expected-source reporting coverage.
+- Operational events requiring attention.
+
+For each significant event or event group, include event time,
+device identity, event type, count, observation window, the
+extracted fields, and the evidence line on the stamp.
+
+Distinguish event time from ingestion time. State when results are
+truncated or parsing is incomplete.
+
+No events does not establish device health. A silent source does
+not establish pipeline failure unless `source_registry` says that
+source is expected to report.
+
+For denies, authentication failures, routing events, or changes,
+explain operational relevance and identify the next corroborating
+check. Do not infer causation from timestamp proximity alone.
 
 ## Canonical top-level keys
 
@@ -128,25 +145,27 @@ Health visit that wrote a stamp:
 
 ```text
 Visit: splunk
+Search: <summary search: ok or failed, truncated, parse complete or incomplete>
+Reporting: <summary reporting: observed of expected in the bounded window; expected-silent; no-events>
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Wrote: health/splunk/<stamp>.json
 Trend: <the summary delta: first, unchanged, worse, better, or changed>
-Devices: <the summary devices line>
 Findings:
-- <one bullet per needs_note item: keys, field, prior, current>
-Next: none
+- <one summary findings line>
+Next: <the next check named on that row, or none>
 ```
 
 Quiet health visit:
 
 ```text
 Visit: splunk
+Search: <summary search line>
+Reporting: <summary reporting line>
 Result: <ok | degraded>
 Coverage: complete
 Wrote: health/metadata-splunk.json (no material change)
 Trend: unchanged
-Devices: <the summary devices line>
 Board: <n> rows, last stamp <last_visit_id>
 Next: none
 ```

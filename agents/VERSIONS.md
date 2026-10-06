@@ -14,12 +14,12 @@ Deployed model is **MiniMax** unless noted.
 | Ops ServiceNow Trends | 1.2.2 | MiniMax |
 | Modernization Analysis | 2.0.1 | MiniMax |
 | Modernization Lifecycle | 1.4.1 | MiniMax |
-| Compliance | 1.1.0 | MiniMax |
+| Compliance | 1.2.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
 | Compliance Test | 1.7.1 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
-| Health Logging | 1.0.1 | MiniMax |
+| Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.12.3 | MiniMax |
@@ -28,6 +28,8 @@ Deployed model is **MiniMax** unless noted.
 | Relationship agent | 1.2.0 | MiniMax |
 | Network Map | 1.0.2 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
 
@@ -43,7 +45,11 @@ Network Map skill 1.2.0 (agent prompt stays 1.0.1, workspace-handoff 1.70.5): th
 
 Health Device 1.12.3 (skill 1.12.6, workspace-handoff 1.70.4): a `call_mcp` raise is a failed GET, not a dead visit. Tool-not-found is not retried. Topology map is unchanged.
 
+Health Logging 1.1.0 (skill 1.1.0): S1 counts use a bounded window. S2 still collects from the watermark and is not treated as a rate. Deny rows keep source, destination, ports, protocol, ACL, and interface when the message has them. Config rows keep the actor and access method. A change reference stays empty when the syslog has none. Each reading keeps one trimmed evidence line, the event time, and the ingestion delay. The reply splits search, reporting coverage, and findings. A silent device is a pipeline question only when the operator set `source_registry` reporting to expected.
+
 Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
+
+workspace-handoff 1.70.9: the Splunk catalog row names the bounded window, the watermark, deny and config fields, and the evidence line.
 
 workspace-handoff 1.70.8: the NetFlow catalog row names identity, the top-N carry, the observed rate, and one observation point for estate totals.
 

@@ -1,8 +1,9 @@
 # Compliance Agents — the patient chart
 
 Compliance uses the same patient-chart pattern as Health. Independent
-specialists produce structured evidence. The primary Compliance agent reads
-their files and writes SOAP to `state/compliance.json`.
+specialists produce structured evidence. `assess_chart.py` folds those
+visits into `state/compliance.json`. The Compliance agent sets the
+assessment.
 
 ## Roles
 
@@ -16,11 +17,11 @@ their files and writes SOAP to `state/compliance.json`.
 - **Compliance Test** executes suites and writes general testing state. A
   compliance-suite run also writes an append-only compliance-testing visit.
 - **Compliance** is the attending analyzer. It queries no source and runs no
-  test. It trends Intelligence and Test visits, keeps three scores (tested
-  posture, device checks, framework coverage), marks each chart
-  improving / worsening / mixed / unchanged from same-lab FAIL↔PASS flips,
-  keeps fixed findings as `remediated` for 7 days, and writes
-  `state/compliance.json`.
+  test. `scripts/assess_chart.py` trends Intelligence and Test visits, keeps
+  three scores (tested posture, device checks, framework coverage), marks
+  each chart improving / worsening / mixed / unchanged from same-lab
+  FAIL↔PASS flips, and keeps fixed findings as `remediated` for 7 days.
+  The agent writes only the opinion of that chart.
 
 Agents collaborate through files, not chat awareness.
 

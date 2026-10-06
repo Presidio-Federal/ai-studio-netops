@@ -57,6 +57,20 @@ ROW_FIELDS = (
     "source_ip",
     "peer",
     "detail",
+    "dst",
+    "src_port",
+    "dst_port",
+    "protocol",
+    "acl",
+    "interface",
+    "actor",
+    "access_method",
+    "change_ref",
+    "ingested_at",
+    "ingest_delay_s",
+    "evidence",
+    "window_start",
+    "window_end",
 )
 METRIC_FIELDS = (
     "at",
@@ -248,7 +262,7 @@ def fit_row(row):
     if not name or kind not in BUCKET_FIELD or not subject or not count or count < 1 or not at:
         return None
     keys = [key for key in (row.get("keys") or []) if isinstance(key, str) and KEY_RE.match(key)]
-    return {
+    item = {
         "name": name,
         "kind": kind,
         "subject": subject,
@@ -260,6 +274,17 @@ def fit_row(row):
         "peer": blank(row.get("peer")),
         "detail": blank(row.get("detail")),
     }
+    for field in ROW_FIELDS:
+        if field in item:
+            continue
+        if field == "ingest_delay_s":
+            item[field] = coerce_int(row.get(field))
+        elif field == "evidence":
+            text = blank(row.get(field))
+            item[field] = text[:300] if text else None
+        else:
+            item[field] = blank(row.get(field))
+    return item
 
 
 def fit_metric(row):
@@ -270,7 +295,11 @@ def fit_metric(row):
     scope = row.get("scope")
     if not isinstance(scope, str) or not re.match(r"^(estate|device:[^ ].*|host:[^ ].*)$", scope):
         return None
-    return {field: row.get(field) for field in METRIC_FIELDS}
+    item = {field: row.get(field) for field in METRIC_FIELDS}
+    for field in ("window", "unparsed", "ingest_delay_s"):
+        if field in row:
+            item[field] = row.get(field)
+    return item
 
 
 def fit_visit(row):
@@ -550,10 +579,13 @@ def group_s1(rows, by_lower, hosts_map, access, nets):
         name, resolved = resolve_dev(dev, by_lower, hosts_map, access, nets)
         if not resolved and dev not in unresolved:
             unresolved.append(dev)
-        slot = grouped.setdefault(name, {"resolved": resolved, "buckets": {}, "last_at": None, "devs": []})
+        slot = grouped.setdefault(name, {"resolved": resolved, "buckets": {}, "last_at": None, "devs": [], "ingest_delay_s": None})
         slot["resolved"] = slot["resolved"] or resolved
         slot["buckets"][bucket] = slot["buckets"].get(bucket, 0) + count
         slot["devs"].append(dev)
+        delay = coerce_int(raw.get("ingest_delay_s"))
+        if delay is not None and (slot["ingest_delay_s"] is None or delay > slot["ingest_delay_s"]):
+            slot["ingest_delay_s"] = delay
         last_at = blank(raw.get("last_at"))
         if last_at and (slot["last_at"] is None or time_ge(last_at, slot["last_at"])):
             slot["last_at"] = last_at
@@ -587,6 +619,20 @@ def group_s2(rows, by_lower, hosts_map, access, nets):
             "source_ip": blank(raw.get("source_ip")),
             "peer": peer,
             "detail": blank(raw.get("detail")),
+            "dst": blank(raw.get("dst")),
+            "src_port": blank(raw.get("src_port")),
+            "dst_port": blank(raw.get("dst_port")),
+            "protocol": blank(raw.get("protocol")),
+            "acl": blank(raw.get("acl")),
+            "interface": blank(raw.get("interface")),
+            "actor": blank(raw.get("actor")),
+            "access_method": blank(raw.get("access_method")),
+            "change_ref": None,
+            "ingested_at": blank(raw.get("ingested_at")),
+            "ingest_delay_s": coerce_int(raw.get("ingest_delay_s")),
+            "evidence": (blank(raw.get("evidence")) or "")[:300] or None,
+            "window_start": None,
+            "window_end": None,
             "_resolved": resolved,
         }
         key = row_key(name, kind, subject)
@@ -595,18 +641,78 @@ def group_s2(rows, by_lower, hosts_map, access, nets):
 
 
 def note_for(row, first):
-    if first and not concerns_kind(row):
-        return "Baseline."
     kind = row["kind"]
-    if kind == "config":
-        return f"{row['subject']} via {row.get('detail') or 'unknown'}."
     if kind == "acl":
-        return f"{row.get('state') or 'logged'} x{row['count']}."
-    if kind in ("bgp", "link") and (row.get("count") or 0) >= 2:
-        return "Flapped."
-    if row.get("state"):
-        return f"{row['state']}."
-    return f"{kind} at {row['at']}."
+        text = (
+            f"{row.get('state') or 'logged'} {row.get('protocol') or 'traffic'} "
+            f"{row.get('source_ip') or 'unknown'} -> {row.get('dst') or 'unknown'} "
+            f"acl {row.get('acl') or row.get('subject')} "
+            f"interface {row.get('interface') or 'unknown'} x{row['count']}. "
+            f"Event time {row['at']}. Next check: the firewall rule for this pair. "
+            "Nearby timestamps are not a cause."
+        )
+    elif kind == "config":
+        text = (
+            f"{row.get('actor') or row['subject']} via {row.get('access_method') or row.get('detail') or 'unknown'} "
+            f"on {row['name']}. Change reference not in the syslog. "
+            "Next check: the device running configuration. Nearby timestamps are not a cause."
+        )
+    elif kind == "auth_failed":
+        text = (
+            f"Failed authentication {row['subject']} from {row.get('source_ip') or 'unknown'} x{row['count']}. "
+            "Next check: that device's login history. No events do not mean the device is healthy."
+        )
+    elif kind in ("bgp", "link"):
+        flap = " Flap." if (row.get("count") or 0) >= 2 else ""
+        text = (
+            f"{kind} {row.get('state') or 'event'} {row['subject']} x{row['count']}.{flap} "
+            f"Next check: the neighbor or interface on {row['name']}. Nearby timestamps are not a cause."
+        )
+    elif kind == "reload":
+        text = (
+            f"Reload {row.get('detail') or row['subject']} at {row['at']}. "
+            "Next check: the device reload reason. Nearby timestamps are not a cause."
+        )
+    else:
+        text = f"{kind} at {row['at']}."
+    if first:
+        return "Baseline. " + text
+    return text
+
+
+def bounded_window(splunk):
+    window = blank(splunk.get("window")) or "1h"
+    if not re.fullmatch(r"\d+[mhd]", window):
+        return "1h"
+    return window
+
+
+def reporting_policy(splunk):
+    policy = {}
+    registry = splunk.get("source_registry")
+    if not isinstance(registry, dict):
+        return policy
+    for entry in registry.get("entries") or []:
+        if not isinstance(entry, dict) or not entry.get("name"):
+            continue
+        value = entry.get("reporting")
+        if value in ("expected", "idle_ok"):
+            policy[str(entry["name"])] = value
+    return policy
+
+
+def build_registry(previous, names, observed):
+    policy = reporting_policy({"source_registry": previous} if isinstance(previous, dict) else {})
+    entries = []
+    for name in names:
+        entries.append(
+            {
+                "name": name,
+                "reporting": policy.get(name),
+                "observed": name in observed,
+            }
+        )
+    return {"version": 1, "entries": entries}
 
 
 def cmd_collect(args):
@@ -632,7 +738,8 @@ def cmd_collect(args):
     at = checked_at(now)
     watermark = blank(splunk.get("collected_through"))
     earliest = watermark or "-7d"
-    window_label = "watermark" if watermark else "baseline"
+    rate_window = bounded_window(splunk)
+    window_label = rate_window
     first = not keep(splunk.get("current") or [], fit_row)
     prior_rows = keep(splunk.get("current") or [], fit_row)
     prior_by_id = {row_key(row["name"], row["kind"], row["subject"]): row for row in prior_rows}
@@ -641,7 +748,7 @@ def cmd_collect(args):
     if budget.exhausted():
         print('{"error": "budget exhausted"}', file=sys.stderr)
         return 1
-    s1_payload, s1_error = splunk_search("s1", substitute(s1, index, sourcetype), earliest, "now")
+    s1_payload, s1_error = splunk_search("s1", substitute(s1, index, sourcetype), f"-{rate_window}", "now")
     if s1_error or s1_payload is None:
         return write_unavailable(ws, board, splunk, at, earliest, s1_error or "s1 failed")
     s1_truncated = bool(s1_payload.get("truncated"))
@@ -664,7 +771,11 @@ def cmd_collect(args):
         scope = f"device:{name}" if slot["resolved"] else f"host:{name}"
         if not re.match(r"^(device|host):[^ ].*$", scope):
             scope = f"host:{name.replace(' ', '_')}"
-        metrics.append(metric_from_buckets(at, scope, name, slot["buckets"]))
+        metric = metric_from_buckets(at, scope, name, slot["buckets"])
+        metric["window"] = rate_window
+        metric["unparsed"] = slot["buckets"].get("unparsed", 0)
+        metric["ingest_delay_s"] = slot.get("ingest_delay_s")
+        metrics.append(metric)
         if slot["resolved"]:
             seen_names.add(name)
         last_at = slot["last_at"]
@@ -672,14 +783,22 @@ def cmd_collect(args):
             latest_event = last_at
     if not metrics:
         metrics = [estate_metric([], at)]
+    for row in metrics:
+        row.setdefault("window", rate_window)
+    unparsed = sum(coerce_int(row.get("unparsed")) or 0 for row in metrics if row.get("scope") != "estate")
 
     expected = expected_names(prod)
+    policy = reporting_policy(splunk)
     silent = [name for name in expected if name not in seen_names]
+    silent_expected = [name for name in silent if policy.get(name) == "expected"]
+    no_expectation = [name for name in silent if policy.get(name) != "expected"]
     coverage = "partial" if s2_failed or s1_truncated or s2_truncated else "complete"
 
     current_map = {row_key(row["name"], row["kind"], row["subject"]): row for row in prior_rows}
     changed_rows = []
     for row in s2_rows:
+        row["window_start"] = earliest
+        row["window_end"] = "now"
         key = row_key(row["name"], row["kind"], row["subject"])
         prior = prior_by_id.get(key)
         stored = {field: row[field] for field in ROW_FIELDS}
@@ -782,7 +901,12 @@ def cmd_collect(args):
             new_through = candidate
 
     series = keep(splunk.get("series") or [], fit_metric)
-    series.append(estate_metric(metrics, at))
+    estate = estate_metric(metrics, at)
+    estate["window"] = rate_window
+    estate["unparsed"] = unparsed
+    delays = [row.get("ingest_delay_s") for row in metrics if isinstance(row.get("ingest_delay_s"), int)]
+    estate["ingest_delay_s"] = max(delays) if delays else None
+    series.append(estate)
     visit = {
         "watch_id": watch if write_stamp else None,
         "checked_at": at,
@@ -805,6 +929,8 @@ def cmd_collect(args):
         "splunk": {
             "index": index,
             "sourcetype": sourcetype,
+            "window": rate_window,
+            "source_registry": build_registry(splunk.get("source_registry"), expected, seen_names),
             "collected_through": new_through,
             "last_visit_id": watch if write_stamp else prior_watch,
             "last_collected_at": at,
@@ -833,9 +959,8 @@ def cmd_collect(args):
 
     needs = []
     if write_stamp and not first:
-        for row, prior in changed_rows:
-            if not concerns_kind(row):
-                continue
+        ordered = sorted(changed_rows, key=lambda pair: (0 if concerns_kind(pair[0]) else 1, pair[0]["name"]))
+        for row, prior in ordered:
             item = change_item(row, prior)
             if not item["keys"]:
                 continue
@@ -847,7 +972,23 @@ def cmd_collect(args):
                     "current": item["current"],
                 }
             )
-    devices_line = f"{len(seen_names)} of {len(expected)} logged; Silent: {', '.join(silent) if silent else 'none'}; Unresolved: {', '.join(unresolved) if unresolved else 'none'}"
+    devices_line = (
+        f"{len(seen_names)} of {len(expected)} logged in {rate_window}; "
+        f"expected-silent: {', '.join(silent_expected) if silent_expected else 'none'}; "
+        f"no-events: {len(no_expectation)}; "
+        f"Unresolved: {', '.join(unresolved) if unresolved else 'none'}"
+    )
+    findings = []
+    for row, _prior in changed_rows:
+        if row["kind"] not in ("acl", "auth_failed", "bgp", "link", "config", "reload"):
+            continue
+        findings.append(
+            f"{row['at']} {row['name']} {row['kind']} x{row['count']} window {earliest}..now"
+        )
+        if len(findings) >= 6:
+            break
+    for name in silent_expected[:4]:
+        findings.append(f"{name} expected to report in {rate_window} and did not. Not device health.")
     payload = {
         "plane": "splunk",
         "watch_id": watch if write_stamp else None,
@@ -864,6 +1005,22 @@ def cmd_collect(args):
         "board_rows": len(current_rows),
         "last_visit_id": new_board["splunk"]["last_visit_id"],
         "devices": devices_line,
+        "search": {
+            "ok": not s2_failed,
+            "truncated": bool(s1_truncated or s2_truncated or readings_truncated),
+            "parse_incomplete": unparsed > 0,
+            "unparsed": unparsed,
+            "detail": _detail(s2_failed, s1_truncated or s2_truncated),
+        },
+        "reporting": {
+            "window": rate_window,
+            "observed": len(seen_names),
+            "expected_set": len(expected),
+            "silent_expected": silent_expected[:12],
+            "no_events": len(no_expectation),
+        },
+        "findings": findings,
+        "collection_window": f"{earliest}..now",
     }
     if readings_truncated:
         payload["readings_truncated"] = True
@@ -941,6 +1098,7 @@ def write_unavailable(ws, board, splunk, at, earliest, reason):
         "splunk": {
             "index": index,
             "sourcetype": sourcetype,
+            "window": bounded_window(splunk),
             "collected_through": splunk.get("collected_through"),
             "last_visit_id": watch,
             "last_collected_at": at,
@@ -952,6 +1110,8 @@ def write_unavailable(ws, board, splunk, at, earliest, reason):
     }
     if isinstance(splunk.get("hosts"), dict):
         new_board["splunk"]["hosts"] = splunk["hosts"]
+    if isinstance(splunk.get("source_registry"), dict):
+        new_board["splunk"]["source_registry"] = splunk["source_registry"]
     try:
         visit_common.validate(new_board, BOARD_SCHEMA)
         visit_common.save_board(ws, "splunk", new_board)
@@ -975,6 +1135,7 @@ def write_unavailable(ws, board, splunk, at, earliest, reason):
                 "partial": False,
                 "board_rows": len(prior_rows),
                 "last_visit_id": watch,
+                "search": {"ok": False, "truncated": False, "parse_incomplete": False, "detail": str(reason)[:160]},
             }
         )
     )

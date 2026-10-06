@@ -1,25 +1,38 @@
 ---
 name: compliance-analyzer
-version: "1.1.1"
-description: "v1.1.1 — Analyze and trend compliance intelligence and test visits: same-lab flips, both static and live rows, separate scores, SOAP to state/compliance.json."
+version: "1.2.0"
+description: "v1.2.0 — Build the compliance chart from the visits on disk; the agent adds only its assessment."
 ---
 
 # Compliance Analyzer
 
-For the primary **Compliance** agent. You synthesize chart evidence already
-on disk. You do not query frameworks, GitHub, or devices; author tests; run
-workflows; or change configuration.
+For the primary **Compliance** agent. `scripts/assess_chart.py` builds
+`state/compliance.json` from the visits already on disk. The agent sets
+the opinion. You do not query frameworks, GitHub, or devices; author
+tests; run workflows; or change configuration.
 
 ## Hard boundaries
 
-Write only `state/compliance.json`. Do not write under `compliance/`,
-`testing/`, or another agent's state. Do not execute scripts or list
-directories. Missing evidence produces `unknown` or `partial`, never invented
-measurements.
+The script writes only `state/compliance.json`. Do not write under
+`compliance/`, `testing/`, or another agent's state. Do not list
+directories. Missing evidence produces `unknown` or `partial`, never
+invented measurements.
+
+Run it with `execution_type: standard`. It does not call MCP.
+
+```text
+python3 <skill>/scripts/assess_chart.py assess --workspace <file_explorer> --mode assess-now
+python3 <skill>/scripts/assess_chart.py annotate --workspace <file_explorer> --opinion "..." --why "..." --plan "..."
+```
+
+`assess` fills scores, series, flips, findings, status, and a factual
+plan. `needs_opinion` on its last line means the opinion is still a
+placeholder. `annotate` replaces the opinion, the trend narrative, and
+the plan, and leaves the scores alone.
 
 ## Inputs
 
-Read fixed paths through `workspace-handoff`:
+The script reads fixed paths. Do not open them to fill the chart:
 
 - `compliance/metadata-intel.json` → latest Intel stamp
 - `compliance/metadata-testing.json` → latest prod and latest dev Test
@@ -28,19 +41,20 @@ Read fixed paths through `workspace-handoff`:
 - `compliance/intel.json`
 - prior `state/compliance.json`
 
-Use `references/analyze.md` for freshness, series, scores, trend, findings
-lifecycle, status, and SOAP. Use `references/workspace-contract.md` for
-paths and ownership. Write from `schemas/compliance-state.schema.json`;
-shape follows `examples/compliance-state.example.json`.
+`references/analyze.md` is the rule the script follows for freshness,
+series, scores, trend, findings lifecycle, status, and SOAP.
+`references/workspace-contract.md` is ownership. The schema is
+`schemas/compliance-state.schema.json`.
 
 ## Trend is the point
 
-Every chart answers "is compliance getting better?" from keyed evidence:
+Every chart answers "is compliance getting better?" from keyed evidence.
+The script copies it. Do not recompute it in the reply.
 
 - The latest prod test visit's `vs_prior` already lists which test +
   device pairs went FAIL/ERROR → PASS and PASS → FAIL/ERROR against the
-  previous **prod** visit. Copy them into `trend_analysis.flips`; do not
-  re-derive them and never compare Dev with prod.
+  previous **prod** visit. Those become `trend_analysis.flips`. Never
+  compare Dev with prod.
 - Three scores, each with prior → current: tested posture (per test),
   device checks (per device row — moves on partial fixes), framework
   coverage.
@@ -52,20 +66,17 @@ Every chart answers "is compliance getting better?" from keyed evidence:
 
 ## State machine
 
-READ_METADATA → READ_LATEST_STAMPS → READ_CURRENT_WORKING_STATE →
-READ_PRIOR_CHART → CHECK_24H_FRESHNESS → DISPATCH_STALE →
-FOLD_SERIES → SCORE → TREND → CARRY_FINDINGS → SYNTHESIZE → WRITE_CHART →
-READ_BACK → STOP
+ASSESS_SCRIPT → DISPATCH_STALE → ASSESS_SCRIPT_AGAIN → ANNOTATE_OPINION → STOP
 
 ## Modes
 
 Default `assess-now`. Refresh only a plane whose latest evidence is missing
 or at least 24 hours old.
 
-- `assess-now`: dispatch stale attached specialists without waiting; use
-  files already read.
-- `refresh-then-assess`: wait only for stale material planes, reread their
-  metadata and latest stamps, then assess.
+- `assess-now`: dispatch stale attached specialists without waiting, then
+  run `assess` again with `--dispatched`.
+- `refresh-then-assess`: wait only for stale material planes, then run
+  `assess` again.
 
 ## Canonical top-level keys
 
@@ -73,7 +84,8 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## Output
 
-`state/compliance.json` (`compliance-state/v2`) contains:
+The agent does not write this file. `assess` writes it and `annotate`
+fills the opinion. `state/compliance.json` (`compliance-state/v2`) contains:
 
 - freshness and coverage for Intel and Test
 - consults citing latest evidence

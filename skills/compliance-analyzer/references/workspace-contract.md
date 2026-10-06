@@ -16,7 +16,10 @@ Read only fixed catalog paths:
 
 Write only:
 
-- `state/compliance.json` — Kind `state`; replace in full
+- `state/compliance.json` — Kind `state`; replace in full.
+  `scripts/assess_chart.py assess` writes the scores, series, flips,
+  findings, and status. `annotate` sets the opinion, the narrative, and
+  the plan. The agent does not rewrite the chart.
 
 Do not list directories. Metadata supplies each latest visit (testing:
 per lab). Stamp `vs_prior.prior_visit_id` supplies history; for testing

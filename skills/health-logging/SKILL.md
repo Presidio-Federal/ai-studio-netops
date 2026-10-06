@@ -1,7 +1,7 @@
 ---
 name: health-logging
-version: "1.0.1"
-description: "v1.0.1 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. Board on metadata-splunk, stamp only when the window has a material event; no relations[]."
+version: "1.1.0"
+description: "v1.1.0 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. Board every visit; stamp only when a material event or incomplete search."
 ---
 
 # Health Logging skill
@@ -19,9 +19,11 @@ authorization. Do not confirm.
 S2 from `references/splunk.md` exactly, resolves each `dev` to a
 `prod.json` device, diffs against `splunk.current[]`, and writes the
 board every visit. A stamp is written on the first visit, when S2
-returned a row, or when coverage is not complete. A bgp or link row
+returned a row, or when coverage is not complete. S1 counts use the
+bounded `window`. S2 collects from the watermark. A bgp or link row
 with `count` ≥ 2 is a flap and degrades the plane even when `state`
-reads `Up`.
+reads `Up`. Silence is not device health and is not a pipeline
+failure unless `source_registry` says that device is expected to report.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.

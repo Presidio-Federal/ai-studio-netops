@@ -64,7 +64,8 @@ index=<index> sourcetype=<sourcetype>
 | rex field=_raw " (?<nx_hostname>[A-Za-z][A-Za-z0-9._-]*): \d{4} [A-Z][a-z]{2} +\d"
 | eval bucket=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR (facility="ASA" AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR (facility="ASA" AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR (facility="ASA" AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR (facility="ASA" AND (cisco_mn="106023" OR cisco_mn="106100")),"acl", cisco_mn="LOGIN_SUCCESS" OR cisco_mn="AUTH_PASSED" OR (facility="ASA" AND (cisco_mn="605005" OR cisco_mn="611101")),"auth_ok", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR (facility="ASA" AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", cisco_mn="NO_MATCH","ssh_no_match", isnull(cisco_mn),"unparsed", 1=1,"other")
 | eval dev=lower(coalesce(ios_hostname,asa_hostname,nx_hostname,host))
-| stats count, max(_time) as last_at by dev, bucket
+| eval ingest_delay_s=if(isnotnull(_indextime) AND isnotnull(_time), round(_indextime-_time), null())
+| stats count, max(_time) as last_at, max(ingest_delay_s) as ingest_delay_s by dev, bucket
 | eval last_at=strftime(last_at,"%Y-%m-%dT%H:%M:%SZ")
 | sort dev bucket
 ```
@@ -86,18 +87,29 @@ index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO"
 | rex field=_raw "Configured from (?<via>\S+) by (?<user>[^\s,]+)(?: on (?<line>\S+))?(?: \((?<source_ip>[0-9a-fA-F.:]+)\))?"
 | rex field=_raw "(?<asa_cfg_line>\S+) end configuration: (?<asa_cfg_result>\S+)"
 | rex field=_raw "\[user: (?<auth_user>[^\]]+)\] \[Source: (?<auth_ip>[^\]]+)\]"
-| rex field=_raw "list (?<acl>\S+) (?<acl_action>denied|permitted)"
-| rex field=_raw "(?<asa_acl_action>Deny|Permit) \w+ src \S+ dst \S+.*by access-group .(?<asa_acl>[^\"]+)."
+| rex field=_raw "list (?<acl>\S+) (?<acl_action>denied|permitted) (?<ios_proto>\S+) (?<ios_src>[0-9a-fA-F.:]+)\((?<ios_src_port>\d+)\) -> (?<ios_dst>[0-9a-fA-F.:]+)\((?<ios_dst_port>\d+)\)"
+| rex field=_raw "(?i)(?<asa_acl_action>Deny|Permit) (?<asa_proto>\S+) src (?<asa_src_if>[^:]+):(?<asa_src>[0-9a-fA-F.:]+)(?:/(?<asa_src_port>\d+))? dst (?<asa_dst_if>[^:]+):(?<asa_dst>[0-9a-fA-F.:]+)(?:/(?<asa_dst_port>\d+))?.*by access-group \"(?<asa_acl>[^\"]+)\""
 | rex field=_raw "access-list (?<asa_acl2>\S+) (?<asa_acl_action2>permitted|denied)"
 | rex field=_raw "user = (?<asa_auth_user>\S+)"
 | rex field=_raw "Reload Reason: (?<reload_reason>[^.]+)"
 | eval kind=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR (facility="ASA" AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR (facility="ASA" AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR (facility="ASA" AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR (facility="ASA" AND (cisco_mn="106023" OR cisco_mn="106100")),"acl", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR (facility="ASA" AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", 1=1,null())
 | where isnotnull(kind)
-| eval subject=case(kind="bgp",neighbor_ip, kind="link",coalesce(intf,nx_intf), kind="config",coalesce(user,asa_cfg_line,"unknown"), kind="reload",cisco_mn, kind="acl",coalesce(acl,asa_acl,asa_acl2), kind="auth_failed",coalesce(auth_user,asa_auth_user,"unknown"))
+| eval subject=case(kind="bgp",neighbor_ip, kind="link",coalesce(intf,nx_intf), kind="config",coalesce(user,asa_cfg_line,"unknown"), kind="reload",cisco_mn, kind="acl",coalesce(asa_acl,acl,asa_acl2,"unknown"), kind="auth_failed",coalesce(auth_user,asa_auth_user,"unknown"))
 | eval state=case(kind="bgp",coalesce(bgp_state,"reset"), kind="link",coalesce(link_state,nx_link_state), kind="acl",lower(coalesce(acl_action,asa_acl_action2,asa_acl_action)), 1=1,null())
-| eval src=coalesce(source_ip,auth_ip)
+| eval src=coalesce(asa_src,ios_src,source_ip,auth_ip)
+| eval dst=coalesce(asa_dst,ios_dst)
+| eval src_port=coalesce(asa_src_port,ios_src_port)
+| eval dst_port=coalesce(asa_dst_port,ios_dst_port)
+| eval protocol=coalesce(asa_proto,ios_proto)
+| eval acl_name=if(kind="acl",subject,null())
+| eval iface=coalesce(asa_src_if,asa_dst_if)
+| eval actor=if(kind="config",coalesce(user,asa_cfg_line),null())
+| eval access_method=if(kind="config",coalesce(line,via),null())
 | eval detail=case(kind="bgp",bgp_reason, kind="reload",reload_reason, kind="config",coalesce(line,via,asa_cfg_result), 1=1,null())
-| stats count, max(_time) as at, latest(state) as state, latest(src) as source_ip, latest(detail) as detail by dev, kind, subject
+| eval ingest_delay_s=if(isnotnull(_indextime) AND isnotnull(_time), round(_indextime-_time), null())
+| eval ingested_at=if(isnotnull(_indextime), strftime(_indextime,"%Y-%m-%dT%H:%M:%SZ"), null())
+| eval evidence=substr(_raw,1,300)
+| stats count, max(_time) as at, latest(state) as state, latest(src) as source_ip, latest(dst) as dst, latest(src_port) as src_port, latest(dst_port) as dst_port, latest(protocol) as protocol, latest(acl_name) as acl, latest(iface) as interface, latest(actor) as actor, latest(access_method) as access_method, latest(detail) as detail, latest(ingest_delay_s) as ingest_delay_s, latest(ingested_at) as ingested_at, latest(evidence) as evidence by dev, kind, subject
 | eval at=strftime(at,"%Y-%m-%dT%H:%M:%SZ")
 | sort dev kind subject
 ```
@@ -115,8 +127,20 @@ beats metadata: confirm it with S1, write it
 (`provenance.splunk` `user`), finish the visit. Do not re-run the
 old search; do not defend the empty result.
 
-Nothing else. No `head`-sampled raw events, no `by severity`, no
-third search, no follow-up on a mnemonic you found interesting.
+S1 uses the board `window` (default `1h`). That bounded window is the
+only interval whose bucket counts are comparable to the previous
+visit. S2 uses `collected_through` (or `-7d` on the first visit) so
+collection is incremental. An S2 count is not a rate and is not
+compared with an earlier S2 count.
+
+Each S2 row keeps the latest `_raw` line, trimmed to 300 characters,
+as `evidence`. Fields the message does not contain stay null. A
+config line has no change reference; `change_ref` stays null.
+`at` is the event time (`_time`). `ingested_at` is `_indextime`.
+`ingest_delay_s` is the difference for that latest event.
+
+Nothing else. No third search, no `by severity`, no follow-up on a
+mnemonic you found interesting.
 
 ## Resolve `dev` to a device
 
@@ -147,12 +171,11 @@ whichever `at` is later.
 ## Coverage against `prod.json`
 
 After resolving, compare the resolved names with the expected set.
-A device in the expected set with **no S1 row** in this window is
-`silent`: it is not a reading and not a board row (no event is not
-an event), but it goes on the reply `Silent:` line and in
-`visits[].silent[]` on the board. On a later visit a short window
-makes quiet routers look silent — that is expected and the reply
-says so by showing the window. Never degrade the plane for silence.
+A device in the expected set with **no S1 row** in the bounded window
+is listed under no-events. That is not device health. It becomes a
+pipeline question only when `source_registry` says `reporting:
+expected` for that device. `idle_ok` and a missing value do not.
+The nurse does not invent the value. Silence never degrades the plane.
 
 ## Build the rows
 
@@ -272,27 +295,27 @@ Stamp written:
 
 ```text
 Visit: splunk
+Search: <ok|failed>; truncated <yes|no>; parse <complete|incomplete>
+Reporting: <observed> of <expected> logged in <window>; expected-silent: <names | none>; no-events with no expectation: <count>
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
-Window: <window_start> -> <window_end>
 Wrote: health/splunk/<stamp>.json
 Trend: <delta>
-Devices: <resolved> of <expected> logged; Silent: <names | none>; Unresolved: <dev values | none>
 Findings:
-- <device> <kind> <subject> <state|user> at <at>
-Next: none
+- <event time> <device> <kind> x<count> window <window_start>..<window_end>; evidence on the stamp
+Next: <the note's next check, or none>
 ```
 
 Quiet:
 
 ```text
 Visit: splunk
+Search: ok; truncated no; parse <complete|incomplete>
+Reporting: <observed> of <expected> logged in <window>; expected-silent: <names | none>; no-events with no expectation: <count>
 Result: ok
 Coverage: complete
-Window: <window_start> -> <window_end>
 Wrote: health/metadata-splunk.json (no material event)
 Trend: unchanged
-Devices: <resolved> of <expected> logged; Silent: <names | none>; Unresolved: <dev values | none>
 Board: <n> rows, last stamp <last_visit_id>
 Next: none
 ```

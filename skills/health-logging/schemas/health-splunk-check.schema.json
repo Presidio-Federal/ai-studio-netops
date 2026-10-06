@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-splunk-check/v3",
   "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "Splunk lab slip (Kind observation). Written on the first visit, when the window held at least one material syslog event (BGP, link, config, reload, ACL log, failed auth), or when coverage is not complete. A quiet window (only DHCP, successful auth, DMI sync, other) writes the board only. metrics: one row per device that logged, bucket counts. readings: one row per device + kind + subject that had a material event this window, same shape as a board row plus note. vs_prior.changed: one structured item per reading. No raw syslog, no host list, no by_mnemonic.",
+  "description": "Splunk lab slip (Kind observation). Written on the first visit, when the window held at least one material syslog event (BGP, link, config, reload, ACL log, failed auth), or when coverage is not complete. A quiet window writes the board only. metrics are the bounded window. readings carry extracted fields and one trimmed evidence line. vs_prior.changed: one structured item per reading.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "window_start", "window_end", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
@@ -19,7 +19,7 @@
     "ok": { "type": ["boolean", "null"] },
     "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
     "headline": { "type": "string", "minLength": 1, "description": "Which device, which subject, what state or who, when; then how many devices logged and how many board rows are unchanged." },
-    "window": { "type": "string", "minLength": 1, "description": "baseline or watermark." },
+    "window": { "type": "string", "minLength": 1, "description": "Bounded window for the S1 counts, or baseline/watermark on an older stamp." },
     "window_start": { "type": ["string", "null"], "description": "earliest_time passed to the MCP." },
     "window_end": { "type": ["string", "null"], "description": "latest_time passed to the MCP." },
     "coverage": { "$ref": "#/$defs/coverage" },
@@ -109,7 +109,10 @@
         "acl_events": { "type": ["integer", "null"] },
         "auth_ok": { "type": ["integer", "null"], "description": "LOGIN_SUCCESS + AUTH_PASSED." },
         "auth_failed": { "type": ["integer", "null"], "description": "LOGIN_FAILED + AUTH_FAILED." },
-        "ssh_no_match": { "type": ["integer", "null"], "description": "SSH-3-NO_MATCH (cipher/mac negotiation mismatch). Counted, never a reading." }
+        "ssh_no_match": { "type": ["integer", "null"], "description": "SSH-3-NO_MATCH (cipher/mac negotiation mismatch). Counted, never a reading." },
+        "window": { "type": ["string", "null"] },
+        "unparsed": { "type": ["integer", "null"] },
+        "ingest_delay_s": { "type": ["integer", "null"] }
       }
     },
     "reading": {
@@ -128,6 +131,20 @@
         "source_ip": { "type": ["string", "null"], "description": "config / auth_failed: the source address in the message." },
         "peer": { "type": ["string", "null"], "description": "bgp: device:<name> when the neighbor address matches inventory/topology-observed.json interfaces[].cidr; else null." },
         "detail": { "type": ["string", "null"], "description": "bgp: reason text after the state. reload: Reload Reason. config: the line (vty0) or via (console)." },
+        "dst": { "type": ["string", "null"] },
+        "src_port": { "type": ["string", "null"] },
+        "dst_port": { "type": ["string", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "acl": { "type": ["string", "null"] },
+        "interface": { "type": ["string", "null"] },
+        "actor": { "type": ["string", "null"] },
+        "access_method": { "type": ["string", "null"] },
+        "change_ref": { "type": ["string", "null"] },
+        "ingested_at": { "type": ["string", "null"] },
+        "ingest_delay_s": { "type": ["integer", "null"] },
+        "evidence": { "type": ["string", "null"] },
+        "window_start": { "type": ["string", "null"] },
+        "window_end": { "type": ["string", "null"] },
         "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion: what this means against the board (new subject, flap, recovered, who changed config and from where, why it reloaded). Not the columns again." }
       }
     }

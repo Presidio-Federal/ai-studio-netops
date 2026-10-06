@@ -57,6 +57,31 @@
           "type": "string",
           "minLength": 1
         },
+        "window": {
+          "type": "string",
+          "description": "Bounded window for S1 counts. Default 1h. Not the watermark."
+        },
+        "source_registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "entries"],
+          "properties": {
+            "version": { "type": "integer" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["name", "reporting", "observed"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "reporting": { "type": ["string", "null"], "enum": ["expected", "idle_ok", null] },
+                  "observed": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
         "dashboard_id": {
           "type": [
             "string",
@@ -220,7 +245,21 @@
             "string",
             "null"
           ]
-        }
+        },
+        "dst": { "type": ["string", "null"] },
+        "src_port": { "type": ["string", "null"] },
+        "dst_port": { "type": ["string", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "acl": { "type": ["string", "null"] },
+        "interface": { "type": ["string", "null"] },
+        "actor": { "type": ["string", "null"] },
+        "access_method": { "type": ["string", "null"] },
+        "change_ref": { "type": ["string", "null"] },
+        "ingested_at": { "type": ["string", "null"] },
+        "ingest_delay_s": { "type": ["integer", "null"] },
+        "evidence": { "type": ["string", "null"] },
+        "window_start": { "type": ["string", "null"] },
+        "window_end": { "type": ["string", "null"] }
       }
     },
     "metric_row": {
@@ -308,7 +347,10 @@
             "integer",
             "null"
           ]
-        }
+        },
+        "window": { "type": ["string", "null"] },
+        "unparsed": { "type": ["integer", "null"] },
+        "ingest_delay_s": { "type": ["integer", "null"] }
       }
     },
     "visit_row": {
