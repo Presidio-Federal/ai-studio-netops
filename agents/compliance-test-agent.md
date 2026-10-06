@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.7.1"
+version: "1.7.3"
 ---
 
 # Compliance Test
 
-Version 1.7.1.
+Version 1.7.3.
 
 ## Identity
 
@@ -71,7 +71,7 @@ Each `execute_command` is a new container. The workspace is the
 Pass it as `--workspace`. Do not pass the relative name `file_explorer`,
 and do not `cd`.
 
-`execution_type` is `mcp_orchestration`. `timeout` is 300.
+`execution_type` is `mcp_orchestration`. `timeout` is 120.
 
 ```text
 python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environment <dev|prod> --suites <suites> --devices <names> --tags <tags> --mode live --allow-all <true|false> --production-authorized <true|false> --reason <why>
@@ -82,11 +82,13 @@ runtime is not the result. Do not read the visit to fill the reply.
 Do not call `github_run_action`, `github_list_action_runs`,
 `github_get_action_run`, or `github_get_action_job_logs` yourself.
 
-If `result` is `running`, say the `phase` in the reply, then run the
-same command again with `--run-id` and `--phase` copied from that line.
-Up to 12 running replies. Do not dispatch a second job. A missing
-`phase` means the job payload had no `Static pytest` or `Live pyATS`
-step yet; say the run is still in progress and resume anyway.
+If `result` is `running`, resume with the same command and `--run-id`
+copied from that line. Do not dispatch a second job. Pass `--phase` only
+when the line has `phase` and it is exactly `running static tests` or
+`running live tests`. Never pass a phase you made up. Never pass
+`still in progress`. The resume checks GitHub first. A finished run
+writes the visit in that call and does not sit for minutes. Up to 12
+running replies.
 
 If stderr says `hai_mcp unavailable`, follow `references/run.md` by hand.
 Any other failure: one line from stderr, then stop. Do not poll by hand.
@@ -147,7 +149,8 @@ While the job is still running, reply with only this and then resume:
 
 ```text
 Result: running
-Phase: <phase | still in progress>
+Status: <github_status>
+Phase: <phase | none>
 Run: <run_id>  <url>
 ```
 

@@ -175,6 +175,22 @@ def inherit_service(rows):
     return assigned
 
 
+def worst_devices(findings, failing):
+    """Devices with the most open test-failure findings, worst first, cap 10."""
+    hits = defaultdict(int)
+    for f in findings:
+        if f.get("kind") != "test_failure" or f.get("status") == "remediated":
+            continue
+        for key in f.get("keys") or []:
+            if str(key).startswith("device:"):
+                hits[key[7:]] += 1
+    ranked = sorted(hits.items(), key=lambda kv: (-kv[1], kv[0]))
+    seen = {name for name, _ in ranked}
+    extra = [(name, 0) for name in failing if name not in seen]
+    ranked.extend(extra)
+    return [{"name": name, "findings": n} for name, n in ranked[:10]]
+
+
 def layout(nodes, links, override):
     """Precedence: operator override, then CML canvas positions, then tiers."""
     if override and isinstance(override.get("nodes"), dict):
@@ -395,6 +411,7 @@ def build(ws, template_path):
         "risk": testing.get("risk") or {},
         "run": testing.get("run") or {},
         "failing_devices": failing,
+        "worst_devices": worst_devices(findings, failing),
         "scanned_devices": [resolve(x) or x for x in (testing.get("scope") or {}).get("devices_scanned") or []],
     }
 
@@ -561,8 +578,15 @@ def build(ws, template_path):
             card["path"] = path_to_edge(card["host_node"])
     for c in container_rows:
         c.pop("_used", None)
+    probe_n = probe_up = 0
+    for tier_probes in probes.values():
+        for row in tier_probes.values():
+            probe_n += 1
+            if row.get("up"):
+                probe_up += 1
     app_out = {"present": bool(apps) or bool(mda), "services": services, "hosts": hosts,
-               "updated_at": apps.get("updated_at"), "collected_at": mda.get("last_collected_at")}
+               "updated_at": apps.get("updated_at"), "collected_at": mda.get("last_collected_at"),
+               "score": _ratio(probe_up, probe_n)}
 
     # ---- syslog buckets per device
     syslog = defaultdict(lambda: defaultdict(int))

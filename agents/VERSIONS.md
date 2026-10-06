@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.2.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.7.1 | MiniMax |
+| Compliance Test | 1.7.3 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
@@ -33,9 +33,15 @@ Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/complian
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
 
+Compliance Test 1.7.3 (skill 1.11.3): the command timeout is 120 seconds, not 300. A resume checks the run and returns within 20 seconds unless it is writing the visit. `running` carries `github_status`. The agent does not invent a phase or pass "still in progress".
+
+Compliance Test 1.7.2 (skill 1.11.2): the poll checks the run before it sleeps. A finished job writes the visit in that call. The script returns `running` only when static or live tests start, or the four-minute budget runs out, not when a step ends.
+
 Compliance Test 1.7.1 (skill 1.11.1): a running summary includes `phase` from the job steps `Static pytest` and `Live pyATS`. The agent says that phase and resumes with `--run-id` and `--phase`. The finished visit is unchanged.
 
 Compliance Test 1.7.0 (skill 1.11.0): `scripts/run_suite.py` dispatches `test.yml`, polls, and writes the visit. A compliance job's static block and live block both land in `compliance-test-visit/v3`. The agent reads the script's last line. Static failures are rows; static passes stay on the count line.
+
+Network Map skill 1.2.3: Application Health, Health, and Compliance cards show a white title and a percent when closed. Open compliance lists the ten worst devices then critical findings; it does not paint the trend narrative.
 
 Network Map 1.0.2 (skill 1.2.2): the compile command copies the Studio path of `build_map.py` and passes the `file_explorer` directory beside `skills` as `--workspace`. The words `Internal directory` are not a path. Do not `cd file_explorer`.
 

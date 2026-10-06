@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.11.1"
-description: "v1.11.1 — Run test.yml with one script that reports static and live progress, then writes the compliance visit."
+version: "1.11.3"
+description: "v1.11.3 — Check test.yml before waiting, and write the visit as soon as the run is finished."
 ---
 
 # Compliance test runner skill
@@ -62,11 +62,12 @@ python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environme
 
 A compliance suite stays `--mode live` and `--suites compliance`. The job
 prints a static report and a live report. The script writes both into the
-visit. A `running` line may include `phase`: `running static tests`,
-`static tests complete`, `running live tests`, or `live tests complete`.
-Those words come from the `Static pytest` and `Live pyATS` steps on the
-job. Say that phase, then resume with `--run-id` and `--phase` copied
-from the line. That does not dispatch again. Up to 12 running replies.
+visit. A `running` line includes `github_status` from the run payload.
+It includes `phase` only for `running static tests` or `running live tests`.
+The script checks the run before it sleeps. A resume waits at most 20
+seconds. A finished run writes the visit on that read. Resume with
+`--run-id` only. Pass `--phase` only when the line has one of those two
+phases. Do not invent a phase. Up to 12 running replies.
 The last stdout line is the result. Do not read the files to fill the reply.
 
 A compliance suite stays `mode=live`. `tail_lines=200` on a hand poll sees

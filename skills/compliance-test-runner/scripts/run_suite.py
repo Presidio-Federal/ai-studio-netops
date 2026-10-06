@@ -773,6 +773,81 @@ def run_url(body, run_id):
     return ""
 
 
+def flatten(node, depth=0):
+    """Parse JSON strings the MCP wraps inside text or result fields."""
+    if depth > 6:
+        return node
+    if isinstance(node, str):
+        text = node.strip()
+        if text[:1] in "{[" and len(text) < 500000:
+            try:
+                return flatten(json.loads(text, strict=False), depth + 1)
+            except json.JSONDecodeError:
+                return node
+        return node
+    if isinstance(node, list):
+        return [flatten(item, depth + 1) for item in node[:40]]
+    if isinstance(node, dict):
+        return {key: flatten(item, depth + 1) for key, item in node.items()}
+    return node
+
+
+def collect_runs(node, runs, jobs, depth=0):
+    if depth > 8 or node is None:
+        return
+    if isinstance(node, list):
+        for item in node:
+            collect_runs(item, runs, jobs, depth + 1)
+        return
+    if not isinstance(node, dict):
+        return
+    if node.get("status") or node.get("conclusion") or node.get("html_url") or node.get("htmlUrl"):
+        runs.append(node)
+    for key in ("jobs", "workflow_jobs", "workflowJobs"):
+        value = node.get(key)
+        if isinstance(value, list):
+            jobs.extend(item for item in value if isinstance(item, dict))
+    for value in node.values():
+        if isinstance(value, (dict, list)):
+            collect_runs(value, runs, jobs, depth + 1)
+
+
+def pick_run(runs, run_id):
+    matches = [
+        row for row in runs
+        if str(row.get("id") or row.get("run_id") or "") == str(run_id)
+    ]
+    for row in reversed(matches):
+        if row.get("status") or row.get("conclusion"):
+            return row
+    if matches:
+        return matches[-1]
+    for row in reversed(runs):
+        if (row.get("html_url") or row.get("htmlUrl") or row.get("run_number") is not None) and (
+            row.get("status") or row.get("conclusion")
+        ):
+            return row
+    return {}
+
+
+def read_run(body, run_id):
+    runs = []
+    jobs = []
+    collect_runs(flatten(body), runs, jobs)
+    run = pick_run(runs, run_id)
+    if not jobs:
+        _ignored, jobs = split_jobs(body if isinstance(body, dict) else {})
+    return run, jobs
+
+
+def github_status(run):
+    status = str((run or {}).get("status") or "").lower()
+    conclusion = str((run or {}).get("conclusion") or "").lower()
+    if status or conclusion:
+        return conclusion and status and ("%s/%s" % (status, conclusion)) or status or conclusion
+    return ""
+
+
 def split_jobs(body):
     if not isinstance(body, dict):
         return {}, []
@@ -901,6 +976,32 @@ def step_state(step):
     return "unknown"
 
 
+DONE = {"success", "failure", "cancelled", "timed_out", "skipped", "neutral", "stale"}
+SPEAK_PHASES = {"running static tests", "running live tests"}
+
+
+def run_finished(run, jobs):
+    """True when the workflow or every returned job has actually finished.
+
+    Step names can say live tests are done while the run status is still
+    in progress. The report waits for this, not for the phase string.
+    """
+    status = str((run or {}).get("status") or "").lower()
+    conclusion = str((run or {}).get("conclusion") or "").lower()
+    if status == "completed" or conclusion in DONE:
+        return True
+    if not jobs:
+        return False
+    for job in jobs:
+        if not isinstance(job, dict):
+            return False
+        job_status = str(job.get("status") or "").lower()
+        job_conclusion = str(job.get("conclusion") or "").lower()
+        if job_status != "completed" and job_conclusion not in DONE:
+            return False
+    return True
+
+
 def current_phase(jobs):
     """Phase from the test.yml step names on the job you ran 2026-10-06.
 
@@ -930,23 +1031,50 @@ def current_phase(jobs):
     return None
 
 
-def poll_run(run_id, budget, poll, seen_phase):
+def observe_run(run_id, ref):
+    """Read the run. Fall back to the recent-runs list when the get payload has no status."""
+    body, err = call_tool("github_get_action_run", {"run_id": run_id})
+    run, jobs = read_run(body, run_id) if err is None else ({}, [])
+    status = github_status(run)
+    if run_finished(run, jobs):
+        return run, jobs, status
+    if not status:
+        listed, list_err = call_tool(
+            "github_list_action_runs",
+            {"workflow": "test.yml", "branch": ref or "main", "limit": 5},
+        )
+        if list_err is None:
+            listed_run, listed_jobs = read_run(listed, run_id)
+            listed_status = github_status(listed_run)
+            if listed_status or listed_jobs:
+                run = listed_run or run
+                jobs = jobs or listed_jobs
+                status = listed_status or status
+    return run, jobs, status or ("unreadable" if err is None else "error")
+
+
+def poll_run(run_id, budget, poll, seen_phase, ref):
+    """Check first. A finished run returns immediately so the caller writes the visit.
+
+    The loop does not sit for minutes. A still-running job returns as soon
+    as the short budget ends, with the GitHub status it actually read.
+    """
     html_url = ""
     jobs = []
     phase = seen_phase or None
+    status = "unreadable"
     while True:
-        body, err = call_tool("github_get_action_run", {"run_id": run_id})
-        if err is None and isinstance(body, dict):
-            run, jobs = split_jobs(body)
-            html_url = run.get("html_url") or run.get("htmlUrl") or html_url
-            if str(run.get("status") or "") == "completed":
-                return html_url, jobs, None, current_phase(jobs)
-            phase = current_phase(jobs) or phase
-            if phase and phase != (seen_phase or ""):
-                return html_url, jobs, "running", phase
-        if budget.left() <= poll + 10:
-            return html_url, jobs, "running", phase
-        time.sleep(poll)
+        run, jobs, status = observe_run(run_id, ref)
+        html_url = (run.get("html_url") or run.get("htmlUrl") or html_url) if isinstance(run, dict) else html_url
+        if run_finished(run, jobs):
+            return html_url, jobs, None, current_phase(jobs) or phase, status or "completed"
+        phase = current_phase(jobs) or phase
+        if phase in SPEAK_PHASES and phase != (seen_phase or ""):
+            return html_url, jobs, "running", phase, status
+        remaining = budget.left()
+        if remaining <= 2:
+            return html_url, jobs, "running", phase, status
+        time.sleep(min(max(poll, 1), remaining - 1))
 
 
 def read_logs(jobs):
@@ -982,15 +1110,20 @@ def execute(args):
     if not (args.suites or "").strip():
         emit({"result": "UNKNOWN", "reason": "missing suites"})
         return
-    budget = visit_common.Budget(args.max_wait)
-    html_url = ""
     run_id = (args.run_id or "").strip()
+    # A resume only confirms the run. A finished pipeline writes on the
+    # first read. A still-running one returns in a few seconds, not minutes.
+    wait = min(args.max_wait, 20) if run_id else min(args.max_wait, 40)
+    budget = visit_common.Budget(wait)
+    html_url = ""
     if not run_id:
         run_id, html_url, err = dispatch_and_find(args, budget)
         if err:
             emit({"result": "UNKNOWN", "reason": err, "environment": args.environment, "suites": args.suites})
             return
-    html_url, jobs, err, phase = poll_run(run_id, budget, args.poll, (args.phase or "").strip())
+    html_url, jobs, err, phase, status = poll_run(
+        run_id, budget, args.poll, (args.phase or "").strip(), args.ref,
+    )
     suites = [part.strip() for part in args.suites.split(",") if part.strip()]
     if err == "running":
         payload = {
@@ -999,8 +1132,9 @@ def execute(args):
             "html_url": html_url,
             "environment": args.environment,
             "suites": suites,
+            "github_status": status or "unreadable",
         }
-        if phase:
+        if phase in SPEAK_PHASES:
             payload["phase"] = phase
         emit(payload)
         return
@@ -1065,8 +1199,8 @@ def main():
     run_parser.add_argument("--allow-all", default="false")
     run_parser.add_argument("--production-authorized", default="false")
     run_parser.add_argument("--reason", default="adhoc")
-    run_parser.add_argument("--max-wait", type=int, default=240)
-    run_parser.add_argument("--poll", type=int, default=15)
+    run_parser.add_argument("--max-wait", type=int, default=40)
+    run_parser.add_argument("--poll", type=int, default=5)
     args = parser.parse_args()
     if args.command == "run":
         execute(args)
