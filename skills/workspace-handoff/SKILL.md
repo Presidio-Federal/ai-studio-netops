@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.3 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.3"
+description: "v1.70.4 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.4"
 ---
 
 # Workspace handoff

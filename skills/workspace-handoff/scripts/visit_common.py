@@ -32,9 +32,10 @@ class Budget:
 def mcp_call(tool, args, retries=1):
     """Call one attached MCP tool. Returns the raw envelope.
 
-    ImportError means this process is not mcp_orchestration. One retry
-    when the envelope says success false. Never reads or prints the
-    environment.
+    ImportError means this process is not mcp_orchestration. A raise
+    from call_mcp is a failed envelope, not a traceback. Tool-not-found
+    is not retried. One retry when the envelope says success false.
+    Never reads or prints the environment.
     """
     try:
         from hai_mcp import call_mcp
@@ -46,7 +47,13 @@ def mcp_call(tool, args, retries=1):
         sys.exit(1)
     last = None
     for attempt in range(retries + 1):
-        last = call_mcp(tool, args)
+        try:
+            last = call_mcp(tool, args)
+        except Exception as exc:
+            text = str(exc).split("Available tools:")[0].strip()
+            last = {"success": False, "error": text[:200] or "call_mcp raised"}
+            if "not found" in text.lower():
+                return last
         if isinstance(last, dict) and last.get("success"):
             return last
         if attempt < retries:

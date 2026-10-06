@@ -29,7 +29,7 @@ Deployed model is **MiniMax** unless noted.
 | Network Map | 1.0.1 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 
-Health Device 1.12.3 (skill 1.12.6): each `execute_command` is a new container. `--workspace` is the `file_explorer` directory beside `skills` on the path Studio shows for the script. Notes separate on `=`. Boot times that are the same instant are not a reboot. Only `platform` `iosxe` is collected. Topology map is unchanged.
+Health Device 1.12.3 (skill 1.12.6, workspace-handoff 1.70.4): a `call_mcp` raise is a failed GET, not a dead visit. Tool-not-found is not retried. Topology map is unchanged.
 
 Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
 
