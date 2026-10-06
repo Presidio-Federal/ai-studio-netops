@@ -24,6 +24,7 @@
         "datasource_uid": { "type": ["string", "null"], "description": "Grafana Prometheus datasource uid when an operator pinned one; null means the tool default." },
         "probe_job": { "type": ["string", "null"], "description": "Prometheus job label of the blackbox probe targets (scrapeUrl contains /probe?). Discovered from grafana_prometheus_targets or operator-set. Null when no probe job exists; P1-P4 are skipped." },
         "window": { "type": "string", "minLength": 1, "description": "timerange passed on every query, the avg_over_time range, and the annotations list window. Default 1h. An operator may set it; the nurse does not change it." },
+        "latency_threshold_ms": { "type": "integer", "minimum": 1, "description": "Probe duration_ms above this is material and degrades the plane. Default 500. A move of 3x against the board row is also material. An operator may set it; the nurse does not change a value already on the board." },
         "lookup": {
           "type": "object",
           "additionalProperties": false,

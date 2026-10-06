@@ -61,7 +61,7 @@ by `instance`.
 
 - **P1** `probe_success{job="<probe_job>"}`
 - **P2** `probe_http_status_code{job="<probe_job>"}`
-- **P3** `probe_duration_seconds{job="<probe_job>"}`
+- **P3** `probe_duration_seconds{job="<probe_job>"}` — path-quality proxy; ThousandEyes is unavailable. Stored as `duration_ms`. Material when it exceeds `application.latency_threshold_ms` (default 500) or moves 3× against the board row.
 - **P4** `avg_over_time(probe_success{job="<probe_job>"}[<window>]) * 100`
 
 **Containers** — match series by `name` + `instance`.
@@ -194,6 +194,7 @@ row onto the stamp:
 |------|---------------|-------------------|
 | probe | `success` differs | `success` |
 | probe | `http_code` differs | `http_code` |
+| probe | `duration_ms` crosses `latency_threshold_ms` (default 500), or moves 3× against the board row | `duration_ms` |
 | container | `started_epoch` differs by more than 60 (restart) | `started_epoch` |
 | container | `state` differs (`running` ↔ `gone`) | `state` |
 | container | `cpu_pct` crossed 80 in either direction | `cpu_pct` |
@@ -205,7 +206,7 @@ row onto the stamp:
 | target | `health` differs | `health` |
 | any | scope not on the board | `row` |
 
-Not material: `duration_ms`, `success_pct_window`, `mem_bytes`,
+Not material: `success_pct_window`, `mem_bytes`,
 `rx_bytes_s`, `interfaces_up`, `last_scrape`, small moves. Those
 land on the board only.
 
@@ -214,7 +215,7 @@ the board row (null when new), `current` from this row; for
 `interfaces_down` join the lists with `,`.
 
 **Delta.** `first` on the baseline. `worse` when any item is a
-probe `success` 1 → 0, a container `gone` or restarted, a host
+probe `success` 1 → 0, a probe `duration_ms` that got slower, a container `gone` or restarted, a host
 reboot, `unreachable`, or a new interface down, a target leaving
 `up`, or a threshold crossed downward. `better` when items exist,
 none is worse, and at least one is a recovery. `changed` for new
@@ -230,7 +231,8 @@ crossed upward. `unchanged` when none.
   = the rows that moved.
 - Otherwise **quiet**: no stamp. Board only.
 
-Plane `status`: `degraded` when any probe is `down`, any container
+Plane `status`: `degraded` when any probe is `down`, any probe
+`duration_ms` is over `latency_threshold_ms`, any container
 is `gone` or restarted this visit, any host is `unreachable`,
 rebooted this visit, or has an interface down, or any target is not
 `up`; `unknown` when P1, C1, and H1 all failed; else `ok`. Coverage:

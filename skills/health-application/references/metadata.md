@@ -14,7 +14,9 @@ or this skill.
    when metadata already has it.
 
 Fields the visit needs: `application.probe_job`,
-`application.window` (write `1h` when missing). `datasource_uid`
+`application.window` (write `1h` when missing),
+`application.latency_threshold_ms` (write `500` when missing; do not
+overwrite a value already there). `datasource_uid`
 may stay null; the tool then uses the default Prometheus
 datasource. An operator may pin it.
 

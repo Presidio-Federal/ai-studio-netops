@@ -395,7 +395,32 @@ def iface_text(value):
     return str(value)
 
 
-def material(row, prior):
+def latency_limit(app):
+    raw = app.get("latency_threshold_ms") if isinstance(app, dict) else None
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return 500
+    return value if value > 0 else 500
+
+
+def duration_moved(row, prior, threshold):
+    current = row.get("duration_ms")
+    if not isinstance(current, int):
+        return False
+    previous = prior.get("duration_ms")
+    if isinstance(previous, bool) or not isinstance(previous, int):
+        previous = None
+    over_now = current > threshold
+    over_then = previous is not None and previous > threshold
+    if over_now != over_then:
+        return True
+    if previous is not None and previous > 0:
+        return current >= previous * 3 or previous >= current * 3
+    return False
+
+
+def material(row, prior, threshold):
     if prior is None:
         return "row", None, row.get("state")
     kind = row["kind"]
@@ -404,6 +429,8 @@ def material(row, prior):
             return "success", prior.get("success"), row.get("success")
         if row.get("http_code") != prior.get("http_code"):
             return "http_code", prior.get("http_code"), row.get("http_code")
+        if duration_moved(row, prior, threshold):
+            return "duration_ms", prior.get("duration_ms"), row.get("duration_ms")
     elif kind == "container":
         old = prior.get("started_epoch")
         new = row.get("started_epoch")
@@ -431,7 +458,7 @@ def material(row, prior):
     return None, None, None
 
 
-def is_worse(row, prior, field):
+def is_worse(row, prior, field, threshold):
     if field == "row":
         return row["kind"] == "probe" and row.get("state") == "down"
     if row["kind"] == "probe" and field == "success" and row.get("success") == 0:
@@ -448,6 +475,14 @@ def is_worse(row, prior, field):
         return True
     if row["kind"] == "target" and field == "health" and row.get("health") != "up":
         return True
+    if field == "duration_ms":
+        current = row.get("duration_ms")
+        previous = (prior or {}).get("duration_ms")
+        if not isinstance(current, int):
+            return False
+        if not isinstance(previous, int):
+            return current > threshold
+        return current > previous
     if field in ("mem_available_pct", "fs_root_avail_pct", "cpu_pct"):
         current = row.get(field)
         previous = (prior or {}).get(field)
@@ -462,6 +497,10 @@ def is_better(row, prior, field):
         return False
     if row["kind"] == "probe" and field == "success" and prior.get("success") == 0 and row.get("success") == 1:
         return True
+    if field == "duration_ms":
+        current = row.get("duration_ms")
+        previous = prior.get("duration_ms")
+        return isinstance(current, int) and isinstance(previous, int) and current < previous
     if row["kind"] == "container" and field == "state" and prior.get("state") == "gone" and row.get("state") == "running":
         return True
     if row["kind"] == "host" and field == "state" and prior.get("state") == "unreachable" and row.get("state") == "up":
@@ -471,12 +510,12 @@ def is_better(row, prior, field):
     return False
 
 
-def overall_delta(pairs, first):
+def overall_delta(pairs, first, threshold):
     if first:
         return "first"
     if not pairs:
         return "unchanged"
-    if any(is_worse(row, prior, field) for row, prior, field in pairs):
+    if any(is_worse(row, prior, field, threshold) for row, prior, field in pairs):
         return "worse"
     if any(is_better(row, prior, field) for row, prior, field in pairs):
         return "better"
@@ -689,6 +728,7 @@ def cmd_collect(args):
     else:
         targets = targets_body.get("targets") or []
 
+    threshold = latency_limit(app)
     probe_job = blank(app.get("probe_job")) or ""
     discovered_job = False
     if not probe_job and "T" not in failed:
@@ -771,7 +811,7 @@ def cmd_collect(args):
     pairs = []
     for row in current_rows:
         prior = prior_by_scope.get(row["scope"])
-        field, _prior, _current = material(row, prior)
+        field, _prior, _current = material(row, prior, threshold)
         if field:
             pairs.append((row, prior, field))
             if field == "started_epoch":
@@ -786,6 +826,7 @@ def cmd_collect(args):
     target_list = [row for row in current_rows if row["kind"] == "target"]
     degraded = (
         any(row.get("state") == "down" for row in probes)
+        or any(isinstance(row.get("duration_ms"), int) and row["duration_ms"] > threshold for row in probes)
         or any(row.get("state") == "gone" or row["scope"] in restarted for row in containers)
         or any(
             row.get("state") == "unreachable" or row["scope"] in rebooted or row.get("interfaces_down")
@@ -794,7 +835,7 @@ def cmd_collect(args):
         or any(row.get("health") not in (None, "up") for row in target_list)
     )
     status = "unknown" if anchors_down else ("degraded" if degraded else "ok")
-    delta = overall_delta(pairs, first)
+    delta = overall_delta(pairs, first, threshold)
     write_stamp = first or bool(pairs) or coverage != "complete"
     reading_rows = list(current_rows) if first else [row for row, _prior, _field in pairs]
     reading_rows = reading_rows[:READINGS_CAP]
@@ -812,7 +853,7 @@ def cmd_collect(args):
         for row, prior, field in pairs:
             if row["scope"] not in reading_scopes:
                 continue
-            _field, prior_value, current_value = material(row, prior)
+            _field, prior_value, current_value = material(row, prior, threshold)
             public_changed.append(
                 {
                     "keys": list(row.get("keys") or []),
@@ -919,6 +960,7 @@ def cmd_collect(args):
         "application": {
             "probe_job": probe_job or None,
             "window": window,
+            "latency_threshold_ms": threshold,
             "lookup": lookup,
             "last_visit_id": watch if write_stamp else prior_watch,
             "last_collected_at": at,
@@ -950,11 +992,11 @@ def cmd_collect(args):
     needs = []
     if write_stamp and not first:
         for row, prior, field in pairs:
-            if not is_worse(row, prior, field) and field not in ("http_code", "cpu_pct"):
+            if not is_worse(row, prior, field, threshold) and field not in ("http_code", "cpu_pct"):
                 continue
             if not row.get("keys"):
                 continue
-            _field, prior_value, current_value = material(row, prior)
+            _field, prior_value, current_value = material(row, prior, threshold)
             needs.append({"keys": row["keys"], "field": field, "prior": prior_value, "current": current_value})
     down_n = sum(1 for row in probes if row.get("state") == "down")
     print(

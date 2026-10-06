@@ -77,7 +77,7 @@
       "required": ["keys", "field", "prior", "current", "at"],
       "properties": {
         "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site|application|test):[^ ].*$" } },
-        "field": { "type": "string", "enum": ["success", "http_code", "started_epoch", "state", "cpu_pct", "boot_epoch", "interfaces_down", "mem_available_pct", "fs_root_avail_pct", "health", "row"] },
+        "field": { "type": "string", "enum": ["success", "http_code", "duration_ms", "started_epoch", "state", "cpu_pct", "boot_epoch", "interfaces_down", "mem_available_pct", "fs_root_avail_pct", "health", "row"] },
         "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
         "current": { "type": ["string", "number", "integer", "boolean", "null"] },
         "at": { "type": "string", "minLength": 1 }

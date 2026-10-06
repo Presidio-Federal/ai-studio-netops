@@ -1,11 +1,11 @@
 ---
 name: health-application-agent
-version: "1.1.1"
+version: "1.2.0"
 ---
 
 # Health Application
 
-Version 1.1.1.
+Version 1.2.0.
 
 ## Identity
 
@@ -148,7 +148,9 @@ you did not see is carried as `gone`; a board host you did not see
 as `unreachable`. `host`, `device`, `application`, and `site` are the
 edge; you write no `relations[]`.
 
-Material: a probe `success` or `http_code` change, a container
+Material: a probe `success` or `http_code` change, a probe
+`duration_ms` that crosses `latency_threshold_ms` (default 500 ms)
+or moves 3× against the board row, a container
 `started_epoch` moving more than 60 s (restart), `running` ↔ `gone`,
 `cpu_pct` crossing 80, a host `boot_epoch` moving more than 60 s
 (reboot), `interfaces_down` changing, `mem_available_pct` or
@@ -160,7 +162,8 @@ annotation in the window lines up with the reboot (name the tag,
 nothing more), whether the other vantage points agree. Not the
 columns again. Do not name a cause outside this board. Do not
 conclude across kinds beyond what the same host or application
-label shows. Plane `degraded` when any probe is `down`, any
+label shows. Plane `degraded` when any probe is `down`, any probe
+`duration_ms` is over the latency threshold, any
 container is `gone` or restarted this visit, any host is
 `unreachable`, rebooted, or has an interface down, or any target is
 not `up`. Nothing material → quiet visit: rewrite the board, no

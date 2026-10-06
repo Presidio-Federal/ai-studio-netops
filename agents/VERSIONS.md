@@ -21,7 +21,7 @@ Deployed model is **MiniMax** unless noted.
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.0.1 | MiniMax |
 | Health Telemetry | 1.0.7 | MiniMax |
-| Health Application | 1.1.1 | MiniMax |
+| Health Application | 1.2.0 | MiniMax |
 | Health Device | 1.12.3 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 5.0.0 | MiniMax |
@@ -34,6 +34,8 @@ Health Device 1.12.3 (skill 1.12.6, workspace-handoff 1.70.4): a `call_mcp` rais
 Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
 
 workspace-handoff 1.70.3: `unwrap_grafana` pivots Grafana 13 columnar frames. Live NetFlow for the last hour is bucket `network-v2`, measurement `netflow`, five exporters.
+
+Health Application 1.2.0 (skill 1.2.0): probe `duration_ms` is material when it crosses `latency_threshold_ms` (default 500) or moves 3× against the board row. A probe still over that line degrades the plane. The value stays on the board when the move is smaller.
 
 Health Application 1.1.1 (skill 1.1.1): prior visit rows carried a `scope` the board schema does not allow. The script keeps the visit fields and drops the rest, so an older board still saves.
 
