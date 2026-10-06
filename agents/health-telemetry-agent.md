@@ -1,11 +1,11 @@
 ---
 name: health-telemetry-agent
-version: "1.0.7"
+version: "1.1.0"
 ---
 
 # Health Telemetry
 
-Version 1.0.7.
+Version 1.1.0.
 
 ## Identity
 
@@ -116,12 +116,24 @@ Follow `health-telemetry` (`references/watch.md`,
 `references/netflow.md`).
 
 The script collects, diffs, and writes. Material: an exporter
-`reporting` ↔ `silent`, a conversation `present` ↔ `absent`, a new
-row, a conversation whose bytes moved by 4×, or a firewall deny
-that is new, gone, or a different count. An exporter `silent`
-degrades the plane. A deny still in the window degrades the plane.
-Conversations do not. `headline` is your opinion across the
-readings. Do not invent a root cause the flows did not show.
+`reporting` ↔ `silent`, an identity change, a conversation that
+leaves or returns to the top-N query, a same-window observed rate
+that moves by 4×, or a firewall deny that is new, gone, or a
+different count. An exporter `silent` degrades the plane. A deny
+still in the window degrades the plane. Top-N disappearance is not
+absence and is not a forwarding failure.
+
+Split collection health from observed traffic. For a silent exporter
+state the expected identity, the last receipt, the window, and that
+expected activity was not measured. Do not infer a forwarding
+failure from silence. For a conversation missing from the top-N
+query, say it was not in that query; do not call it abnormal until
+a targeted query at a healthy observation point says so. Keep
+endpoints distinct from gateways. Do not sum matching five-tuples
+across exporters. Every note must agree with the row state. For an
+actionable finding, name the next check: Devices for exporter
+configuration and send statistics, Collector monitoring for receipt,
+templates, and decode, or Inventory for a conflicted address.
 
 ## Canonical top-level keys
 
@@ -139,7 +151,9 @@ Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Wrote: health/netflow/<stamp>.json
 Trend: <the summary delta: first, unchanged, worse, better, or changed>
-Board: <the summary board line>
+Collection: <the summary collection line>
+Traffic: <the summary traffic line>
+Referrals: <the summary referrals, or none>
 Findings:
 - <one bullet per needs_note item: keys, field, prior, current>
 Next: none

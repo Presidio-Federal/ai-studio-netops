@@ -29,6 +29,48 @@
         "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
         "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
         "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+        "identity_review": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Exporter addresses the operator marks conflicted even when one fresh candidate exists. The nurse writes 10.30.30.2 here when the list is empty."
+        },
+        "exporter_registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "entries"],
+          "properties": {
+            "version": { "type": "integer" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["source", "identity", "device", "candidates", "configured_export", "expected_activity", "collector_health", "observation_interface"],
+                "properties": {
+                  "source": { "type": "string" },
+                  "identity": { "type": ["string", "null"], "enum": ["resolved", "conflicted", "unverified", null] },
+                  "device": { "type": ["string", "null"] },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["device", "evidence"],
+                      "properties": {
+                        "device": { "type": "string" },
+                        "evidence": { "type": "string" }
+                      }
+                    }
+                  },
+                  "configured_export": { "type": ["string", "null"], "enum": ["configured", "not_configured", null] },
+                  "expected_activity": { "type": ["string", "null"], "enum": ["expected", "idle_ok", null] },
+                  "collector_health": { "type": ["string", "null"], "enum": ["verified", "failing", null] },
+                  "observation_interface": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
         "exporters": {
           "type": "array",
           "items": {
@@ -48,7 +90,7 @@
           "type": "array",
           "maxItems": 120,
           "items": { "$ref": "#/$defs/row" },
-          "description": "Last-known row per exporter and per conversation. A visit replaces every row it measured; exporters and conversations it did not see are carried as silent / absent."
+          "description": "Last-known row per exporter and per conversation. A visit replaces every row it measured. Exporters not seen are silent. Conversations missing from the top-N query are not_in_top_n."
         },
         "series": {
           "type": "array",
@@ -87,11 +129,18 @@
         "dst": { "type": ["string", "null"] },
         "dst_port": { "type": ["string", "null"] },
         "protocol": { "type": ["string", "null"] },
-        "src_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr or access host matches src. Null when unresolved." },
-        "dst_device": { "type": ["string", "null"], "description": "Inventory device whose interface cidr or access host matches dst. Null when unresolved." },
+        "src_device": { "type": ["string", "null"], "description": "Not filled from a containing subnet." },
+        "dst_device": { "type": ["string", "null"], "description": "Not filled from a containing subnet." },
+        "src_gateway": { "type": ["string", "null"], "description": "Device whose interface address is exactly src." },
+        "dst_gateway": { "type": ["string", "null"], "description": "Device whose interface address is exactly dst." },
+        "identity": { "type": ["string", "null"], "enum": ["resolved", "conflicted", "unverified", null] },
+        "candidates": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["device", "evidence"], "properties": { "device": { "type": "string" }, "evidence": { "type": "string" } } } },
+        "bytes_per_s": { "type": ["number", "null"] },
+        "window": { "type": ["string", "null"] },
+        "referral": { "type": "array", "items": { "type": "string" } },
         "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" }, "description": "device:<device> / device:<exporter> / device:<src_device> / device:<dst_device> when resolved; site:<exporter_site> on exporter rows when tagged. Never an application or a port." },
         "at": { "type": "string", "minLength": 1, "description": "checked_at of the visit that last measured or carried this row." },
-        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent"], "description": "Exporter rows: reporting / silent. Conversation rows: present / absent." },
+        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent", "not_in_top_n"], "description": "Exporter rows: reporting / silent. Conversation rows: present, not_in_top_n, or absent." },
         "bytes": { "type": ["integer", "number", "null"] },
         "flows": { "type": ["integer", "null"] },
         "last_flow_at": { "type": ["string", "null"], "description": "Exporter rows: newest flow time seen from this source." },
@@ -112,7 +161,8 @@
         "bytes": { "type": ["integer", "number", "null"] },
         "conversations": { "type": ["integer", "null"] },
         "conversations_absent": { "type": ["integer", "null"] },
-        "top_scope": { "type": ["string", "null"] }
+        "top_scope": { "type": ["string", "null"] },
+        "observation_source": { "type": ["string", "null"] }
       }
     },
     "visit_row": {

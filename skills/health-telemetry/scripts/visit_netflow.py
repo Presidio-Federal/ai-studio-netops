@@ -50,13 +50,20 @@ ROW_FIELDS = (
     "protocol",
     "src_device",
     "dst_device",
+    "src_gateway",
+    "dst_gateway",
+    "identity",
+    "candidates",
     "keys",
     "at",
     "state",
     "bytes",
     "flows",
+    "bytes_per_s",
+    "window",
     "last_flow_at",
     "last_seen_at",
+    "referral",
 )
 READINGS_CAP = 60
 
@@ -326,20 +333,25 @@ def cidr_index(topology):
             if not cidr or "/" not in str(cidr):
                 continue
             try:
-                nets.append((ipaddress.ip_network(str(cidr), strict=False), name))
+                iface = ipaddress.ip_address(str(cidr).split("/", 1)[0])
+                nets.append((ipaddress.ip_network(str(cidr), strict=False), iface, name))
             except ValueError:
                 continue
     return nets
 
 
 def address_device(value, nets, by_lower):
+    """Device whose interface address is exactly this IP. A containing subnet is not ownership."""
     try:
         ip = ipaddress.ip_address(str(value))
     except ValueError:
         return None
-    for net, name in nets:
-        if ip in net and name.lower() in by_lower:
-            return by_lower[name.lower()]
+    names = []
+    for _net, iface, name in nets:
+        if ip == iface and name.lower() in by_lower and by_lower[name.lower()] not in names:
+            names.append(by_lower[name.lower()])
+    if len(names) == 1:
+        return names[0]
     return None
 
 
@@ -351,25 +363,48 @@ def named_device(value, by_lower):
     return None
 
 
-def resolve_exporter(source, exporter_name, exporters, by_lower, access, nets):
-    for row in exporters:
-        if row.get("source") == source and row.get("device"):
-            found = named_device(row["device"], by_lower)
-            if found:
-                return found
-    found = named_device(exporter_name, by_lower)
-    if found:
-        return found
-    found = address_device(source, nets, by_lower)
-    if found:
-        return found
+def identity_for(source, exporter_name, stored, by_lower, access, nets, review):
+    """Fresh evidence wins. A stored device that disagrees is a conflict, not the owner."""
+    candidates = []
+
+    def add(device, evidence):
+        if not device:
+            return
+        if not any(item["device"] == device and item["evidence"] == evidence for item in candidates):
+            candidates.append({"device": device, "evidence": evidence})
+
+    try:
+        ip = ipaddress.ip_address(str(source))
+    except ValueError:
+        ip = None
+    if ip is not None:
+        for _net, iface, name in nets:
+            if ip == iface and name.lower() in by_lower:
+                add(by_lower[name.lower()], "interface")
     for name, hosts in access.items():
         if source in hosts:
-            return name
-    return None
+            add(name, "access")
+    add(named_device(exporter_name, by_lower), "exporter_name")
+    stored_name = named_device(stored, by_lower) if stored else None
+    if stored and not stored_name:
+        stored_name = str(stored)
+    add(stored_name, "stored")
+    fresh = []
+    for item in candidates:
+        if item["evidence"] != "stored" and item["device"] not in fresh:
+            fresh.append(item["device"])
+    if source in set(review or []) or len(fresh) > 1 or (stored_name and fresh and stored_name not in fresh):
+        return {"identity": "conflicted", "device": None, "candidates": candidates}
+    if len(fresh) == 1:
+        kept = [item for item in candidates if item["evidence"] != "stored"]
+        return {"identity": "resolved", "device": fresh[0], "candidates": kept}
+    if stored_name:
+        return {"identity": "unverified", "device": None, "candidates": candidates}
+    return {"identity": "unverified", "device": None, "candidates": []}
 
 
-def resolve_flow(addr, by_lower, access, nets):
+def gateway_for(addr, by_lower, access, nets):
+    """Exact interface or access host. An address inside a subnet stays an endpoint."""
     found = address_device(addr, nets, by_lower)
     if found:
         return found
@@ -407,7 +442,7 @@ def fit_row(row):
     at = blank(row.get("at"))
     if kind not in ("exporter", "conversation", "firewall") or not scope or not source or not at:
         return None
-    if state not in ("reporting", "silent", "present", "absent"):
+    if state not in ("reporting", "silent", "present", "absent", "not_in_top_n"):
         return None
     keys = [key for key in (row.get("keys") or []) if isinstance(key, str) and KEY_RE.match(key)]
     item = {field: row.get(field) for field in ROW_FIELDS}
@@ -420,6 +455,10 @@ def fit_row(row):
     item["state"] = state
     item["bytes"] = coerce_int(row.get("bytes"))
     item["flows"] = coerce_int(row.get("flows"))
+    item["candidates"] = row.get("candidates") if isinstance(row.get("candidates"), list) else []
+    item["referral"] = [text for text in (row.get("referral") or []) if isinstance(text, str)][:4]
+    rate = row.get("bytes_per_s")
+    item["bytes_per_s"] = rate if isinstance(rate, (int, float)) and not isinstance(rate, bool) else None
     return item
 
 
@@ -440,7 +479,10 @@ def fit_metric(row):
         return None
     if not all(field in row for field in needed):
         return None
-    return {field: row.get(field) for field in needed}
+    item = {field: row.get(field) for field in needed}
+    if "observation_source" in row:
+        item["observation_source"] = blank(row.get("observation_source"))
+    return item
 
 
 def fit_visit(row):
@@ -550,24 +592,47 @@ def locate_stamp(ws, given):
     return candidates[-1] if candidates else ws / "health" / "netflow" / "missing.json"
 
 
-def exporter_row(raw, at, exporters, by_lower, access, nets):
+def observed_rate(amount, window):
+    seconds = window_delta(window).total_seconds()
+    if not seconds or amount is None:
+        return None
+    return round((coerce_int(amount) or 0) / seconds, 3)
+
+
+def referrals_for(row):
+    found = []
+    if row.get("identity") == "conflicted":
+        found.append("Inventory: resolve conflicting address ownership.")
+    if row.get("kind") == "exporter" and row.get("state") == "silent":
+        found.append("Devices: verify exporter configuration and send statistics.")
+        found.append("Collector monitoring: verify receipt, templates, and decode errors.")
+    if row.get("state") == "not_in_top_n":
+        found.append("Telemetry: targeted query at a healthy observation point before calling this absent.")
+    return found
+
+
+def exporter_row(raw, at, window, stored_device, by_lower, access, nets, review):
     source = blank(raw.get("source"))
     if not source:
         return None
     name = blank(raw.get("exporter_name"))
     site = blank(raw.get("exporter_site"))
-    device = resolve_exporter(source, name, exporters, by_lower, access, nets)
+    ident = identity_for(source, name, stored_device, by_lower, access, nets, review)
+    device = ident["device"]
     keys = []
     for key in (device_key(device), site_key(site)):
         if key and key not in keys:
             keys.append(key)
-    return {
+    amount = coerce_int(raw.get("bytes")) or 0
+    row = {
         "kind": "exporter",
         "scope": f"exporter:{source}",
         "source": source,
         "exporter_name": name,
         "exporter_site": site,
         "device": device,
+        "identity": ident["identity"],
+        "candidates": ident["candidates"],
         "exporter": None,
         "src": None,
         "dst": None,
@@ -575,17 +640,24 @@ def exporter_row(raw, at, exporters, by_lower, access, nets):
         "protocol": None,
         "src_device": None,
         "dst_device": None,
+        "src_gateway": None,
+        "dst_gateway": None,
         "keys": keys,
         "at": at,
         "state": "reporting",
-        "bytes": coerce_int(raw.get("bytes")) or 0,
+        "bytes": amount,
         "flows": coerce_int(raw.get("flows")) or 0,
+        "bytes_per_s": observed_rate(amount, window),
+        "window": window,
         "last_flow_at": blank(raw.get("last_at")),
         "last_seen_at": None,
+        "referral": [],
     }
+    row["referral"] = referrals_for(row)
+    return row
 
 
-def conversation_row(raw, at, device_by_source, by_lower, access, nets):
+def conversation_row(raw, at, window, device_by_source, by_lower, access, nets):
     source = blank(raw.get("source"))
     src = blank(raw.get("src"))
     dst = blank(raw.get("dst"))
@@ -593,13 +665,14 @@ def conversation_row(raw, at, device_by_source, by_lower, access, nets):
     protocol = blank(raw.get("protocol"))
     if not source or not src or not dst or not dst_port or not protocol:
         return None
-    src_device = resolve_flow(src, by_lower, access, nets)
-    dst_device = resolve_flow(dst, by_lower, access, nets)
+    src_gateway = gateway_for(src, by_lower, access, nets)
+    dst_gateway = gateway_for(dst, by_lower, access, nets)
     exporter = device_by_source.get(source)
     keys = []
-    for key in (device_key(exporter), device_key(src_device), device_key(dst_device)):
+    for key in (device_key(exporter), device_key(src_gateway), device_key(dst_gateway)):
         if key and key not in keys:
             keys.append(key)
+    amount = coerce_int(raw.get("bytes")) or 0
     return {
         "kind": "conversation",
         "scope": flow_scope(source, src, dst, dst_port, protocol),
@@ -607,20 +680,27 @@ def conversation_row(raw, at, device_by_source, by_lower, access, nets):
         "exporter_name": blank(raw.get("exporter_name")),
         "exporter_site": None,
         "device": None,
+        "identity": None,
+        "candidates": [],
         "exporter": exporter,
         "src": src,
         "dst": dst,
         "dst_port": dst_port,
         "protocol": protocol,
-        "src_device": src_device,
-        "dst_device": dst_device,
+        "src_device": None,
+        "dst_device": None,
+        "src_gateway": src_gateway,
+        "dst_gateway": dst_gateway,
         "keys": keys,
         "at": at,
         "state": "present",
-        "bytes": coerce_int(raw.get("bytes")) or 0,
+        "bytes": amount,
         "flows": coerce_int(raw.get("flows")) or 0,
+        "bytes_per_s": observed_rate(amount, window),
+        "window": window,
         "last_flow_at": None,
         "last_seen_at": blank(raw.get("last_at")),
+        "referral": [],
     }
 
 
@@ -636,11 +716,11 @@ def firewall_row(raw, at, by_lower, access, nets):
     if not src or not dst:
         return None
     name = blank(raw.get("exporter_name"))
-    src_device = resolve_flow(src, by_lower, access, nets)
-    dst_device = resolve_flow(dst, by_lower, access, nets)
+    src_gateway = gateway_for(src, by_lower, access, nets)
+    dst_gateway = gateway_for(dst, by_lower, access, nets)
     exporter = named_device(name, by_lower)
     keys = []
-    for key in (device_key(exporter), device_key(src_device), device_key(dst_device)):
+    for key in (device_key(exporter), device_key(src_gateway), device_key(dst_gateway)):
         if key and key not in keys:
             keys.append(key)
     count = coerce_int(raw.get("_value"))
@@ -658,33 +738,53 @@ def firewall_row(raw, at, by_lower, access, nets):
         "dst": dst,
         "dst_port": dst_port,
         "protocol": protocol,
-        "src_device": src_device,
-        "dst_device": dst_device,
+        "src_device": None,
+        "dst_device": None,
+        "src_gateway": src_gateway,
+        "dst_gateway": dst_gateway,
+        "identity": None,
+        "candidates": [],
         "keys": keys,
         "at": at,
         "state": "present",
         "bytes": None,
         "flows": count,
+        "bytes_per_s": None,
+        "window": None,
         "last_flow_at": None,
         "last_seen_at": at,
+        "referral": [],
     }
 
 
-def carry_exporter(prior, at):
+def carry_exporter(prior, at, window, by_lower, access, nets, review):
     row = dict(prior)
+    ident = identity_for(row.get("source"), row.get("exporter_name"), prior.get("device"), by_lower, access, nets, review)
+    row["identity"] = ident["identity"]
+    row["device"] = ident["device"]
+    row["candidates"] = ident["candidates"]
+    keys = []
+    for key in (device_key(ident["device"]), site_key(row.get("exporter_site"))):
+        if key and key not in keys:
+            keys.append(key)
+    row["keys"] = keys
     row["state"] = "silent"
     row["bytes"] = 0
     row["flows"] = 0
+    row["bytes_per_s"] = 0
+    row["window"] = window
     row["at"] = at
+    row["referral"] = referrals_for(row)
     return row
 
 
-def carry_conversation(prior, at):
+def carry_conversation(prior, at, window):
     row = dict(prior)
-    row["state"] = "absent"
-    row["bytes"] = 0
-    row["flows"] = 0
+    row["state"] = "not_in_top_n"
+    row["bytes_per_s"] = None
+    row["window"] = window
     row["at"] = at
+    row["referral"] = referrals_for(row)
     return row
 
 
@@ -695,9 +795,13 @@ def too_old(value, now):
     return now - moment > timedelta(days=7)
 
 
-def byte_move(prior, current):
-    old = coerce_int(prior) or 0
-    new = coerce_int(current) or 0
+def rate_move(prior, current):
+    if prior.get("window") != current.get("window"):
+        return False
+    old = prior.get("bytes_per_s")
+    new = current.get("bytes_per_s")
+    if not isinstance(old, (int, float)) or not isinstance(new, (int, float)) or isinstance(old, bool) or isinstance(new, bool):
+        return False
     if old <= 0 or new <= 0:
         return False
     return new >= old * 4 or new <= old / 4
@@ -705,12 +809,14 @@ def byte_move(prior, current):
 
 def material(row, prior):
     if prior is None:
-        current = row["state"] if row["kind"] == "exporter" else "present"
+        current = row["state"] if row["kind"] == "exporter" else row.get("state")
         return "row", None, current
     if row["state"] != prior.get("state"):
         return "state", prior.get("state"), row["state"]
-    if row["kind"] == "conversation" and byte_move(prior.get("bytes"), row.get("bytes")):
-        return "bytes", prior.get("bytes"), row.get("bytes")
+    if row.get("identity") in ("conflicted", "unverified", "resolved") and row.get("identity") != prior.get("identity"):
+        return "identity", prior.get("identity"), row.get("identity")
+    if row["kind"] == "conversation" and row["state"] == "present" and rate_move(prior, row):
+        return "bytes_per_s", prior.get("bytes_per_s"), row.get("bytes_per_s")
     if row["kind"] == "firewall" and (coerce_int(prior.get("flows")) or 0) != (coerce_int(row.get("flows")) or 0):
         return "flows", prior.get("flows"), row.get("flows")
     return None, None, None
@@ -719,8 +825,8 @@ def material(row, prior):
 def is_worse(row, prior):
     if row["kind"] == "exporter" and row["state"] == "silent" and (prior is None or prior.get("state") != "silent"):
         return prior is not None
-    if row["kind"] == "conversation" and row["state"] == "absent" and (row.get("src_device") or row.get("dst_device")):
-        return prior is not None and prior.get("state") != "absent"
+    if row["kind"] == "conversation" and row["state"] == "absent" and prior and prior.get("state") == "present":
+        return True
     if row["kind"] == "firewall" and row["state"] == "present" and (prior is None or prior.get("state") != "present"):
         return True
     if row["kind"] == "firewall" and prior and (coerce_int(row.get("flows")) or 0) > (coerce_int(prior.get("flows")) or 0):
@@ -735,7 +841,7 @@ def is_better(row, prior):
         return True
     if row["kind"] == "firewall" and (coerce_int(row.get("flows")) or 0) < (coerce_int(prior.get("flows")) or 0):
         return True
-    return (prior.get("state"), row["state"]) in (("silent", "reporting"), ("absent", "present"))
+    return (prior.get("state"), row["state"]) in (("silent", "reporting"), ("absent", "present"), ("not_in_top_n", "present"))
 
 
 def overall_delta(pairs, first):
@@ -752,22 +858,35 @@ def overall_delta(pairs, first):
     return "changed"
 
 
-def note_for(row, prior, first):
-    if first and not (row["kind"] == "exporter" and row["state"] == "silent"):
-        return "Baseline."
+def note_for(row, prior, first, migration=False):
+    if migration and (prior is None or row.get("identity") in ("conflicted", "unverified") or row.get("state") == "not_in_top_n"):
+        return "Baseline migration. Identifier rules changed. Not an operational degradation."
+    if row.get("identity") == "conflicted":
+        return f"{row.get('source')} identity conflicted. Candidates retained. No device conclusion."
     if row["kind"] == "exporter" and row["state"] == "silent":
-        return f"Silent since {row.get('last_flow_at') or row['at']}."
+        last = row.get("last_flow_at") or "unknown"
+        return (
+            f"No records from {row.get('source')} in this {row.get('window')} window. "
+            f"Last receipt {last}. Expected activity not measured. Not a forwarding failure."
+        )
     if row["kind"] == "exporter" and prior and prior.get("state") == "silent":
-        return "Reporting again."
+        return "Records seen again."
+    if row["state"] == "not_in_top_n":
+        return "Not in the top-N query. Last observation kept. Not absence."
     if row["state"] == "absent":
         return "Absent this window."
     if prior is None:
         return "New row."
-    if row["kind"] == "conversation":
-        return f"Bytes {prior.get('bytes')} -> {row.get('bytes')}."
+    if row["kind"] == "conversation" and row.get("bytes_per_s") is not None:
+        return (
+            f"Observed {row['bytes_per_s']} B/s at {row.get('source')} over {row.get('window')}. "
+            "Not interface utilization. Delayed exports not measured."
+        )
     if row["kind"] == "firewall":
         return f"Denies {prior.get('flows') if prior else 0} -> {row.get('flows')}."
-    return f"{prior.get('state')} -> {row['state']}."
+    if prior:
+        return f"{prior.get('state')} -> {row['state']}."
+    return "Row updated."
 
 
 def cap_board(rows):
@@ -784,17 +903,19 @@ def estate(rows, at, top_scope):
     exporters = [row for row in rows if row["kind"] == "exporter"]
     conversations = [row for row in rows if row["kind"] == "conversation"]
     reporting = [row for row in exporters if row["state"] == "reporting"]
+    selected = max(reporting, key=lambda row: row.get("bytes") or 0) if reporting else None
     return {
         "at": at,
         "scope": "estate",
         "exporters": len(reporting),
         "exporters_silent": sum(1 for row in exporters if row["state"] == "silent"),
-        "exporters_unresolved": sum(1 for row in reporting if not row.get("device")),
-        "flows": sum(row.get("flows") or 0 for row in reporting),
-        "bytes": sum(row.get("bytes") or 0 for row in reporting),
+        "exporters_unresolved": sum(1 for row in reporting if row.get("identity") != "resolved"),
+        "flows": None if selected is None else selected.get("flows"),
+        "bytes": None if selected is None else selected.get("bytes"),
         "conversations": sum(1 for row in conversations if row["state"] == "present"),
-        "conversations_absent": sum(1 for row in conversations if row["state"] == "absent"),
+        "conversations_absent": sum(1 for row in conversations if row["state"] in ("absent", "not_in_top_n")),
         "top_scope": top_scope,
+        "observation_source": None if selected is None else selected.get("source"),
     }
 
 
@@ -841,6 +962,43 @@ def plane_block(board):
     if any(key in board for key in ("bucket", "measurement", "current", "exporters")):
         return {key: board[key] for key in flat_keys if key in board}
     return nested if isinstance(nested, dict) else {}
+
+
+def build_registry(previous, rows):
+    old = {}
+    if isinstance(previous, dict):
+        for entry in previous.get("entries") or []:
+            if isinstance(entry, dict) and entry.get("source"):
+                old[str(entry["source"])] = entry
+    entries = []
+    seen = set()
+
+    def kept(prior, name, allowed):
+        value = prior.get(name)
+        return value if value in allowed else None
+
+    for row in rows:
+        if row.get("kind") != "exporter" or not row.get("source") or row["source"] in seen:
+            continue
+        seen.add(row["source"])
+        prior = old.get(row["source"]) or {}
+        interface = prior.get("observation_interface")
+        entries.append(
+            {
+                "source": row["source"],
+                "identity": row.get("identity"),
+                "device": row.get("device"),
+                "candidates": row.get("candidates") if isinstance(row.get("candidates"), list) else [],
+                "configured_export": kept(prior, "configured_export", ("configured", "not_configured")),
+                "expected_activity": kept(prior, "expected_activity", ("expected", "idle_ok")),
+                "collector_health": kept(prior, "collector_health", ("verified", "failing")),
+                "observation_interface": interface if isinstance(interface, str) and interface else None,
+            }
+        )
+    version = 1
+    if isinstance(previous, dict) and isinstance(previous.get("version"), int):
+        version = previous["version"]
+    return {"version": version, "entries": entries}
 
 
 def cmd_collect(args):
@@ -923,10 +1081,15 @@ def cmd_collect(args):
 
     by_lower, access = prod_index(prod)
     nets = cidr_index(visit_common.load_json(ws, "inventory/topology-observed.json"))
+    migration = not isinstance(netflow.get("exporter_registry"), dict)
+    review = netflow.get("identity_review")
+    if not isinstance(review, list) or not review:
+        review = ["10.30.30.2"]
     built_exporters = []
     for raw in f1_rows:
         if isinstance(raw, dict):
-            row = exporter_row(raw, at, exporters, by_lower, access, nets)
+            stored = next((item.get("device") for item in exporters if item.get("source") == raw.get("source")), None)
+            row = exporter_row(raw, at, window, stored, by_lower, access, nets, review)
             if row:
                 built_exporters.append(row)
     if not built_exporters:
@@ -951,7 +1114,7 @@ def cmd_collect(args):
     if not f2_failed:
         for raw in f2_rows:
             if isinstance(raw, dict):
-                row = conversation_row(raw, at, device_by_source, by_lower, access, nets)
+                row = conversation_row(raw, at, window, device_by_source, by_lower, access, nets)
                 if row:
                     conversations.append(row)
         seen_scopes = {row["scope"] for row in conversations}
@@ -960,7 +1123,7 @@ def cmd_collect(args):
                 continue
             if too_old(prior.get("last_seen_at"), now):
                 continue
-            conversations.append(carry_conversation(prior, at))
+            conversations.append(carry_conversation(prior, at, window))
     else:
         conversations = [row for row in prior_rows if row["kind"] == "conversation"]
 
@@ -1003,7 +1166,7 @@ def cmd_collect(args):
     seen_exporter_scopes = {row["scope"] for row in built_exporters}
     for prior in prior_rows:
         if prior["kind"] == "exporter" and prior["scope"] not in seen_exporter_scopes:
-            carried.append(carry_exporter(prior, at))
+            carried.append(carry_exporter(prior, at, window, by_lower, access, nets, review))
     current_rows = cap_board(built_exporters + carried + conversations + firewalls)
     top = None
     present = [row for row in conversations if row["state"] == "present"]
@@ -1024,6 +1187,25 @@ def cmd_collect(args):
     silent = any(row["kind"] == "exporter" and row["state"] == "silent" for row in current_rows)
     status = "degraded" if silent or denies else "ok"
     delta = overall_delta(pairs, first)
+    if migration and delta == "worse":
+        operational = any(
+            (
+                row["kind"] == "exporter"
+                and row["state"] == "silent"
+                and prior
+                and prior.get("state") == "reporting"
+            )
+            or (row["kind"] == "firewall" and is_worse(row, prior))
+            or (
+                row["kind"] == "conversation"
+                and row["state"] == "absent"
+                and prior
+                and prior.get("state") == "present"
+            )
+            for row, prior, _field in pairs
+        )
+        if not operational:
+            delta = "changed"
     write_stamp = first or bool(pairs) or coverage != "complete"
     reading_rows = [row for row, _prior, _field in pairs]
     if first:
@@ -1038,7 +1220,7 @@ def cmd_collect(args):
     readings = []
     for row in reading_rows:
         item = {field: row.get(field) for field in ROW_FIELDS}
-        item["note"] = note_for(row, prior_for.get(row["scope"]), first)
+        item["note"] = note_for(row, prior_for.get(row["scope"]), first, migration)
         readings.append(item)
     reading_scopes = {row["scope"] for row in readings}
     unchanged = 0 if first else sum(1 for row in current_rows if row["scope"] not in reading_scopes)
@@ -1070,6 +1252,8 @@ def cmd_collect(args):
         at = checked_at(moment)
         metric["at"] = at
         headline = "Baseline." if first else f"{len(readings)} flow rows moved. {unchanged} board rows unchanged."
+        if migration:
+            headline = "Baseline migration. Identifier rules changed. Not an operational degradation. " + headline
         if lookup_note:
             headline = f"{lookup_note}. {headline}"
         stamp = {
@@ -1130,8 +1314,10 @@ def cmd_collect(args):
                     "device": row.get("device"),
                 }
             )
-        elif row.get("device") and not known.get("device"):
-            known["device"] = row["device"]
+        else:
+            known["device"] = row.get("device")
+            if row.get("exporter_name"):
+                known["exporter_name"] = row.get("exporter_name")
 
     series = keep(netflow.get("series") or [], fit_metric)
     series.append(metric)
@@ -1157,6 +1343,8 @@ def cmd_collect(args):
             "window": window,
             "firewall_measurement": firewall_name or None,
             "exporters": exporters,
+            "exporter_registry": build_registry(netflow.get("exporter_registry"), current_rows),
+            "identity_review": list(review),
             "last_visit_id": watch if write_stamp else prior_watch,
             "last_collected_at": at,
             "baseline_visit_id": baseline if baseline else (watch if first and write_stamp else None),
@@ -1183,6 +1371,8 @@ def cmd_collect(args):
         for row, prior, field in pairs:
             if row["kind"] == "exporter" and row["state"] != "silent" and field == "row":
                 continue
+            if field in ("identity", "bytes_per_s") or row.get("state") == "not_in_top_n":
+                continue
             if row["kind"] == "conversation" and field == "bytes":
                 continue
             if row["kind"] == "firewall" and field == "flows" and row["state"] != "present":
@@ -1195,8 +1385,16 @@ def cmd_collect(args):
             )
     exporters_n = sum(1 for row in current_rows if row["kind"] == "exporter")
     silent_n = sum(1 for row in current_rows if row["kind"] == "exporter" and row["state"] == "silent")
-    conv_n = sum(1 for row in current_rows if row["kind"] == "conversation")
+    conflict_n = sum(1 for row in current_rows if row["kind"] == "exporter" and row.get("identity") == "conflicted")
+    present_n = sum(1 for row in current_rows if row["kind"] == "conversation" and row["state"] == "present")
+    unobserved_n = sum(1 for row in current_rows if row["kind"] == "conversation" and row["state"] == "not_in_top_n")
     deny_n = sum(1 for row in current_rows if row["kind"] == "firewall" and row["state"] == "present")
+    observation = metric.get("observation_source")
+    referrals = []
+    for row in current_rows:
+        for item in row.get("referral") or []:
+            if item not in referrals:
+                referrals.append(item)
     payload = {
         "plane": "netflow",
         "watch_id": watch if write_stamp else None,
@@ -1212,7 +1410,11 @@ def cmd_collect(args):
         "partial": coverage == "partial",
         "board_rows": len(current_rows),
         "last_visit_id": new_board["netflow"]["last_visit_id"],
-        "board": f"{exporters_n} exporters ({silent_n} silent), {conv_n} conversations, {deny_n} denies",
+        "migration": migration,
+        "collection": f"{exporters_n} exporters, {silent_n} silent, {conflict_n} identity conflicts. Collector health not measured.",
+        "traffic": f"{present_n} conversations in view, {unobserved_n} not in top N, {deny_n} denies. Observation {observation or 'none'}.",
+        "referrals": referrals[:6],
+        "board": f"{exporters_n} exporters ({silent_n} silent), {present_n} conversations, {unobserved_n} not in top N, {deny_n} denies",
     }
     if readings_truncated:
         payload["readings_truncated"] = True
@@ -1350,6 +1552,20 @@ def cmd_annotate(args):
         print(f"stamp not found: {args.stamp}", file=sys.stderr)
         return 1
     try:
+        stamp_body = json.loads(stamp_path.read_text(encoding="utf-8"))
+        by_keys = {"+".join(reading.get("keys") or []): reading for reading in stamp_body.get("readings") or [] if isinstance(reading, dict)}
+        for key, text in notes.items():
+            reading = by_keys.get(key)
+            if not isinstance(reading, dict):
+                continue
+            low = text.lower()
+            state = reading.get("state")
+            if re.search(r"\babsent\b", low) and state != "absent":
+                raise ValueError(f"note says absent for state {state}")
+            if re.search(r"\bsilent\b", low) and state != "silent":
+                raise ValueError(f"note says silent for state {state}")
+            if "forwarding failure" in low and state == "silent":
+                raise ValueError("silence is not a forwarding failure")
         visit_common.annotate(stamp_path, strip_arg(args.headline), notes, CHECK_SCHEMA)
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         print(str(exc), file=sys.stderr)

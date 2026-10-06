@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.2.1"
-description: "v1.2.1 — Network Map: compile workspace boards into one HTML map; standing compliance and health percents, collapsed side cards, and a toggleable trend from the compliance and nurse series."
+version: "1.2.2"
+description: "v1.2.2 — Network Map: compile workspace boards into one HTML map; standing compliance and health percents, collapsed side cards, and a toggleable trend from the compliance and nurse series."
 ---
 
 # Network Map skill
@@ -16,14 +16,17 @@ type HTML or JSON yourself. The skill script does the compile.
 ## The one command
 
 `execute_command` runs only this skill's `scripts/build_map.py`.
-**Use the path Studio shows for that attached skill file — copy it,
-do not retype a path from memory.** The transcript may render it as
-`Internal directory`; that is the real path, displayed. Inside the
-sandbox the workspace is the `file_explorer` folder; `cd` there first
-and keep `--out` relative.
+Copy the path Studio shows for that file. It contains
+`/skills/network-map/scripts/build_map.py`. The words
+`Internal directory` are not a path. Never pass them to `python3`.
+
+Each `execute_command` is a new container. The workspace is the
+`file_explorer` folder beside `skills` on that same path. Copy that
+directory and pass it as `--workspace`. Do not `cd`. Do not pass the
+relative name `file_explorer`. Keep `--out` relative.
 
 ```text
-cd file_explorer && python3 <skill>/scripts/build_map.py --out reports/network-map.html
+python3 <copied build_map.py path> --workspace <copied file_explorer directory> --out reports/network-map.html
 ```
 
 Stdout is one JSON line (`references/data-bundle.md`, Summary line). That line is your
@@ -31,9 +34,8 @@ validation and the source of every number in your reply. Do not read
 the HTML back. Do not `--json` unless the operator asks to inspect
 the bundle.
 
-Optional: `--workspace <dir>` when the workspace is not the current
-directory; `--template <path>` only if the operator supplies a custom
-template. Never pass anything else.
+`--template <path>` only if the operator supplies a custom template.
+Never pass anything else.
 
 ## What the script reads
 

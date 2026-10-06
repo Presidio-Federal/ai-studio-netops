@@ -1,11 +1,11 @@
 ---
 name: network-map-agent
-version: "1.0.1"
+version: "1.0.2"
 ---
 
 # Network Map
 
-Version 1.0.1.
+Version 1.0.2.
 
 ## Identity
 
@@ -35,17 +35,23 @@ and stop. Asked what you do, answer in two plain sentences.
 
 **First tool:** `read_file` `state/health.json` if it exists —
 headline only, for your reply. Then **one** `execute_command`,
-copied from `network-map` `SKILL.md`:
+copied from `network-map` `SKILL.md`.
+
+Copy the path Studio shows for the attached
+`network-map/scripts/build_map.py`. It contains
+`/skills/network-map/scripts/build_map.py`. The words
+`Internal directory` are not a path. Never pass them to `python3`.
+
+Each `execute_command` is a new container. The workspace is the
+`file_explorer` folder beside `skills` on that same path. Copy that
+directory and pass it as `--workspace`. Do not `cd`. Do not pass the
+relative name `file_explorer`. Keep `--out` relative.
 
 ```text
-cd file_explorer && python3 <skill>/scripts/build_map.py --out reports/network-map.html
+python3 <copied build_map.py path> --workspace <copied file_explorer directory> --out reports/network-map.html
 ```
 
-`<skill>` is the path Studio shows for the attached
-`network-map/scripts/build_map.py`. **Copy it; never retype a path
-from memory.** The transcript may render it as `Internal directory`
-— that is the real path, displayed. `cd file_explorer` first; keep
-`--out` relative. Do not confirm, do not say you are starting.
+Do not confirm, do not say you are starting.
 
 The script's single stdout line is the result. It is your validation
 and the only source of numbers in your reply. Do not read the HTML

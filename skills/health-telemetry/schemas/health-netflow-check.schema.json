@@ -79,7 +79,7 @@
       "required": ["keys", "field", "prior", "current", "at"],
       "properties": {
         "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" } },
-        "field": { "type": "string", "enum": ["state", "bytes", "flows", "row"] },
+        "field": { "type": "string", "enum": ["state", "bytes", "flows", "row", "identity", "bytes_per_s"] },
         "prior": { "type": ["string", "number", "integer", "boolean", "null"] },
         "current": { "type": ["string", "number", "integer", "boolean", "null"] },
         "at": { "type": "string", "minLength": 1 }
@@ -107,8 +107,9 @@
         "flows": { "type": ["integer", "null"] },
         "bytes": { "type": ["integer", "number", "null"] },
         "conversations": { "type": ["integer", "null"], "description": "F2 rows this window." },
-        "conversations_absent": { "type": ["integer", "null"], "description": "Board conversations carried as absent." },
-        "top_scope": { "type": ["string", "null"], "description": "scope of the largest F2 row." }
+        "conversations_absent": { "type": ["integer", "null"], "description": "Conversations absent or not in the top-N query." },
+        "top_scope": { "type": ["string", "null"], "description": "scope of the largest F2 row." },
+        "observation_source": { "type": ["string", "null"], "description": "Exporter address whose byte total is the estate figure. One observation point, not a sum across exporters." }
       }
     },
     "reading": {
@@ -130,13 +131,31 @@
         "protocol": { "type": ["string", "null"] },
         "src_device": { "type": ["string", "null"] },
         "dst_device": { "type": ["string", "null"] },
+        "src_gateway": { "type": ["string", "null"] },
+        "dst_gateway": { "type": ["string", "null"] },
+        "identity": { "type": ["string", "null"], "enum": ["resolved", "conflicted", "unverified", null] },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["device", "evidence"],
+            "properties": {
+              "device": { "type": "string" },
+              "evidence": { "type": "string", "enum": ["interface", "access", "exporter_name", "stored"] }
+            }
+          }
+        },
         "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" } },
         "at": { "type": "string", "minLength": 1 },
-        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent"] },
+        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent", "not_in_top_n"] },
         "bytes": { "type": ["integer", "number", "null"] },
         "flows": { "type": ["integer", "null"] },
+        "bytes_per_s": { "type": ["number", "null"] },
+        "window": { "type": ["string", "null"] },
         "last_flow_at": { "type": ["string", "null"] },
         "last_seen_at": { "type": ["string", "null"] },
+        "referral": { "type": "array", "items": { "type": "string" } },
         "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: silent since when, returned after how long, new or vanished pair, bytes up or down by how much. Not the columns again. No application name, cause, or device beyond exporter / src_device / dst_device." }
       }
     }

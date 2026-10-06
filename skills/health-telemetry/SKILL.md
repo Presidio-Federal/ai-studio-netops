@@ -1,7 +1,7 @@
 ---
 name: health-telemetry
-version: "1.0.7"
-description: "v1.0.7 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. Board every visit; stamp only when a row moved."
+version: "1.1.0"
+description: "v1.1.0 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. Board every visit; stamp only when a row moved."
 ---
 
 # Health Telemetry skill
@@ -31,7 +31,11 @@ reads the measurement in that bucket whose fields include
 changed, or cleared deny is material. A deny still in the window
 degrades the plane. `annotate` runs when `needs_note` is not empty.
 
-An exporter going `silent` degrades the plane. Conversations do not.
+An exporter going `silent` degrades the plane. That silence is a
+collection gap, not a forwarding failure. A conversation missing
+from the top-N query is `not_in_top_n`, not absent. Device identity
+comes only from fresh exact-interface, access-host, or exporter-name
+evidence.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.

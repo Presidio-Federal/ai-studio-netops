@@ -176,24 +176,22 @@ you are looking at the wrong data:
 
 A `user` value is replaced only by the operator.
 
-## Resolve an address to a device
+## Resolve an address
 
-For an exporter `source`, a flow `src`, or a flow `dst`, in this
-order; stop at the first hit:
+Fresh evidence is an exact interface address (the address before `/`
+in a topology cidr), an access host, or `exporter_name` equal to a
+`prod.json` device name. An address that only falls inside a subnet
+is not that device.
 
-1. `exporters[]` row with this `source` and a non-null `device` →
-   that device (exporters only).
-2. `exporter_name` equals a `prod.json` `devices[].name`
-   case-insensitively → that name (exporters only).
-3. The address equals the address part of any
-   `topology-observed.json` `devices[].interfaces[].cidr`, or falls
-   inside that cidr → that device's name.
-4. The address equals `access.restconf.host` or `access.ssh.host`
-   on a `prod.json` device → that name.
-5. No match → null. Do not guess. `unmapped` and `unknown` are not
-   device names.
+One fresh device → `identity` `resolved` and `device` set. More than
+one, or a stored device that is not in the fresh set, or an address
+listed in `identity_review` → `identity` `conflicted`, `device` null,
+candidates kept, no `device:` key. A stored name with no fresh
+evidence → `identity` `unverified`, `device` null. The script writes
+`10.30.30.2` into `identity_review` when that list is empty.
 
-Write the `prod.json` spelling.
+`src` and `dst` stay endpoints. `src_gateway` and `dst_gateway` are
+set only on an exact interface or access-host match.
 
 ## Build the rows
 
@@ -204,7 +202,7 @@ Write the `prod.json` spelling.
 | `kind` | `exporter` |
 | `scope` | `exporter:<source>` |
 | `source` `exporter_name` `exporter_site` | F1 |
-| `device` | resolved, or null |
+| `device` | set only when `identity` is `resolved` |
 | `bytes` `flows` | F1 |
 | `last_flow_at` | F1 `last_at` |
 | `at` | `checked_at` |
@@ -225,16 +223,36 @@ operator says the bucket is right.
 | `scope` | `flow:<source>/<src>>` + `<dst>:<dst_port>/<protocol>` (e.g. `flow:10.0.0.1/10.1.1.5>10.2.2.9:443/tcp`) |
 | `source` `exporter_name` `src` `dst` `dst_port` `protocol` | F2 |
 | `exporter` | the exporter row's `device` for this `source`, or null |
-| `src_device` `dst_device` | resolved from `src` / `dst`, or null |
+| `src` `dst` | endpoints. Not rewritten into a device |
+| `src_gateway` `dst_gateway` | exact interface or access host, else null |
 | `bytes` `flows` | F2 |
 | `last_seen_at` | F2 `last_at` |
 | `at` | `checked_at` |
 | `state` | `present` |
 | `keys` | `device:<exporter>`, `device:<src_device>`, `device:<dst_device>` when resolved (deduplicated); `[]` when none |
 
-A board conversation row with **no** F2 row this window is carried
-with `state` `absent`, `bytes` 0, `flows` 0, `last_seen_at` kept.
-Drop an `absent` row once `last_seen_at` is older than 7 days.
+A board conversation missing from this F2 top-N query is carried as
+`not_in_top_n`. Last bytes, flows, and `last_seen_at` stay. That is
+not absence and not a worse delta. True absence needs a later
+targeted query at a healthy observation point. Do not run that query
+for every dropout.
+
+`bytes_per_s` is bytes divided by the window. It is the observed
+rate at that exporter and window, not interface utilization. Delayed
+exports are not measured. A 4× move counts only when both rows use
+the same window and both rates are above zero.
+
+Estate `bytes` and `flows` come from the reporting exporter with the
+largest byte total (`observation_source`). Matching five-tuples are
+not summed.
+
+`exporter_registry` slots `configured_export`, `expected_activity`,
+`collector_health`, and `observation_interface` stay null unless an
+operator already set an allowed value. Do not invent them. A
+configured exporter may be idle. Silence is not a forwarding failure.
+Referrals: Devices for exporter configuration and send statistics;
+Collector monitoring for receipt, templates, and decode; Inventory
+for a conflicted address.
 
 Rows carry no `application:` key yet; when
 `inventory/applications.json` exists a later reader joins `dst` to
@@ -249,16 +267,20 @@ onto the stamp:
 |------|---------------|-------------------|
 | exporter | `state` differs (`reporting` ↔ `silent`) | `state` |
 | exporter | scope not on the board | `row` |
-| conversation | `state` differs (`present` ↔ `absent`) | `state` |
+| exporter | `identity` differs | `identity` |
+| conversation | `state` differs, including `present` ↔ `not_in_top_n` | `state` |
 | conversation | scope not on the board | `row` |
-| conversation | both `bytes` > 0 and this `bytes` ≥ 4 × board `bytes` or ≤ board `bytes` / 4 | `bytes` |
+| conversation | same window, both `bytes_per_s` > 0, and the rate ≥ 4× or ≤ ¼ | `bytes_per_s` |
 | firewall | `state` differs (`present` ↔ `absent`) | `state` |
 | firewall | scope not on the board | `row` |
 | firewall | deny count differs | `flows` |
 
-Not material: `flows`, `last_*`, `at`, an exporter's byte count
-(collectors dominate it), a bytes move under the factor. Those land
-on the board only.
+`not_in_top_n` is not worse. The first visit that adds
+`exporter_registry` is a baseline migration: `vs_prior.delta` is
+`changed`, not `worse`, unless an exporter went `reporting` →
+`silent`, a deny got worse, or a conversation went `present` →
+`absent`. Not material: exporter byte totals, a rate move across
+different windows, `last_*`, and `at`.
 
 `changed[]` item: `{keys, field, prior, current, at}` — `prior` from
 the board row (null when new), `current` from this row, `at` the
@@ -369,8 +391,12 @@ Window: <window> (<window_start> -> <window_end>)
 Wrote: health/netflow/<stamp>.json
 Trend: <delta>
 Findings:
-- exporter <device or source>: <reporting|silent>, <flows> flows, last flow <last_flow_at>
-- <src_device or src> -> <dst_device or dst>:<dst_port>/<protocol> via <exporter or source>: <present|absent>, <bytes> B
+Collection: <the summary collection line>
+Traffic: <the summary traffic line>
+Referrals: <the summary referrals, or none>
+
+Silence is not a forwarding failure. A note must match the row
+state: do not say absent or silent unless that is the state.
 Next: none
 ```
 
