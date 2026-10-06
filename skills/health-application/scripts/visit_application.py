@@ -34,7 +34,9 @@ SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 REF_PATH = Path(__file__).resolve().parent.parent / "references" / "prometheus.md"
 CHECK_SCHEMA = SCHEMA_DIR / "health-application-check.schema.json"
 BOARD_SCHEMA = SCHEMA_DIR / "health-metadata-application.schema.json"
-EXPR_ORDER = ("P1", "P2", "P3", "P4", "C1", "C2", "C3", "C4", "H1", "H2", "H3", "H4")
+EXPR_ORDER = ("P1", "P2", "P3", "P4", "P5", "P6", "C1", "C2", "C3", "C4", "C5", "C6", "C7", "C8", "H1", "H2", "H3", "H4")
+OPTIONAL_EXPR = {"P5", "P6", "C5", "C6", "C7", "C8"}
+DEFAULT_VANTAGES = ("cloud", "hq", "branch")
 KEY_RE = re.compile(r"^(device|site|application|test):[^ ]+$")
 READINGS_CAP = 60
 
@@ -194,16 +196,38 @@ def device_key(name):
     return f"device:{name}"
 
 
-def probe_rows(results, by_lower):
+def part(value):
+    text = str(value or "none").replace(" ", "")
+    return text or "none"
+
+
+def window_seconds(window):
+    match = re.fullmatch(r"(\d+)([smhd])", window or "")
+    if not match:
+        return 3600
+    return int(match.group(1)) * {"s": 1, "m": 60, "h": 3600, "d": 86400}[match.group(2)]
+
+
+def finite_limit(value):
+    number = whole(value)
+    if number is None or number <= 0 or number >= 2**60:
+        return None
+    return number
+
+
+def probe_rows(results, by_lower, window):
     p1 = (results.get("P1") or {}).get("series") or []
     p2 = index_by((results.get("P2") or {}).get("series"), "instance")
     p3 = index_by((results.get("P3") or {}).get("series"), "instance")
     p4 = index_by((results.get("P4") or {}).get("series"), "instance")
+    p5 = index_by((results.get("P5") or {}).get("series"), "instance")
+    p6 = index_by((results.get("P6") or {}).get("series"), "instance")
+    span = window_seconds(window)
     rows = []
     for item in p1:
-        labels = item.get("labels") or {}
         instance = label_of(item, "instance")
         service = label_of(item, "service") or "none"
+        environment = label_of(item, "environment", "env", "site") or "none"
         vantage = label_of(item, "vantage_point") or "none"
         site = label_of(item, "site")
         success = whole(item.get("value"))
@@ -212,21 +236,56 @@ def probe_rows(results, by_lower):
         http = whole((p2.get((instance,)) or {}).get("value")) if instance else None
         duration = whole(((p3.get((instance,)) or {}).get("value") or 0) * 1000) if instance and (instance,) in p3 else None
         pct = whole((p4.get((instance,)) or {}).get("value")) if instance else None
-        state = "unknown" if success is None else ("up" if success == 1 else "down")
+        content = None
+        if instance and (instance,) in p5:
+            failed_body = whole((p5.get((instance,)) or {}).get("value"))
+            content = 0 if failed_body else 1
+        latency = whole((p6.get((instance,)) or {}).get("value")) if instance and (instance,) in p6 else None
+        if success is None:
+            state = "unknown"
+        elif success == 0 or content == 0:
+            state = "down"
+        elif content is None:
+            state = "unvalidated"
+        else:
+            state = "up"
+        missing = []
+        if not instance or (instance,) not in p2:
+            missing.append("http_code")
+        if content is None:
+            missing.append("content")
+        if pct is None:
+            missing.append("fail_pct")
+        if latency is None:
+            missing.append("latency_window")
+        if duration is None:
+            missing.append("duration")
+        app_name = service if service != "none" else None
+        env_name = environment if environment != "none" else None
         rows.append(
             {
                 "kind": "probe",
-                "scope": f"probe:{service}@{vantage}",
-                "application": service if service != "none" else None,
+                "scope": f"probe:{part(service)}@{part(environment)}@{part(instance)}@{part(vantage)}",
+                "application": app_name,
+                "environment": env_name,
                 "vantage_site": vantage if vantage != "none" else None,
                 "site": site,
                 "target": instance,
                 "success": success,
                 "http_code": http,
+                "content_ok": content,
                 "duration_ms": duration,
+                "latency_ms_window": latency,
                 "success_pct_window": pct,
+                "fail_pct_window": None if pct is None else max(0, 100 - pct),
+                "fail_seconds_window": None if pct is None else int(round((max(0, 100 - pct) / 100) * span)),
+                "missing": missing,
                 "state": state,
-                "keys": key_list(app_key(service if service != "none" else None), site_key(site), f"test:probe/{service}@{vantage}"),
+                "keys": key_list(
+                    app_key(app_name),
+                    site_key(site),
+                    f"test:probe/{part(service)}@{part(environment)}@{part(instance)}@{part(vantage)}",
+                ),
             }
         )
     return rows
@@ -237,6 +296,10 @@ def container_rows(results, by_lower):
     c2 = index_by((results.get("C2") or {}).get("series"), "name", "instance")
     c3 = index_by((results.get("C3") or {}).get("series"), "name", "instance")
     c4 = index_by((results.get("C4") or {}).get("series"), "name", "instance")
+    c5 = index_by((results.get("C5") or {}).get("series"), "name", "instance")
+    c6 = index_by((results.get("C6") or {}).get("series"), "name", "instance")
+    c7 = index_by((results.get("C7") or {}).get("series"), "name", "instance")
+    c8 = index_by((results.get("C8") or {}).get("series"), "name", "instance")
     rows = []
     for item in c1:
         labels = item.get("labels") or {}
@@ -249,8 +312,23 @@ def container_rows(results, by_lower):
         device = device_for(host, by_lower)
         pair = (name, instance) if instance else None
         cpu = decimal((c2.get(pair) or {}).get("value")) if pair else None
-        mem = whole((c3.get(pair) or {}).get("value")) if pair else None
-        rx = whole((c4.get(pair) or {}).get("value")) if pair else None
+        mem = whole((c3.get(pair) or {}).get("value")) if pair and pair in c3 else None
+        rx = whole((c4.get(pair) or {}).get("value")) if pair and pair in c4 else None
+        mem_limit = finite_limit((c5.get(pair) or {}).get("value")) if pair and pair in c5 else None
+        cpu_limit = decimal((c6.get(pair) or {}).get("value")) if pair and pair in c6 else None
+        if cpu_limit is not None and (cpu_limit <= 0 or cpu_limit > 1024):
+            cpu_limit = None
+        throttled = decimal((c7.get(pair) or {}).get("value")) if pair and pair in c7 else None
+        oom = whole((c8.get(pair) or {}).get("value")) if pair and pair in c8 else None
+        missing = ["exit"]
+        if mem_limit is None:
+            missing.append("mem_limit")
+        if cpu_limit is None:
+            missing.append("cpu_limit")
+        if throttled is None:
+            missing.append("throttle")
+        if oom is None:
+            missing.append("oom")
         rows.append(
             {
                 "kind": "container",
@@ -264,8 +342,13 @@ def container_rows(results, by_lower):
                 "image": label_of(item, "image"),
                 "started_epoch": whole(item.get("value")),
                 "cpu_pct": cpu,
+                "cpu_limit": cpu_limit,
+                "cpu_throttled_s": throttled,
                 "mem_bytes": mem,
+                "mem_limit_bytes": mem_limit,
                 "rx_bytes_s": rx,
+                "oom_events": oom,
+                "missing": missing,
                 "state": "running",
                 "keys": key_list(app_key(service), device_key(device), site_key(label_of(item, "site"))),
             }
@@ -420,6 +503,40 @@ def duration_moved(row, prior, threshold):
     return False
 
 
+def positive(value):
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
+
+
+def throttle_moved(row, prior):
+    return positive(row.get("cpu_throttled_s")) != positive(prior.get("cpu_throttled_s"))
+
+
+def oom_moved(row, prior):
+    current = row.get("oom_events")
+    previous = prior.get("oom_events")
+    if not isinstance(current, int):
+        return False
+    if not isinstance(previous, int):
+        return current > 0
+    return (current > 0 or previous > 0) and current != previous
+
+
+def pressure(row):
+    limit = row.get("mem_limit_bytes")
+    used = row.get("mem_bytes")
+    if not isinstance(limit, int) or limit <= 0 or not isinstance(used, int):
+        return None
+    return 100 * used / limit
+
+
+def pressure_moved(row, prior):
+    current = pressure(row)
+    previous = pressure(prior)
+    if current is None or previous is None:
+        return False
+    return (previous >= 90) != (current >= 90)
+
+
 def material(row, prior, threshold):
     if prior is None:
         return "row", None, row.get("state")
@@ -429,7 +546,15 @@ def material(row, prior, threshold):
             return "success", prior.get("success"), row.get("success")
         if row.get("http_code") != prior.get("http_code"):
             return "http_code", prior.get("http_code"), row.get("http_code")
-        if duration_moved(row, prior, threshold):
+        if row.get("content_ok") != prior.get("content_ok"):
+            return "content_ok", prior.get("content_ok"), row.get("content_ok")
+        if row.get("latency_ms_window") is not None and duration_moved(
+            {"duration_ms": row.get("latency_ms_window")},
+            {"duration_ms": prior.get("latency_ms_window")},
+            threshold,
+        ):
+            return "latency_ms_window", prior.get("latency_ms_window"), row.get("latency_ms_window")
+        if row.get("latency_ms_window") is None and duration_moved(row, prior, threshold):
             return "duration_ms", prior.get("duration_ms"), row.get("duration_ms")
     elif kind == "container":
         old = prior.get("started_epoch")
@@ -440,6 +565,12 @@ def material(row, prior, threshold):
             return "state", prior.get("state"), row.get("state")
         if crossed(prior.get("cpu_pct"), row.get("cpu_pct"), 80):
             return "cpu_pct", prior.get("cpu_pct"), row.get("cpu_pct")
+        if throttle_moved(row, prior):
+            return "cpu_throttled_s", prior.get("cpu_throttled_s"), row.get("cpu_throttled_s")
+        if oom_moved(row, prior):
+            return "oom_events", prior.get("oom_events"), row.get("oom_events")
+        if pressure_moved(row, prior):
+            return "mem_limit_bytes", prior.get("mem_bytes"), row.get("mem_bytes")
     elif kind == "host":
         old = prior.get("boot_epoch")
         new = row.get("boot_epoch")
@@ -463,6 +594,8 @@ def is_worse(row, prior, field, threshold):
         return row["kind"] == "probe" and row.get("state") == "down"
     if row["kind"] == "probe" and field == "success" and row.get("success") == 0:
         return True
+    if field == "content_ok":
+        return row.get("content_ok") == 0
     if row["kind"] == "container" and field in ("state", "started_epoch") and (
         row.get("state") == "gone" or field == "started_epoch"
     ):
@@ -475,14 +608,22 @@ def is_worse(row, prior, field, threshold):
         return True
     if row["kind"] == "target" and field == "health" and row.get("health") != "up":
         return True
-    if field == "duration_ms":
-        current = row.get("duration_ms")
-        previous = (prior or {}).get("duration_ms")
+    if field in ("duration_ms", "latency_ms_window"):
+        current = row.get(field)
+        previous = (prior or {}).get(field)
         if not isinstance(current, int):
             return False
         if not isinstance(previous, int):
             return current > threshold
         return current > previous
+    if field == "cpu_throttled_s":
+        return positive(row.get("cpu_throttled_s"))
+    if field == "oom_events":
+        return isinstance(row.get("oom_events"), int) and row["oom_events"] > 0
+    if field == "mem_limit_bytes":
+        current = pressure(row)
+        previous = pressure(prior or {})
+        return current is not None and previous is not None and current > previous
     if field in ("mem_available_pct", "fs_root_avail_pct", "cpu_pct"):
         current = row.get(field)
         previous = (prior or {}).get(field)
@@ -501,6 +642,16 @@ def is_better(row, prior, field):
         current = row.get("duration_ms")
         previous = prior.get("duration_ms")
         return isinstance(current, int) and isinstance(previous, int) and current < previous
+    if field == "latency_ms_window":
+        current = row.get("latency_ms_window")
+        previous = prior.get("latency_ms_window")
+        return isinstance(current, int) and isinstance(previous, int) and current < previous
+    if field == "content_ok":
+        return prior.get("content_ok") == 0 and row.get("content_ok") == 1
+    if field == "cpu_throttled_s":
+        return positive(prior.get("cpu_throttled_s")) and not positive(row.get("cpu_throttled_s"))
+    if field == "oom_events":
+        return isinstance(prior.get("oom_events"), int) and prior["oom_events"] > 0 and row.get("oom_events") == 0
     if row["kind"] == "container" and field == "state" and prior.get("state") == "gone" and row.get("state") == "running":
         return True
     if row["kind"] == "host" and field == "state" and prior.get("state") == "unreachable" and row.get("state") == "up":
@@ -694,6 +845,98 @@ def label_values(datasource_uid, label):
     return [item for item in body.get("values") or [] if isinstance(item, str)]
 
 
+def expected_vantages(app):
+    raw = app.get("expected_vantages") if isinstance(app, dict) else None
+    if isinstance(raw, list) and all(isinstance(item, str) and item.strip() for item in raw) and raw:
+        return [item.strip() for item in raw]
+    return list(DEFAULT_VANTAGES)
+
+
+def next_measurement(row, missing_vantages, containers, hosts):
+    if missing_vantages:
+        return "same target from " + ",".join(missing_vantages)
+    gone = [item for item in containers if item.get("state") == "gone"]
+    if gone:
+        return f"container {gone[0].get('name')} on {gone[0].get('host') or 'its host'}"
+    blocked = [
+        item
+        for item in hosts
+        if item.get("state") == "unreachable" or item.get("interfaces_down")
+    ]
+    if blocked:
+        return "host " + (blocked[0].get("device") or blocked[0].get("host") or "unresolved")
+    if row.get("content_ok") is None:
+        return "response-body check for this target"
+    return "application response from this target"
+
+
+def finding_lines(probes, containers, hosts, expected):
+    groups = {}
+    for row in probes:
+        key = (row.get("application"), row.get("environment"), row.get("target"))
+        groups.setdefault(key, []).append(row)
+    lines = []
+    for (app_name, environment, target), rows in groups.items():
+        seen = {row.get("vantage_site") for row in rows if row.get("vantage_site")}
+        missing_v = [name for name in expected if name not in seen]
+        related = [item for item in containers if item.get("application") == app_name]
+        host_names = {item.get("host") for item in related}
+        related_hosts = [item for item in hosts if item.get("host") in host_names or item.get("device") in host_names]
+        for row in rows:
+            content = row.get("content_ok")
+            if content == 1:
+                validation = "content ok"
+            elif content == 0:
+                validation = "content failed"
+            else:
+                validation = "content not measured"
+            fail = row.get("fail_pct_window")
+            fail_text = "failure not measured" if fail is None else f"fail {fail}% for {row.get('fail_seconds_window')}s"
+            latency = row.get("latency_ms_window")
+            latency_text = "window latency not measured" if latency is None else f"window latency {latency}ms"
+            text = (
+                f"{app_name or 'none'} env {environment or 'none'} target {target or 'none'} "
+                f"from {row.get('vantage_site') or 'none'}: {row.get('state')}, "
+                f"http {row.get('http_code')}, {validation}, {fail_text}, {latency_text}"
+            )
+            if missing_v:
+                text += "; vantage missing " + ",".join(missing_v)
+            if related:
+                bits = []
+                for item in related:
+                    evidence = []
+                    if isinstance(item.get("oom_events"), int) and item["oom_events"] > 0:
+                        evidence.append(f"oom {item['oom_events']}")
+                    if positive(item.get("cpu_throttled_s")):
+                        evidence.append(f"throttled {item['cpu_throttled_s']}s")
+                    ratio = pressure(item)
+                    if ratio is not None:
+                        evidence.append(f"mem {int(ratio)}% of limit")
+                    absent = ",".join(item.get("missing") or [])
+                    if absent:
+                        evidence.append("missing " + absent)
+                    if not evidence:
+                        evidence.append("running, no constraint evidence")
+                    bits.append(f"{item.get('name')}@{item.get('host')}: " + ", ".join(evidence))
+                text += "; container " + " | ".join(bits)
+            else:
+                text += "; no container row for this application"
+            if row.get("state") == "down" or content == 0:
+                text += "; next " + next_measurement(row, missing_v, related, related_hosts)
+            lines.append(text)
+    return lines
+
+
+def fit_summary(payload):
+    while payload.get("findings"):
+        line = json.dumps(payload, separators=(",", ":"), default=str)
+        if len(line.encode("utf-8")) <= 1800:
+            break
+        payload["findings"] = payload["findings"][:-1]
+        payload["findings_truncated"] = True
+    return payload
+
+
 def cmd_collect(args):
     ws = resolve_workspace(args.workspace)
     if ws is None:
@@ -729,6 +972,7 @@ def cmd_collect(args):
         targets = targets_body.get("targets") or []
 
     threshold = latency_limit(app)
+    vantages = expected_vantages(app)
     probe_job = blank(app.get("probe_job")) or ""
     discovered_job = False
     if not probe_job and "T" not in failed:
@@ -750,13 +994,16 @@ def cmd_collect(args):
         expr = exprs[name].replace("<probe_job>", probe_job).replace("<window>", window)
         payload, error = prom_series(name, expr, window, datasource)
         if error or payload is None:
-            failed.add(name)
+            if name in OPTIONAL_EXPR:
+                results[name] = {"series": []}
+            else:
+                failed.add(name)
             continue
         results[name] = payload
 
     built = []
     if "P1" in results:
-        built.extend(probe_rows(results, by_lower))
+        built.extend(probe_rows(results, by_lower, window))
     elif "P1" in failed:
         built.extend(keep_kind(prior_rows, "probe"))
     if "C1" in results:
@@ -825,8 +1072,12 @@ def cmd_collect(args):
     hosts = [row for row in current_rows if row["kind"] == "host"]
     target_list = [row for row in current_rows if row["kind"] == "target"]
     degraded = (
-        any(row.get("state") == "down" for row in probes)
+        any(row.get("state") == "down" or row.get("content_ok") == 0 for row in probes)
         or any(isinstance(row.get("duration_ms"), int) and row["duration_ms"] > threshold for row in probes)
+        or any(isinstance(row.get("latency_ms_window"), int) and row["latency_ms_window"] > threshold for row in probes)
+        or any(isinstance(row.get("oom_events"), int) and row["oom_events"] > 0 for row in containers)
+        or any(positive(row.get("cpu_throttled_s")) for row in containers)
+        or any((pressure(row) or 0) >= 90 for row in containers)
         or any(row.get("state") == "gone" or row["scope"] in restarted for row in containers)
         or any(
             row.get("state") == "unreachable" or row["scope"] in rebooted or row.get("interfaces_down")
@@ -961,6 +1212,7 @@ def cmd_collect(args):
             "probe_job": probe_job or None,
             "window": window,
             "latency_threshold_ms": threshold,
+            "expected_vantages": vantages,
             "lookup": lookup,
             "last_visit_id": watch if write_stamp else prior_watch,
             "last_collected_at": at,
@@ -1001,7 +1253,7 @@ def cmd_collect(args):
     down_n = sum(1 for row in probes if row.get("state") == "down")
     print(
         visit_common.summary(
-            {
+            fit_summary({
                 "plane": "application",
                 "watch_id": watch if write_stamp else None,
                 "stamp": stamp_rel,
@@ -1016,11 +1268,13 @@ def cmd_collect(args):
                 "partial": coverage == "partial",
                 "board_rows": len(current_rows),
                 "last_visit_id": new_board["application"]["last_visit_id"],
+                "last_collected_at": new_board["application"]["last_collected_at"],
+                "findings": finding_lines(probes, containers, hosts, vantages),
                 "board": (
                     f"{len(probes)} probes ({down_n} down), {len(containers)} containers, "
                     f"{len(hosts)} hosts, {len(target_list)} targets"
                 ),
-            }
+            })
         )
     )
     return 0

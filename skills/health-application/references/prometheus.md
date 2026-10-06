@@ -13,7 +13,7 @@ datasource uid, a host name, a service name, or a target address in
 this file. Do not call `grafana_query_influx`; flows are Health
 Monitor's plane.
 
-Twelve expressions, copied exactly. One call per message. Copy
+Eighteen expressions, copied exactly. One call per message. Copy
 numbers; do not reason about the platform. A call that fails
 (including `Connection closed`) is retried once with the same
 arguments; a second failure leaves that kind's board rows as they
@@ -63,6 +63,10 @@ by `instance`.
 - **P2** `probe_http_status_code{job="<probe_job>"}`
 - **P3** `probe_duration_seconds{job="<probe_job>"}` — path-quality proxy; ThousandEyes is unavailable. Stored as `duration_ms`. Material when it exceeds `application.latency_threshold_ms` (default 500) or moves 3× against the board row.
 - **P4** `avg_over_time(probe_success{job="<probe_job>"}[<window>]) * 100`
+- **P5** `probe_failed_due_to_regex{job="<probe_job>"}`
+- **P6** `avg_over_time(probe_duration_seconds{job="<probe_job>"}[<window>]) * 1000`
+
+P5 and P6 may return no series. That is a missing measurement, not a failed call and not a pass.
 
 **Containers** — match series by `name` + `instance`.
 
@@ -70,6 +74,12 @@ by `instance`.
 - **C2** `sum by (name, host_name, service, application, site, instance) (rate(container_cpu_usage_seconds_total{image!=""}[5m])) * 100`
 - **C3** `container_memory_working_set_bytes{image!=""}`
 - **C4** `sum by (name, host_name, service, application, site, instance) (rate(container_network_receive_bytes_total{image!=""}[5m]))`
+- **C5** `container_spec_memory_limit_bytes{image!=""}`
+- **C6** `container_spec_cpu_quota{image!=""} / container_spec_cpu_period{image!=""}`
+- **C7** `sum by (name, host_name, service, application, site, instance) (rate(container_cpu_cfs_throttled_seconds_total{image!=""}[5m]))`
+- **C8** `sum by (name, host_name, service, application, site, instance) (increase(container_oom_events_total{image!=""}[<window>]))`
+
+C5 through C8 may return no series. A missing limit, throttle series, or OOM series is not evidence that the container is unconstrained. Exit code is not a cAdvisor series; leave it missing.
 
 **Hosts** — match series by `host_name` (fall back to `instance`
 when `host_name` is absent).
@@ -98,8 +108,9 @@ and does not touch coverage.
 (`provenance: discovered`). Never call L otherwise. `lookup` is a
 record of the spellings seen; it does not filter the queries.
 
-Order: setup → T → P1 → P2 → P3 → P4 → C1 → C2 → C3 → C4 → H1 → H2
-→ H3 → H4 → A → build → carry → diff → write. Nothing else: no
+Order: setup → T → P1 → P2 → P3 → P4 → P5 → P6 → C1 → C2 → C3 → C4 →
+C5 → C6 → C7 → C8 → H1 → H2 → H3 → H4 → A → build → carry → diff →
+write. Nothing else: no
 range queries, no `grafana_get_dashboard`, no `grafana_alerts`
 (no rules are bound; it would prove nothing), no expression of
 your own.
@@ -113,17 +124,23 @@ Four kinds. `at` is `checked_at` on every row. `device` is the
 
 | Column | From |
 |--------|------|
-| `scope` | `probe:<service>@<vantage_point>` (labels on the P1 series; `none` when a label is absent) |
+| `scope` | `probe:<application>@<environment>@<target>@<vantage>` (`none` when a part is absent). Environment is the `environment` or `env` label, else `site`. |
 | `application` | `service` label |
+| `environment` | `environment` or `env` label, else `site` |
 | `vantage_site` | `vantage_point` label |
 | `site` | `site` label |
 | `target` | `instance` label |
 | `success` | P1 value (0 or 1) |
 | `http_code` | P2 value for the same `instance`, else null |
+| `content_ok` | 0 when P5 is 1, 1 when P5 is 0, null when P5 has no series for this instance |
 | `duration_ms` | P3 value × 1000, whole number, else null |
+| `latency_ms_window` | P6 value, whole number, else null |
 | `success_pct_window` | P4 value, whole number, else null |
-| `state` | `up` when `success` = 1; `down` when 0; `unknown` when P1 failed (row copied from the board) |
-| `keys` | `application:<service>`; `site:<site>` when set; `test:probe/<service>@<vantage_point>` |
+| `fail_pct_window` | `100 - success_pct_window` when P4 is present, else null |
+| `fail_seconds_window` | failure percent times the window length, else null |
+| `missing` | names of the measurements above that were not returned |
+| `state` | `down` when `success` is 0 or `content_ok` is 0; `unvalidated` when `success` is 1 and `content_ok` is null; `up` when `success` is 1 and `content_ok` is 1; `unknown` when P1 failed |
+| `keys` | `application:<service>`; `site:<site>` when set; `test:probe/<application>@<environment>@<target>@<vantage>` |
 
 **Container row** (kind `container`) — one per C1 series.
 
@@ -139,8 +156,13 @@ Four kinds. `at` is `checked_at` on every row. `device` is the
 | `image` | `image` label |
 | `started_epoch` | C1 value, whole number |
 | `cpu_pct` | C2 value for the same `name` + `instance`, one decimal, else null |
+| `cpu_limit` | C6 value when it is a real quota, else null |
+| `cpu_throttled_s` | C7 value, else null |
 | `mem_bytes` | C3 value, whole number, else null |
+| `mem_limit_bytes` | C5 value when it is a real limit (not 0 and not the unlimited sentinel), else null |
+| `oom_events` | C8 value, else null |
 | `rx_bytes_s` | C4 value, whole number, else null |
+| `missing` | `exit` always, plus any of `mem_limit`, `cpu_limit`, `throttle`, `oom` that had no series |
 | `state` | `running` |
 | `keys` | `application:<service>` when set; `device:<device>` when resolved; `site:<site>` when set |
 
@@ -194,10 +216,15 @@ row onto the stamp:
 |------|---------------|-------------------|
 | probe | `success` differs | `success` |
 | probe | `http_code` differs | `http_code` |
-| probe | `duration_ms` crosses `latency_threshold_ms` (default 500), or moves 3× against the board row | `duration_ms` |
+| probe | `content_ok` differs | `content_ok` |
+| probe | `latency_ms_window` crosses `latency_threshold_ms` (default 500), or moves 3× against the board row | `latency_ms_window` |
+| probe | `latency_ms_window` is null and `duration_ms` crosses that line or moves 3× | `duration_ms` |
 | container | `started_epoch` differs by more than 60 (restart) | `started_epoch` |
 | container | `state` differs (`running` ↔ `gone`) | `state` |
 | container | `cpu_pct` crossed 80 in either direction | `cpu_pct` |
+| container | `cpu_throttled_s` crossed above 0 | `cpu_throttled_s` |
+| container | `oom_events` became non-zero, returned to zero, or changed while non-zero | `oom_events` |
+| container | working set crossed 90% of `mem_limit_bytes` | `mem_limit_bytes` |
 | host | `boot_epoch` differs by more than 60 (reboot) | `boot_epoch` |
 | host | `interfaces_down` differs | `interfaces_down` |
 | host | `mem_available_pct` crossed 10 | `mem_available_pct` |
@@ -206,9 +233,7 @@ row onto the stamp:
 | target | `health` differs | `health` |
 | any | scope not on the board | `row` |
 
-Not material: `success_pct_window`, `mem_bytes`,
-`rx_bytes_s`, `interfaces_up`, `last_scrape`, small moves. Those
-land on the board only.
+Not material: `success_pct_window`, `fail_pct_window`, `fail_seconds_window`, `mem_bytes` below 90% of a real limit, `rx_bytes_s`, `interfaces_up`, `last_scrape`, small moves, and a missing series. Those land on the board only. A missing vantage (`expected_vantages`, default `cloud`, `hq`, `branch`) is reported and is not a pass. Cloud success is reachability from cloud only. A running container is not application health.
 
 `changed[]` item: `{keys, field, prior, current, at}` — `prior` from
 the board row (null when new), `current` from this row; for
@@ -231,13 +256,17 @@ crossed upward. `unchanged` when none.
   = the rows that moved.
 - Otherwise **quiet**: no stamp. Board only.
 
-Plane `status`: `degraded` when any probe is `down`, any probe
-`duration_ms` is over `latency_threshold_ms`, any container
-is `gone` or restarted this visit, any host is `unreachable`,
-rebooted this visit, or has an interface down, or any target is not
-`up`; `unknown` when P1, C1, and H1 all failed; else `ok`. Coverage:
-`complete` when every call from T through H4 returned; `partial`
-when some failed (that kind's rows kept from the board);
+Plane `status`: `degraded` when any probe is `down`, a content check
+failed, `duration_ms` or `latency_ms_window` is over
+`latency_threshold_ms`, any container is `gone` or restarted this
+visit or has OOM events, CPU throttle, or working set at 90% of its
+limit, any host is `unreachable`, rebooted this visit, or has an
+interface down, or any target is not `up`. `unvalidated` and a
+missing vantage do not degrade the plane. `unknown` when P1, C1,
+and H1 all failed; else `ok`. Coverage: `complete` when T, P1–P4,
+C1–C4, and H1–H4 returned. P5, P6, and C5–C8 returning no series
+stay missing and do not set `partial`. `partial` when one of the
+required calls failed (that kind's rows kept from the board);
 `unavailable` when P1, C1, and H1 all failed (stamp with a single
 all-null estate metric row, `readings` `[]`, board rows untouched,
 `last_collected_at` still advanced).
@@ -314,39 +343,24 @@ only, then rewrite the board with `last_visit_id`.
 | Workspace reads | 2 |
 | Workspace writes | 4 (board, stamp, prune, board) |
 | `grafana_prometheus_targets` | 1 (plus one retry) |
-| `grafana_query_prometheus` | 12 (plus one retry each) |
+| `grafana_query_prometheus` | 18 (plus one retry each) |
 | `grafana_annotations` | 1 |
 | `grafana_prometheus_labels` | 4 (baseline only) |
 
 ## Reply
 
-Stamp written:
+The summary `findings` are the reply lines. Copy them. Do not add a verdict the line does not state. `last_collected_at` is this collection. `last_visit_id` is the last material stamp. One vantage point does not make the application healthy. A running container does not either.
 
 ```text
 Visit: application
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Window: <window>
-Wrote: health/application/<stamp>.json
+Wrote: <stamp path, or the board path when quiet>
 Trend: <delta>
+Collected: <last_collected_at>
+Last change: <last_visit_id>
 Findings:
-- probe <application> from <vantage_site>: <up|down>, HTTP <http_code>, <success_pct_window>% ok over <window>
-- container <name> on <device or host>: <running|gone|restarted>, cpu <cpu_pct>%
-- host <device or host>: <up|unreachable|rebooted>, down interfaces <list or none>, fs <fs_root_avail_pct>% free
-- target <scrape_pool>/<instance>: <health> <last_error>
-Annotations: <n> change tags in window
-Next: none
-```
-
-Quiet:
-
-```text
-Visit: application
-Result: <ok | degraded>
-Coverage: complete
-Window: <window>
-Wrote: health/metadata-application.json (no material change)
-Trend: unchanged
-Board: <p> probes (<d> down), <c> containers, <h> hosts, <t> targets, last stamp <last_visit_id>
-Next: none
+- <one summary findings line>
+Next: <the next measurement on a degraded finding, otherwise none>
 ```

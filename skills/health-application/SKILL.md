@@ -1,7 +1,7 @@
 ---
 name: health-application
-version: "1.2.0"
-description: "v1.2.0 — Health Application nurse: probes, containers, and hosts run visit_application.py through Grafana Prometheus. Board every visit; stamp only when a row moved."
+version: "1.3.0"
+description: "v1.3.0 — Health Application nurse: probes, containers, and hosts run visit_application.py through Grafana Prometheus. Board every visit; stamp only when a row moved."
 ---
 
 # Health Application skill
@@ -13,7 +13,7 @@ scrape-target health — and writes one row per probe, container,
 host, and target onto the board.
 
 Tools on a visit: `grafana_prometheus_targets` (once),
-`grafana_query_prometheus` (twelve instant expressions, copied
+`grafana_query_prometheus` (eighteen expressions, copied
 exactly), `grafana_annotations` (list, once),
 `grafana_prometheus_labels` (baseline only). Do not call
 `grafana_query_influx` or `grafana_influx_schema`; flows are Health
@@ -29,14 +29,14 @@ No material change = **quiet visit**: board only, no stamp.
 
 `references/prometheus.md` is the whole visit: read the board and
 `inventory/prod.json`; T for targets; P1–P4 for probes (job from
-metadata `probe_job`); C1–C4 for containers; H1–H4 for hosts; A for
+metadata `probe_job`); C1–C8 for containers; H1–H4 for hosts; A for
 `change:` annotations inside the window. Every row is label values
 copied into columns: `application` ← `service` label, `host` ←
 `host_name`, `device` ← the `prod.json` spelling when `host_name`
 matches, `site` ← `site`. Carry unseen board containers as `gone`
 and unseen hosts as `unreachable`. Diff against `current[]` — only
 the material table in `references/prometheus.md` moves a row onto a
-stamp: a probe flip or HTTP-code change, a container restart /
+stamp: a probe flip, HTTP-code change, content-check change, or window latency move, a container restart /
 appear / vanish / CPU crossing 80, a host reboot / interface down /
 memory or root disk crossing 10 % free, a target changing health.
 The `host` / `device` / `application` / `site` columns are the edge;
@@ -96,12 +96,12 @@ Do not open the prior stamp. Never overwrite a timestamped file.
 
 ## Canonical top-level keys
 
-Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Use `site:` for location. A row writes `application:` (the `service` label as-is), `device:` (only when `host_name` matched `prod.json`), `site:`, and `test:probe/<service>@<vantage_point>` on probe rows; never a `service:` key, an address, or a port. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every source-supported nested key and entity field in that file; use `[]` when there are none. Keep nested row `keys`. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Use `site:` for location. A row writes `application:` (the `service` label as-is), `device:` (only when `host_name` matched `prod.json`), `site:`, and `test:probe/<application>@<environment>@<target>@<vantage>` on probe rows; never a `service:` key. The target address stays a column, not a key prefix of its own. Recommendation identifiers remain ordinary `id` or `source_ref` values and never become keys.
 
 ## State machine
 
 READ_BOARD → READ_PROD → T → [RESOLVE probe_job] → P1 → P2 → P3 →
-P4 → C1 → C2 → C3 → C4 → H1 → H2 → H3 → H4 → A → BUILD → CARRY →
+P4 → P5 → P6 → C1 → C2 → C3 → C4 → C5 → C6 → C7 → C8 → H1 → H2 → H3 → H4 → A → BUILD → CARRY →
 DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE →
 WRITE_BOARD] → STOP
 

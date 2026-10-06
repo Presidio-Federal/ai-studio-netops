@@ -88,7 +88,7 @@ the board and the stamp. Do not `write_file` them yourself.
 |------|----:|
 | Workspace file read/write | 6 |
 | `grafana_prometheus_targets` | 1 (plus one retry) |
-| `grafana_query_prometheus` | 12 (plus one retry each) |
+| `grafana_query_prometheus` | 18 (plus one retry each) |
 | `grafana_annotations` | 1 |
 | `grafana_prometheus_labels` | 4 (baseline only) |
 

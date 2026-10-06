@@ -21,7 +21,7 @@ Deployed model is **MiniMax** unless noted.
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.0.1 | MiniMax |
 | Health Telemetry | 1.0.7 | MiniMax |
-| Health Application | 1.2.0 | MiniMax |
+| Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.12.3 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 5.0.0 | MiniMax |
@@ -43,7 +43,11 @@ Health Device 1.12.3 (skill 1.12.6, workspace-handoff 1.70.4): a `call_mcp` rais
 
 Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
 
+workspace-handoff 1.70.7: the application catalog row names probe environment, content check, window latency, and container limit, throttle, and OOM columns.
+
 workspace-handoff 1.70.3: `unwrap_grafana` pivots Grafana 13 columnar frames. Live NetFlow for the last hour is bucket `network-v2`, measurement `netflow`, five exporters.
+
+Health Application 1.3.0 (skill 1.3.0): a probe row is application, destination environment, target, and vantage. The visit reports window failure and latency, a body-check result when `probe_failed_due_to_regex` exists, and container limit, throttle, and OOM when those series exist. Missing series and missing vantage points (cloud, hq, branch unless the board sets `expected_vantages`) stay missing. `last_collected_at` and `last_visit_id` both appear in the reply.
 
 Health Application 1.2.0 (skill 1.2.0): probe `duration_ms` is material when it crosses `latency_threshold_ms` (default 500) or moves 3× against the board row. A probe still over that line degrades the plane. The value stays on the board when the move is smaller.
 

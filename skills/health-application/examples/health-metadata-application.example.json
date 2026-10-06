@@ -1,5 +1,5 @@
 {
-  "keys": ["application:web", "application:api", "application:database", "site:datacenter", "site:cloud", "device:<app-host>", "test:probe/web@cloud", "test:probe/api@cloud", "test:probe/database@cloud"],
+  "keys": ["application:web", "application:api", "application:database", "site:datacenter", "site:cloud", "device:<app-host>", "test:probe/web@datacenter@<web-address>:80@cloud", "test:probe/api@datacenter@<api-address>:8080@cloud", "test:probe/database@datacenter@<db-address>:8080@cloud"],
   "schema": "health-metadata-application/v1",
   "updated_at": "2026-09-29T15:00:20Z",
   "source_agent": "health-application",
@@ -17,11 +17,11 @@
     "last_collected_at": "2026-09-29T15:00:00Z",
     "baseline_visit_id": "2026-09-29T15-00-00Z",
     "current": [
-      { "kind": "probe", "scope": "probe:web@cloud", "keys": ["application:web", "site:datacenter", "test:probe/web@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+      { "kind": "probe", "scope": "probe:web@datacenter@<web-address>:80@cloud", "keys": ["application:web", "site:datacenter", "test:probe/web@datacenter@<web-address>:80@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
         "application": "web", "vantage_site": "cloud", "site": "datacenter", "target": "<web-address>:80", "success": 1, "http_code": 200, "duration_ms": 12, "success_pct_window": 100 },
-      { "kind": "probe", "scope": "probe:api@cloud", "keys": ["application:api", "site:datacenter", "test:probe/api@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+      { "kind": "probe", "scope": "probe:api@datacenter@<api-address>:8080@cloud", "keys": ["application:api", "site:datacenter", "test:probe/api@datacenter@<api-address>:8080@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
         "application": "api", "vantage_site": "cloud", "site": "datacenter", "target": "<api-address>:8080", "success": 1, "http_code": 200, "duration_ms": 9, "success_pct_window": 100 },
-      { "kind": "probe", "scope": "probe:database@cloud", "keys": ["application:database", "site:datacenter", "test:probe/database@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
+      { "kind": "probe", "scope": "probe:database@datacenter@<db-address>:8080@cloud", "keys": ["application:database", "site:datacenter", "test:probe/database@datacenter@<db-address>:8080@cloud"], "at": "2026-09-29T15:00:00Z", "state": "up",
         "application": "database", "vantage_site": "cloud", "site": "datacenter", "target": "<db-address>:8080", "success": 1, "http_code": 200, "duration_ms": 14, "success_pct_window": 100 },
       { "kind": "container", "scope": "container:<app-host>/dc-web", "keys": ["application:dc-web", "device:<app-host>", "site:datacenter"], "at": "2026-09-29T15:00:00Z", "state": "running",
         "name": "dc-web", "host": "<app-host>", "device": "<app-host>", "application": "dc-web", "service": "<business-service>", "site": "datacenter", "image": "nginx:alpine",

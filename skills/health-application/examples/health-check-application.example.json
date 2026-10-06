@@ -1,5 +1,5 @@
 {
-  "keys": ["application:database", "application:dc-database", "site:datacenter", "device:<app-host>", "test:probe/database@cloud"],
+  "keys": ["application:database", "application:dc-database", "site:datacenter", "device:<app-host>", "test:probe/database@datacenter@<db-address>:8080@cloud"],
   "schema": "health-application-check/v1",
   "source": "application",
   "watch_id": "2026-09-29T16-00-00Z",
@@ -14,7 +14,7 @@
       "hosts": 2, "hosts_rebooted": 0, "interfaces_down": 0, "targets": 7, "targets_down": 0, "change_annotations": 1 }
   ],
   "readings": [
-    { "kind": "probe", "scope": "probe:database@cloud", "keys": ["application:database", "site:datacenter", "test:probe/database@cloud"], "at": "2026-09-29T16:00:00Z", "state": "down",
+    { "kind": "probe", "scope": "probe:database@datacenter@<db-address>:8080@cloud", "keys": ["application:database", "site:datacenter", "test:probe/database@datacenter@<db-address>:8080@cloud"], "at": "2026-09-29T16:00:00Z", "state": "down",
       "application": "database", "vantage_site": "cloud", "site": "datacenter", "target": "<db-address>:8080", "success": 0, "http_code": 0, "duration_ms": 5001, "success_pct_window": 0,
       "note": "Up at 200 on the 15:00 baseline; first visit down. Only one vantage point, so no second opinion. Container dc-database on the same board is gone this visit." },
     { "kind": "container", "scope": "container:<app-host>/dc-database", "keys": ["application:dc-database", "device:<app-host>", "site:datacenter"], "at": "2026-09-29T16:00:00Z", "state": "gone",
@@ -28,8 +28,8 @@
     "prior_watch_id": "2026-09-29T15-00-00Z",
     "delta": "worse",
     "changed": [
-      { "keys": ["application:database", "test:probe/database@cloud"], "field": "success", "prior": 1, "current": 0, "at": "2026-09-29T16:00:00Z" },
-      { "keys": ["application:database", "test:probe/database@cloud"], "field": "http_code", "prior": 200, "current": 0, "at": "2026-09-29T16:00:00Z" },
+      { "keys": ["application:database", "test:probe/database@datacenter@<db-address>:8080@cloud"], "field": "success", "prior": 1, "current": 0, "at": "2026-09-29T16:00:00Z" },
+      { "keys": ["application:database", "test:probe/database@datacenter@<db-address>:8080@cloud"], "field": "http_code", "prior": 200, "current": 0, "at": "2026-09-29T16:00:00Z" },
       { "keys": ["application:dc-database", "device:<app-host>"], "field": "state", "prior": "running", "current": "gone", "at": "2026-09-29T16:00:00Z" }
     ]
   },
