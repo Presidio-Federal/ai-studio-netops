@@ -490,8 +490,18 @@ def build(ws, mode, dispatched_names):
     primary_lab = "prod" if visits.get("prod") else ("dev" if visits.get("dev") else None)
     primary = visits.get(primary_lab) if primary_lab else None
     by_test = group_rows(((primary or {}).get("results") or {}).get("ran"))
-    verified, failing, skipped, na_only = score_tests(by_test)
-    tested_percent = pct(verified, verified + failing)
+    visit_metrics = (primary or {}).get("metrics") or {}
+    if isinstance(visit_metrics.get("verified_tests"), int) and isinstance(visit_metrics.get("failing_tests"), int):
+        verified = int(visit_metrics["verified_tests"])
+        failing = int(visit_metrics["failing_tests"])
+        skipped = int(visit_metrics.get("skipped_tests") or 0)
+        na_only = int(visit_metrics.get("not_applicable") or 0)
+        tested_percent = visit_metrics.get("tested_posture_pct")
+        if tested_percent is None:
+            tested_percent = pct(verified, verified + failing)
+    else:
+        verified, failing, skipped, _na_only = score_tests(by_test)
+        tested_percent = pct(verified, verified + failing)
     passed, device_failing = device_counts(primary)
     device_percent = pct(passed, passed + device_failing)
     fw = framework_counts(coverage)

@@ -1,7 +1,7 @@
 ---
 name: compliance-analyzer
-version: "1.2.0"
-description: "v1.2.0 — Build the compliance chart from the visits on disk; the agent adds only its assessment."
+version: "1.2.1"
+description: "v1.2.1 — Score the chart from the visit metrics; findings come from the failing rows."
 ---
 
 # Compliance Analyzer

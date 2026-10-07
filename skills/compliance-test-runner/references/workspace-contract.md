@@ -9,8 +9,11 @@ they do not load a second copy from workspace-handoff.
 
 ## When to write
 
-Every run writes both. A compliance suite is one job with a static report
-and a live report; both planes go in the same files:
+Every run writes `operational/testing` because `state/testing.json` points
+there. A compliance suite also writes `compliance/testing`. Same stamp.
+A command whose suites omit `compliance` writes operational only.
+The stored rows are the failures. Passes stay on the counts.
+`results.by_device` is the device and its failing check ids.
 
 - `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` — this run; never overwrite
   (e.g. `operational/testing/2026-08-21T19-56-18Z.json`)

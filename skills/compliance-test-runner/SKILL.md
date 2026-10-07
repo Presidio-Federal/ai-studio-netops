@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.5"
-description: "v1.12.5 — Record a cleared static failure as a pass and include it in the visit trend."
+version: "1.12.6"
+description: "v1.12.6 — Write the compliance visit as counts plus failures by device, and keep passes on the counts."
 ---
 
 # Compliance test runner skill

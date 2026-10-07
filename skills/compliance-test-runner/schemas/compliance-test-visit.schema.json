@@ -79,7 +79,21 @@
         "counts_na": {"type": "integer", "minimum": 0},
         "ran": {
           "type": "array",
+          "description": "Failures, errors, skips, and static passes that cleared a prior failure. Other passes stay on the counts.",
           "items": {"$ref": "#/$defs/result_row"}
+        },
+        "by_device": {
+          "type": "array",
+          "description": "Failing check ids grouped by device.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["device", "failing"],
+            "properties": {
+              "device": {"type": "string", "minLength": 1},
+              "failing": {"type": "array", "items": {"type": "string", "minLength": 1}}
+            }
+          }
         },
         "not_applicable": {
           "type": "array",

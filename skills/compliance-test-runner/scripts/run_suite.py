@@ -566,6 +566,22 @@ def index_rows(rows):
     return found
 
 
+def failures_by_device(rows):
+    """One device, then the check ids that failed. Passes stay on the counts."""
+    grouped = {}
+    for row in rows:
+        if row.get("status") not in {"FAIL", "ERROR"}:
+            continue
+        test, device = pair_of(row)
+        device = device or row.get("device")
+        if not device or not test:
+            continue
+        bucket = grouped.setdefault(device, [])
+        if test not in bucket:
+            bucket.append(test)
+    return [{"device": device, "failing": grouped[device]} for device in sorted(grouped)]
+
+
 def static_passes_from_prior(prior, current_rows, scanned):
     """A static failure that is gone on the next run passed.
 
@@ -831,10 +847,21 @@ def build_records(args, moment, run_id, html_url, parsed):
         if parsed["static_present"]:
             cleared = static_passes_from_prior(prior, rows, scanned)
             rows.extend(cleared)
+        else:
+            cleared = []
         visit_metrics = metrics_of(
             moment, visit_id, lab, counts, rows, parsed["counts_na"],
             {"live": live_counts, "static": static_counts or empty_counts()},
         )
+        kept = {id(row) for row in cleared}
+        stored = [
+            row for row in rows
+            if row.get("status") != "PASS" or id(row) in kept
+        ]
+        results["ran"] = stored
+        results["by_device"] = failures_by_device(stored)
+        run_record["keys"] = union_keys(stored + parsed["not_applicable"])
+        run_record["compliance_visit"] = "compliance/testing/%s.json" % visit_id
         visit = {
             "keys": run_record["keys"],
             "schema": "compliance-test-visit/v3",

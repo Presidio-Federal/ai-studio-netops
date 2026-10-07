@@ -64,8 +64,10 @@ Do not do that for a device this run did not scan.
 as before. Every live row has `plane=live`. A rolled-up live line
 (`PASS \`check\` · n/total`) is not a device row — do not invent devices.
 
-`results.counts_ran` is the sum of the two count lines. `results.ran` is
-the live rows plus the static FAIL rows. `metrics.pass/fail/error/skip`
+`results.counts_ran` is the sum of the two count lines. `results.by_device`
+lists each device and the check ids that failed. `results.ran` keeps
+failures, errors, skips, and a static pass that cleared a prior failure.
+Other passes stay on the counts. `metrics.pass/fail/error/skip`
 and `metrics.planes` use the count lines. `device_check_pass_pct` uses
 those sums. `verified_tests` / `failing_tests` / `tested_posture_pct`
 group `ran` rows only, so a static check that passed on every device is
