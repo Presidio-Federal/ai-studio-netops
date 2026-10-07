@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.2.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.7.8 | MiniMax |
+| Compliance Test | 1.8.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
@@ -32,6 +32,10 @@ Deployed model is **MiniMax** unless noted.
 Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
+
+Compliance Test 1.8.0 (skill 1.12.0): a workflow run id is not a job id. The log call uses only the id in `/runs/<run>/job/<id>`.
+
+Compliance Test 1.7.9 (skill 1.11.9): one `python3` command per execute, timeout 60. A `running` result is not a shell loop and not a 400-second timeout.
 
 Compliance Test 1.7.8 (skill 1.11.8): `github_get_action_run` returns `run.jobs[].id` (name, status, conclusion, html_url; no steps). The log tool requires that id and returns at most the last 500 lines.
 

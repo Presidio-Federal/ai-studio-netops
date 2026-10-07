@@ -1153,43 +1153,33 @@ def current_phase(jobs):
     return None
 
 
-JOB_URL = re.compile(r"/jobs?/(\d+)")
-
-
 def job_ids_in(body, run_id):
-    """Job ids the direct agent used to copy out of github_get_action_run.
+    """Job ids from github_get_action_run.
 
-    A job is an object with its own id, a name, and a status. It is often
-    not nested under a key named jobs, and it often has no steps list.
+    A workflow run and a job both have id, name, and status. The run id is
+    not a job id. Only an html_url containing /runs/<this run>/job/<id>
+    is a job. Passing a run id to the log tool returns a short error, not
+    the report.
     """
     found = []
+    want = str(run_id)
 
     def add(value):
         text = str(value or "")
-        if text.isdigit() and text != str(run_id) and text not in found:
+        if text.isdigit() and text != want and text not in found:
             found.append(text)
 
     def walk(node):
         if isinstance(node, dict):
-            own = node.get("id") or node.get("job_id") or node.get("jobId")
-            named = node.get("name") or node.get("job_name") or node.get("jobName")
-            if own and (
-                node.get("steps") is not None
-                or node.get("runner_name")
-                or node.get("run_id")
-                or (named and (node.get("status") or node.get("conclusion")))
-            ):
-                add(own)
             for value in node.values():
                 walk(value)
         elif isinstance(node, list):
             for item in node:
                 walk(item)
         elif isinstance(node, str):
-            for match in JOB_URL.finditer(node):
-                add(match.group(1))
-            for match in re.finditer(r"check-runs/(\d+)", node):
-                add(match.group(1))
+            for match in re.finditer(r"/runs/(\d+)/job/(\d+)", node):
+                if match.group(1) == want:
+                    add(match.group(2))
 
     walk(flatten(body))
     return found
@@ -1243,18 +1233,7 @@ def read_logs(jobs, run_id, body):
     embedded = log_text(body) if body is not None else None
     if report_in(embedded):
         return embedded, None
-    ids = []
-    run = body.get("run") if isinstance(body, dict) and isinstance(body.get("run"), dict) else None
-    listed = (run or {}).get("jobs") if run else None
-    if not isinstance(listed, list):
-        listed = jobs or []
-    for job in listed:
-        jid = job_id(job)
-        if jid and jid != str(run_id) and jid not in ids:
-            ids.append(jid)
-    for jid in job_ids_in(body, run_id):
-        if jid not in ids:
-            ids.append(jid)
+    ids = job_ids_in(body, run_id)
     if not ids:
         return "", "run payload had no job id (%s)" % keys_hint(body)
     chunks = []

@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.7.8"
+version: "1.8.0"
 ---
 
 # Compliance Test
 
-Version 1.7.8.
+Version 1.8.0.
 
 ## Identity
 
@@ -71,9 +71,12 @@ Each `execute_command` is a new container. The workspace is the
 Pass it as `--workspace`. Do not pass the relative name `file_explorer`,
 and do not `cd`.
 
-`execution_type` is `mcp_orchestration`. `timeout` is 60. The script
-checks the run once and returns. Do not raise the timeout. Do not add
-a sleep.
+`execution_type` is `mcp_orchestration`. `timeout` is 60. Not 300.
+Not 400. The script checks the run once and returns in a few seconds.
+
+One `execute_command` runs one `python3` command. Never a `for` loop,
+a `while` loop, or `sleep`. A fast `running` result is not a reason to
+pack more checks into the same command.
 
 ```text
 python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environment <dev|prod> --suites <suites> --devices <names> --tags <tags> --mode live --allow-all <true|false> --production-authorized <true|false> --reason <why>
@@ -84,12 +87,13 @@ runtime is not the result. Do not read the visit to fill the reply.
 Do not call `github_run_action`, `github_list_action_runs`,
 `github_get_action_run`, or `github_get_action_job_logs` yourself.
 
-If `result` is `running`, resume with the same command and `--run-id`
-copied from that line. Do not dispatch a second job. Pass `--phase` only
-when the line has `phase` and it is exactly `running static tests` or
+If `result` is `running`, say Status and Run, then one new
+`execute_command`. Same `python3` command, same flags, plus `--run-id`
+from that line. `timeout` is still 60. Do not dispatch a second job.
+Do not drop `--workspace` or `--suites`. Pass `--phase` only when the
+line has `phase` and it is exactly `running static tests` or
 `running live tests`. Never pass a phase you made up. Never pass
-`still in progress`. Each resume is one check. A finished run writes
-the visit in that call. Keep resuming while the line says `running`.
+`still in progress`. A finished run writes the visit in that call.
 
 If stderr says `hai_mcp unavailable`, follow `references/run.md` by hand.
 Any other failure: one line from stderr, then stop. Do not poll by hand.
