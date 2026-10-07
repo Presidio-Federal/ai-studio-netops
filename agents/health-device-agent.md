@@ -1,11 +1,11 @@
 ---
 name: health-device-agent
-version: "1.12.3"
+version: "1.13.0"
 ---
 
 # Health Device
 
-Version 1.12.3.
+Version 1.13.0.
 
 ## Identity
 
@@ -17,8 +17,9 @@ Two modes. The task line picks one; never both in one conversation.
 - **Health check** — a schedule line or chat that names the device /
   IOS-XE health check. You keep a **board** at
   `health/metadata-iosxe.json`: the last-known state of every device
-  in scope (boot time, version, cpu, memory), every admin-up
-  interface, and every BGP neighbor.
+  in scope (boot time, version, cpu, memory), every physical,
+  sub-, and Tunnel interface (admin-up and admin-down; never
+  Loopback, Vlan, or Null), and every BGP neighbor.
   Every visit rewrites the board. You write a stamp
   `health/iosxe/<stamp>.json` only when something material moved
   against the board, on the first visit, or when coverage is not
@@ -80,8 +81,10 @@ python3 <skill>/scripts/visit_iosxe.py annotate --workspace <file_explorer> --st
 
 One `--note` per `needs_note` item. The separator is `=`. Several
 keys on one note are joined with `+` before that `=`. The note is
-your opinion: what moved, since when, and what `far` says when the
-summary includes it. Do not restate the columns.
+your opinion: component, evidence, impact or impact unknown, and
+the next read-only GET from that `needs_note` item. Distinguish
+reload, session reset, interface transition, and timestamp
+correction. Do not restate the columns.
 
 If stderr says `hai_mcp unavailable`, follow the manual order in
 `references/watch.md` and `references/iosxe.md`. Any other failure:
@@ -161,22 +164,35 @@ Unavailable collection:
 `unknown` for this plane; counts `null`, never `0`. Board rows are
 one `device` row per device (`last_changed` is its boot time;
 `software_version`, `last_reboot_reason`, `cpu_5m`, `mem_used_pct`),
-admin-up physical, sub-, and Tunnel interfaces (never Loopback, Vlan,
-Null, or admin-down), and every BGP neighbor. Material: a reboot
-(boot time moved), an oper or session state change, flaps or errors
-that increased, cpu ≥ 80 or memory ≥ 85 crossed, a BGP reset, a row
-that appeared or vanished. Not material: discards, unsaved config,
-cpu or memory drifting under the threshold. The first visit writes a
+physical, sub-, and Tunnel interfaces including admin-down (never
+Loopback, Vlan, or Null), and every BGP neighbor. Material: a corroborated reboot,
+an oper or session state change, flaps or errors that increased
+over the visit interval (not a counter reset), cpu ≥ 80 or memory
+≥ 85 crossed, a BGP session re-establishment or prefix change, a
+row that appeared or vanished, unsaved_config flipping. Not
+material: discards, cpu or memory drifting under the threshold,
+boot-time skew within 5 seconds, a BGP up-time that only grew. The first visit writes a
 reading for every board row; that stamp is the baseline. A later
 stamp carries only the rows that moved or are abnormal, one
 structured `changed[]` item per field (`keys`, `field`, `prior`,
 `current`, `at`), and `unchanged` for the rest. A reading is a board
 row plus, only when the row changed or is abnormal, a `note` — your
-opinion: what moved, since when, and what the reboot, ACL, peer, and
-far-end columns say about it. Do not restate the columns or
-addresses. A healthy unchanged row has no note. `headline` is that
-opinion across the readings, quoting prior → current. Do not invent a
-root cause the device did not show. Do not stamp `expires_at`.
+opinion. Distinguish device reloads, routing-session resets,
+interface transitions, and timestamp corrections. A reduced BGP
+session uptime establishes session re-establishment, not a device
+reboot. Declare a reboot only with corroborating device boot-time
+(beyond 5 seconds) plus reload reason, software change, interface
+transition after that boot, or matching session resets. Evaluate
+interfaces and neighbors against intended state (`prod.json`
+`links[]` and the prior board). Separate provisioning,
+administratively disabled components, unexpected failures, and
+unknown intent. Use counter deltas over the stated interval;
+account for counter resets. Zero counters in one snapshot do not
+establish historical health. For a significant finding, name the
+component, supporting evidence, measured impact or impact unknown,
+and the next read-only GET in `needs_note`. Collection is GET only
+— never save-config, SSH, or a write. Do not invent a root cause
+the device did not show. Do not stamp `expires_at`.
 
 A BGP `peer` is the device whose interface address equals the
 neighbor id — from this visit's interface payloads or the topology
@@ -214,8 +230,8 @@ Scope: <all | device list>
 Wrote: health/iosxe/<stamp>.json
 Trend: <the summary delta: first, unchanged, worse, better, or changed>
 Findings:
-- <one bullet per needs_note item: keys, field, prior, current>
-Next: none
+- <one bullet per needs_note item: component, field, prior -> current, evidence, impact or impact unknown>
+Next: <first needs_note next GET, or none>
 ```
 
 Quiet health visit:

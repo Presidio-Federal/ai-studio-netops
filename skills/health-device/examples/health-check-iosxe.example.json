@@ -1,12 +1,12 @@
 {
   "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>", "device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
-  "schema": "health-iosxe-check/v5",
+  "schema": "health-iosxe-check/v6",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-00Z",
   "checked_at": "2026-08-31T16:00:00Z",
   "ok": false,
   "status": "degraded",
-  "headline": "<wan-device> rebooted: boot_time 2026-08-14T13:33:57Z -> 2026-08-31T15:40:12Z, last_reboot_reason reload (abnormal); <wan-interface> num_flaps 0 -> 1 and <edge-device> <edge-interface> num_flaps 0 -> 1 at 15:41Z; BGP <wan-device> -> <edge-device> re-established, up_time 2w3d -> 00:18:50, prefixes 3 -> 3. 38 other board rows unchanged.",
+  "headline": "<wan-device> rebooted: boot_time 2026-08-14T13:33:57Z -> 2026-08-31T15:40:12Z, last_reboot_reason reload (abnormal); <wan-interface> num_flaps 0 -> 1 and <edge-device> <edge-interface> num_flaps 0 -> 1 at 15:41Z; BGP <wan-device> -> <edge-device> session re-established (not a reboot), up_time 2w3d -> 00:18:50, prefixes 3 -> 3. 38 other board rows unchanged.",
   "window": "live",
   "scope": "all",
   "coverage": {
@@ -65,7 +65,7 @@
       "cpu_5m": 4,
       "mem_used_pct": 12,
       "unsaved_config": false,
-      "note": "Rebooted 20 minutes before this visit; the device reports the reload as abnormal, not an operator command. Same software version, so not an upgrade. Every change below follows from this reboot."
+      "note": "Device reload: boot-time moved 17d and last_reboot_reason reload (abnormal) corroborates it. Same software version. Impact unknown beyond the reload itself. Next GET already collected."
     },
     {
       "name": "<wan-device>",
@@ -73,6 +73,8 @@
       "subject": "<wan-interface>",
       "keys": ["device:<wan-device>", "interface:<wan-device>/<wan-interface>"],
       "state": "if-oper-state-ready",
+      "admin_status": "if-state-up",
+      "intent": "ok",
       "last_changed": "2026-08-31T15:41:07Z",
       "in_errors": 0,
       "in_crc_errors": 0,
@@ -80,7 +82,7 @@
       "num_flaps": 1,
       "input_acl": null,
       "output_acl": null,
-      "note": "One flap, timed with the reboot; no errors since. Nothing here points at the cable."
+      "note": "Interface transition after the corroborated reload; flap delta 0 -> 1 over the visit interval, no error increase. Not a cable fault."
     },
     {
       "name": "<edge-device>",
@@ -88,6 +90,8 @@
       "subject": "<edge-interface>",
       "keys": ["device:<edge-device>", "interface:<edge-device>/<edge-interface>"],
       "state": "if-oper-state-ready",
+      "admin_status": "if-state-up",
+      "intent": "ok",
       "last_changed": "2026-08-31T15:41:09Z",
       "in_errors": 0,
       "in_crc_errors": 0,
@@ -95,7 +99,7 @@
       "num_flaps": 1,
       "input_acl": null,
       "output_acl": null,
-      "note": "Far end of the <wan-device> link per the topology map; flapped two seconds after it, which is the reboot seen from this side."
+      "note": "Far end of the <wan-device> link per the topology map; interface transition two seconds after the far-end reload. Not a local failure."
     },
     {
       "name": "<wan-device>",
@@ -108,7 +112,7 @@
       "prefixes_received": 3,
       "remote_as": 65001,
       "peer": "device:<edge-device>",
-      "note": "Session reset with the reboot and is back with the same prefix count."
+      "note": "BGP session re-establishment: up_time 2w3d -> 00:18:50. This is not a device reboot; the reload is on the device row. Prefixes 3 -> 3 (forwarding evidence: session established with prefixes-received 3). Impact unknown beyond the bounce."
     }
   ],
   "unchanged": 38,

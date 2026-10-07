@@ -191,12 +191,16 @@ Device plane only, two modes. **Health**: one `execute_command` runs
 `health-device` `scripts/visit_iosxe.py collect` under
 `mcp_orchestration`. The script does the five filtered GETs per
 device — boot time / version / reboot reason, cpu, memory, interface
-state and flaps/errors, BGP sessions — diffs `current[]`, and writes
-the board. A stamp only when something material moved (reboot, state
-change, flaps or errors up, threshold crossed, BGP reset), on the
-first visit, or when coverage is not complete. The model sees the
-script's summary line, then `annotate` under `standard` only when
-that line has `needs_note`. No ACL oper, no traffic rates, no CDP.
+state and flaps/errors, BGP sessions — plus a keyed neighbor GET
+when a session is down. It diffs `current[]`, and writes the board.
+A stamp only when something material moved (corroborated reboot,
+state change, flap/error **increase** over the visit interval,
+threshold crossed, BGP session re-establishment or prefix change,
+unsaved_config flip), on the first visit, or when coverage is not
+complete. A shorter BGP `up_time` is not a device reboot. The model
+sees the script's summary line, then `annotate` under `standard`
+only when that line has `needs_note`. No ACL oper, no octet/traffic
+rates, no CDP. GET only.
 **Topology** (`Run the network topology map only.`): version,
 interfaces with addresses, and CDP rows per device to
 `inventory/topology-observed.json`, file rewritten after every

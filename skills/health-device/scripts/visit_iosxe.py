@@ -69,6 +69,8 @@ CALLS = (
 SKIP_PREFIXES = ("Loopback", "Vlan", "Null")
 CPU_LINE = 80
 MEM_LINE = 85
+BOOT_SKEW_SECONDS = 5
+MAX_BGP_DETAIL = 3
 MAX_CALLS = 50
 CHANGED_CAP = 24
 READINGS_CAP = 64
@@ -204,13 +206,27 @@ def crossed(prior, current, line):
     return (prior < line <= current) or (current < line <= prior)
 
 
+def oper_not_ready_state(state):
+    text = state or ""
+    if text == "if-oper-state-ready":
+        return False
+    if "idle" in text.lower():
+        return False
+    return text != ""
+
+
 def oper_not_ready(row):
-    state = row.get("state") or ""
-    if state == "if-oper-state-ready":
+    if row.get("admin_status") and row.get("admin_status") != "if-state-up":
         return False
-    if "idle" in state.lower():
+    return oper_not_ready_state(row.get("state") or "")
+
+
+def required_interface_failed(row, intended):
+    if row.get("kind") != "interface":
         return False
-    return state != ""
+    if row.get("intent") == "failed" or oper_not_ready(row):
+        return True
+    return bool(intended) and row.get("admin_status") != "if-state-up"
 
 
 def stamp_name(moment):
@@ -238,6 +254,53 @@ def canon_time(value):
 
 def same_instant(left, right):
     return canon_time(left) == canon_time(right)
+
+
+def instant_epoch(value):
+    text = canon_time(value)
+    if not isinstance(text, str):
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp()
+    except ValueError:
+        return None
+
+
+def boot_shift_seconds(prior, current):
+    left = instant_epoch(prior)
+    right = instant_epoch(current)
+    if left is None or right is None:
+        return None
+    return right - left
+
+
+def interval_seconds(prior_at, current_at):
+    seconds = boot_shift_seconds(prior_at, current_at)
+    if seconds is None or seconds <= 0:
+        return None
+    return int(seconds)
+
+
+def intended_interfaces(prod, name):
+    found = set()
+    for link in (prod or {}).get("links") or []:
+        if link.get("a_device") == name and link.get("a_interface"):
+            found.add(str(link["a_interface"]))
+        if link.get("b_device") == name and link.get("b_interface"):
+            found.add(str(link["b_interface"]))
+    return found
+
+
+def classify_interface(admin, oper, prior_row, intended):
+    if admin != "if-state-up":
+        if prior_row is None:
+            return "provisioning"
+        return "admin_disabled"
+    if oper_not_ready_state(oper):
+        return "failed"
+    if intended:
+        return "ok"
+    return "ok" if oper else "unknown"
 
 
 def row_id(row):
@@ -327,6 +390,63 @@ def get_call(host, port, name, path, params):
     return payload, error
 
 
+def bgp_reset_reason(body):
+    node = unwrap_body(body)
+    rows = []
+    if isinstance(node, dict):
+        if "neighbor" in node:
+            rows = as_list(node.get("neighbor"))
+        else:
+            rows = [node]
+    elif isinstance(node, list):
+        rows = node
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        conn = row.get("connection")
+        if isinstance(conn, dict):
+            reason = blank_to_none(conn.get("reset-reason"))
+            if reason:
+                return reason
+        reason = blank_to_none(row.get("reset-reason"))
+        if reason:
+            return reason
+    return None
+
+
+def collect_bgp_resets(host, port, name, bgp_body, budget, calls_used):
+    reasons = {}
+    extra = 0
+    for neighbor in bgp_rows(bgp_body):
+        if extra >= MAX_BGP_DETAIL:
+            break
+        if blank_to_none(neighbor.get("state")) == "fsm-established":
+            continue
+        peer_id = blank_to_none(neighbor.get("id"))
+        afi = neighbor.get("_afi_safi")
+        vrf = neighbor.get("_vrf") or "default"
+        if not peer_id or not afi:
+            continue
+        if budget.exhausted() or calls_used[0] >= MAX_CALLS:
+            break
+        path = (
+            "Cisco-IOS-XE-bgp-oper:bgp-state-data/neighbors/"
+            f"neighbor={afi},{vrf},{peer_id}"
+        )
+        calls_used[0] += 1
+        extra += 1
+        payload, error = get_call(
+            host,
+            port,
+            name,
+            path,
+            {"fields": "connection;session-state"},
+        )
+        if error is None:
+            reasons[peer_id] = bgp_reset_reason(payload)
+    return reasons
+
+
 def collect_device(device, budget, calls_used):
     name = device["name"]
     access = device["access"]["restconf"]
@@ -348,6 +468,9 @@ def collect_device(device, budget, calls_used):
             continue
         payloads[label] = payload
         errors[label] = error
+    payloads["bgp_reset"] = collect_bgp_resets(
+        host, port, name, payloads.get("bgp"), budget, calls_used
+    )
     print(
         f"iosxe device={name} elapsed_s={time.monotonic() - started:.3f} calls={sum(1 for label, _, _ in CALLS if errors.get(label) != 'budget')} result={'fail' if any(errors.values()) else 'ok'}",
         file=sys.stderr,
@@ -426,13 +549,27 @@ def bgp_rows(body):
             continue
         summaries = family.get("bgp-neighbor-summaries") or {}
         if isinstance(summaries, dict):
-            neighbors.extend(as_list(summaries.get("bgp-neighbor-summary")))
+            family_neighbors = as_list(summaries.get("bgp-neighbor-summary"))
         elif isinstance(summaries, list):
-            neighbors.extend(summaries)
-    return [row for row in neighbors if isinstance(row, dict)]
+            family_neighbors = summaries
+        else:
+            family_neighbors = []
+        afi = blank_to_none(family.get("afi-safi"))
+        vrf = blank_to_none(family.get("vrf-name")) or "default"
+        for neighbor in family_neighbors:
+            if not isinstance(neighbor, dict):
+                continue
+            item = dict(neighbor)
+            item["_afi_safi"] = afi
+            item["_vrf"] = vrf
+            neighbors.append(item)
+    return neighbors
 
 
-def build_rows(name, payloads, peers, checked):
+def build_rows(name, payloads, peers, checked, prior_rows=None, intended=None):
+    prior_map = {row_id(row): row for row in (prior_rows or [])}
+    intended = intended or set()
+    reasons = payloads.get("bgp_reset") or {}
     system = system_fields(payloads.get("system"), name)
     boot = canon_time(blank_to_none(system.get("boot-time"))) or checked
     device_row = {
@@ -454,16 +591,21 @@ def build_rows(name, payloads, peers, checked):
         iname = iface.get("name")
         if not iname or str(iname).startswith(SKIP_PREFIXES):
             continue
-        if iface.get("admin-status") != "if-state-up":
-            continue
+        admin = blank_to_none(iface.get("admin-status"))
+        oper = blank_to_none(iface.get("oper-status"))
         stats = iface.get("statistics") or {}
+        prior_iface = prior_map.get((name, "interface", str(iname)))
         rows.append(
             {
                 "name": name,
                 "kind": "interface",
                 "subject": str(iname),
                 "keys": [f"device:{name}", f"interface:{name}/{iname}"],
-                "state": blank_to_none(iface.get("oper-status")),
+                "state": oper,
+                "admin_status": admin,
+                "intent": classify_interface(
+                    admin, oper, prior_iface, str(iname) in intended
+                ),
                 "last_changed": str(canon_time(blank_to_none(iface.get("last-change"))) or checked),
                 "in_errors": coerce_int(stats.get("in-errors")),
                 "in_crc_errors": coerce_int(stats.get("in-crc-errors")),
@@ -493,14 +635,43 @@ def build_rows(name, payloads, peers, checked):
                 "prefixes_received": coerce_int(neighbor.get("prefixes-received")),
                 "remote_as": coerce_int(neighbor.get("as")),
                 "peer": f"device:{peer_name}" if peer_name else None,
+                "reset_reason": reasons.get(str(peer_id)),
             }
         )
     return rows
 
 
-def direction(kind, field, prior, current):
+def reboot_corroborated(old_dev, new_dev, old_rows, new_rows):
+    if old_dev.get("last_reboot_reason") != new_dev.get("last_reboot_reason"):
+        return True
+    if old_dev.get("software_version") != new_dev.get("software_version"):
+        return True
+    boot = instant_epoch(new_dev.get("last_changed"))
+    for row in new_rows:
+        if row["kind"] == "interface":
+            changed = instant_epoch(row.get("last_changed"))
+            if boot is not None and changed is not None and changed >= boot:
+                return True
+        if row["kind"] == "bgp":
+            old = next(
+                (
+                    item
+                    for item in old_rows
+                    if item["kind"] == "bgp" and item.get("subject") == row.get("subject")
+                ),
+                None,
+            )
+            if old and up_time_shorter(old.get("up_time"), row.get("up_time")):
+                return True
+    return False
+
+
+def direction(kind, field, prior, current, extra=None):
+    extra = extra or {}
     if field == "boot_time":
-        return "worse"
+        return "worse" if extra.get("reboot") else "changed"
+    if field in ("num_flaps", "in_errors", "in_crc_errors") and extra.get("reset"):
+        return "changed"
     if field in ("num_flaps", "in_errors", "in_crc_errors", "up_time"):
         return "worse"
     if field in ("cpu_5m", "mem_used_pct"):
@@ -525,35 +696,59 @@ def direction(kind, field, prior, current):
         if field == "peer" and current and not prior:
             return "better"
         return "changed"
+    if field == "admin_status":
+        if current != "if-state-up" and extra.get("intended"):
+            return "worse"
+        return "changed"
+    if field in ("unsaved_config", "reset_reason"):
+        return "changed"
     if field == "row" and kind == "bgp" and current is None:
+        return "worse"
+    if field == "row" and kind == "interface" and extra.get("intended") and current is None:
         return "worse"
     return "changed"
 
 
-def diff_device(prior_rows, new_rows, checked):
+def diff_device(prior_rows, new_rows, checked, intended=None):
+    intended = intended or set()
     prior = {row_id(row): row for row in prior_rows}
     current = {row_id(row): row for row in new_rows}
+    old_dev = next((row for row in prior_rows if row.get("kind") == "device"), None)
+    new_dev = next((row for row in new_rows if row.get("kind") == "device"), None)
+    reboot = False
+    if old_dev and new_dev:
+        shift = boot_shift_seconds(old_dev.get("last_changed"), new_dev.get("last_changed"))
+        if shift is not None and abs(shift) > BOOT_SKEW_SECONDS:
+            reboot = reboot_corroborated(old_dev, new_dev, prior_rows, new_rows)
     changed = []
     for key, row in current.items():
         old = prior.get(key)
+        extra = {
+            "reboot": reboot,
+            "intended": row.get("subject") in intended,
+        }
         if old is None:
-            changed.append(_change(row, "row", None, row["subject"], checked))
+            changed.append(_change(row, "row", None, row["subject"], checked, extra))
             continue
         if row["kind"] == "bgp":
             row["last_changed"] = old.get("last_changed") or checked
-        pairs = _material_pairs(old, row)
+        pairs = _material_pairs(old, row, reboot)
         if pairs and row["kind"] == "bgp":
             row["last_changed"] = checked
-        for field, before, after, at in pairs:
-            changed.append(_change(row, field, before, after, at or checked))
+        for field, before, after, at, pair_extra in pairs:
+            merged = dict(extra)
+            merged.update(pair_extra)
+            changed.append(_change(row, field, before, after, at or checked, merged))
     for key, old in prior.items():
         if key not in current:
-            changed.append(_change(old, "row", old.get("subject"), None, checked))
+            extra = {"intended": old.get("subject") in intended}
+            changed.append(_change(old, "row", old.get("subject"), None, checked, extra))
     return changed
 
 
-def _change(row, field, prior, current, at):
-    return {
+def _change(row, field, prior, current, at, extra=None):
+    extra = extra or {}
+    item = {
         "keys": list(row["keys"]),
         "field": field,
         "prior": prior,
@@ -561,41 +756,73 @@ def _change(row, field, prior, current, at):
         "at": at,
         "_kind": row["kind"],
         "_id": row_id(row),
+        "_reboot": bool(extra.get("reboot")),
+        "_reset": bool(extra.get("reset")),
+        "_intended": bool(extra.get("intended")),
     }
+    return item
 
 
-def _material_pairs(old, row):
+def _material_pairs(old, row, reboot):
     pairs = []
     if row["kind"] == "device":
-        if not same_instant(old.get("last_changed"), row.get("last_changed")):
-            pairs.append(("boot_time", old.get("last_changed"), row.get("last_changed"), row.get("last_changed")))
+        shift = boot_shift_seconds(old.get("last_changed"), row.get("last_changed"))
+        if shift is not None and abs(shift) > BOOT_SKEW_SECONDS:
+            pairs.append(
+                (
+                    "boot_time",
+                    old.get("last_changed"),
+                    row.get("last_changed"),
+                    row.get("last_changed"),
+                    {"reboot": reboot},
+                )
+            )
         if old.get("software_version") != row.get("software_version"):
-            pairs.append(("software_version", old.get("software_version"), row.get("software_version"), None))
+            pairs.append(("software_version", old.get("software_version"), row.get("software_version"), None, {}))
+        if old.get("unsaved_config") != row.get("unsaved_config"):
+            pairs.append(("unsaved_config", old.get("unsaved_config"), row.get("unsaved_config"), None, {}))
         if crossed(old.get("cpu_5m"), row.get("cpu_5m"), CPU_LINE):
-            pairs.append(("cpu_5m", old.get("cpu_5m"), row.get("cpu_5m"), None))
+            pairs.append(("cpu_5m", old.get("cpu_5m"), row.get("cpu_5m"), None, {}))
         if crossed(old.get("mem_used_pct"), row.get("mem_used_pct"), MEM_LINE):
-            pairs.append(("mem_used_pct", old.get("mem_used_pct"), row.get("mem_used_pct"), None))
+            pairs.append(("mem_used_pct", old.get("mem_used_pct"), row.get("mem_used_pct"), None, {}))
     elif row["kind"] == "interface":
         if old.get("state") != row.get("state"):
-            pairs.append(("state", old.get("state"), row.get("state"), row.get("last_changed")))
+            pairs.append(("state", old.get("state"), row.get("state"), row.get("last_changed"), {}))
+        old_admin = old.get("admin_status") or "if-state-up"
+        if old_admin != row.get("admin_status"):
+            pairs.append(("admin_status", old_admin, row.get("admin_status"), row.get("last_changed"), {}))
         for field in ("input_acl", "output_acl"):
             if old.get(field) != row.get(field):
-                pairs.append((field, old.get(field), row.get(field), None))
+                pairs.append((field, old.get(field), row.get(field), None, {}))
         for field in ("num_flaps", "in_errors", "in_crc_errors"):
             before = old.get(field)
             after = row.get(field)
             if isinstance(before, int) and isinstance(after, int) and after > before:
-                pairs.append((field, before, after, None))
+                pairs.append((field, before, after, None, {}))
+            elif isinstance(before, int) and isinstance(after, int) and after < before:
+                pairs.append((field, before, after, None, {"reset": True}))
     elif row["kind"] == "bgp":
         if old.get("state") != row.get("state"):
-            pairs.append(("state", old.get("state"), row.get("state"), None))
+            pairs.append(("state", old.get("state"), row.get("state"), None, {}))
         if old.get("peer") != row.get("peer"):
-            pairs.append(("peer", old.get("peer"), row.get("peer"), None))
+            pairs.append(("peer", old.get("peer"), row.get("peer"), None, {}))
         if old.get("prefixes_received") != row.get("prefixes_received"):
-            pairs.append(("prefixes_received", old.get("prefixes_received"), row.get("prefixes_received"), None))
+            pairs.append(("prefixes_received", old.get("prefixes_received"), row.get("prefixes_received"), None, {}))
         if up_time_shorter(old.get("up_time"), row.get("up_time")):
-            pairs.append(("up_time", old.get("up_time"), row.get("up_time"), None))
+            pairs.append(("up_time", old.get("up_time"), row.get("up_time"), None, {}))
+        if old.get("reset_reason") != row.get("reset_reason") and row.get("reset_reason"):
+            pairs.append(("reset_reason", old.get("reset_reason"), row.get("reset_reason"), None, {}))
     return pairs
+
+
+def _way(item):
+    return direction(
+        item["_kind"],
+        item["field"],
+        item["prior"],
+        item["current"],
+        {"reboot": item.get("_reboot"), "reset": item.get("_reset"), "intended": item.get("_intended")},
+    )
 
 
 def overall_delta(changed, first):
@@ -603,7 +830,7 @@ def overall_delta(changed, first):
         return "first"
     if not changed:
         return "unchanged"
-    ways = [direction(item["_kind"], item["field"], item["prior"], item["current"]) for item in changed]
+    ways = [_way(item) for item in changed]
     if "worse" in ways:
         return "worse"
     if ways and all(way == "better" for way in ways):
@@ -611,27 +838,38 @@ def overall_delta(changed, first):
     return "changed"
 
 
-def plane_status(rows, prior_by_id, changed):
-    changed_ids = {item["_id"] for item in changed if item["field"] == "boot_time"}
-    increased = {item["_id"] for item in changed if item["field"] in ("num_flaps", "in_errors", "in_crc_errors")}
+def plane_status(rows, prior_by_id, changed, intended_by_name=None):
+    intended_by_name = intended_by_name or {}
+    rebooted = {item["_id"] for item in changed if item["field"] == "boot_time" and item.get("_reboot")}
+    increased = {
+        item["_id"]
+        for item in changed
+        if item["field"] in ("num_flaps", "in_errors", "in_crc_errors") and not item.get("_reset")
+    }
+    missing_bgp = [
+        item
+        for item in changed
+        if item["field"] == "row" and item["_kind"] == "bgp" and item["current"] is None
+    ]
+    if missing_bgp:
+        return "degraded"
     for row in rows:
+        intended = intended_by_name.get(row.get("name")) or set()
         if row["kind"] == "device":
-            old = prior_by_id.get(row_id(row))
-            if old and not same_instant(old.get("last_changed"), row.get("last_changed")):
+            if row_id(row) in rebooted:
                 return "degraded"
             if (row.get("cpu_5m") or 0) >= CPU_LINE or (row.get("mem_used_pct") or 0) >= MEM_LINE:
                 return "degraded"
         elif row["kind"] == "interface":
-            if oper_not_ready(row) or row_id(row) in increased:
+            if required_interface_failed(row, row.get("subject") in intended) or row_id(row) in increased:
                 return "degraded"
         elif row["kind"] == "bgp" and row.get("state") != "fsm-established":
             return "degraded"
-    if changed_ids:
-        return "degraded"
     return "ok"
 
 
-def metric_for(name, rows, at):
+def metric_for(name, rows, at, prior_rows=None, intended=None):
+    intended = intended or set()
     ifaces = [row for row in rows if row["kind"] == "interface"]
     bgps = [row for row in rows if row["kind"] == "bgp"]
     device = next(row for row in rows if row["kind"] == "device")
@@ -642,11 +880,20 @@ def metric_for(name, rows, at):
         in_errors += (row.get("in_errors") or 0) + (row.get("in_crc_errors") or 0)
         discards += row.get("in_discards") or 0
         flaps += row.get("num_flaps") or 0
+    seen = {row.get("subject") for row in bgps}
+    missing = sum(
+        1
+        for row in (prior_rows or [])
+        if row.get("kind") == "bgp" and row.get("subject") not in seen
+    )
+    failed_ifaces = sum(
+        1 for row in ifaces if required_interface_failed(row, row.get("subject") in intended)
+    )
     return {
         "at": at,
         "scope": f"device:{name}",
-        "oper_not_ready": sum(1 for row in ifaces if oper_not_ready(row)),
-        "bgp_not_established": sum(1 for row in bgps if row.get("state") != "fsm-established"),
+        "oper_not_ready": failed_ifaces,
+        "bgp_not_established": sum(1 for row in bgps if row.get("state") != "fsm-established") + missing,
         "num_flaps": flaps,
         "in_errors": in_errors,
         "in_discards": discards,
@@ -692,6 +939,7 @@ ROW_INT = (
 ROW_STR = (
     "software_version", "last_reboot_reason", "reason_severity",
     "input_acl", "output_acl", "up_time", "peer",
+    "admin_status", "intent", "reset_reason",
 )
 
 
@@ -841,47 +1089,58 @@ def estate_metric(metrics, at):
     }
 
 
-def concerns_for(names, rows_by_name, prior_by_id, changed):
+def concerns_for(names, rows_by_name, prior_by_id, changed, intended_by_name=None):
+    intended_by_name = intended_by_name or {}
     increased = {}
+    rebooted_names = set()
     for item in changed:
-        if item["field"] in ("num_flaps", "in_errors", "in_crc_errors"):
+        if item["field"] in ("num_flaps", "in_errors", "in_crc_errors") and not item.get("_reset"):
             increased.setdefault(item["_id"][0], True)
+        if item["field"] == "boot_time" and item.get("_reboot"):
+            rebooted_names.add(item["_id"][0])
     concerns = []
     for name in names:
         rows = rows_by_name.get(name) or []
         device = next((row for row in rows if row["kind"] == "device"), None)
         if device is None:
             continue
-        old = prior_by_id.get(row_id(device))
-        rebooted = bool(old and not same_instant(old.get("last_changed"), device.get("last_changed")))
+        intended = intended_by_name.get(name) or set()
         hot = (device.get("cpu_5m") or 0) >= CPU_LINE or (device.get("mem_used_pct") or 0) >= MEM_LINE
         unsaved = device.get("unsaved_config") is True
-        fault = any(oper_not_ready(row) for row in rows if row["kind"] == "interface")
+        fault = any(
+            required_interface_failed(row, row.get("subject") in intended)
+            for row in rows
+            if row["kind"] == "interface"
+        )
         fault = fault or any(row.get("state") != "fsm-established" for row in rows if row["kind"] == "bgp")
         fault = fault or name in increased
-        if rebooted or hot or unsaved or fault:
+        if name in rebooted_names or hot or unsaved or fault:
             concerns.append({"type": "device", "name": name, "source_ref": "inventory/prod.json"})
     return concerns[:8]
 
 
-def degrades(row):
+def degrades(row, intended=None):
     """A row that is abnormal now. A new row is not abnormal just for being new."""
+    intended = intended or set()
     if row["kind"] == "device":
         return (row.get("cpu_5m") or 0) >= CPU_LINE or (row.get("mem_used_pct") or 0) >= MEM_LINE
     if row["kind"] == "interface":
-        return oper_not_ready(row)
+        return required_interface_failed(row, row.get("subject") in intended)
     if row["kind"] == "bgp":
         return row.get("state") != "fsm-established"
     return False
 
 
-def abnormal(row, changed_fields):
+def abnormal(row, changed_fields, intended=None):
     if "boot_time" in changed_fields:
         return True
-    if degrades(row):
+    if degrades(row, intended):
         return True
     if row["kind"] == "interface":
-        return bool(changed_fields & {"state", "num_flaps", "in_errors", "in_crc_errors", "input_acl", "output_acl"})
+        return bool(
+            changed_fields
+            & {"state", "admin_status", "num_flaps", "in_errors", "in_crc_errors", "input_acl", "output_acl"}
+        )
     if row["kind"] == "bgp":
         return bool(changed_fields - {"row"})
     return bool(changed_fields - {"row"})
@@ -909,6 +1168,30 @@ def headline_for(changed, unchanged, coverage, failed, first, nrows):
 
 def public_change(item):
     return {key: item[key] for key in ("keys", "field", "prior", "current", "at")}
+
+
+def next_read(item):
+    if item["field"] == "up_time" or (
+        item["_kind"] == "bgp" and item["field"] in ("state", "row", "reset_reason", "prefixes_received")
+    ):
+        return (
+            "GET Cisco-IOS-XE-bgp-oper:bgp-state-data/neighbors/"
+            "neighbor={afi-safi},{vrf-name},{id} fields=connection;session-state"
+        )
+    if item["field"] == "boot_time":
+        return (
+            "GET Cisco-IOS-XE-device-hardware-oper:device-hardware-data/"
+            "device-hardware/device-system-data fields=boot-time;last-reboot-reason;reason-severity"
+        )
+    if item["field"] == "unsaved_config":
+        return "none (running/startup difference unknown; no verified GET on this visit)"
+    if item["_kind"] == "interface":
+        return (
+            "GET Cisco-IOS-XE-interfaces-oper:interfaces "
+            "fields=interface(name;admin-status;oper-status;last-change;"
+            "statistics(num-flaps;in-crc-errors;in-errors))"
+        )
+    return "none"
 
 
 def ring(items, limit=10):
@@ -1022,15 +1305,22 @@ def cmd_collect(args):
         coverage = "complete"
 
     peers = address_index(collected, topology, prod_names)
+    intended_by_name = {device["name"]: intended_interfaces(prod, device["name"]) for device in targets}
+    interval_s = interval_seconds(iosxe.get("last_collected_at"), at)
     new_by_name = {}
     for name, payloads in collected.items():
-        new_by_name[name] = build_rows(name, payloads, peers, at)
+        prior_device = [row for row in prior_rows if row.get("name") == name]
+        new_by_name[name] = build_rows(
+            name, payloads, peers, at, prior_device, intended_by_name.get(name) or set()
+        )
 
     changed = []
     if coverage != "unavailable":
         for name, rows in new_by_name.items():
             prior_device = [row for row in prior_rows if row.get("name") == name]
-            changed.extend(diff_device(prior_device, rows, at))
+            changed.extend(
+                diff_device(prior_device, rows, at, intended_by_name.get(name) or set())
+            )
 
     current_rows = []
     seen_devices = set()
@@ -1059,7 +1349,10 @@ def cmd_collect(args):
         current_rows = current_rows[:120]
 
     status = "unknown" if coverage == "unavailable" else plane_status(
-        [row for rows in new_by_name.values() for row in rows], prior_by_id, changed
+        [row for rows in new_by_name.values() for row in rows],
+        prior_by_id,
+        changed,
+        intended_by_name,
     )
     delta = "unchanged" if coverage == "unavailable" else overall_delta(changed, first and coverage == "complete")
     if first and coverage == "partial":
@@ -1069,7 +1362,15 @@ def cmd_collect(args):
     for device in targets:
         name = device["name"]
         if name in new_by_name:
-            metrics.append(metric_for(name, new_by_name[name], at))
+            metrics.append(
+                metric_for(
+                    name,
+                    new_by_name[name],
+                    at,
+                    [row for row in prior_rows if row.get("name") == name],
+                    intended_by_name.get(name) or set(),
+                )
+            )
         else:
             metrics.append(null_metric(name, at))
     if not metrics:
@@ -1084,25 +1385,26 @@ def cmd_collect(args):
             if row.get("name") not in new_by_name:
                 continue
             fields = fields_by_id.get(row_id(row), set())
-            if first or fields or abnormal(row, fields):
+            if first or fields or abnormal(row, fields, intended_by_name.get(row.get("name"))):
                 reading_rows.append(row)
     readings_truncated = len(reading_rows) > READINGS_CAP
     if readings_truncated:
         def rank_reading(row):
             fields = fields_by_id.get(row_id(row), set())
-            return (0 if fields or abnormal(row, fields) else 1, row["name"], row["kind"], row["subject"])
+            intended = intended_by_name.get(row.get("name"))
+            return (0 if fields or abnormal(row, fields, intended) else 1, row["name"], row["kind"], row["subject"])
         reading_rows = sorted(reading_rows, key=rank_reading)[:READINGS_CAP]
 
     readings = []
     for row in reading_rows:
         item = dict(row)
         fields = fields_by_id.get(row_id(row), set())
-        if first and not degrades(row):
+        if first and not degrades(row, intended_by_name.get(row.get("name"))):
             item["note"] = "Baseline."
         readings.append(item)
 
     unchanged = None if coverage == "unavailable" else sum(1 for row in current_rows if row_id(row) not in {row_id(row) for row in reading_rows})
-    changed.sort(key=lambda item: (0 if direction(item["_kind"], item["field"], item["prior"], item["current"]) == "worse" else 1))
+    changed.sort(key=lambda item: (0 if _way(item) == "worse" else 1))
     changed_truncated = len(changed) > CHANGED_CAP
     changed = changed[:CHANGED_CAP]
     delta = "unchanged" if coverage == "unavailable" else overall_delta(changed, first and not prior_rows)
@@ -1119,7 +1421,7 @@ def cmd_collect(args):
             row["at"] = at
         stamp = {
             "keys": union_keys(readings) or union_keys(current_rows),
-            "schema": "health-iosxe-check/v5",
+            "schema": "health-iosxe-check/v6",
             "source": "iosxe",
             "watch_id": watch,
             "checked_at": at,
@@ -1139,7 +1441,9 @@ def cmd_collect(args):
                 "changed": [public_change(item) for item in ([] if first else changed)],
             },
         }
-        concern_rows = concerns_for(list(new_by_name), new_by_name, prior_by_id, [] if first else changed)
+        concern_rows = concerns_for(
+            list(new_by_name), new_by_name, prior_by_id, [] if first else changed, intended_by_name
+        )
         if concern_rows:
             stamp["concerns"] = concern_rows
         if first:
@@ -1175,7 +1479,7 @@ def cmd_collect(args):
     visits.append(visit)
     new_board = {
         "keys": union_keys(current_rows),
-        "schema": "health-metadata-iosxe/v4",
+        "schema": "health-metadata-iosxe/v5",
         "updated_at": at,
         "source_agent": "health-device",
         "iosxe": {
@@ -1201,12 +1505,26 @@ def cmd_collect(args):
     needs = []
     if write_stamp and not first:
         for item in changed:
-            note = {"keys": item["keys"], "field": item["field"], "prior": item["prior"], "current": item["current"]}
+            note = {
+                "keys": item["keys"],
+                "field": item["field"],
+                "prior": item["prior"],
+                "current": item["current"],
+                "interval_s": interval_s,
+                "impact": "unknown" if item["field"] in ("boot_time", "up_time", "unsaved_config") and not item.get("_reboot") else None,
+                "next": next_read(item),
+            }
+            if item["field"] == "boot_time":
+                note["kind"] = "reload" if item.get("_reboot") else "timestamp_correction"
+            if item["field"] == "up_time":
+                note["kind"] = "session_reset"
             if item["_kind"] == "interface":
                 far = far_of(topology, item["_id"][0], item["_id"][2])
                 if far:
                     note["far"] = far
-            needs.append(note)
+            if item.get("_reset"):
+                note["counter_reset"] = True
+            needs.append({key: value for key, value in note.items() if value is not None})
     payload = {
         "plane": "iosxe",
         "watch_id": watch if write_stamp else None,

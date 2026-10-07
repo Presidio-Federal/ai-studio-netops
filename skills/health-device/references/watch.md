@@ -26,8 +26,9 @@ from this collection and treat the visit as first.
 The observation is a **lab slip**. Required: `headline`, `scope`,
 `coverage`, `metrics`, `readings`, `unchanged`, `baseline_ref`,
 `vs_prior`. Optional `concerns[]`: one workspace-handoff entity
-reference per device that rebooted, is over a cpu/memory threshold,
-has unsaved config, or has a non-zero fault metric
+reference per device that rebooted (corroborated), is over a
+cpu/memory threshold, has unsaved config, or has a non-zero fault
+metric
 (`type` `device`, `name` as `inventory/prod.json` writes it,
 `source_ref` `inventory/prod.json`). Omit healthy devices. Cap 8. Do
 not invent `id`. The stamp has no `summary`, no `devices[]` tree, no
@@ -127,15 +128,23 @@ CDP, no LLDP, no platform call, no ACL oper, no config trees, no
 unkeyed BGP neighbor list on a health visit. BGP 204 / 404 is an
 answer (the device runs no BGP), not a failure.
 
-Board rows: one `device` row per collected device; admin-up physical,
-sub-, and Tunnel interfaces — never `Loopback*`, `Vlan*`, `Null*`, or
-admin-down; every BGP neighbor summary.
+Board rows: one `device` row per collected device; physical, sub-,
+and Tunnel interfaces including admin-down — never `Loopback*`,
+`Vlan*`, or `Null*`; every BGP neighbor summary. `intent` is `ok`,
+`failed`, `admin_disabled`, `provisioning`, or `unknown`. Intended
+cables are `prod.json` `links[]`. Expected BGP peers are the prior
+board rows for that device.
 
-Plane `degraded` when a device rebooted since the board, is at
-`cpu_5m` ≥ 80 or `mem_used_pct` ≥ 85, has an admin-up/oper-not-ready
-(non-idle) interface, BGP not `fsm-established`, or flaps / errors /
-CRC errors increased on a board interface. Discards, unsaved config,
-and a version change never degrade on their own.
+Plane `degraded` when a device rebooted since the board
+(boot-time moved more than 5 seconds and corroborated), is at
+`cpu_5m` ≥ 80 or `mem_used_pct` ≥ 85, has a required interface
+`failed` (admin-up / oper-not-ready non-idle, or an intended
+`links[]` cable admin-down), an expected BGP neighbor not
+`fsm-established` or missing, or flaps / errors / CRC errors
+**increased** on a board interface over the visit interval.
+Discards, unsaved config, a version change, boot-time skew within
+5 seconds, a shorter BGP `up_time` alone, and a counter reset
+never degrade on their own.
 
 The first visit writes a reading for every board row; that stamp
 becomes `baseline_visit_id`. Later stamps carry only rows that moved
@@ -146,15 +155,16 @@ subject, field, and prior → current — not "interfaces checked".
 Keys: `oper_not_ready`, `bgp_not_established`, `num_flaps`,
 `in_errors`, `in_discards`, `cpu_5m_max`, `mem_used_pct_max`. Null
 when that device was not collected. `concerns` one row per device
-that rebooted, is over a threshold, has unsaved config, or has a
-non-zero fault metric, same `name` as that `prod.json` device.
+that rebooted with corroboration, is over a threshold, has unsaved
+config, or has a non-zero fault metric, same `name` as that
+`prod.json` device.
 
 ## Call budget
 
 | Item | Max |
 |------|----:|
 | Workspace file read/write | 20 |
-| IOS-XE `iosxe_restconf_get` | 5 × devices in scope, cap 50 |
+| IOS-XE `iosxe_restconf_get` | 5 × devices in scope, plus keyed BGP neighbor follow-ups, cap 50 |
 
 If over budget: stop querying, write what you have (`partial`).
 
@@ -166,8 +176,9 @@ the check `headline`.
 Stamp written:
 `Visit: iosxe` / `Result: <status>` / `Coverage: <coverage>` /
 `Scope: <all | device list>` / `Wrote: health/iosxe/<stamp>.json` /
-`Trend: <delta>` / `Findings:` one line per `changed` item or
-abnormal row / `Next: none`.
+`Trend: <delta>` / `Findings:` one line per `needs_note` item
+(component, evidence, impact or impact unknown) / `Next:` the
+first `needs_note` next GET, or `none`.
 
 Quiet visit:
 `Visit: iosxe` / `Result: <status>` / `Coverage: complete` /

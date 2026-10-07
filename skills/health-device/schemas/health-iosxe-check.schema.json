@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "health-iosxe-check/v5",
+  "$id": "health-iosxe-check/v6",
   "title": "health/iosxe/YYYY-MM-DDTHH-MM-SSZ.json",
   "description": "IOS-XE lab slip (Kind observation). Written on the first visit, when something material moved against health/metadata-iosxe.json current[], or when coverage is not complete. metrics are per-device counts. readings are only the rows that moved or are abnormal this visit; the first visit writes every row and becomes baseline_ref. A reading is a board row (device, interface, or bgp) plus an optional note. unchanged counts the board rows not in readings. vs_prior.changed is structured: one item per field that moved. No RESTCONF body. No topology: physical neighbors live on inventory/topology-observed.json.",
   "type": "object",
@@ -34,7 +34,7 @@
     },
     "schema": {
       "type": "string",
-      "const": "health-iosxe-check/v5"
+      "const": "health-iosxe-check/v6"
     },
     "source": {
       "type": "string",
@@ -91,7 +91,7 @@
     "concerns": {
       "type": "array",
       "maxItems": 8,
-      "description": "One device entity-ref when that device rebooted since the board, has cpu_5m >= 80 or mem_used_pct >= 85, has unsaved_config true, or has a non-zero oper_not_ready / bgp_not_established / increased errors or flaps. Omit healthy devices.",
+      "description": "One device entity-ref when that device rebooted with corroboration, has cpu_5m >= 80 or mem_used_pct >= 85, has unsaved_config true, or has a non-zero oper_not_ready / bgp_not_established / increased errors or flaps. Omit healthy devices.",
       "items": {
         "$ref": "#/$defs/entity_ref"
       }
@@ -200,7 +200,7 @@
             "better",
             "changed"
           ],
-          "description": "worse when any change lowered health (a reboot, state left ready/established, errors or flaps increased, cpu/memory crossed a threshold upward, a peer disappeared). better when every change raised it. changed when neither (new row, software_version changed, ACL bound)."
+          "description": "worse when any change lowered health (a corroborated reboot, state left ready/established, errors or flaps increased, cpu/memory crossed a threshold upward, an expected peer disappeared). better when every change raised it. changed when neither (new row, software_version, uncorroborated boot-time shift, counter reset, unsaved_config, admin-down not on links[])."
         },
         "changed": {
           "type": "array",
@@ -248,7 +248,10 @@
             "prefixes_received",
             "up_time",
             "peer",
-            "row"
+            "row",
+            "unsaved_config",
+            "admin_status",
+            "reset_reason"
           ]
         },
         "prior": {
@@ -313,7 +316,7 @@
             "integer",
             "null"
           ],
-          "description": "Board interfaces admin-up and oper not ready."
+          "description": "Required interfaces that failed: admin-up oper not ready, or an intended prod.json links[] cable that is admin-down."
         },
         "bgp_not_established": {
           "type": [
@@ -409,7 +412,7 @@
         "last_changed": {
           "type": "string",
           "minLength": 1,
-          "description": "device: boot-time (moves only on reboot). interface: the device's last-change. bgp: checked_at of the visit that last saw a material field move (or first saw the row)."
+          "description": "device: boot-time (reload only when the instant moved more than 5s and is corroborated). interface: interface last-change (transition time). bgp: checked_at of the visit that last saw a material field move (or first saw the row)."
         },
         "software_version": {
           "type": [
@@ -451,7 +454,7 @@
             "boolean",
             "null"
           ],
-          "description": "device: as returned. Not material; a concern when true."
+          "description": "device: as returned. Material only when the boolean flips. Running vs startup text is not collected."
         },
         "in_errors": {
           "type": [
@@ -502,7 +505,7 @@
             "string",
             "null"
           ],
-          "description": "bgp: as returned. Shorter than the board's value means the session reset."
+          "description": "bgp: session uptime as returned. Shorter than the board's value is session re-establishment, not a device reboot."
         },
         "remote_as": {
           "type": [
@@ -517,10 +520,31 @@
           ],
           "description": "bgp: device:<name> when the neighbor id equals an interface address of a device in inventory/prod.json (from this visit's interface payloads or inventory/topology-observed.json); else null."
         },
+        "admin_status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "interface: admin-status as returned."
+        },
+        "intent": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "interface: ok, failed, admin_disabled, provisioning, or unknown."
+        },
+        "reset_reason": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "bgp: connection.reset-reason from the keyed neighbor GET when the session is not established."
+        },
         "note": {
           "type": "string",
           "minLength": 1,
-          "description": "Required when the row changed this visit or is abnormal. Omit on a healthy unchanged row. The note is the nurse's opinion: what moved, since when, and what the ACL, peer, and far-end columns say about the cause. Do not repeat column values or addresses."
+          "description": "Required when the row changed this visit or is abnormal. Omit on a healthy unchanged row. Name the component, evidence, impact or impact unknown, and the next read-only GET."
         }
       }
     }

@@ -22,7 +22,7 @@ Deployed model is **MiniMax** unless noted.
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
-| Health Device | 1.12.3 | MiniMax |
+| Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.8.1 | MiniMax |
 | Health Analyzer | 5.0.0 | MiniMax |
 | Relationship agent | 1.2.0 | MiniMax |
@@ -71,11 +71,15 @@ Network Map skill 1.2.1: a container joins a CMDB tier when its name is the tier
 
 Network Map skill 1.2.0 (agent prompt stays 1.0.1, workspace-handoff 1.70.5): the page keeps a tested-posture percent and a voting-plane health percent in the header, side cards start closed, and a Trend toggle draws the compliance series plus application, NetFlow, and IOS-XE percents. Tiers with no service inherit it along `depends_on`. Check counts and failing-device badges fall back to the compliance series and finding keys when `state/testing.json` does not carry them.
 
+Health Device 1.13.0 (skill 1.13.0): MiniMax. Distinguishes reload, BGP session reset, interface transition, and boot-time skew. A shorter BGP `up_time` is re-establishment, not a reboot. Reboot only with boot-time beyond 5 seconds plus corroboration. Error/flap deltas over the visit interval; a drop is a counter reset. Admin-down vs `links[]` intended vs prior-board BGP expected. Keyed BGP reset-reason GET when a session is down. Unsaved config is a flag unless the boolean flips; no running/startup text (no verified GET). GET only.
+
 Health Device 1.12.3 (skill 1.12.6, workspace-handoff 1.70.4): a `call_mcp` raise is a failed GET, not a dead visit. Tool-not-found is not retried. Topology map is unchanged.
 
 Health Logging 1.1.0 (skill 1.1.0): S1 counts use a bounded window. S2 still collects from the watermark and is not treated as a rate. Deny rows keep source, destination, ports, protocol, ACL, and interface when the message has them. Config rows keep the actor and access method. A change reference stays empty when the syslog has none. Each reading keeps one trimmed evidence line, the event time, and the ingestion delay. The reply splits search, reporting coverage, and findings. A silent device is a pipeline question only when the operator set `source_registry` reporting to expected.
 
 Health Logging 1.0.1 (skill 1.0.1): annotate accepts the summary `stamp` path. A bare watch id, or a trailing quote, still resolves to `health/splunk/<id>.json`.
+
+workspace-handoff 1.70.10: the IOS-XE board catalog row names admin_status, intent, session up_time, prefixes_received, and reset_reason.
 
 workspace-handoff 1.70.9: the Splunk catalog row names the bounded window, the watermark, deny and config fields, and the evidence line.
 

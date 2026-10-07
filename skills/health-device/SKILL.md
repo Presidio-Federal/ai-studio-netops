@@ -1,7 +1,7 @@
 ---
 name: health-device
-version: "1.12.6"
-description: "v1.12.6 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
+version: "1.13.0"
+description: "v1.13.0 — Health Device nurse: IOS-XE health visits run visit_iosxe.py; topology map writes inventory/topology-observed.json. Board on metadata, stamp only on change; no relations[]."
 ---
 
 # Health Device skill
@@ -24,18 +24,25 @@ RESTCONF host and port, ranked.
 **Health.** Run `scripts/visit_iosxe.py collect` (see
 `references/watch.md`). The script does five filtered GETs per
 device — system-data (boot time, version, reboot reason), cpu,
-memory, interfaces, BGP summaries — one device at a time. The
+memory, interfaces, BGP summaries — one device at a time, plus a
+keyed neighbor GET when a session is not established (reset
+reason). The
 **board** `health/metadata-iosxe.json` carries `current[]`
-(last-known state: one `device` row per device, every admin-up
-interface, every BGP neighbor), `series[]` (one estate row per
-visit), `visits[]`, `last_collected_at`, `last_visit_id`,
-`baseline_visit_id`. Diff this collection against `current[]`. Write
-a stamp only when there is no board, something material moved, or
-coverage is not complete. Material: a reboot, a state change, flaps
-or errors that increased, a cpu/memory threshold crossed, a BGP reset.
-Not material: discards, traffic rates, unsaved config. Do not GET CDP,
-LLDP, or ACL oper on a health visit; far-end context comes from
-`inventory/topology-observed.json` when it exists.
+(last-known state: one `device` row per device, physical / sub- /
+Tunnel interfaces including admin-down, every BGP neighbor),
+`series[]` (one estate row per visit), `visits[]`,
+`last_collected_at`, `last_visit_id`, `baseline_visit_id`. Diff this
+collection against `current[]`. Write a stamp only when there is no
+board, something material moved, or coverage is not complete.
+Material: a corroborated reboot, a state change, flaps or errors
+that increased over the visit interval, a cpu/memory threshold
+crossed, a BGP session reset or prefix change, `unsaved_config`
+flipping. Not material: discards, octet/traffic rates, boot-time
+skew within 5 seconds, a counter that dropped (reset). Do not GET
+CDP, LLDP, or ACL oper on a health visit; far-end context comes
+from `inventory/topology-observed.json` when it exists. Intended
+cables are `prod.json` `links[]`; expected BGP peers are the prior
+board. GET only.
 
 **Topology.** Per device: version, interface names with addresses,
 and its CDP/LLDP rows copied into `devices[].neighbors[]`. **One

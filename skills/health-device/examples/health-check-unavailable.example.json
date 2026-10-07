@@ -1,6 +1,6 @@
 {
   "keys": [],
-  "schema": "health-iosxe-check/v5",
+  "schema": "health-iosxe-check/v6",
   "source": "iosxe",
   "watch_id": "2026-08-31T16-00-01Z",
   "checked_at": "2026-08-31T16:00:01Z",
