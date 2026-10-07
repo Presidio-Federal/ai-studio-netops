@@ -566,6 +566,42 @@ def index_rows(rows):
     return found
 
 
+def static_passes_from_prior(prior, current_rows, scanned):
+    """A static failure that is gone on the next run passed.
+
+    The job names static failures and keeps passes on the count line.
+    The same test and device missing from this run's rows is that pass.
+    A device outside this run's scan is left alone.
+    """
+    if not prior:
+        return []
+    current = index_rows(current_rows)
+    scanned_set = set(scanned or [])
+    rows = []
+    prior_rows = (prior.get("results") or {}).get("ran") or []
+    for identity, row in index_rows(prior_rows).items():
+        if row.get("plane") != "static":
+            continue
+        if row.get("status") not in {"FAIL", "ERROR"}:
+            continue
+        if identity in current:
+            continue
+        test, device = identity
+        if not test or not device:
+            continue
+        if scanned_set and device not in scanned_set:
+            continue
+        keys = row_keys(test, device) or list(row.get("keys") or [])
+        rows.append({
+            "status": "PASS",
+            "plane": "static",
+            "check": "static/%s" % test,
+            "device": device,
+            "keys": keys,
+        })
+    return rows
+
+
 def vs_prior(prior, current_rows, metrics):
     if not prior:
         return {
@@ -792,6 +828,9 @@ def build_records(args, moment, run_id, html_url, parsed):
     meta = None
     if compliance:
         _old_meta, other, prior = prior_visit(args.workspace, lab)
+        if parsed["static_present"]:
+            cleared = static_passes_from_prior(prior, rows, scanned)
+            rows.extend(cleared)
         visit_metrics = metrics_of(
             moment, visit_id, lab, counts, rows, parsed["counts_na"],
             {"live": live_counts, "static": static_counts or empty_counts()},

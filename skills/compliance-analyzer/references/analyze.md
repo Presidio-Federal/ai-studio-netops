@@ -71,8 +71,9 @@ Never blend these scores. `scores.environment` = the primary visit's lab.
 ### Tested posture
 
 From the primary visit's `results.ran` rows, live and static together, by
-canonical test id. A static pass has no row; it is not a verified test.
-The static pass count stays on `results.counts_by_plane.static`.
+canonical test id. A static pass is a row when it clears a prior
+failure. Other static passes stay on `results.counts_by_plane.static`,
+because the job names static failures.
 
 - verified test: all executed rows for that test PASS
 - failing test: any row for that test is FAIL or ERROR

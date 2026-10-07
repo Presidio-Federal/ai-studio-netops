@@ -55,8 +55,10 @@ The header line names the plane: `FAILED · static ·` or `PASSED · live ·`.
 before that block is one `ran` row: `status=FAIL`, `plane=static`,
 `check=static/<check-id>`, `device` copied exactly, `detail` the text after
 the check id. Use the `Failed:` lines only, so the same gap is not copied
-twice. Do not invent PASS rows for the static pass count. The pass count
-stays on the count line.
+twice. A static pass the job does not name stays on the count line.
+A static failure from the prior visit in this lab that is absent this
+run is a PASS row: the job lists failures, so a missing failure passed.
+Do not do that for a device this run did not scan.
 
 **Live block.** Copy `counts_ran`, `ran:`, `not_applicable:`, and `gaps:`
 as before. Every live row has `plane=live`. A rolled-up live line
@@ -156,9 +158,9 @@ this order:
    test + device in the prior. PASS → `newly_failing` item.
 
 Item: `{test, device, from, to, keys}` — `keys` copied from this run's
-row. SKIP, N/A, and pairs present on one side only are not flips.
-A prior static FAIL with no row this visit is not `newly_passing`:
-a static pass has no row, so absence is not proof it passed.
+row. SKIP and N/A are not flips. A prior static FAIL with no row this
+visit is a PASS row before this comparison, so it is `newly_passing`.
+A live row missing this visit is not a flip.
 
 `delta`: `better` when `newly_passing` is non-empty and
 `newly_failing` empty; `worse` the reverse; `mixed` both non-empty;

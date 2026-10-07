@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.4"
-description: "v1.12.4 — Call github_get_action_run with an integer run id, read its jobs, and write the visit."
+version: "1.12.5"
+description: "v1.12.5 — Record a cleared static failure as a pass and include it in the visit trend."
 ---
 
 # Compliance test runner skill
