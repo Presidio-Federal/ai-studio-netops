@@ -33,6 +33,8 @@ Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/complian
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
 
+Compliance Test skill 1.12.4: `github_get_action_run` takes an integer `run_id`. The list-runs payload has no jobs, and a failed get is no longer replaced with that list.
+
 Compliance Test 1.8.1 (skill 1.12.3): a missing job id is a script miss. The agent reports Result, Reason, and Run and does not tell the operator to re-dispatch. The reason line names the payload keys.
 
 Compliance Test skill 1.12.2: a jobs list inside the run payload is a job id. The script no longer requires the job URL string. Run 37652149873 job id is 112897953597.

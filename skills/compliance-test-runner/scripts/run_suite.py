@@ -1234,24 +1234,23 @@ def job_ids_in(body, run_id):
 
 
 def observe_run(run_id, ref):
-    """Read the run. Fall back to the recent-runs list when the get payload has no status."""
-    body, err = call_tool("github_get_action_run", {"run_id": run_id})
-    run, jobs = read_run(body, run_id) if err is None else ({}, [])
+    """Read one run. The list tool has no jobs, so it cannot stand in for this call.
+
+    github_get_action_run requires run_id as an integer. A string is a
+    schema error, and the list fallback then looks like a run with no job id.
+    """
+    try:
+        rid = int(str(run_id).strip())
+    except (TypeError, ValueError):
+        return {}, [], "error", None, "run_id is not an integer"
+    body, err = call_tool("github_get_action_run", {"run_id": rid})
+    if err:
+        return {}, [], "error", None, err
+    run, jobs = read_run(body, run_id)
     status = github_status(run)
     if not status:
-        listed, list_err = call_tool(
-            "github_list_action_runs",
-            {"workflow": "test.yml", "branch": ref or "main", "limit": 5},
-        )
-        if list_err is None:
-            listed_run, listed_jobs = read_run(listed, run_id)
-            listed_status = github_status(listed_run)
-            if listed_status or listed_jobs:
-                run = listed_run or run
-                jobs = jobs or listed_jobs
-                status = listed_status or status
-                body = listed if body is None else {"_parts": [body, listed]}
-    return run, jobs, status or ("unreadable" if err is None else "error"), body
+        return run, jobs, "unreadable", body, "github_get_action_run had no status (%s)" % payload_hint(body)
+    return run, jobs, status, body, None
 
 
 def poll_run(run_id, ref):
@@ -1260,8 +1259,10 @@ def poll_run(run_id, ref):
     A run that is still going comes back immediately. This function does
     not sleep and does not poll.
     """
-    run, jobs, status, body = observe_run(run_id, ref)
+    run, jobs, status, body, get_err = observe_run(run_id, ref)
     html_url = (run.get("html_url") or run.get("htmlUrl") or "") if isinstance(run, dict) else ""
+    if get_err:
+        return html_url, jobs, get_err, None, status, body
     phase = current_phase(jobs)
     if run_finished(run, jobs):
         return html_url, jobs, None, phase, status or "completed", body
