@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.6"
-description: "v1.12.6 — Write the compliance visit as counts plus failures by device, and keep passes on the counts."
+version: "1.12.7"
+description: "v1.12.7 — Write failures only as by_device. Do not copy each check into results.ran."
 ---
 
 # Compliance test runner skill

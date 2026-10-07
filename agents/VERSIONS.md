@@ -31,6 +31,8 @@ Deployed model is **MiniMax** unless noted.
 
 Compliance 1.2.1 (skill 1.2.1): the chart scores come from the visit `metrics`. Findings still come from the failing rows.
 
+Compliance Test skill 1.12.7: `results.ran` is empty. Failures are `results.by_device` only. The trend compares those lists.
+
 Compliance Test skill 1.12.6: a compliance run still writes `operational/testing/<stamp>.json` because `state/testing.json` points there, and `compliance/testing/<stamp>.json` for the history. The stored rows are failures, errors, skips, and static passes that just cleared. `results.by_device` lists the failing check ids per device. Passes stay on the counts. A run whose suites do not include `compliance` writes operational only.
 
 Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.

@@ -12,8 +12,8 @@ they do not load a second copy from workspace-handoff.
 Every run writes `operational/testing` because `state/testing.json` points
 there. A compliance suite also writes `compliance/testing`. Same stamp.
 A command whose suites omit `compliance` writes operational only.
-The stored rows are the failures. Passes stay on the counts.
-`results.by_device` is the device and its failing check ids.
+Passes stay on the counts. Failures are `results.by_device` only.
+`results.ran` is empty.
 
 - `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` — this run; never overwrite
   (e.g. `operational/testing/2026-08-21T19-56-18Z.json`)

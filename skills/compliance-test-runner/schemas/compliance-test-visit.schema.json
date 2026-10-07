@@ -79,7 +79,7 @@
         "counts_na": {"type": "integer", "minimum": 0},
         "ran": {
           "type": "array",
-          "description": "Failures, errors, skips, and static passes that cleared a prior failure. Other passes stay on the counts.",
+          "description": "Empty. Failures are results.by_device. Counts hold the passes.",
           "items": {"$ref": "#/$defs/result_row"}
         },
         "by_device": {

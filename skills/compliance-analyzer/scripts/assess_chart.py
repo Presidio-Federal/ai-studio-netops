@@ -132,8 +132,20 @@ def freshness_of(checked_at, moment):
     return {"state": state, "observed_at": stamp_text(observed), "ttl_hours": 24}
 
 
-def group_rows(rows):
+def group_rows(rows, by_device=None):
     by_test = {}
+    for item in by_device or []:
+        if not isinstance(item, dict):
+            continue
+        device = item.get("device")
+        for test in item.get("failing") or []:
+            if not test:
+                continue
+            by_test.setdefault(test, []).append({
+                "status": "FAIL",
+                "device": device,
+                "keys": ["test:%s" % test, "device:%s" % device],
+            })
     for row in rows or []:
         if not isinstance(row, dict):
             continue
@@ -489,7 +501,11 @@ def build(ws, mode, dispatched_names):
 
     primary_lab = "prod" if visits.get("prod") else ("dev" if visits.get("dev") else None)
     primary = visits.get(primary_lab) if primary_lab else None
-    by_test = group_rows(((primary or {}).get("results") or {}).get("ran"))
+    primary_results = (primary or {}).get("results") or {}
+    if primary_results.get("by_device"):
+        by_test = group_rows([], primary_results.get("by_device"))
+    else:
+        by_test = group_rows(primary_results.get("ran"))
     visit_metrics = (primary or {}).get("metrics") or {}
     if isinstance(visit_metrics.get("verified_tests"), int) and isinstance(visit_metrics.get("failing_tests"), int):
         verified = int(visit_metrics["verified_tests"])

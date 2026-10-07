@@ -582,43 +582,48 @@ def failures_by_device(rows):
     return [{"device": device, "failing": grouped[device]} for device in sorted(grouped)]
 
 
-def static_passes_from_prior(prior, current_rows, scanned):
-    """A static failure that is gone on the next run passed.
-
-    The job names static failures and keeps passes on the count line.
-    The same test and device missing from this run's rows is that pass.
-    A device outside this run's scan is left alone.
-    """
-    if not prior:
-        return []
-    current = index_rows(current_rows)
-    scanned_set = set(scanned or [])
-    rows = []
-    prior_rows = (prior.get("results") or {}).get("ran") or []
-    for identity, row in index_rows(prior_rows).items():
-        if row.get("plane") != "static":
-            continue
-        if row.get("status") not in {"FAIL", "ERROR"}:
-            continue
-        if identity in current:
-            continue
-        test, device = identity
-        if not test or not device:
-            continue
-        if scanned_set and device not in scanned_set:
-            continue
-        keys = row_keys(test, device) or list(row.get("keys") or [])
-        rows.append({
-            "status": "PASS",
-            "plane": "static",
-            "check": "static/%s" % test,
-            "device": device,
-            "keys": keys,
-        })
-    return rows
+def keys_from_devices(items):
+    found = []
+    for item in items or []:
+        device = item.get("device")
+        if device:
+            key = "device:%s" % device
+            if KEY_RE.match(key) and key not in found:
+                found.append(key)
+        for test in item.get("failing") or []:
+            key = "test:%s" % test
+            if KEY_RE.match(key) and key not in found:
+                found.append(key)
+    return found
 
 
-def vs_prior(prior, current_rows, metrics):
+def failing_pairs(results=None, rows=None):
+    """Failing (test, device) pairs from by_device, else from ran rows."""
+    if rows is not None:
+        found = set()
+        for row in rows:
+            if row.get("status") not in {"FAIL", "ERROR"}:
+                continue
+            test, device = pair_of(row)
+            if test and device:
+                found.add((test, device))
+        return found
+    results = results or {}
+    by_device = results.get("by_device")
+    if isinstance(by_device, list) and by_device:
+        found = set()
+        for item in by_device:
+            if not isinstance(item, dict):
+                continue
+            device = item.get("device")
+            for test in item.get("failing") or []:
+                if device and test:
+                    found.add((str(test), str(device)))
+        return found
+    return failing_pairs(rows=(results.get("ran") or []))
+
+
+def vs_prior(prior, current_rows, metrics, scanned=None):
     if not prior:
         return {
             "prior_visit_id": None,
@@ -628,27 +633,19 @@ def vs_prior(prior, current_rows, metrics):
             "still_failing": 0,
             "metrics_delta": None,
         }
-    prior_rows = index_rows((prior.get("results") or {}).get("ran") or [])
-    current = index_rows(current_rows)
+    scanned_set = set(scanned or [])
+    prior_fail = failing_pairs(prior.get("results") or {})
+    current_fail = failing_pairs(rows=current_rows)
+    if scanned_set:
+        prior_fail = {pair for pair in prior_fail if pair[1] in scanned_set}
+        current_fail = {pair for pair in current_fail if pair[1] in scanned_set}
     newly_passing = []
     newly_failing = []
-    still = 0
-    for identity, row in prior_rows.items():
-        if row.get("status") not in {"FAIL", "ERROR"}:
-            continue
-        now = current.get(identity)
-        if now is None or now.get("status") == "SKIP":
-            continue
-        if now.get("status") == "PASS":
-            newly_passing.append(flip(identity, row.get("status"), "PASS", now))
-        elif now.get("status") in {"FAIL", "ERROR"}:
-            still += 1
-    for identity, row in current.items():
-        if row.get("status") not in {"FAIL", "ERROR"}:
-            continue
-        old = prior_rows.get(identity)
-        if old and old.get("status") == "PASS":
-            newly_failing.append(flip(identity, "PASS", row.get("status"), row))
+    for test, device in sorted(prior_fail - current_fail):
+        newly_passing.append(flip((test, device), "FAIL", "PASS", {"keys": row_keys(test, device)}))
+    for test, device in sorted(current_fail - prior_fail):
+        newly_failing.append(flip((test, device), "PASS", "FAIL", {"keys": row_keys(test, device)}))
+    still = len(prior_fail & current_fail)
     if newly_passing and not newly_failing:
         delta = "better"
     elif newly_failing and not newly_passing:
@@ -844,23 +841,14 @@ def build_records(args, moment, run_id, html_url, parsed):
     meta = None
     if compliance:
         _old_meta, other, prior = prior_visit(args.workspace, lab)
-        if parsed["static_present"]:
-            cleared = static_passes_from_prior(prior, rows, scanned)
-            rows.extend(cleared)
-        else:
-            cleared = []
         visit_metrics = metrics_of(
             moment, visit_id, lab, counts, rows, parsed["counts_na"],
             {"live": live_counts, "static": static_counts or empty_counts()},
         )
-        kept = {id(row) for row in cleared}
-        stored = [
-            row for row in rows
-            if row.get("status") != "PASS" or id(row) in kept
-        ]
-        results["ran"] = stored
-        results["by_device"] = failures_by_device(stored)
-        run_record["keys"] = union_keys(stored + parsed["not_applicable"])
+        by_device = failures_by_device(rows)
+        results["ran"] = []
+        results["by_device"] = by_device
+        run_record["keys"] = keys_from_devices(by_device)
         run_record["compliance_visit"] = "compliance/testing/%s.json" % visit_id
         visit = {
             "keys": run_record["keys"],
@@ -883,7 +871,7 @@ def build_records(args, moment, run_id, html_url, parsed):
                 "why": why,
             },
             "metrics": visit_metrics,
-            "vs_prior": vs_prior(prior, rows, visit_metrics),
+            "vs_prior": vs_prior(prior, rows, visit_metrics, scanned),
         }
         other[lab] = visit_id
         meta = {
