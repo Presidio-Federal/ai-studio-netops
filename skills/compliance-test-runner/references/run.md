@@ -36,14 +36,15 @@ a `request_id` — leave it empty. `reason` can be `adhoc`.
 
 Poll: `github_get_action_run(run_id=...)` until `completed`. No sleep script.
 
-Then: `github_get_action_job_logs`. A single-plane run uses `tail_lines=200`.
-A compliance suite uses `tail_lines=4000`, because the job prints two
-`# Network test report` blocks and the static block is the earlier one.
-If that tail does not contain `· static ·`, call again with a larger tail.
-A compliance visit with no static block is `UNKNOWN`. Do not publish the
-live block as the whole result.
+Then: `github_get_action_job_logs` with the job id from
+`/runs/<run_id>/job/<job_id>`. The emit step prints
+`NETWORK_TEST_RESULT_JSON=` as the last result line. That JSON is the
+result. The Actions job summary and the uploaded artifact are the same
+result in the other two places. There is no separate tool for those two.
 
-Marker prefix: `# Network test report`. Read every block, not only the last.
+The `# Network test report` blocks are the formatted copy of that result.
+Read every block when they are in the log. If the JSON line is present
+and a block is not, the JSON still fills the visit.
 
 ### Compliance suite — both planes
 

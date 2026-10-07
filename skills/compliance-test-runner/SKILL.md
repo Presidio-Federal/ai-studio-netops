@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.0"
-description: "v1.12.0 — Read the job id from the run URL, then the last 500 log lines, and write the visit."
+version: "1.12.1"
+description: "v1.12.1 — Write the visit from NETWORK_TEST_RESULT_JSON, the emit line at the end of the job log."
 ---
 
 # Compliance test runner skill
@@ -73,8 +73,10 @@ script returns. The next command repeats the same flags and adds
 only when the line has one of those two phases. Do not invent a phase.
 The last stdout line is the result. Do not read the files to fill the reply.
 
-A compliance suite stays `mode=live`. `tail_lines=200` on a hand poll sees
-only the later live block. The script asks for the longer tail.
+The visit is filled from `NETWORK_TEST_RESULT_JSON`, the line the emit
+step prints at the end of the job. The job summary on the Actions page
+and the uploaded artifact are the same result in the other two places.
+The log tool is how this script reads that line.
 
 Every `results.ran[]` and `results.not_applicable[]` row carries `keys`:
 `test:<check-id>` and exact `device:<inventory-name>`. A compliance row

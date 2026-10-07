@@ -318,10 +318,9 @@ def report_blocks(text):
 def parse_report(text):
     """Return planes, rows, and whether the static compliance block was present.
 
-    The two `# Network test report` blocks are the detail. They sit hundreds
-    of lines above the end of the job log. The last lines carry
-    `NETWORK_TEST_RESULT_JSON`, which is what a short log tail actually
-    contains. Use that when the blocks were not in the text.
+    `NETWORK_TEST_RESULT_JSON` is the result the emit step prints. The
+    `# Network test report` blocks are the same result split by plane.
+    Use the blocks when they are in the log. Use the JSON when a block is not.
     """
     text = clean_log(text)
     static_text = ""
@@ -379,7 +378,7 @@ def parse_report(text):
                 "skip": int(data.get("skip") or 0),
             }
             parsed["gaps"] = list(parsed["gaps"]) + [
-                "per-check report was above the log tail; totals are NETWORK_TEST_RESULT_JSON pass=%s fail=%s" % (
+                "plane split was not in this log; pass=%s fail=%s are the emit totals, and failed_checks are the static failures" % (
                     data.get("pass"), data.get("fail"),
                 )
             ]
@@ -391,9 +390,6 @@ def parse_report(text):
                 "error": int(data.get("error") or 0),
                 "skip": int(data.get("skip") or 0),
             }
-            parsed["gaps"] = list(parsed["gaps"]) + [
-                "static pass count was above the log tail; static failures are from NETWORK_TEST_RESULT_JSON"
-            ]
     return parsed
 
 
@@ -1239,7 +1235,7 @@ def read_logs(jobs, run_id, body):
     chunks = []
     errors = []
     for jid in ids[:3]:
-        fetched, err = call_tool("github_get_action_job_logs", {"job_id": int(jid), "tail_lines": 500})
+        fetched, err = call_tool("github_get_action_job_logs", {"job_id": int(jid), "tail_lines": 20000})
         if err:
             errors.append(err)
             continue
