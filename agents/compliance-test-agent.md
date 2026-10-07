@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.7.6"
+version: "1.7.8"
 ---
 
 # Compliance Test
 
-Version 1.7.6.
+Version 1.7.8.
 
 ## Identity
 

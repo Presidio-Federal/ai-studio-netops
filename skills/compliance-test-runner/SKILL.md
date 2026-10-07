@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.11.6"
-description: "v1.11.6 — Read the network test report from the run result and write the visit."
+version: "1.11.8"
+description: "v1.11.8 — Read run.jobs[].id, then the last 500 log lines, and write the visit."
 ---
 
 # Compliance test runner skill

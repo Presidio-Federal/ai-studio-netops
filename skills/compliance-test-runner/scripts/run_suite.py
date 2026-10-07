@@ -85,7 +85,15 @@ def coerce_part(raw):
 
 
 def unwrap_body(envelope):
-    """Keep every result part. The report is often not in result[0]."""
+    """Keep every result part. The report is often not in result[0].
+
+    github_get_action_run returns {ok, run: {jobs: [{id, name, status, conclusion, html_url}]}}.
+    github_get_action_job_logs returns {ok, log}. Those dicts use ok, not success.
+    """
+    if isinstance(envelope, dict) and envelope.get("ok") is True and (
+        "run" in envelope or "log" in envelope
+    ):
+        return envelope, None
     if not isinstance(envelope, dict) or not envelope.get("success"):
         err = None if not isinstance(envelope, dict) else envelope.get("error")
         return None, (str(err or "success false"))[:200]
@@ -1149,7 +1157,11 @@ JOB_URL = re.compile(r"/jobs?/(\d+)")
 
 
 def job_ids_in(body, run_id):
-    """Job ids from a jobs list, a steps object, or a /job/<id> URL."""
+    """Job ids the direct agent used to copy out of github_get_action_run.
+
+    A job is an object with its own id, a name, and a status. It is often
+    not nested under a key named jobs, and it often has no steps list.
+    """
     found = []
 
     def add(value):
@@ -1160,7 +1172,13 @@ def job_ids_in(body, run_id):
     def walk(node):
         if isinstance(node, dict):
             own = node.get("id") or node.get("job_id") or node.get("jobId")
-            if own and (node.get("steps") is not None or node.get("runner_name") or node.get("run_id")):
+            named = node.get("name") or node.get("job_name") or node.get("jobName")
+            if own and (
+                node.get("steps") is not None
+                or node.get("runner_name")
+                or node.get("run_id")
+                or (named and (node.get("status") or node.get("conclusion")))
+            ):
                 add(own)
             for value in node.values():
                 walk(value)
@@ -1169,6 +1187,8 @@ def job_ids_in(body, run_id):
                 walk(item)
         elif isinstance(node, str):
             for match in JOB_URL.finditer(node):
+                add(match.group(1))
+            for match in re.finditer(r"check-runs/(\d+)", node):
                 add(match.group(1))
 
     walk(flatten(body))
@@ -1224,23 +1244,23 @@ def read_logs(jobs, run_id, body):
     if report_in(embedded):
         return embedded, None
     ids = []
-    for job in jobs or []:
+    run = body.get("run") if isinstance(body, dict) and isinstance(body.get("run"), dict) else None
+    listed = (run or {}).get("jobs") if run else None
+    if not isinstance(listed, list):
+        listed = jobs or []
+    for job in listed:
         jid = job_id(job)
-        if jid and jid not in ids:
+        if jid and jid != str(run_id) and jid not in ids:
             ids.append(jid)
     for jid in job_ids_in(body, run_id):
         if jid not in ids:
             ids.append(jid)
-    calls = []
-    if ids:
-        for jid in ids[:3]:
-            calls.append({"job_id": jid, "tail_lines": 8000})
-    else:
-        calls.append({"run_id": str(run_id), "tail_lines": 8000})
+    if not ids:
+        return "", "run payload had no job id (%s)" % keys_hint(body)
     chunks = []
     errors = []
-    for args in calls:
-        fetched, err = call_tool("github_get_action_job_logs", args)
+    for jid in ids[:3]:
+        fetched, err = call_tool("github_get_action_job_logs", {"job_id": int(jid), "tail_lines": 500})
         if err:
             errors.append(err)
             continue
@@ -1250,8 +1270,8 @@ def read_logs(jobs, run_id, body):
     joined = "\n".join(chunks)
     if report_in(joined):
         return joined, None
-    if not ids and not chunks:
-        return "", "completed run payload had no job id; log tool: %s" % (errors[0] if errors else "no text")
+    if errors and not chunks:
+        return "", "job log: %s" % errors[0]
     if not report_in(joined):
         return joined, "job log had no network test report (%d chars, jobs=%s)" % (len(joined), ",".join(ids) or "none")
     return joined, None
