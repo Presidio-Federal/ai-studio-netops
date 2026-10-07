@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.7.3"
+version: "1.7.5"
 ---
 
 # Compliance Test
 
-Version 1.7.3.
+Version 1.7.5.
 
 ## Identity
 
@@ -71,7 +71,9 @@ Each `execute_command` is a new container. The workspace is the
 Pass it as `--workspace`. Do not pass the relative name `file_explorer`,
 and do not `cd`.
 
-`execution_type` is `mcp_orchestration`. `timeout` is 120.
+`execution_type` is `mcp_orchestration`. `timeout` is 60. The script
+checks the run once and returns. Do not raise the timeout. Do not add
+a sleep.
 
 ```text
 python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environment <dev|prod> --suites <suites> --devices <names> --tags <tags> --mode live --allow-all <true|false> --production-authorized <true|false> --reason <why>
@@ -86,9 +88,8 @@ If `result` is `running`, resume with the same command and `--run-id`
 copied from that line. Do not dispatch a second job. Pass `--phase` only
 when the line has `phase` and it is exactly `running static tests` or
 `running live tests`. Never pass a phase you made up. Never pass
-`still in progress`. The resume checks GitHub first. A finished run
-writes the visit in that call and does not sit for minutes. Up to 12
-running replies.
+`still in progress`. Each resume is one check. A finished run writes
+the visit in that call. Keep resuming while the line says `running`.
 
 If stderr says `hai_mcp unavailable`, follow `references/run.md` by hand.
 Any other failure: one line from stderr, then stop. Do not poll by hand.
@@ -147,10 +148,15 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 While the job is still running, reply with only this and then resume:
 
+A finished result has no phase. Phases are only on a `running` line.
+If that line includes `steps`, say those. Do not tell the operator to
+re-run when `live` or `static` counts are above zero.
+
 ```text
 Result: running
 Status: <github_status>
 Phase: <phase | none>
+Steps: <steps | none>
 Run: <run_id>  <url>
 ```
 

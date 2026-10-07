@@ -51,6 +51,10 @@ ROW = re.compile(
 )
 NA_ROW = re.compile(r"^-\s+`([^`]+)`\s+·\s+(.+?)\s+—\s+(.*)$")
 FAILED = re.compile(r"Failed:\s+(\S+)\s+([A-Za-z0-9_.-]+):\s*(.*)$")
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+STAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s?")
+STATIC_RULE = re.compile(r"test_static_rule\[([^:\]]+)(?:::[^:\]]+)*::([^\]]+)\]")
+RESULT_JSON = re.compile(r"NETWORK_TEST_RESULT_JSON=(\{.*\})")
 KEY_RE = re.compile(r"^(device|interface|site|service|test|control|incident|change):[^ ]+$")
 
 
@@ -235,6 +239,50 @@ def live_rows(text):
     return ran, not_applicable, gaps
 
 
+def clean_log(text):
+    """Drop the GitHub log timestamp and color codes so the report lines match."""
+    lines = []
+    for raw in (text or "").splitlines():
+        lines.append(STAMP.sub("", ANSI.sub("", raw)))
+    return "\n".join(lines)
+
+
+def result_json(text):
+    match = RESULT_JSON.search(text or "")
+    if not match:
+        return None
+    try:
+        data = json.loads(match.group(1))
+    except json.JSONDecodeError:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def static_rows_from_json(data):
+    rows = []
+    seen = set()
+    for item in data.get("failed_checks") or []:
+        match = STATIC_RULE.search(str(item))
+        if not match:
+            continue
+        device, check = match.group(1), match.group(2)
+        if (device, check) in seen:
+            continue
+        seen.add((device, check))
+        keys = row_keys(check, device)
+        if len(keys) < 2:
+            continue
+        rows.append({
+            "status": "FAIL",
+            "plane": "static",
+            "check": "static/%s" % check,
+            "device": device,
+            "keys": keys,
+            "detail": str(item)[:500],
+        })
+    return rows
+
+
 def report_blocks(text):
     if not text or MARKER not in text:
         return []
@@ -251,7 +299,14 @@ def report_blocks(text):
 
 
 def parse_report(text):
-    """Return planes, rows, and whether the static compliance block was present."""
+    """Return planes, rows, and whether the static compliance block was present.
+
+    The two `# Network test report` blocks are the detail. They sit hundreds
+    of lines above the end of the job log. The last lines carry
+    `NETWORK_TEST_RESULT_JSON`, which is what a short log tail actually
+    contains. Use that when the blocks were not in the text.
+    """
+    text = clean_log(text)
     static_text = ""
     live_text = ""
     lab = None
@@ -265,8 +320,6 @@ def parse_report(text):
         if mode == "static":
             static_text = block
         elif mode == "live":
-            live_text = block
-        elif live_text == "":
             live_text = block
     # Pytest failure lines sit above the static marker, so search the whole log.
     static_rows = static_failures(text) if static_text else []
@@ -283,7 +336,7 @@ def parse_report(text):
     tested_match = re.search(r"devices_tested:\s*(.+)", live_text or "")
     if tested_match and tested_match.group(1).strip() not in ("", "(none)"):
         tested = [part.strip() for part in tested_match.group(1).split(",") if part.strip()]
-    return {
+    parsed = {
         "lab": lab,
         "requested": requested,
         "devices_tested": tested,
@@ -297,6 +350,34 @@ def parse_report(text):
         "gaps": gaps,
         "counts_na": int(na_match.group(1)) if na_match else len(not_applicable),
     }
+    data = result_json(text)
+    if data and not static_text:
+        parsed["static_rows"] = static_rows_from_json(data)
+        parsed["static_present"] = True
+        if not live_text:
+            parsed["static_counts"] = {
+                "pass": int(data.get("pass") or 0),
+                "fail": int(data.get("fail") or 0),
+                "error": int(data.get("error") or 0),
+                "skip": int(data.get("skip") or 0),
+            }
+            parsed["gaps"] = list(parsed["gaps"]) + [
+                "per-check report was above the log tail; totals are NETWORK_TEST_RESULT_JSON pass=%s fail=%s" % (
+                    data.get("pass"), data.get("fail"),
+                )
+            ]
+        else:
+            live_pass = int((parsed["live_counts"] or {}).get("pass") or 0)
+            parsed["static_counts"] = {
+                "pass": max(0, int(data.get("pass") or 0) - live_pass),
+                "fail": len(parsed["static_rows"]) or int(data.get("fail") or 0),
+                "error": int(data.get("error") or 0),
+                "skip": int(data.get("skip") or 0),
+            }
+            parsed["gaps"] = list(parsed["gaps"]) + [
+                "static pass count was above the log tail; static failures are from NETWORK_TEST_RESULT_JSON"
+            ]
+    return parsed
 
 
 def union_keys(rows):
@@ -866,20 +947,39 @@ def split_jobs(body):
     return body, jobs
 
 
+def collect_text(node, found, depth=0):
+    if depth > 8 or node is None:
+        return
+    if isinstance(node, str):
+        text = node.strip()
+        if len(text) > 40:
+            found.append(text)
+        return
+    if isinstance(node, list):
+        if node and all(isinstance(item, str) for item in node[:50]):
+            found.append("\n".join(node))
+        for item in node[:80]:
+            collect_text(item, found, depth + 1)
+        return
+    if isinstance(node, dict):
+        for value in node.values():
+            collect_text(value, found, depth + 1)
+
+
 def log_text(body):
-    if isinstance(body, str):
-        return body
-    if not isinstance(body, dict):
+    """Pull the job log out of whatever envelope the MCP returned.
+
+    Prefer the string that contains the report marker or the result JSON.
+    A short status field must not hide the log sitting next to it.
+    """
+    found = []
+    collect_text(flatten(body), found)
+    for text in found:
+        if MARKER in text or "NETWORK_TEST_RESULT_JSON=" in text:
+            return text
+    if not found:
         return None
-    for key in ("content", "log", "logs", "text", "body", "data"):
-        value = body.get(key)
-        if isinstance(value, str) and value.strip():
-            return value
-        if isinstance(value, dict):
-            nested = log_text(value)
-            if nested:
-                return nested
-    return None
+    return max(found, key=len)
 
 
 def job_id(job):
@@ -1053,28 +1153,20 @@ def observe_run(run_id, ref):
     return run, jobs, status or ("unreadable" if err is None else "error")
 
 
-def poll_run(run_id, budget, poll, seen_phase, ref):
-    """Check first. A finished run returns immediately so the caller writes the visit.
+def poll_run(run_id, ref):
+    """One read. A finished run is returned so the caller writes the visit.
 
-    The loop does not sit for minutes. A still-running job returns as soon
-    as the short budget ends, with the GitHub status it actually read.
+    A run that is still going comes back immediately. This function does
+    not sleep and does not poll.
     """
-    html_url = ""
-    jobs = []
-    phase = seen_phase or None
-    status = "unreadable"
-    while True:
-        run, jobs, status = observe_run(run_id, ref)
-        html_url = (run.get("html_url") or run.get("htmlUrl") or html_url) if isinstance(run, dict) else html_url
-        if run_finished(run, jobs):
-            return html_url, jobs, None, current_phase(jobs) or phase, status or "completed"
-        phase = current_phase(jobs) or phase
-        if phase in SPEAK_PHASES and phase != (seen_phase or ""):
-            return html_url, jobs, "running", phase, status
-        remaining = budget.left()
-        if remaining <= 2:
-            return html_url, jobs, "running", phase, status
-        time.sleep(min(max(poll, 1), remaining - 1))
+    run, jobs, status = observe_run(run_id, ref)
+    html_url = (run.get("html_url") or run.get("htmlUrl") or "") if isinstance(run, dict) else ""
+    phase = current_phase(jobs)
+    if run_finished(run, jobs):
+        return html_url, jobs, None, phase, status or "completed"
+    if phase in SPEAK_PHASES:
+        return html_url, jobs, "running", phase, status
+    return html_url, jobs, "running", None, status
 
 
 def read_logs(jobs):
@@ -1092,7 +1184,8 @@ def read_logs(jobs):
         text = log_text(body) if err is None else None
         if text:
             chunks.append(text)
-    if chunks and MARKER not in "\n".join(chunks) and last_id:
+    joined = "\n".join(chunks)
+    if chunks and MARKER not in joined and "NETWORK_TEST_RESULT_JSON=" not in joined and last_id:
         body, err = call_tool(
             "github_get_action_job_logs",
             {"job_id": last_id, "tail_lines": 8000},
@@ -1111,19 +1204,14 @@ def execute(args):
         emit({"result": "UNKNOWN", "reason": "missing suites"})
         return
     run_id = (args.run_id or "").strip()
-    # A resume only confirms the run. A finished pipeline writes on the
-    # first read. A still-running one returns in a few seconds, not minutes.
-    wait = min(args.max_wait, 20) if run_id else min(args.max_wait, 40)
-    budget = visit_common.Budget(wait)
     html_url = ""
     if not run_id:
+        budget = visit_common.Budget(30)
         run_id, html_url, err = dispatch_and_find(args, budget)
         if err:
             emit({"result": "UNKNOWN", "reason": err, "environment": args.environment, "suites": args.suites})
             return
-    html_url, jobs, err, phase, status = poll_run(
-        run_id, budget, args.poll, (args.phase or "").strip(), args.ref,
-    )
+    html_url, jobs, err, phase, status = poll_run(run_id, args.ref)
     suites = [part.strip() for part in args.suites.split(",") if part.strip()]
     if err == "running":
         payload = {
@@ -1134,6 +1222,16 @@ def execute(args):
             "suites": suites,
             "github_status": status or "unreadable",
         }
+        steps = []
+        for job in jobs or []:
+            listed = job.get("steps") if isinstance(job, dict) else None
+            if not isinstance(listed, list):
+                continue
+            for step in listed:
+                if isinstance(step, dict) and step.get("name") in {"Static pytest", "Live pyATS"}:
+                    steps.append("%s:%s" % (step["name"], step_state(step)))
+        if steps:
+            payload["steps"] = steps
         if phase in SPEAK_PHASES:
             payload["phase"] = phase
         emit(payload)

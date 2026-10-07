@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.2.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.7.3 | MiniMax |
+| Compliance Test | 1.7.5 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
@@ -32,6 +32,10 @@ Deployed model is **MiniMax** unless noted.
 Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
+
+Compliance Test 1.7.5 (skill 1.11.5): a short job-log tail has no `# Network test report`. The script reads `NETWORK_TEST_RESULT_JSON` from the end of the log, and it strips GitHub timestamps before parsing the report blocks. A finished result does not include a phase.
+
+Compliance Test 1.7.4 (skill 1.11.4): `timeout` is 60. The script checks the run once and returns. The skill no longer says 300. A finished run writes the visit on that check.
 
 Compliance Test 1.7.3 (skill 1.11.3): the command timeout is 120 seconds, not 300. A resume checks the run and returns within 20 seconds unless it is writing the visit. `running` carries `github_status`. The agent does not invent a phase or pass "still in progress".
 

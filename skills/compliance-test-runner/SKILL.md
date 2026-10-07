@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.11.3"
-description: "v1.11.3 — Check test.yml before waiting, and write the visit as soon as the run is finished."
+version: "1.11.5"
+description: "v1.11.5 — Write the visit from the test report, or from NETWORK_TEST_RESULT_JSON when the report is above the log tail."
 ---
 
 # Compliance test runner skill
@@ -54,7 +54,8 @@ Skill resources — use exactly:
 
 Copy the path Studio shows for `compliance-test-runner/scripts/run_suite.py`.
 Do not retype it and do not `cd`. `execution_type` is `mcp_orchestration`.
-`timeout` is 300.
+`timeout` is 60. The script checks once and returns. It does not wait
+on the pipeline.
 
 ```text
 python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environment <dev|prod> --suites <suites> --devices <names> --tags <tags> --mode live --allow-all <true|false> --production-authorized <true|false> --reason <why>
@@ -62,12 +63,12 @@ python3 <skill>/scripts/run_suite.py run --workspace <file_explorer> --environme
 
 A compliance suite stays `--mode live` and `--suites compliance`. The job
 prints a static report and a live report. The script writes both into the
-visit. A `running` line includes `github_status` from the run payload.
+visit. A `running` line includes `github_status` from that one check.
 It includes `phase` only for `running static tests` or `running live tests`.
-The script checks the run before it sleeps. A resume waits at most 20
-seconds. A finished run writes the visit on that read. Resume with
-`--run-id` only. Pass `--phase` only when the line has one of those two
-phases. Do not invent a phase. Up to 12 running replies.
+There is no poll loop and no multi-minute wait. A finished run writes
+the visit before the script returns. Resume with `--run-id` only. Pass
+`--phase` only when the line has one of those two phases. Do not invent
+a phase. Resume while the line says `running`.
 The last stdout line is the result. Do not read the files to fill the reply.
 
 A compliance suite stays `mode=live`. `tail_lines=200` on a hand poll sees
