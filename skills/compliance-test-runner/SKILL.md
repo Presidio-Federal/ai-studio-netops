@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.2"
-description: "v1.12.2 — Take the job id from the run's jobs list, read the emit line, and write the visit."
+version: "1.12.3"
+description: "v1.12.3 — Take the job id from the run payload's jobs list, read the emit line, and write the visit."
 ---
 
 # Compliance test runner skill

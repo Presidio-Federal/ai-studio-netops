@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.2.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.8.0 | MiniMax |
+| Compliance Test | 1.8.1 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
@@ -32,6 +32,8 @@ Deployed model is **MiniMax** unless noted.
 Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
+
+Compliance Test 1.8.1 (skill 1.12.3): a missing job id is a script miss. The agent reports Result, Reason, and Run and does not tell the operator to re-dispatch. The reason line names the payload keys.
 
 Compliance Test skill 1.12.2: a jobs list inside the run payload is a job id. The script no longer requires the job URL string. Run 37652149873 job id is 112897953597.
 

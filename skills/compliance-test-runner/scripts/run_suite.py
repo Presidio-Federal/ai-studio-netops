@@ -116,6 +116,35 @@ def keys_hint(body):
     return type(body).__name__
 
 
+def payload_hint(body):
+    """One line of the get-run shape. _parts alone hides where the job id sits."""
+    node = flatten(body)
+    parts = node.get("_parts") if isinstance(node, dict) else None
+    if not isinstance(parts, list):
+        return keys_hint(node)
+    bits = []
+    for index, part in enumerate(parts[:4]):
+        if isinstance(part, dict):
+            bits.append("p%d=%s" % (index, ",".join(list(part.keys())[:8])))
+            run = part.get("run") if isinstance(part.get("run"), dict) else None
+            if run is None and isinstance(part.get("data"), dict):
+                run = part["data"].get("run") if isinstance(part["data"].get("run"), dict) else part["data"]
+            if isinstance(run, dict):
+                bits.append("run=%s" % ",".join(list(run.keys())[:12]))
+                jobs = run.get("jobs")
+                if isinstance(jobs, list):
+                    bits.append("jobs=list:%d" % len(jobs))
+                elif jobs is not None:
+                    bits.append("jobs=%s" % type(jobs).__name__)
+        elif isinstance(part, str):
+            bits.append("p%d=str:%d" % (index, len(part)))
+        elif isinstance(part, list):
+            bits.append("p%d=list:%d" % (index, len(part)))
+        else:
+            bits.append("p%d=%s" % (index, type(part).__name__))
+    return " ".join(bits)[:300]
+
+
 def call_tool(tool, args):
     return unwrap_body(visit_common.mcp_call(tool, args, retries=1))
 
@@ -926,11 +955,6 @@ def pick_run(runs, run_id):
             return row
     if matches:
         return matches[-1]
-    for row in reversed(runs):
-        if (row.get("html_url") or row.get("htmlUrl") or row.get("run_number") is not None) and (
-            row.get("status") or row.get("conclusion")
-        ):
-            return row
     return {}
 
 
@@ -1174,12 +1198,9 @@ def job_ids_in(body, run_id):
     def take_job(job):
         if not isinstance(job, dict):
             return
-        if job.get("head_sha") or job.get("jobs_url") or job.get("head_branch"):
+        if job.get("head_sha") or job.get("head_branch") or job.get("jobs_url") or job.get("sha") or job.get("branch"):
             return
-        url = str(job.get("html_url") or job.get("htmlUrl") or "")
         rid = str(job.get("run_id") or job.get("runId") or "")
-        if url and ("/runs/%s/job/" % want) not in url:
-            return
         if rid and rid != want:
             return
         add(job.get("id") or job.get("job_id") or job.get("jobId"))
@@ -1191,6 +1212,13 @@ def job_ids_in(body, run_id):
                 if isinstance(value, list):
                     for job in value:
                         take_job(job)
+                elif isinstance(value, dict):
+                    nested = value.get("jobs")
+                    if isinstance(nested, list):
+                        for job in nested:
+                            take_job(job)
+                    elif value.get("id") or value.get("name"):
+                        take_job(value)
             for value in item.values():
                 walk(value)
         elif isinstance(item, list):
@@ -1253,9 +1281,17 @@ def read_logs(jobs, run_id, body):
     embedded = log_text(body) if body is not None else None
     if report_in(embedded):
         return embedded, None
-    ids = job_ids_in(body, run_id)
+    ids = []
+    for job in jobs or []:
+        if isinstance(job, dict) and not (job.get("sha") or job.get("branch") or job.get("jobs_url")):
+            jid = str(job.get("id") or job.get("job_id") or "")
+            if jid.isdigit() and jid != str(run_id) and jid not in ids:
+                ids.append(jid)
+    for jid in job_ids_in(body, run_id):
+        if jid not in ids:
+            ids.append(jid)
     if not ids:
-        return "", "run payload had no job id (%s)" % keys_hint(body)
+        return "", "run payload had no job id (%s)" % payload_hint(body)
     chunks = []
     errors = []
     for jid in ids[:3]:
