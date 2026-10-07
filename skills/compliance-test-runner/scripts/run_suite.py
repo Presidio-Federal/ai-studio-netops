@@ -72,23 +72,32 @@ def pct(numerator, denominator):
     return round(100.0 * numerator / denominator, 1)
 
 
+def coerce_part(raw):
+    if isinstance(raw, str):
+        text = raw.strip()
+        if text[:1] in "{[":
+            try:
+                return json.loads(text, strict=False)
+            except json.JSONDecodeError:
+                return raw
+        return raw
+    return raw
+
+
 def unwrap_body(envelope):
+    """Keep every result part. The report is often not in result[0]."""
     if not isinstance(envelope, dict) or not envelope.get("success"):
         err = None if not isinstance(envelope, dict) else envelope.get("error")
         return None, (str(err or "success false"))[:200]
     outer = envelope.get("result")
-    raw = outer[0] if isinstance(outer, list) and outer else outer
-    if isinstance(raw, (dict, list)):
-        return raw, None
-    if isinstance(raw, str):
-        text = raw.strip()
-        if text.startswith("{") or text.startswith("["):
-            try:
-                return json.loads(text, strict=False), None
-            except json.JSONDecodeError:
-                return raw, None
-        return raw, None
-    return None, "empty result"
+    if isinstance(outer, list):
+        parts = [coerce_part(item) for item in outer]
+        if len(parts) == 1:
+            return parts[0], None
+        return {"_parts": parts}, None
+    if outer is None:
+        return None, "empty result"
+    return coerce_part(outer), None
 
 
 def keys_hint(body):
@@ -815,6 +824,11 @@ def emit(payload):
 
 def run_ids(body):
     rows = None
+    if isinstance(body, dict) and isinstance(body.get("_parts"), list):
+        found = []
+        for part in body["_parts"]:
+            found.extend(run_ids(part))
+        return found
     if isinstance(body, list):
         rows = body
     elif isinstance(body, dict):
@@ -1131,13 +1145,41 @@ def current_phase(jobs):
     return None
 
 
+JOB_URL = re.compile(r"/jobs?/(\d+)")
+
+
+def job_ids_in(body, run_id):
+    """Job ids from a jobs list, a steps object, or a /job/<id> URL."""
+    found = []
+
+    def add(value):
+        text = str(value or "")
+        if text.isdigit() and text != str(run_id) and text not in found:
+            found.append(text)
+
+    def walk(node):
+        if isinstance(node, dict):
+            own = node.get("id") or node.get("job_id") or node.get("jobId")
+            if own and (node.get("steps") is not None or node.get("runner_name") or node.get("run_id")):
+                add(own)
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for item in node:
+                walk(item)
+        elif isinstance(node, str):
+            for match in JOB_URL.finditer(node):
+                add(match.group(1))
+
+    walk(flatten(body))
+    return found
+
+
 def observe_run(run_id, ref):
     """Read the run. Fall back to the recent-runs list when the get payload has no status."""
     body, err = call_tool("github_get_action_run", {"run_id": run_id})
     run, jobs = read_run(body, run_id) if err is None else ({}, [])
     status = github_status(run)
-    if run_finished(run, jobs):
-        return run, jobs, status
     if not status:
         listed, list_err = call_tool(
             "github_list_action_runs",
@@ -1150,7 +1192,8 @@ def observe_run(run_id, ref):
                 run = listed_run or run
                 jobs = jobs or listed_jobs
                 status = listed_status or status
-    return run, jobs, status or ("unreadable" if err is None else "error")
+                body = listed if body is None else {"_parts": [body, listed]}
+    return run, jobs, status or ("unreadable" if err is None else "error"), body
 
 
 def poll_run(run_id, ref):
@@ -1159,41 +1202,59 @@ def poll_run(run_id, ref):
     A run that is still going comes back immediately. This function does
     not sleep and does not poll.
     """
-    run, jobs, status = observe_run(run_id, ref)
+    run, jobs, status, body = observe_run(run_id, ref)
     html_url = (run.get("html_url") or run.get("htmlUrl") or "") if isinstance(run, dict) else ""
     phase = current_phase(jobs)
     if run_finished(run, jobs):
-        return html_url, jobs, None, phase, status or "completed"
+        return html_url, jobs, None, phase, status or "completed", body
     if phase in SPEAK_PHASES:
-        return html_url, jobs, "running", phase, status
-    return html_url, jobs, "running", None, status
+        return html_url, jobs, "running", phase, status, body
+    return html_url, jobs, "running", None, status, body
 
 
-def read_logs(jobs):
-    chunks = []
-    last_id = None
-    for job in jobs:
+def report_in(text):
+    return bool(text) and (
+        MARKER in text or "NETWORK_TEST_RESULT_JSON=" in text or "· static ·" in text or "· live ·" in text
+    )
+
+
+def read_logs(jobs, run_id, body):
+    """Read the report. It may already be in the get-run payload, or in the job log."""
+    embedded = log_text(body) if body is not None else None
+    if report_in(embedded):
+        return embedded, None
+    ids = []
+    for job in jobs or []:
         jid = job_id(job)
-        if not jid:
+        if jid and jid not in ids:
+            ids.append(jid)
+    for jid in job_ids_in(body, run_id):
+        if jid not in ids:
+            ids.append(jid)
+    calls = []
+    if ids:
+        for jid in ids[:3]:
+            calls.append({"job_id": jid, "tail_lines": 8000})
+    else:
+        calls.append({"run_id": str(run_id), "tail_lines": 8000})
+    chunks = []
+    errors = []
+    for args in calls:
+        fetched, err = call_tool("github_get_action_job_logs", args)
+        if err:
+            errors.append(err)
             continue
-        last_id = jid
-        body, err = call_tool(
-            "github_get_action_job_logs",
-            {"job_id": jid, "tail_lines": 4000},
-        )
-        text = log_text(body) if err is None else None
+        text = log_text(fetched)
         if text:
             chunks.append(text)
     joined = "\n".join(chunks)
-    if chunks and MARKER not in joined and "NETWORK_TEST_RESULT_JSON=" not in joined and last_id:
-        body, err = call_tool(
-            "github_get_action_job_logs",
-            {"job_id": last_id, "tail_lines": 8000},
-        )
-        text = log_text(body) if err is None else None
-        if text:
-            chunks.append(text)
-    return "\n".join(chunks)
+    if report_in(joined):
+        return joined, None
+    if not ids and not chunks:
+        return "", "completed run payload had no job id; log tool: %s" % (errors[0] if errors else "no text")
+    if not report_in(joined):
+        return joined, "job log had no network test report (%d chars, jobs=%s)" % (len(joined), ",".join(ids) or "none")
+    return joined, None
 
 
 def execute(args):
@@ -1211,7 +1272,7 @@ def execute(args):
         if err:
             emit({"result": "UNKNOWN", "reason": err, "environment": args.environment, "suites": args.suites})
             return
-    html_url, jobs, err, phase, status = poll_run(run_id, args.ref)
+    html_url, jobs, err, phase, status, run_body = poll_run(run_id, args.ref)
     suites = [part.strip() for part in args.suites.split(",") if part.strip()]
     if err == "running":
         payload = {
@@ -1239,7 +1300,16 @@ def execute(args):
     if err:
         emit({"result": "UNKNOWN", "reason": err, "run_id": run_id, "html_url": html_url})
         return
-    text = read_logs(jobs)
+    text, log_err = read_logs(jobs, run_id, run_body)
+    if log_err or not report_in(text):
+        emit({
+            "result": "UNKNOWN",
+            "reason": log_err or "job log had no network test report",
+            "run_id": run_id,
+            "html_url": html_url,
+            "github_status": status,
+        })
+        return
     parsed = parse_report(text)
     moment = datetime.now(timezone.utc)
     rel, run_record, state, visit, meta = build_records(args, moment, run_id, html_url, parsed)

@@ -17,7 +17,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance | 1.2.0 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
-| Compliance Test | 1.7.5 | MiniMax |
+| Compliance Test | 1.7.6 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
@@ -32,6 +32,8 @@ Deployed model is **MiniMax** unless noted.
 Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
+
+Compliance Test 1.7.6 (skill 1.11.6): the get-run result is a list, and the report is not always in the first item. The script keeps every item. It does not write an empty visit when the report text was never read.
 
 Compliance Test 1.7.5 (skill 1.11.5): a short job-log tail has no `# Network test report`. The script reads `NETWORK_TEST_RESULT_JSON` from the end of the log, and it strips GitHub timestamps before parsing the report blocks. A finished result does not include a phase.
 

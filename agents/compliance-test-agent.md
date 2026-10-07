@@ -1,11 +1,11 @@
 ---
 name: compliance-test-agent
-version: "1.7.5"
+version: "1.7.6"
 ---
 
 # Compliance Test
 
-Version 1.7.5.
+Version 1.7.6.
 
 ## Identity
 
@@ -147,6 +147,8 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 ## Reply format
 
 While the job is still running, reply with only this and then resume:
+
+If the line has `reason` and no `live` counts, reply with Result, Reason, and Run. Stop. Do not invent counts and do not say to re-run.
 
 A finished result has no phase. Phases are only on a `running` line.
 If that line includes `steps`, say those. Do not tell the operator to

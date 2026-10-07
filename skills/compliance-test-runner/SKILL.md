@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.11.5"
-description: "v1.11.5 — Write the visit from the test report, or from NETWORK_TEST_RESULT_JSON when the report is above the log tail."
+version: "1.11.6"
+description: "v1.11.6 — Read the network test report from the run result and write the visit."
 ---
 
 # Compliance test runner skill
