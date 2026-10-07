@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.1"
-description: "v1.12.1 — Write the visit from NETWORK_TEST_RESULT_JSON, the emit line at the end of the job log."
+version: "1.12.2"
+description: "v1.12.2 — Take the job id from the run's jobs list, read the emit line, and write the visit."
 ---
 
 # Compliance test runner skill

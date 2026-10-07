@@ -367,6 +367,11 @@ def parse_report(text):
         "counts_na": int(na_match.group(1)) if na_match else len(not_applicable),
     }
     data = result_json(text)
+    if lab is None:
+        lab_match = re.search(r"lab=(dev|prod)\b", text or "")
+        if lab_match:
+            lab = lab_match.group(1)
+            parsed["lab"] = lab
     if data and not static_text:
         parsed["static_rows"] = static_rows_from_json(data)
         parsed["static_present"] = True
@@ -1150,34 +1155,53 @@ def current_phase(jobs):
 
 
 def job_ids_in(body, run_id):
-    """Job ids from github_get_action_run.
+    """Job ids for this workflow run.
 
-    A workflow run and a job both have id, name, and status. The run id is
-    not a job id. Only an html_url containing /runs/<this run>/job/<id>
-    is a job. Passing a run id to the log tool returns a short error, not
-    the report.
+    A workflow run and a job both have id, name, and status. Take an id
+    from a jobs list, or from /runs/<this run>/job/<id>. Do not take the
+    id of another workflow run. Passing a run id to the log tool returns
+    a short error, not the report.
     """
     found = []
     want = str(run_id)
+    node = flatten(body)
 
     def add(value):
         text = str(value or "")
         if text.isdigit() and text != want and text not in found:
             found.append(text)
 
-    def walk(node):
-        if isinstance(node, dict):
-            for value in node.values():
+    def take_job(job):
+        if not isinstance(job, dict):
+            return
+        if job.get("head_sha") or job.get("jobs_url") or job.get("head_branch"):
+            return
+        url = str(job.get("html_url") or job.get("htmlUrl") or "")
+        rid = str(job.get("run_id") or job.get("runId") or "")
+        if url and ("/runs/%s/job/" % want) not in url:
+            return
+        if rid and rid != want:
+            return
+        add(job.get("id") or job.get("job_id") or job.get("jobId"))
+
+    def walk(item):
+        if isinstance(item, dict):
+            for key in ("jobs", "workflow_jobs", "workflowJobs"):
+                value = item.get(key)
+                if isinstance(value, list):
+                    for job in value:
+                        take_job(job)
+            for value in item.values():
                 walk(value)
-        elif isinstance(node, list):
-            for item in node:
-                walk(item)
-        elif isinstance(node, str):
-            for match in re.finditer(r"/runs/(\d+)/job/(\d+)", node):
+        elif isinstance(item, list):
+            for value in item:
+                walk(value)
+        elif isinstance(item, str):
+            for match in re.finditer(r"/runs/(\d+)/job/(\d+)", item):
                 if match.group(1) == want:
                     add(match.group(2))
 
-    walk(flatten(body))
+    walk(node)
     return found
 
 

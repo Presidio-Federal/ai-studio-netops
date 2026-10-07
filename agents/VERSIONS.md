@@ -33,6 +33,8 @@ Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/complian
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
 
+Compliance Test skill 1.12.2: a jobs list inside the run payload is a job id. The script no longer requires the job URL string. Run 37652149873 job id is 112897953597.
+
 Compliance Test skill 1.12.1: the visit is filled from `NETWORK_TEST_RESULT_JSON`, the emit-result line. The log tool's old 500-line cap is raised to 20000 in the GitHub MCP server; Studio keeps the old cap until that server is redeployed.
 
 Compliance Test 1.8.0 (skill 1.12.0): a workflow run id is not a job id. The log call uses only the id in `/runs/<run>/job/<id>`.
