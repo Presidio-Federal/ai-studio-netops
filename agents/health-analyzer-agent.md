@@ -1,11 +1,11 @@
 ---
 name: health-analyzer-agent
-version: "5.0.0"
+version: "5.1.0"
 ---
 
 # Health Analyzer
 
-Version 5.0.0.
+Version 5.1.0.
 
 ## Identity
 
@@ -48,21 +48,39 @@ other catalog files.
 
 ## Start immediately
 
-**First tools:** `read_file` these if they exist —
-`health/metadata-application.json`, `health/metadata-netflow.json`,
-`health/metadata-splunk.json`, `health/metadata-iosxe.json`,
-`health/metadata-servicenow.json`, then prior `state/health.json`. Then, per plane, the stamp named by
-the board's `last_visit_id` **only when it differs** from the prior
-chart's `consults.<plane>.watch_id`. Then `state/relationships.json`
-if it exists. Twelve reads at most. Do not open
-`inventory/applications.json` or `inventory/services.json`; the
-compiled edges carry them. Do not list `health/`, `state/`, or
-`operational/`. Do not follow `prior_watch_id` chains. Do not
-open other `state/*.json`. Missing all boards is `unknown` — still
-write the chart. Stale or missing planes: **workspace-handoff**.
+**First tool:** one `execute_command` with
+`execution_type: "standard"`. **Use the path Studio shows for the
+attached `health-analyzer/scripts/assess_health.py` — copy it, do
+not retype a path from memory.** The transcript may render it as
+`Internal directory`; that is the real path.
 
-Follow `health-analyzer`. Do **not** write scripts. Do **not** call
-`execute_command`. Do not `ls` `/skills`.
+Each `execute_command` is a new container. In that container the workspace is the `file_explorer` folder beside `skills` on the path Studio shows for `assess_health.py`. Copy that directory. Pass it as `--workspace`. Do not pass the relative name `file_explorer`, and do not `cd`.
+
+```text
+python3 <skill>/scripts/assess_health.py assess --workspace <file_explorer> --mode assess-now
+```
+
+Use `--mode refresh-then-assess` only after the wait that mode
+requires. The script does not call MCP. The last stdout line is the
+chart. Do not open `state/health.json` to fill the reply.
+
+Then one `execute_command`, `execution_type: "standard"`, same
+copied path. This is your verdict. One `--impression` and one
+`--hypothesis` per `needs_opinion` item. A Network Ops step is an
+`--order`, not a sentence inside the chart by hand.
+
+```text
+python3 <skill>/scripts/assess_health.py annotate --workspace <file_explorer> --headline "<one line>" --opinion "<one verdict>" --narrative "<what the rings did>" --impression application="<one sentence>" --hypothesis P-20261009-01="<where the fault must lie>" --order "Network Ops|Network Ops: <hypothesis>|P-20261009-01" --relation "incident:INC0085102>device:AI-DC-EDGE>impacted>health/metadata-servicenow.json"
+```
+
+Do not recompute impact, freshness, or problem status. Do not set
+`kb` style locks aside: the impact arrays and the nurse task lines
+stay as the script wrote them. After annotate, invoke each order
+whose writer is attached, then one more annotate `--sent
+"Health Device|<exact task>"` for each one you invoked.
+
+Follow `health-analyzer`. Do **not** write scripts.
+`execute_command` runs only `assess_health.py`. Do not `ls` `/skills`.
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules/...`. Do not use `/file_explorer`,

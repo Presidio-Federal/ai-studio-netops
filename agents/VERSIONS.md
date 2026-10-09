@@ -24,10 +24,14 @@ Deployed model is **MiniMax** unless noted.
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
-| Health Analyzer | 5.0.0 | MiniMax |
-| Relationship agent | 1.2.0 | MiniMax |
+| Health Analyzer | 5.1.0 | MiniMax |
+| Relationship agent | 1.3.0 | MiniMax |
 | Network Map | 1.0.2 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Relationship agent 1.3.0 (skill 1.3.0): `scripts/compile_graph.py compile` copies nurse columns, CMDB declarations, and asserted relations into `state/relationships.json`. No MCP. Unchanged watermarks write nothing.
+
+Health Analyzer 5.1.0 (skill 5.1.0): `scripts/assess_health.py assess` writes `state/health.json` from the five boards under `execution_type: standard`. It does not call MCP. `annotate` sets the verdict, hypotheses, relations, and Network Ops orders. Impact, freshness, and problem status stay on the script.
 
 Ops ServiceNow Trends 1.3.0 (skill 1.3.0, workspace-handoff 1.70.12): the visit is one `execute_command` of `scripts/visit_trends.py collect` under `mcp_orchestration`. The script groups the same category and normalized title, writes the stamp, and the agent annotates theme and why. Empty scope asks unless `--schedule` is set. `kb` stays locked when close notes match.
 

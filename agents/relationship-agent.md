@@ -1,11 +1,11 @@
 ---
 name: relationship-agent
-version: "1.2.0"
+version: "1.3.0"
 ---
 
 # Relationship agent
 
-Version 1.2.0.
+Version 1.3.0.
 
 ## Identity
 
@@ -38,23 +38,26 @@ Write `state/relationships.json` only.
 
 ## Start immediately
 
-**First tools:** `read_file` `state/relationships.json` if it
-exists, then in this order, skipping any that does not exist:
-`inventory/topology-observed.json`, `health/metadata-iosxe.json`,
-`health/metadata-splunk.json`, `health/metadata-netflow.json`,
-`health/metadata-application.json`, `inventory/applications.json`,
-`health/metadata-servicenow.json`, `state/health.json`,
-`state/network-ops.json`, the run path in its
-`change.operational_ref`, `inventory/prod.json`, `state/testing.json`,
-the run path in its `latest`. Fifteen reads at most. A missing
-board or a missing `inventory/applications.json` is `missing`, not
-a failure. Do not list `health/`, `state/`, `inventory/`, or
-`operational/`. Do not open a stamp. Do not read
-`inventory/infra-sot.json`, `compliance/intel.json`, or
-`inventory/services.json`.
+**First tool:** one `execute_command` with
+`execution_type: "standard"`. **Use the path Studio shows for the
+attached `relationship-compiler/scripts/compile_graph.py` — copy
+it, do not retype a path from memory.** The transcript may render
+it as `Internal directory`; that is the real path.
 
-Follow `relationship-compiler`. Do **not** write scripts. Do
-**not** call `execute_command`. Do not `ls` `/skills`.
+Each `execute_command` is a new container. In that container the workspace is the `file_explorer` folder beside `skills` on the path Studio shows for `compile_graph.py`. Copy that directory. Pass it as `--workspace`. Do not pass the relative name `file_explorer`, and do not `cd`.
+
+```text
+python3 <skill>/scripts/compile_graph.py compile --workspace <file_explorer>
+```
+
+The script does not call MCP. The last stdout line is the result.
+If `wrote` is null, nothing moved: reply the no-op line and stop.
+Do not open `state/relationships.json` to fill the reply. Do not
+add an edge the script did not copy.
+
+Follow `relationship-compiler`. Do **not** write scripts.
+`execute_command` runs only `compile_graph.py`. Do not `ls`
+`/skills`.
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules/...`. Do not use `/file_explorer`,

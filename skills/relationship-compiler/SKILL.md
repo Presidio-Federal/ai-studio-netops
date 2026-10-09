@@ -1,7 +1,7 @@
 ---
 name: relationship-compiler
-version: "1.2.0"
-description: "v1.2.0 — Relationship compiler: copies edges from workspace columns (topology, BGP, NetFlow, application board, CMDB applications, tickets, runs, asserted relations) into state/relationships.json with first/last seen and drift."
+version: "1.3.0"
+description: "v1.3.0 — Relationship compiler: compile_graph.py copies nurse and CMDB columns into state/relationships.json; it infers nothing."
 ---
 
 # Relationship compiler skill
@@ -42,9 +42,11 @@ Read only the fifteen paths in `references/compile.md`. Do not list
 `health/`, `state/`, `inventory/`, or `operational/`. Do not open a
 stamp. Do not read `inventory/infra-sot.json`,
 `compliance/intel.json`, or `inventory/services.json`. Do not call
-an MCP tool. Do not `execute_command`. Do not write scripts. Do not
-write under `automations/schedules/`. Write only
-`state/relationships.json`. Do not add an edge from prose (`issue`,
+an MCP tool. Call `execute_command` only to run
+`scripts/compile_graph.py`. `execution_type` is `standard`. Do not
+write scripts. Do not write under `automations/schedules/`. The
+script writes only `state/relationships.json`. Do not add an edge
+from prose (`issue`,
 `note`, `headline`), from a ticket key whose typed column is null,
 from a NetFlow row whose device column is null, from a container
 whose `device` is null, from a container `name` or `service` text,
@@ -69,9 +71,9 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**First tools:** `read_file` `state/relationships.json` if it
-exists, then the fourteen sources in `references/compile.md` order,
-skipping any that does not exist. Nothing else.
+**First tool:** `compile` under `execution_type: standard`. The
+script reads the fixed list in `references/compile.md` and writes
+the file. Reply from its last stdout line.
 
 ## Canonical top-level keys
 
@@ -79,10 +81,8 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machine
 
-READ_PRIOR → READ_SOURCES (≤ 14, fixed order) → NOOP_CHECK
-(watermarks unchanged → reply, stop) → COPY_EDGES (table) →
-UPSERT (identity, seen, status, cap) → DRIFT → WRITE → READ_BACK
-→ STOP
+COMPILE_SCRIPT → STOP. Watermarks unchanged: the script writes
+nothing and the last line has `wrote` null.
 
 No source returned content: `status` `unknown`, `edges` carried
 forward from the prior file (or `[]`), still write.

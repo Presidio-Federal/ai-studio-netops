@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "5.0.0"
-description: "v5.0.0 — Health Analyzer: reads the five nurse boards (application, netflow, splunk, iosxe, servicenow), keeps the problem list with impact walked from state/relationships.json, writes orders[] and relations[] to state/health.json."
+version: "5.1.0"
+description: "v5.1.0 — Health Analyzer: assess_health.py writes the chart from the five boards; the agent annotates the verdict and relations."
 ---
 
 # Health Analyzer skill
@@ -42,14 +42,14 @@ yourself: reply `That's not what I do.` and stop.
 ## Hard boundaries
 
 Do not collect telemetry. Do not write anything except
-`state/health.json`. Do not invent files. Do not invent
-measurements. Do **not** call `execute_command`. Do not write
-scripts. Do not write under `automations/schedules/`. Do not `ls`
-`health/`, `state/`, or `operational/`. Do not walk
-`vs_prior.prior_watch_id` chains. Do not copy board rows, stamp
-rows, or ticket threads onto the chart — cite the path. Twelve
-file reads at most. Do not open `inventory/applications.json` or
-`inventory/services.json`; the compiled edges carry them.
+`state/health.json`, and the script writes that file. Do not
+invent files. Do not invent measurements. Call `execute_command`
+only to run `scripts/assess_health.py`. `execution_type` is
+`standard`. Do not write scripts. Do not write under
+`automations/schedules/`. Do not `ls` `health/`, `state/`, or
+`operational/`. Do not walk `vs_prior.prior_watch_id` chains. Do
+not copy board rows onto the chart. Do not open
+`inventory/applications.json` or `inventory/services.json`.
 
 ## Files
 
@@ -70,13 +70,10 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**First tools:** `read_file` these if they exist —
-`health/metadata-application.json`, `health/metadata-netflow.json`,
-`health/metadata-splunk.json`, `health/metadata-iosxe.json`,
-`health/metadata-servicenow.json`, then prior `state/health.json`. Then, per plane, the stamp named by
-the board's `last_visit_id` **only if** it differs from the prior
-chart's `consults.<plane>.watch_id`. Then
-`state/relationships.json` if it exists. Nothing else.
+**First tool:** `assess` under `execution_type: standard`, then
+`annotate` for the verdict. See `references/analyze.md`. The script
+reads the five boards, the prior chart, stamps whose
+`last_visit_id` moved, and `state/relationships.json`.
 
 ## Canonical top-level keys
 
@@ -84,14 +81,10 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machine
 
-READ_BOARDS (5) → READ_PRIOR_CHART → READ_NEW_STAMPS (≤ 5, only
-when `last_visit_id` moved) → READ_RELATIONSHIPS (if present) →
-FRESHNESS (plane + iosxe per device) → DISPATCH_STALE (via
-workspace-handoff, no wait in `assess-now`) → CONSULTS → PROBLEMS
-(carry forward, open, watch, resolve, outcome) → IMPACT (walk
-edges) → CHANGE_FOLLOWUP (annotations + changed edges) → ORDERS →
-RELATIONS → SYNTHESIZE (assessment, trend, SOAP) → WRITE_CHART →
-READ_BACK → DISPATCH_COMPILE (if ordered, no wait) → STOP
+ASSESS_SCRIPT → ANNOTATE → DISPATCH attached orders → STOP. The
+script does the reads, freshness, consult ids, problem carry,
+impact walk, and fixed nurse orders. Annotate sets the opinion,
+impressions, hypotheses, relations, and any Network Ops order.
 
 Missing all boards: status `unknown`, series refs null, problems
 carried forward unchanged with `outcome.state` `inconclusive`,

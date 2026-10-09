@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.12 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.12"
+description: "v1.70.14 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.14"
 ---
 
 # Workspace handoff
@@ -305,6 +305,10 @@ MCP from code. Health Device runs it through `health-device`
 `scripts/visit_iosxe.py`. Health ServiceNow runs it through
 `health-servicenow` `scripts/visit_servicenow.py`. Ops ServiceNow
 Trends runs `ops-servicenow-trends` `scripts/visit_trends.py`.
+Health Analyzer runs `health-analyzer` `scripts/assess_health.py`
+under `execution_type: standard`. It does not call MCP. The
+relationship compile runs `relationship-compiler`
+`scripts/compile_graph.py` the same way.
 
 `collect` runs under `execution_type: "mcp_orchestration"`. It calls
 the plane's MCP tool with `hai_mcp.call_mcp`, diffs the board, writes
