@@ -1,7 +1,7 @@
 ---
 name: modernization-lifecycle
-version: "1.6.2"
-description: "v1.6.2 — Lifecycle collect paces Cisco calls so every stamped PID gets EoX, one software release, PSIRT, NVD, and CCW lead time."
+version: "1.6.3"
+description: "v1.6.3 — Lifecycle collect calls Cisco only when a support date or replacement SKU is missing, or the SKU has no list price."
 ---
 
 # Modernization Lifecycle skill

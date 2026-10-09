@@ -30,8 +30,24 @@ Modernization. You may copy `software_version` from
 The example JSON is **shape only**. Never copy its hostnames or
 PIDs. Use the `pid` already on each estate row.
 
-Lifecycle dates change slowly. `expires_at` = `updated_at` + **90
-days**. Do not refresh a current row.
+Lifecycle dates do not get refreshed once a support date and a
+replacement SKU are stored. A product with no date is asked again
+so a later Cisco announcement is picked up. A replacement SKU with
+no list price is asked again. `expires_at` is still stamped at
+`updated_at` + 90 days, but it does not by itself cause a call.
+
+## What needs work
+
+A stamped `product_id` needs collect when any of:
+
+- no `end_of_support` and no `end_of_software_support`
+- `recommended_replacement` is null
+- `recommended_replacement` is set and `list_cost_per_unit` is null
+- estate `selected_replacement` is set and `list_cost_per_unit` is null
+
+Do not call Cisco because PSIRT is empty, a software train is
+empty, the detail file is missing, or `expires_at` has passed, when
+a date and a replacement SKU and a list price are already stored.
 
 ## Always first
 
@@ -42,22 +58,6 @@ days**. Do not refresh a current row.
    (same `file_explorer/` prefix if that is what worked). Missing
    detail is empty, not an error.
 3. Do not `ls` `lifecycle/`.
-
-## What needs work
-
-A row needs collect when any of:
-
-- detail file missing
-- `now >= expires_at`
-- `end_of_support` is null **and** `research.eox` is not
-  `unavailable`
-- `software_versions` present and (`recommended_software` is null
-  or `research.software` is `missing`)
-- `research.psirt` is `missing`
-- Cisco already returned `recommended_replacement` that differs
-  from `pid` and `list_cost_per_unit` is null
-- `selected_replacement` is set on the **estate row** and
-  `list_cost_per_unit` is null (price the operator SKU)
 
 Empty hardware EoX after pid and serial tries is not a failed
 visit when the row is a CML / virtual `node_definition`. Mark

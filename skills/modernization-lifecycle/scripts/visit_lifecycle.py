@@ -169,24 +169,20 @@ def is_virtual(row):
 
 
 def row_needs(row, now, detail_missing):
-    research = row.get("research") if isinstance(row.get("research"), dict) else {}
-    if detail_missing:
+    """Cisco only when a date or a replacement SKU is still missing.
+
+    A published end-of-support or end-of-software-support date does not
+    change. A product with no date is asked again so a later announcement
+    is picked up. A replacement SKU with no list price is asked again.
+    """
+    del now, detail_missing
+    has_date = bool(row.get("end_of_support") or row.get("end_of_software_support"))
+    has_sku = bool(row.get("recommended_replacement"))
+    if not has_date or not has_sku:
         return True
-    exp = parse_time(row.get("expires_at"))
-    if exp is None or now >= exp:
+    if not row.get("list_cost_per_unit"):
         return True
-    if row.get("end_of_support") is None and research.get("eox") != "unavailable":
-        return True
-    versions = [v for v in (row.get("software_versions") or []) if isinstance(v, str) and v.strip()]
-    if versions and not row.get("recommended_software") and research.get("software") in {None, "missing", "partial"}:
-        return True
-    if research.get("psirt") in {None, "missing"}:
-        return True
-    rec = row.get("recommended_replacement")
-    ccw = research.get("ccw")
-    if rec and rec != row.get("pid") and not row.get("list_cost_per_unit") and ccw not in {"unavailable", "skipped"}:
-        return True
-    if row.get("selected_replacement") and not row.get("list_cost_per_unit") and ccw != "unavailable":
+    if row.get("selected_replacement") and not row.get("list_cost_per_unit"):
         return True
     return False
 
@@ -1070,27 +1066,20 @@ def cmd_collect(args):
                 research["software"] = "missing"
             version_copied = True
     due = []
+    current = []
     for row in items:
         if row.get("pid") not in stamped:
             continue
         ref = row.get("detail_ref")
         missing = not (isinstance(ref, str) and (ws / ref).is_file())
-        if prior_schema_failure(ws, row):
-            research = row.setdefault("research", {})
-            if not row.get("end_of_support"):
-                research["eox"] = "missing"
-            if row.get("software_versions") and not row.get("recommended_software"):
-                research["software"] = "missing"
-            row["expires_at"] = None
-            due.append(row)
-            continue
-        research = row.setdefault("research", {})
-        if research.get("psirt") == "complete" and not row.get("psirts"):
-            research["psirt"] = "missing"
         if row_needs(row, moment, missing):
             due.append(row)
-    if not due and not version_copied:
-        line = "No product_id is set on inventory/assets/devices.json." if not stamped else "Table is current."
+        else:
+            current.append(row.get("pid"))
+    if not due:
+        line = "No product_id is set on inventory/assets/devices.json." if not stamped else "Already have a date and a replacement SKU."
+        if current:
+            line = "Current: " + ", ".join(current)
         print(visit_common.summary({
             "result": "collected",
             "wrote": None,
