@@ -357,7 +357,24 @@
         "currency": { "type": ["string", "null"] },
         "lead_time": {
           "type": ["string", "null"],
-          "description": "CCW lead time for the priced replacement SKU."
+          "description": "CCW lead time for the priced replacement SKU. Null when several offers are listed."
+        },
+        "offers": {
+          "type": "array",
+          "maxItems": 8,
+          "description": "CCW list price and lead time for each replacement candidate.",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sku"],
+            "properties": {
+              "sku": { "type": "string", "minLength": 1 },
+              "list_cost_per_unit": { "type": ["string", "null"] },
+              "currency": { "type": ["string", "null"] },
+              "lead_time": { "type": ["string", "null"] },
+              "availability": { "type": ["string", "null"] }
+            }
+          }
         },
         "end_of_sale": { "type": ["string", "null"] },
         "end_of_support": { "type": ["string", "null"] },

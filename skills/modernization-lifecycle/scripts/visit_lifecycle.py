@@ -169,19 +169,29 @@ def is_virtual(row):
 
 
 def row_needs(row, now, detail_missing):
-    """Cisco only when a date or a replacement SKU is still missing.
+    """Cisco only when a date, a replacement choice, or its price is missing.
 
-    A published end-of-support or end-of-software-support date does not
-    change. A product with no date is asked again so a later announcement
-    is picked up. A replacement SKU with no list price is asked again.
+    Several replacement candidates count as the choice. Each one still
+    needs a list price. A product with no date is asked again so a later
+    announcement is picked up.
     """
     del now, detail_missing
     has_date = bool(row.get("end_of_support") or row.get("end_of_software_support"))
-    has_sku = bool(row.get("recommended_replacement"))
-    if not has_date or not has_sku:
+    candidates = [sku for sku in (row.get("replacement_candidates") or []) if isinstance(sku, str) and sku.strip()]
+    has_choice = bool(row.get("recommended_replacement")) or bool(candidates)
+    if not has_date or not has_choice:
         return True
-    if not row.get("list_cost_per_unit"):
-        return True
+    if row.get("recommended_replacement"):
+        if not row.get("list_cost_per_unit"):
+            return True
+    elif candidates:
+        priced = {
+            offer.get("sku")
+            for offer in (row.get("offers") or [])
+            if isinstance(offer, dict) and offer.get("list_cost_per_unit")
+        }
+        if any(sku not in priced for sku in candidates):
+            return True
     if row.get("selected_replacement") and not row.get("list_cost_per_unit"):
         return True
     return False
@@ -293,6 +303,59 @@ def parse_train(payload):
                 if text and not text.lower().startswith("http"):
                     return text
     return None
+
+
+def os_type_for(pid):
+    """PSIRT Software Checker platform. Not the hardware PID."""
+    text = (pid or "").lower()
+    if "asa" in text:
+        return "asa"
+    if "nxos" in text or text.startswith("n9k"):
+        return "nxos"
+    return "iosxe"
+
+
+def checker_version(version, os_type):
+    """ASA software checker accepts 9.23.1, not 9.23(1)."""
+    if os_type != "asa" or not isinstance(version, str):
+        return version
+    match = re.match(r"(\d+)\.(\d+)\((\d+)\)", version.strip())
+    if match:
+        return f"{match.group(1)}.{match.group(2)}.{match.group(3)}"
+    return version
+
+
+def recommended_fix(payload, running):
+    """Highest firstFixed on the same major.minor train Cisco returned."""
+    fixes = []
+    if not isinstance(payload, (dict, list)):
+        return None
+    for obj in walk(payload):
+        found = obj.get("firstFixed") or obj.get("first_fixed") or []
+        if isinstance(found, str):
+            found = [found]
+        if isinstance(found, list):
+            fixes.extend(item.strip() for item in found if isinstance(item, str) and item.strip())
+    if not fixes:
+        return None
+    prefix = ""
+    if isinstance(running, str) and running.strip():
+        parts = re.findall(r"\d+", running)
+        if len(parts) >= 2:
+            prefix = f"{parts[0]}.{parts[1]}."
+    pool = [item for item in fixes if prefix and item.startswith(prefix)] or fixes
+
+    def sort_key(value):
+        return tuple(int(part) for part in re.findall(r"\d+", value))
+
+    return sorted(pool, key=sort_key)[-1]
+    """PSIRT Software Checker platform. Not the hardware PID."""
+    text = (pid or "").lower()
+    if "asa" in text:
+        return "asa"
+    if "nxos" in text or text.startswith("n9k"):
+        return "nxos"
+    return "iosxe"
 
 
 def tool_body_error(payload):
@@ -441,6 +504,22 @@ def apply_dates(target, dates, fields):
     for field in fields:
         if dates.get(field) and not target.get(field):
             target[field] = dates[field]
+
+
+def skus_to_price(row):
+    """One recommended SKU, or every candidate when Cisco named more than one."""
+    pid = row.get("pid")
+    selected = row.get("selected_replacement")
+    if isinstance(selected, str) and selected.strip() and selected.strip() != pid:
+        return [selected.strip()]
+    one = row.get("recommended_replacement")
+    if isinstance(one, str) and one.strip() and one.strip() != pid:
+        return [one.strip()]
+    found = []
+    for sku in row.get("replacement_candidates") or []:
+        if isinstance(sku, str) and sku.strip() and sku.strip() != pid and sku.strip() not in found:
+            found.append(sku.strip())
+    return found
 
 
 def price_target(row):
@@ -711,9 +790,11 @@ def collect_pid(row, limits, budget, gaps, lines):
             found = parse_train(payload)
             if found and train is None:
                 train = found
+            os_type = os_type_for(pid)
+            checker_ver = checker_version(version, os_type)
             checker, checker_err = call_tool(
                 "cisco_psirt_software",
-                {"version": version, "product": pid},
+                {"os_type": os_type, "version": checker_ver},
                 "cisco",
                 limits,
                 budget,
@@ -721,7 +802,7 @@ def collect_pid(row, limits, budget, gaps, lines):
             if checker_err and ("422" in checker_err or "schema" in checker_err.lower()):
                 checker, checker_err = call_tool(
                     "cisco_psirt_software",
-                    {"version": version},
+                    {"platform": os_type, "version": version},
                     "cisco",
                     limits,
                     budget,
@@ -736,6 +817,9 @@ def collect_pid(row, limits, budget, gaps, lines):
                     for advisory in parse_advisories(checker):
                         if advisory["id"] not in {item["id"] for item in sw_advisories}:
                             sw_advisories.append(advisory)
+                    fixed = recommended_fix(checker, checker_ver)
+                    if fixed and train is None:
+                        train = fixed
                     found = parse_train(checker)
                     if found and train is None:
                         train = found
@@ -761,36 +845,35 @@ def collect_pid(row, limits, budget, gaps, lines):
             research["software"] = "unavailable"
             item_gaps.append("software: Cisco returned no train")
 
-    version = versions[0] if versions else None
-    psirt_args = {"product": pid}
-    if version:
-        psirt_args["version"] = version
-    payload, err = call_tool("cisco_psirt_by_product", psirt_args, "cisco", limits, budget)
-    if err and ("422" in err or "schema" in err.lower()):
-        payload, err = call_tool("cisco_psirt_by_product", {"product": pid}, "cisco", limits, budget)
     advisories = list(sw_advisories)
-    if err:
-        research["psirt"] = "missing" if ("422" in err or "schema" in err.lower()) else "unavailable"
-        item_gaps.append(f"PSIRT: {err}")
+    if versions:
+        if not advisories and sw_error:
+            item_gaps.append(f"PSIRT: {sw_error}")
     else:
-        body_err = tool_body_error(payload)
-        if body_err:
-            item_gaps.append(f"PSIRT: {body_err}")
+        payload, err = call_tool("cisco_psirt_by_product", {"product": pid}, "cisco", limits, budget)
+        if err:
+            item_gaps.append(f"PSIRT: {err}")
         else:
-            for advisory in parse_advisories(payload):
-                if advisory["id"] not in {item["id"] for item in advisories}:
-                    advisories.append(advisory)
-    row["psirts"] = advisories[:MAX_ADV]
+            body_err = tool_body_error(payload)
+            if body_err:
+                item_gaps.append(f"PSIRT: {body_err}")
+            else:
+                advisories.extend(parse_advisories(payload))
+    row["psirts"] = sorted(
+        advisories,
+        key=lambda item: float(item["cvss"]) if str(item.get("cvss") or "").replace(".", "", 1).isdigit() else 0,
+        reverse=True,
+    )[:MAX_ADV]
     if advisories:
         research["psirt"] = "complete"
-    elif any(gap.startswith("PSIRT:") and "422" in gap for gap in item_gaps):
+    elif any("422" in gap or "schema" in gap.lower() for gap in item_gaps if gap.startswith("PSIRT:")):
         research["psirt"] = "missing"
     else:
         research["psirt"] = "unavailable"
         if not any(gap.startswith("PSIRT:") for gap in item_gaps):
-            item_gaps.append(f"PSIRT: no advisories parsed ({glimpse(payload)})")
+            item_gaps.append("PSIRT: no version on the row, and the product lookup returned nothing")
 
-    cves = cve_ids(advisories, payload)
+    cves = cve_ids(advisories, None)
     vulns = []
     if not cves:
         research["nvd"] = "skipped"
@@ -819,28 +902,26 @@ def collect_pid(row, limits, budget, gaps, lines):
         else:
             research["nvd"] = "unavailable"
 
-    sku = price_target(row)
-    if not sku or sku == pid:
-        research["ccw"] = "skipped"
-        sku = None
-    else:
+    targets = skus_to_price(row)
+    if targets:
         research["ccw"] = "missing"
+    else:
+        research["ccw"] = "skipped"
 
-    family_ask = bool(row.get("replacement_family")) and not row.get("recommended_replacement") and not row.get("replacement_ask")
+    family_ask = bool(row.get("replacement_family")) and not row.get("recommended_replacement") and not row.get("replacement_ask") and not row.get("replacement_candidates")
     for gap in item_gaps:
         gaps.append(f"{pid}: {gap}")
-    if dates.get("end_of_support") or row.get("recommended_replacement") or row.get("recommended_software"):
-        bits = [pid]
-        if dates.get("end_of_support"):
-            bits.append(f"support {dates['end_of_support']}")
-        if row.get("recommended_software"):
-            bits.append(f"software {row['recommended_software']}")
-        if row.get("recommended_replacement"):
-            bits.append(f"replacement {row['recommended_replacement']}")
-        elif row.get("replacement_family"):
-            bits.append(f"family {row['replacement_family']}")
-        lines.append(", ".join(bits))
-    return family_ask, sku, bulletin, item_gaps
+    bits = [pid]
+    if dates.get("end_of_support") or row.get("end_of_support"):
+        bits.append(f"support {row.get('end_of_support') or dates.get('end_of_support')}")
+    if row.get("recommended_software"):
+        bits.append(f"software {row['recommended_software']}")
+    if row.get("recommended_replacement"):
+        bits.append(f"replacement {row['recommended_replacement']}")
+    elif row.get("replacement_candidates"):
+        bits.append("options " + ", ".join(row["replacement_candidates"][:8]))
+    lines.append(", ".join(bits))
+    return family_ask, targets, bulletin, item_gaps
 
 
 def merge_clock(row, moment):
@@ -864,11 +945,48 @@ def item_from_row(row, moment, bulletin, item_gaps):
     doc["replacement"]["sku"] = row.get("recommended_replacement")
     doc["replacement"]["family"] = row.get("replacement_family")
     doc["replacement"]["candidates"] = list(row.get("replacement_candidates") or [])[:8]
+    doc["replacement"]["offers"] = list(row.get("offers") or [])
     doc["replacement"]["ask"] = row.get("replacement_ask")
     doc["gaps"] = item_gaps[:12]
     doc["psirts"] = list(row.get("psirts") or [])[:15]
     doc["vulnerabilities"] = list(row.get("vulnerabilities") or [])[:15]
     return doc
+
+
+def add_offer(row, doc, sku, quote):
+    offer = {
+        "sku": sku,
+        "list_cost_per_unit": None if not quote else quote.get("amount"),
+        "currency": None if not quote else quote.get("currency"),
+        "lead_time": None if not quote else quote.get("lead_time"),
+        "availability": None if not quote else quote.get("availability"),
+    }
+    offers = [item for item in (row.get("offers") or []) if not (isinstance(item, dict) and item.get("sku") == sku)]
+    offers.append(offer)
+    row["offers"] = offers
+    doc["replacement"]["offers"] = offers
+    priced = [item for item in offers if item.get("list_cost_per_unit")]
+    if len(offers) == 1 and priced:
+        row["list_cost_per_unit"] = priced[0]["list_cost_per_unit"]
+        row["currency"] = priced[0].get("currency")
+        row["total_list_cost"] = money_total(priced[0]["list_cost_per_unit"], row.get("quantity") or 0)
+        row["lead_time"] = priced[0].get("lead_time")
+        doc["replacement"]["priced"] = True
+        doc["replacement"]["list_cost_per_unit"] = row["list_cost_per_unit"]
+        doc["replacement"]["total_list_cost"] = row["total_list_cost"]
+        doc["replacement"]["currency"] = row.get("currency")
+        doc["replacement"]["lead_time"] = row.get("lead_time")
+        doc["replacement"]["availability"] = priced[0].get("availability")
+    else:
+        row["list_cost_per_unit"] = None
+        row["total_list_cost"] = None
+        row["lead_time"] = None
+        doc["replacement"]["priced"] = bool(priced)
+        doc["replacement"]["list_cost_per_unit"] = None
+        doc["replacement"]["total_list_cost"] = None
+        doc["replacement"]["lead_time"] = None
+    if priced and len(priced) == len(skus_to_price(row)):
+        row.setdefault("research", {})["ccw"] = "complete"
 
 
 def apply_price(row, doc, quote):
@@ -1103,7 +1221,7 @@ def cmd_collect(args):
         if budget.exhausted():
             gaps.append("budget exhausted")
             break
-        family_ask, sku, bulletin, item_gaps = collect_pid(row, limits, budget, gaps, lines)
+        family_ask, targets, bulletin, item_gaps = collect_pid(row, limits, budget, gaps, lines)
         merge_clock(row, moment)
         if any("422" in gap or "did not match expected schema" in gap for gap in item_gaps):
             row["expires_at"] = None
@@ -1112,8 +1230,9 @@ def cmd_collect(args):
         doc = item_from_row(row, moment, bulletin, item_gaps)
         ref = f"inventory/assets/{safe_pid(row['pid'])}.json"
         row["detail_ref"] = ref
-        if sku:
-            want_price.setdefault(sku, []).append((row, doc))
+        if targets:
+            for sku in targets:
+                want_price.setdefault(sku, []).append((row, doc))
         else:
             write_json(ws / ref, doc, ITEM_SCHEMA)
     quotes = {}
@@ -1142,7 +1261,7 @@ def cmd_collect(args):
         quote = quotes.get(sku)
         for row, doc in pairs:
             if quote:
-                apply_price(row, doc, quote)
+                add_offer(row, doc, sku, quote)
                 lines.append(
                     f"{row['pid']} list {quote['amount']} {quote.get('currency') or 'USD'} for {sku}"
                     + (f", lead {quote['lead_time']}" if quote.get("lead_time") else "")
