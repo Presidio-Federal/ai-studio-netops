@@ -168,6 +168,7 @@ def ensure_item_fields(row):
         "list_cost_per_unit",
         "total_list_cost",
         "currency",
+        "lead_time",
         "end_of_sale",
         "end_of_support",
         "end_of_software_support",
@@ -175,7 +176,7 @@ def ensure_item_fields(row):
         "expires_at",
     ):
         row.setdefault(key, None)
-    for key in ("vulnerabilities", "psirts", "replacement_candidates", "software_versions", "roles", "platforms"):
+    for key in ("vulnerabilities", "psirts", "replacement_candidates", "software_versions", "roles", "platforms", "offers"):
         if not isinstance(row.get(key), list):
             row[key] = []
     if not isinstance(row.get("research"), dict):

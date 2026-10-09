@@ -1,7 +1,7 @@
 ---
 name: modernization-analysis
-version: "2.3.0"
-description: "v2.3.0 — assess_estate.py seeds inventory/assets/devices.json and groups by the product_id you set. Research files live in inventory/assets/."
+version: "2.4.0"
+description: "v2.4.0 — Estate rows keep Lifecycle lead_time and offers. assess_estate.py still seeds inventory/assets/devices.json."
 ---
 
 # Modernization Analysis skill
