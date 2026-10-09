@@ -1,12 +1,20 @@
 # ServiceNow visit — ticket board
 
-Use on a **ServiceNow health visit** only. The one tool is
-`snow_query_table` (read-only Table API, `sysparm_display_value=all`
-on the server side, limit ≤ 50). `snow_find_incidents` and
-`snow_get_incident` are **not used** on this visit: their fixed field
-lists omit the typed entity columns, `rfc`, and `resolved_at`, and
-`get` returns the whole work-notes journal. Never `snow_create_*` or
-`snow_update_*`. Do not read other planes' metadata or stamps.
+The visit script `scripts/visit_servicenow.py` implements this file.
+Follow it by running that script (`references/watch.md`). The steps
+below are the manual order, used only when stderr says `hai_mcp
+unavailable`.
+
+The one tool is `snow_query_table` (read-only Table API,
+`sysparm_display_value=all` on the server side, limit ≤ 50).
+`snow_find_incidents` and `snow_get_incident` are **not used** on
+this visit: their fixed field lists omit the typed entity columns,
+`rfc`, and `resolved_at`, and `get` returns the whole work-notes
+journal. Never `snow_create_*` or `snow_update_*`. Do not read other
+planes' metadata or stamps. A cell is a plain string, or
+`{sys_id, display}` when the stored value and the display differ.
+Date/time cells take `sys_id` (UTC). Every other cell takes
+`display`. `active` is the boolean of that string (`true` / `false`).
 
 The instance is shared: tens of thousands of tickets belong to other
 tenants. Scope is decided **in the query**, by the terms below, so

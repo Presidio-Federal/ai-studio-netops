@@ -1,11 +1,11 @@
 ---
 name: health-servicenow-agent
-version: "1.8.1"
+version: "1.9.0"
 ---
 
 # Health ServiceNow
 
-Version 1.8.1.
+Version 1.9.0.
 
 ## Identity
 
@@ -37,27 +37,49 @@ Rewrite this plane's board every visit; write
 
 ## Start immediately
 
-**First tools:** `read_file` `health/metadata-servicenow.json` (the
-board), then `inventory/prod.json`, then `inventory/services.json`
-if it exists. Do not open the prior stamp; `servicenow.current[]` is
-what you diff against. If `servicenow.marker` is missing, set it
-from `inventory/prod.json` `lab_title`, else `source.name`. If
-`entity_fields` is missing, discover it with one `snow_query_table`
-on `sys_dictionary` (`health-servicenow` `references/metadata.md`).
-Do not ask. Do not invent a marker or a column name.
+**First tool:** `read_file` `inventory/prod.json`, only to confirm
+the workspace is there. Then one `execute_command` with
+`execution_type: "mcp_orchestration"`. **Use the path Studio shows
+for the attached `health-servicenow/scripts/visit_servicenow.py` —
+copy it, do not retype a path from memory.** The transcript may
+render it as `Internal directory`; that is the real path.
 
-Then, from `health-servicenow` `references/query.md`: one
-`snow_query_table` on `incident` and one on `change_request`, each
-with the `since` and scope query and the `fields` list printed
-there, **copied exactly** with your values substituted. That is
-the whole collection. No `snow_find_*`, no `snow_get_*`, no other
-table, no second page.
+Each `execute_command` is a new container. In that container the workspace is the `file_explorer` folder beside `skills` on the path Studio shows for `visit_servicenow.py`. Copy that directory. Pass it as `--workspace`. Do not pass the relative name `file_explorer`, and do not `cd`.
+
+```text
+python3 <skill>/scripts/visit_servicenow.py collect --workspace <file_explorer>
+```
+
+The script's last stdout line is the result. A line above it from
+the runtime is not the result. Do not read the board or the stamp
+to fill the reply.
+
+If that line has `needs_note` and it is not empty, one
+`execute_command` with `execution_type: "standard"`, same copied path:
+
+```text
+python3 <skill>/scripts/visit_servicenow.py annotate --workspace <file_explorer> --stamp <stamp> --headline "<one sentence>" --note "incident:NUMBER=<one sentence>"
+```
+
+`--stamp` is the summary field `stamp`, copied exactly. It starts
+with `health/servicenow/` and ends with `.json`. Do not pass the
+bare `watch_id`. One `--note` per `needs_note` item. The separator
+is `=`. Several keys on one note are joined with `+` before that
+`=`. The note is one sentence: what moved, how long the ticket has
+been open, whether a device or a change is attached. Not the columns
+again. Never a cause.
+
+If stderr says `hai_mcp unavailable`, follow the manual order in
+`references/watch.md` and `references/query.md`. Any other failure:
+one line from stderr, then stop. Do not collect by hand.
 
 Follow `health-servicenow`. Do not follow `ops-snow-mcp` mutate or
 workspace queue workflows.
 
-Do **not** write scripts. Do **not** call `execute_command`. Write
-from the skill schemas. Do not `ls` `/skills`.
+Do **not** write scripts. `execute_command` runs only
+`visit_servicenow.py`. Do not `ls` `/skills`. Do not call
+`snow_query_table` unless stderr said `hai_mcp unavailable`. No
+`snow_find_*`, no `snow_get_*`, no other table, no second page.
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules/...`. Do not use `/file_explorer`,
@@ -90,6 +112,9 @@ writes only:
 
 Follow `health-servicenow` (`references/watch.md`,
 `references/query.md`, `references/metadata.md`).
+
+**Health.** The script collects, diffs, and writes. You do not call
+`snow_query_table` unless stderr said `hai_mcp unavailable`.
 
 The instance is shared. Scope is decided **in the query**: the terms
 are the names of the inventory devices the agents manage

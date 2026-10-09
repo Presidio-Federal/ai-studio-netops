@@ -7,6 +7,10 @@ envelope. Workspace first. Do not put live marker text, column names,
 or ticket numbers in the prompt or this skill. Do not read Splunk,
 ThousandEyes, or IOS-XE metadata.
 
+The visit script discovers `marker` and `entity_fields` and writes
+them on the board. The steps below are the manual order, used only
+when stderr says `hai_mcp unavailable`.
+
 ## Read before ServiceNow MCP
 
 1. `read_file` `health/metadata-servicenow.json` if it exists. The

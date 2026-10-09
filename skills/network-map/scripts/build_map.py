@@ -96,14 +96,33 @@ def _ratio(part, whole):
 
 def posture_pct(point):
     """Tested posture: verified / (verified + failing), else the checks_*_all shape."""
+    row = posture_point(point)
+    return None if row is None else row["pct"]
+
+
+def posture_point(point):
+    """One trend point with the percent and the counts that produced it."""
     verified, failing = _num(point.get("verified_tests")), _num(point.get("failing_tests"))
     if verified is not None and failing is not None and verified + failing > 0:
-        return round(100.0 * verified / (verified + failing), 1)
+        return {
+            "at": point.get("at"),
+            "pct": round(100.0 * verified / (verified + failing), 1),
+            "pass": int(verified),
+            "fail": int(failing),
+            "method": "verified tests / (verified + failing)",
+        }
     passed = _num(point.get("checks_passed_all"))
     failed = _num(point.get("checks_failed_all"))
     errored = _num(point.get("checks_errored_all"))
     if None not in (passed, failed, errored) and passed + failed + errored > 0:
-        return round(100.0 * passed / (passed + failed + errored), 1)
+        return {
+            "at": point.get("at"),
+            "pct": round(100.0 * passed / (passed + failed + errored), 1),
+            "pass": int(passed),
+            "fail": int(failed),
+            "error": int(errored),
+            "method": "checks passed / (passed + failed + errored)",
+        }
     return None
 
 
@@ -134,7 +153,20 @@ def plane_series(rows, kind):
                 pct = 100.0 if clean else 0.0
         if pct is None:
             continue
-        out.append({"at": r["at"], "pct": pct})
+        row = {"at": r["at"], "pct": pct}
+        if kind == "application":
+            row.update({"up": int((_num(r.get("probes")) or 0) - (_num(r.get("probes_down")) or 0)),
+                        "n": int(_num(r.get("probes")) or 0),
+                        "method": "probes answering / probes"})
+        elif kind == "netflow":
+            row.update({"up": int((_num(r.get("exporters")) or 0) - (_num(r.get("exporters_silent")) or 0)),
+                        "n": int(_num(r.get("exporters")) or 0),
+                        "method": "exporters reporting / exporters"})
+        elif kind == "iosxe":
+            row.update({"bgp_idle": int(_num(r.get("bgp_not_established")) or 0),
+                        "down": int(_num(r.get("oper_not_ready")) or 0),
+                        "method": "100% if no idle BGP and no interfaces down, else 0%"})
+        out.append(row)
     return out
 
 
@@ -404,7 +436,7 @@ def build(ws, template_path):
             "newly_failing": trend_src.get("newly_failing"),
             "still_failing": trend_src.get("still_failing"),
             "narrative": trend_src.get("narrative"),
-            "points": [{"at": p.get("at"), "pct": posture_pct(p)} for p in series_points if p.get("at") and posture_pct(p) is not None],
+            "points": [posture_point(p) for p in series_points if posture_point(p)],
             "flips": flips,
         },
         "counts": {k: int(counts.get(k) or 0) for k in ("pass", "fail", "error", "skip")},

@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.2.3"
-description: "v1.2.3 — Network Map: compile workspace boards into one HTML map; standing compliance and health percents, collapsed side cards, and a toggleable trend from the compliance and nurse series."
+version: "1.2.4"
+description: "v1.2.4 — Network Map: compile workspace boards into one HTML map; standing compliance and health percents, collapsed side cards, and a toggleable trend from the compliance and nurse series."
 ---
 
 # Network Map skill

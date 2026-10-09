@@ -8,7 +8,8 @@ unwrap_iosxe is the Health Device probe from 2026-10-03.
 unwrap_splunk is the Health Monitor probe from 2026-10-05.
 unwrap_grafana uses that same outer envelope and pivots the Grafana
 13 frame body seen from /api/ds/query on 2026-10-05.
-unwrap_snow stays unimplemented until a pasted probe shows the shape.
+unwrap_snow parses snow_query_table: {ok, rows}. Cells are the
+query_table_tool shape, checked against the Table API on 2026-10-09.
 """
 import json
 import sys
@@ -218,7 +219,36 @@ def unwrap_grafana(envelope):
 
 
 def unwrap_snow(envelope):
-    raise NotImplementedError("see docs/mcp-index.md Calling tools from a skill script")
+    """Return (payload, error) for snow_query_table.
+
+    Outer envelope matches the 2026-10-05 probes: result[0] is a JSON
+    string, result[1] is ignored. The tool body is {ok, rows, error}.
+    rows are already serialized by query_table_tool: a cell is a string,
+    or {sys_id, display} when the stored value and the display differ.
+    Checked 2026-10-09 against the Table API with display_value=all:
+    dates differ (value is UTC), choice fields differ (display is the
+    label), and equal cells stay plain strings. An unknown field name
+    is omitted and the GET still returns 200.
+    """
+    if not isinstance(envelope, dict) or not envelope.get("success"):
+        err = None if not isinstance(envelope, dict) else envelope.get("error")
+        return None, err or "success false"
+    outer = envelope.get("result")
+    raw = outer[0] if isinstance(outer, list) and outer else outer
+    try:
+        inner = json.loads(raw, strict=False) if isinstance(raw, str) else raw
+    except json.JSONDecodeError:
+        return None, "result[0] not json"
+    if not isinstance(inner, dict):
+        return None, "inner envelope not an object"
+    if inner.get("ok") is False:
+        return None, str(inner.get("error") or "snow ok false")[:200]
+    rows = inner.get("rows")
+    if rows is None and isinstance(inner.get("result"), list):
+        rows = inner["result"]
+    if not isinstance(rows, list):
+        return None, "rows not a list"
+    return {"rows": rows, "returned": len(rows)}, None
 
 
 def load_json(ws, rel):
@@ -269,17 +299,24 @@ def summary(payload):
 
 
 def annotate(stamp_path, headline, notes, schema_path):
-    """Set headline and reading notes. No MCP. notes maps '+'-joined keys to text."""
+    """Set headline and row notes. No MCP. notes maps '+'-joined keys to text.
+
+    Readings (device, syslog, Grafana) and threads (ServiceNow) both
+    carry keys and a note. A stamp uses one of those lists.
+    """
     path = Path(stamp_path)
     with path.open(encoding="utf-8") as fh:
         stamp = json.load(fh)
     stamp["headline"] = headline
     unmatched = set(notes)
-    for reading in stamp.get("readings") or []:
-        key = "+".join(reading.get("keys") or [])
-        if key in notes and notes[key]:
-            reading["note"] = notes[key]
-            unmatched.discard(key)
+    for bucket in ("readings", "threads"):
+        for reading in stamp.get(bucket) or []:
+            if not isinstance(reading, dict):
+                continue
+            key = "+".join(reading.get("keys") or [])
+            if key in notes and notes[key]:
+                reading["note"] = notes[key]
+                unmatched.discard(key)
     if unmatched:
         print("annotate unmatched keys: " + ", ".join(sorted(unmatched)), file=sys.stderr)
     validate(stamp, schema_path)

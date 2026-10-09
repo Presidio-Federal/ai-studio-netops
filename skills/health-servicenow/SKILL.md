@@ -1,7 +1,7 @@
 ---
 name: health-servicenow
-version: "2.0.1"
-description: "v2.0.1 — Health ServiceNow nurse: one query per table via snow_query_table, in-scope ticket rows with typed entity columns on the board, stamp only on change; no relations[]."
+version: "2.1.0"
+description: "v2.1.0 — Health ServiceNow nurse: visit_servicenow.py collects scoped tickets; board every visit, stamp only on change; no relations[]."
 ---
 
 # Health ServiceNow skill
@@ -15,13 +15,15 @@ visit**: board only, no stamp.
 If they ask for a different health check, or to file/update a ticket:
 reply `That's not what I do.` and stop.
 
-`references/query.md` is the whole visit: read the board,
-`inventory/prod.json`, and `inventory/services.json` if present;
-build `since` and the scope terms; one `snow_query_table` on
-`incident` and one on `change_request` (plus one on `sys_dictionary`
-on the baseline to discover the typed columns); build one row per
-returned ticket; derive `keys` by the fixed rule; diff against
-`current[]`; stamp when something moved.
+Run `scripts/visit_servicenow.py collect` (see `references/watch.md`).
+The script reads the board, `inventory/prod.json`, and
+`inventory/services.json` if present; builds `since` and the scope
+terms; one `snow_query_table` on `incident` and one on
+`change_request` (plus one on `sys_dictionary` when `entity_fields`
+is missing); builds one row per returned ticket; derives `keys` by
+the fixed rule; diffs against `current[]`; stamps when something
+moved. The model sees the summary line, then `annotate` under
+`standard` only when that line has `needs_note`.
 
 **Shared instance.** Most tickets are not this lab's. Scope lives in
 the query, not in your judgment: the terms are the names of
@@ -42,26 +44,28 @@ failure.
 
 ## Hard boundaries
 
-Only `snow_query_table`, read-only, three calls at most. Never
-`snow_find_*`, `snow_get_*`, `snow_create_*`, `snow_update_*`,
-catalog, assets, or knowledge. Do not request `description`,
-`work_notes`, or `comments`. Do not query `sys_journal_field`,
-`cmdb_ci*`, or `sys_user`. Do not read other planes' metadata or
-stamps. Do not read `inventory/infra-sot.json`. Do not write
-`state/`, `runs/`, `servicenow/`, `state/servicenow.json`,
-`inventory/`, `trend-analysis.json`, `remediation-request.json`,
+Only `snow_query_table`, read-only, three calls at most, and only
+from `scripts/visit_servicenow.py`. Never `snow_find_*`,
+`snow_get_*`, `snow_create_*`, `snow_update_*`, catalog, assets, or
+knowledge. Do not request `description`, `work_notes`, or
+`comments`. Do not query `sys_journal_field`, `cmdb_ci*`, or
+`sys_user`. Do not read other planes' metadata or stamps. Do not
+read `inventory/infra-sot.json`. Do not write `state/`, `runs/`,
+`servicenow/`, `state/servicenow.json`, `inventory/`,
+`trend-analysis.json`, `remediation-request.json`,
 `state/network-sync.json`, other `health/<source>/` directories, or
 `health-board.md`. Do not invent files, ticket numbers, hostnames,
 or a marker. Unavailable collection: counts **null**, never `0`.
 Tickets never set `status`; it is `ok` or `unknown`. Do not write
-under `automations/schedules/`. Do **not** call `execute_command`.
-Do not write scripts. Do not stamp `expires_at`. Do not emit
-recommendations or a cause.
+under `automations/schedules/`. Call `execute_command` only to run
+`scripts/visit_servicenow.py`. Do not write scripts. Do not stamp
+`expires_at`. Do not emit recommendations or a cause.
 
 ## Files
 
-Paths and catalog: **`workspace-handoff`**. Write from the schemas.
-Do not run a validator. Persist with `write_file` on catalog paths.
+Paths and catalog: **`workspace-handoff`**. The script validates and
+writes the board and the stamp. On the manual fallback, persist with
+`write_file` on catalog paths. Do not run a validator yourself.
 
 | Path | Kind | Envelope |
 |------|------|----------|
@@ -80,10 +84,14 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**Visit — first tools:** `read_file` `health/metadata-servicenow.json`
-(the board), then `inventory/prod.json`, then
-`inventory/services.json` if it exists. Do not open the prior stamp.
-Never overwrite a timestamped file.
+**Visit — first tool:** `read_file` `inventory/prod.json` to confirm
+the workspace is there. Then one `execute_command`,
+`execution_type: "mcp_orchestration"`, the collect command in
+`references/watch.md`. If the summary `needs_note` is non-empty, one
+`annotate` command under `execution_type: "standard"`. Reply from the
+summary line. If stderr says `hai_mcp unavailable`, follow the manual
+order in `references/watch.md`. Do not open the prior stamp. Never
+overwrite a timestamped file.
 
 ## Canonical top-level keys
 
@@ -96,9 +104,10 @@ If `servicenow.marker` is missing: set it from `inventory/prod.json`
 missing: call D once and write it. Both marker strings missing:
 write `unavailable` and stop.
 
-READ_BOARD → READ_PROD → READ_SERVICES → RESOLVE_IF_NEEDED → [D] → I
-→ C → BUILD → DIFF → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE] →
-WRITE_BOARD → STOP
+READ_PROD → COLLECT_SCRIPT → [ANNOTATE] → STOP. Manual fallback, only
+when hai_mcp is unavailable: READ_BOARD → READ_PROD → READ_SERVICES →
+RESOLVE_IF_NEEDED → [D] → I → C → BUILD → DIFF → DECIDE →
+[WRITE_STAMP → READ_BACK → PRUNE] → WRITE_BOARD → STOP
 
 On I failing twice: still write the check (`unavailable`, null
 counts, `threads []`); do not advance `last_collected_at`. On C

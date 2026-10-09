@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.10 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.10"
+description: "v1.70.11 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.11"
 ---
 
 # Workspace handoff
@@ -301,18 +301,22 @@ into the row. A ticket filed without them is prose to every reader.
 ## Visit scripts
 
 `scripts/visit_common.py` is the helper for a nurse visit that calls
-MCP from code. Health Device health visits run it through
-`health-device` `scripts/visit_iosxe.py`.
+MCP from code. Health Device runs it through `health-device`
+`scripts/visit_iosxe.py`. Health ServiceNow runs it through
+`health-servicenow` `scripts/visit_servicenow.py`.
 
 `collect` runs under `execution_type: "mcp_orchestration"`. It calls
-`iosxe_restconf_get` with `hai_mcp.call_mcp`, diffs the board, writes
-`health/metadata-iosxe.json`, writes `health/iosxe/<stamp>.json` only
-when due, and prints one JSON summary as the last stdout line.
-`annotate` runs under `standard` and sets `headline` and reading
-notes. `unwrap_splunk` parses the 2026-10-05 `splunk_search` probe:
-`result[0]` is `{ok, results, result_count, truncated}`.
+the plane's MCP tool with `hai_mcp.call_mcp`, diffs the board, writes
+that plane's metadata, writes the stamp only when due, and prints one
+JSON summary as the last stdout line. `annotate` runs under
+`standard` and sets `headline` and the row notes (`readings` or
+`threads`). `unwrap_splunk` parses the 2026-10-05 `splunk_search`
+probe: `result[0]` is `{ok, results, result_count, truncated}`.
 `unwrap_grafana` pivots Grafana 13 frames (`schema.fields` plus
-`data.values`) into rows. `unwrap_snow` is not implemented.
+`data.values`) into rows. `unwrap_snow` parses `snow_query_table`:
+`result[0]` is `{ok, rows}`. A cell is a string, or `{sys_id, display}`
+when the stored value and the display differ. Health ServiceNow runs
+`health-servicenow` `scripts/visit_servicenow.py`.
 
 ## Catalog
 

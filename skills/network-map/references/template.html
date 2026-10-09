@@ -5,8 +5,9 @@
 header{padding:12px 22px 8px;display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}h1{margin:0;font-size:19px;font-weight:600}.sub{color:var(--mut);font-size:12px}
 .scorebar{display:flex;gap:16px;align-items:baseline}.scorebar .big{font-size:22px;font-weight:600;line-height:1}.scorebar .lbl{color:var(--mut);font-size:10px;letter-spacing:.05em;text-transform:uppercase}
 .toggles{margin-left:auto;display:flex;gap:6px;flex-wrap:wrap}.tg{border:1px solid #334155;background:#0f172a;color:#cbd5e1;border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none}.tg.on{background:#1d4ed8;border-color:#3b82f6;color:#fff}
-#trend{display:none;border-top:1px solid var(--line);background:#0b1220;padding:8px 22px 6px;flex:none}#trend.on{display:block}
+#trend{display:none;border-top:1px solid var(--line);background:#0b1220;padding:8px 22px 6px;flex:none;position:relative}#trend.on{display:block}
 #trend svg{width:100%;height:132px;display:block}.tleg{display:flex;gap:14px;flex-wrap:wrap;color:var(--mut);font-size:11px;margin-bottom:2px}.tleg i{display:inline-block;width:14px;height:3px;margin:0 5px 2px 0;border-radius:2px}
+.tcap{color:#94a3b8;font-size:11px;margin-top:4px}#ttip{position:absolute;display:none;background:#0b1220ee;border:1px solid #334155;border-radius:8px;padding:8px 10px;font-size:12px;pointer-events:none;z-index:5;max-width:320px}#ttip.on{display:block}#trend .dot{cursor:pointer}
 .wrap{display:grid;grid-template-columns:1fr 480px;gap:0;flex:1;min-height:0}
 .topo{position:relative;background:var(--panel);border-top:1px solid var(--line);border-right:1px solid var(--line);overflow:hidden;cursor:grab}.topo:active{cursor:grabbing}
 svg{width:100%;height:100%;display:block}
@@ -138,11 +139,13 @@ s+=card('Relationships',esc(D.rel_head||'no relationship board'),D.edges.length?
 s+=card(`Network Ops${D.netops.mode?` · ${esc(D.netops.mode)}`:''}`,esc(D.netops.headline||'no review board'),D.netops.present?D.netops.review.map((r,i)=>`<div class="item" onclick="focusNodes(${esc(JSON.stringify(r.devices||[]))},null)">${r.rank||i+1}. <b>${(r.devices||[]).map(esc).join(', ')}</b> — ${esc(r.finding)}</div>`).join(''):EMPTY);
 s+=card('ServiceNow · Inventory',esc(D.snow.headline||D.sync.headline||'no ticket or inventory board'),(D.snow.present?`<div class="fine">${esc(JSON.stringify(D.snow.open))} · ${ts(D.snow.updated_at)}</div>`:`<div class="empty">no ServiceNow board</div>`)+`<div class="fine" style="margin-top:6px">${esc(D.sync.headline||`${D.sync.device_count} devices`)} · inventory ${esc(D.sync.status||'')} ${ts(D.sync.collected_at)}</div>`);
 document.getElementById('side').innerHTML=s}
+function pointDetail(s,p){const bits=[];if(p.pass!=null&&p.fail!=null)bits.push(`${p.pass} verified · ${p.fail} failing${p.error!=null?` · ${p.error} error`:''}`);if(p.up!=null&&p.n!=null)bits.push(`${p.up} of ${p.n}`);if(p.bgp_idle!=null)bits.push(`idle BGP ${p.bgp_idle} · interfaces down ${p.down??0}`);return `${s.name} ${p.pct}% · ${ts(p.at)}<div class="fine">${esc(p.method||s.method||'')}${bits.length?' · '+esc(bits.join(' · ')):''}</div>`}
+function showTrendPoint(s,p){drawer.innerHTML=`<span class="x" onclick="clearFocus()">✕</span><h2>${esc(s.name)} ${p.pct}%</h2><div class="fine">${ts(p.at)}</div><p>${esc(p.method||s.method||'')}</p>`+(p.pass!=null?`<div class="fine">${p.pass} verified · ${p.fail} failing${p.error!=null?` · ${p.error} error`:''}</div>`:'')+(p.up!=null?`<div class="fine">${p.up} of ${p.n} up</div>`:'')+(p.bgp_idle!=null?`<div class="fine">idle BGP ${p.bgp_idle} · interfaces not ready ${p.down??0}</div>`:'')+(s.name==='compliant'?'<div class="fine">This is tested posture: a canonical test counts as verified only when every executed row passed.</div>':'');drawer.classList.add('open')}
 function drawTrend(){const series=[
-{name:'compliant',color:'#f59e0b',pts:(D.compliance.trend||{}).points||[]},
-{name:'probes up',color:'#a3e635',pts:((D.health.planes||{}).application)||[]},
-{name:'exporters reporting',color:'#a78bfa',pts:((D.health.planes||{}).netflow)||[]},
-{name:'iosxe clean',color:'#3b82f6',pts:((D.health.planes||{}).iosxe)||[]}
+{name:'compliant',color:'#f59e0b',method:'tested posture — verified tests / (verified + failing)',pts:(D.compliance.trend||{}).points||[]},
+{name:'probes up',color:'#a3e635',method:'application probes answering / probes this visit',pts:((D.health.planes||{}).application)||[]},
+{name:'exporters reporting',color:'#a78bfa',method:'NetFlow exporters reporting / exporters this visit',pts:((D.health.planes||{}).netflow)||[]},
+{name:'iosxe clean',color:'#3b82f6',method:'IOS-XE visit is 100% only when idle BGP and down interfaces are both zero',pts:((D.health.planes||{}).iosxe)||[]}
 ].map(s=>({...s,pts:s.pts.filter(p=>p&&p.at&&p.pct!=null)}));
 const used=series.filter(s=>s.pts.length);
 const host=document.getElementById('trend');
@@ -151,13 +154,16 @@ const times=used.flatMap(s=>s.pts.map(p=>Date.parse(p.at))).filter(t=>!Number.is
 const t0=Math.min(...times),t1=Math.max(...times),span=(t1-t0)||1;
 const W=1000,H=132,L=36,R=8,T=8,B=18;
 const X=t=>L+(t-t0)/span*(W-L-R),Y=p=>T+(100-p)/100*(H-T-B);
+window.__tp={used};
 let svg=`<svg viewBox="0 0 ${W} ${H}">`;
 [0,50,100].forEach(g=>{const y=Y(g);svg+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="#1e293b"/><text x="2" y="${y+3}" fill="#64748b" font-size="10">${g}</text>`});
-used.forEach(s=>{const pts=s.pts.map(p=>[X(Date.parse(p.at)),Y(Number(p.pct)),p]);svg+=`<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`;pts.forEach(p=>{svg+=`<circle cx="${p[0]}" cy="${p[1]}" r="2.5" fill="${s.color}"><title>${esc(s.name)} ${p[2].pct}% · ${esc(p[2].at)}</title></circle>`})});
+used.forEach((s,si)=>{const pts=s.pts.map(p=>[X(Date.parse(p.at)),Y(Number(p.pct)),p]);svg+=`<polyline fill="none" stroke="${s.color}" stroke-width="2" points="${pts.map(p=>p[0]+','+p[1]).join(' ')}"/>`;pts.forEach((p,pi)=>{svg+=`<circle class="dot" data-s="${si}" data-i="${pi}" cx="${p[0]}" cy="${p[1]}" r="5" fill="${s.color}" stroke="#0b1220" stroke-width="1"/>`})});
 ((D.compliance.trend||{}).flips||[]).filter(f=>f.at).forEach(f=>{const t=Date.parse(f.at);if(Number.isNaN(t))return;const x=X(t),col=f.direction==='better'?'#22c55e':f.direction==='worse'?'#ef4444':'#94a3b8';svg+=`<line x1="${x}" y1="${T}" x2="${x}" y2="${H-B}" stroke="${col}" stroke-dasharray="2,3"><title>${esc(f.direction||'flip')} ${esc(f.test||'')} ${esc(f.device||'')} ${esc(f.at)}</title></line>`});
 const ticks=[t0,t1];svg+=ticks.map(t=>`<text x="${X(t)}" y="${H-2}" fill="#64748b" font-size="10" text-anchor="${t===t0?'start':'end'}">${esc(new Date(t).toISOString().slice(0,10))}</text>`).join('');
 svg+='</svg>';
-host.innerHTML=`<div class="tleg">`+used.map(s=>`<span><i style="background:${s.color}"></i>${esc(s.name)} ${s.pts.length}</span>`).join('')+`</div>`+svg}
+host.innerHTML=`<div class="tleg">`+used.map(s=>`<span title="${esc(s.method)}"><i style="background:${s.color}"></i>${esc(s.name)} ${s.pts.length}</span>`).join('')+`</div>`+svg+`<div class="tcap">Hover a point for the visit. Click it for the formula and counts. Compliant is tested posture (verified tests ÷ tests that ran).</div><div id="ttip"></div>`;
+const tip=document.getElementById('ttip');
+host.querySelectorAll('circle.dot').forEach(el=>{el.addEventListener('mouseenter',ev=>{const s=used[+el.dataset.s],p=s.pts[+el.dataset.i];tip.innerHTML=pointDetail(s,p);tip.classList.add('on');const r=host.getBoundingClientRect();tip.style.left=Math.min(ev.clientX-r.left+8,r.width-280)+'px';tip.style.top='8px'});el.addEventListener('mouseleave',()=>tip.classList.remove('on'));el.addEventListener('click',ev=>{ev.stopPropagation();showTrendPoint(used[+el.dataset.s],used[+el.dataset.s].pts[+el.dataset.i])})})}
 // ---- pan/zoom
 const svg=document.getElementById('svg');let vb={x:0,y:0,w:W,h:H};function setVB(){svg.setAttribute('viewBox',`${vb.x} ${vb.y} ${vb.w} ${vb.h}`)}setVB();
 svg.addEventListener('wheel',e=>{e.preventDefault();const k=e.deltaY>0?1.1:0.9;const r=svg.getBoundingClientRect();const px=vb.x+(e.clientX-r.left)/r.width*vb.w,py=vb.y+(e.clientY-r.top)/r.height*vb.h;vb={x:px-(px-vb.x)*k,y:py-(py-vb.y)*k,w:vb.w*k,h:vb.h*k};setVB()},{passive:false});

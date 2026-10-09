@@ -31,7 +31,7 @@ reads only these fields. Change both together.
 
 `health.score` is 100 × voting consults with `status: ok` / voting consults that exist. Voting planes are `application`, `netflow`, `splunk`, `iosxe`. ServiceNow does not vote. `degraded` is not ok. Null when no voting consult is present. The envelope `status` is shown beside the number and is not folded into it.
 
-`compliance.trend.points[].pct` is tested posture from `series.testing.points`: `verified_tests / (verified_tests + failing_tests)` when those fields exist, otherwise `checks_passed_all / (checks_passed_all + checks_failed_all + checks_errored_all)`. A point with neither shape is omitted. The header percent is `scores.tested_posture.percent`, not a recomputation.
+`compliance.trend.points[]` is tested posture from `series.testing.points`: `{at, pct, pass, fail, method}` from `verified_tests / (verified_tests + failing_tests)` when those fields exist, otherwise pass/fail/error from `checks_*_all`. A point with neither shape is omitted. The header percent is `scores.tested_posture.percent`, not a recomputation. Hover and click on the trend use `method` and the counts.
 
 `counts` prefer `state/testing.json` `results.counts_ran`. When that object is absent, the newest series point that has `pass` / `fail` / `error` supplies them. `failing_devices` prefers the testing board list; otherwise `device:` keys on `test_failure` findings that are not `remediated`. `worst_devices` is those devices ranked by finding count, cap 10.
 

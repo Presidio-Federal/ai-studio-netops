@@ -1,8 +1,9 @@
 # Produce — Health ServiceNow
 
 Paths, Kind, catalog: **`workspace-handoff`**. Write schemas live in
-this skill. Do not `execute_command`. Do not invent files. Persist
-with `write_file` on catalog paths.
+this skill. The visit script writes the board and the stamp. Do not
+invent files. On the manual fallback only, persist with `write_file`
+on catalog paths.
 
 ## When to write
 

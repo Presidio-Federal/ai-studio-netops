@@ -23,11 +23,13 @@ Deployed model is **MiniMax** unless noted.
 | Health Telemetry | 1.1.0 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
-| Health ServiceNow | 1.8.1 | MiniMax |
+| Health ServiceNow | 1.9.0 | MiniMax |
 | Health Analyzer | 5.0.0 | MiniMax |
 | Relationship agent | 1.2.0 | MiniMax |
 | Network Map | 1.0.2 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Health ServiceNow 1.9.0 (skill 2.1.0, workspace-handoff 1.70.11): the visit is one `execute_command` of `scripts/visit_servicenow.py collect` under `mcp_orchestration`. The script queries, diffs, and writes the board and the stamp. The agent reads the last stdout line and runs `annotate` only when `needs_note` is set. `unwrap_snow` reads `{ok, rows}`.
 
 Compliance 1.2.1 (skill 1.2.1): the chart scores come from the visit `metrics`. Findings still come from the failing rows.
 
@@ -70,6 +72,8 @@ Compliance Test 1.7.2 (skill 1.11.2): the poll checks the run before it sleeps. 
 Compliance Test 1.7.1 (skill 1.11.1): a running summary includes `phase` from the job steps `Static pytest` and `Live pyATS`. The agent says that phase and resumes with `--run-id` and `--phase`. The finished visit is unchanged.
 
 Compliance Test 1.7.0 (skill 1.11.0): `scripts/run_suite.py` dispatches `test.yml`, polls, and writes the visit. A compliance job's static block and live block both land in `compliance-test-visit/v3`. The agent reads the script's last line. Static failures are rows; static passes stay on the count line.
+
+Network Map skill 1.2.4: trend points keep the formula and counts. Hover shows the visit; click opens the drawer.
 
 Network Map skill 1.2.3: Application Health, Health, and Compliance cards show a white title and a percent when closed. Open compliance lists the ten worst devices then critical findings; it does not paint the trend narrative.
 

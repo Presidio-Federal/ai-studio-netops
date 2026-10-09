@@ -209,10 +209,16 @@ device; readers pair the `neighbors[]` rows. Rank from
 
 ## Health ServiceNow
 
-Tickets for **this lab**. The marker is `inventory/prod.json`
-`lab_title`, else `source.name`. Inventory device names are in
-scope without a question. Shared-instance rows are out of scope. Open
-in-scope tickets do not degrade vital status. Filing cases is
+Tickets for **this lab**. One `execute_command` runs
+`health-servicenow` `scripts/visit_servicenow.py collect` under
+`mcp_orchestration`. The script scopes in the query: `agent_access`
+device names, the marker (`inventory/prod.json` `lab_title`, else
+`source.name`), and `match_terms`. Typed columns are discovered once
+from `sys_dictionary` into `entity_fields`. It diffs `current[]` and
+writes the board. A stamp only when a row moved, on the first visit,
+or when coverage is not complete. The model sees the summary line,
+then `annotate` under `standard` only when that line has `needs_note`.
+Open in-scope tickets do not degrade vital status. Filing cases is
 [Ops ServiceNow Operator](servicenow-agents.md).
 
 ## Health Analyzer
