@@ -1,7 +1,7 @@
 ---
 name: modernization-analysis
-version: "2.4.0"
-description: "v2.4.0 — Estate rows keep Lifecycle lead_time and offers. assess_estate.py still seeds inventory/assets/devices.json."
+version: "2.5.0"
+description: "v2.5.0 — assess_estate.py turns support dates, lead times, and CCW offers into a low and high budget and 30, 60, and 90 day order windows."
 ---
 
 # Modernization Analysis skill

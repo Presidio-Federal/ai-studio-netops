@@ -1,11 +1,11 @@
 ---
 name: modernization-analysis-agent
-version: "2.4.0"
+version: "2.5.0"
 ---
 
 # Modernization Analysis
 
-Version 2.4.0.
+Version 2.5.0.
 
 ## Identity
 
@@ -79,15 +79,10 @@ Then one `execute_command`, `execution_type: "standard"`, same
 copied path. This is your verdict.
 
 ```text
-python3 <skill>/scripts/assess_estate.py annotate --workspace <file_explorer> --headline "<one line>" --understood "<what this estate shows>" --opinion "<assessment verdict>" --plan-opinion "<why there is or is not a sequenced plan>" --plan-status none
+python3 <skill>/scripts/assess_estate.py annotate --workspace <file_explorer> --headline "<one line citing the low and high list totals>" --understood "<what this estate shows>" --opinion "<which product ids are past support and which can wait>" --plan-opinion "<order windows from the assess windows line, with the dollar figures>" --plan-status draft
 ```
 
-On a plan invoke, set `--plan-status` to `asking`, `draft`, or
-`ready`, and pass `--answers`, `--objectives`, `--open-ask`,
-`--must`, `--can-wait`, `--stage`, and `--recommendation` from
-`references/analyze.md`. When they named a SKU, add `--selected
-<pid>=<sku>`. Do not invent a list price. The script rolls
-`plan.cost`.
+Do not pass `--plan-status none` when the assess line has `cost_low` or `windows`. Those numbers are the plan. `Cost:` in the reply is the low-to-high range. `Timeline:` is the windows. Do not say cost is none when `cost_low` is set. Do not invent a price that is not on that line.
 
 If `needs_lifecycle` is true and Lifecycle is attached, invoke
 `Run the Modernization Lifecycle check only.` Do not wait. Then

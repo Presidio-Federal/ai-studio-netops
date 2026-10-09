@@ -469,34 +469,144 @@ def estate_status(items, guidance, now, stamped=None):
     return "ok"
 
 
-def roll_cost(items):
-    priced = 0
-    unpriced = 0
-    total = 0.0
-    currency = None
-    any_price = False
-    for row in items:
-        qty = int(row.get("quantity") or 0)
-        unit = row.get("list_cost_per_unit")
+def lead_days(value):
+    if not isinstance(value, str):
+        return 0
+    match = re.search(r"(\d+)", value)
+    if not match:
+        return 0
+    return int(match.group(1))
+
+
+def row_offers(row):
+    offers = []
+    for offer in row.get("offers") or []:
+        if not isinstance(offer, dict):
+            continue
+        unit = offer.get("list_cost_per_unit")
         if unit in (None, ""):
-            unpriced += qty
             continue
         try:
             amount = float(unit)
         except (TypeError, ValueError):
-            unpriced += qty
             continue
-        any_price = True
-        priced += qty
-        total += amount * qty
-        if row.get("currency"):
-            currency = row.get("currency")
+        offers.append({
+            "sku": offer.get("sku") or row.get("recommended_replacement") or row.get("pid"),
+            "amount": amount,
+            "lead": lead_days(offer.get("lead_time") or row.get("lead_time")),
+            "currency": offer.get("currency") or row.get("currency"),
+        })
+    if offers:
+        return offers
+    unit = row.get("list_cost_per_unit")
+    if unit in (None, ""):
+        return []
+    try:
+        amount = float(unit)
+    except (TypeError, ValueError):
+        return []
+    return [{
+        "sku": row.get("recommended_replacement") or row.get("pid"),
+        "amount": amount,
+        "lead": lead_days(row.get("lead_time")),
+        "currency": row.get("currency"),
+    }]
+
+
+def support_date(row):
+    return parse_time(row.get("end_of_support") or row.get("end_of_software_support"))
+
+
+def budget_facts(items, moment):
+    """Low and high list-price totals, and order windows from support date minus lead time."""
+    low = 0.0
+    high = 0.0
+    priced = 0
+    unpriced = 0
+    currency = None
+    buckets = {"overdue": [], "30": [], "60": [], "90": [], "later": []}
+    must = []
+    wait = []
+    for row in items:
+        qty = int(row.get("quantity") or 0)
+        offers = row_offers(row)
+        if not offers:
+            unpriced += qty
+        else:
+            priced += qty
+            amounts = [offer["amount"] * qty for offer in offers]
+            low += min(amounts)
+            high += max(amounts)
+            if offers[0].get("currency"):
+                currency = offers[0]["currency"]
+        when = support_date(row)
+        if when is None:
+            continue
+        days_left = (when.date() - moment.date()).days
+        lead = max((offer["lead"] for offer in offers), default=0)
+        order_by_days = days_left - lead
+        label = f"{row.get('pid')} ({qty})"
+        if days_left < 0:
+            must.append(f"{label}: support {stamp_text(when)[:10]} has passed.")
+            key = "overdue"
+        elif order_by_days <= 30:
+            key = "30"
+        elif order_by_days <= 60:
+            key = "60"
+        elif order_by_days <= 90:
+            key = "90"
+        else:
+            wait.append(f"{label}: support {stamp_text(when)[:10]}.")
+            key = "later"
+        spend = ""
+        if offers:
+            spend = f" low ${min(offer['amount'] * qty for offer in offers):,.0f}"
+            if len(offers) > 1:
+                spend += f" high ${max(offer['amount'] * qty for offer in offers):,.0f}"
+            if lead:
+                spend += f", lead {lead}d"
+        buckets[key].append((row.get("pid"), f"{label}: support {stamp_text(when)[:10]}{spend}"))
+    notes = "No CCW prices on disk."
+    if priced:
+        notes = (
+            f"Low option ${low:,.2f}. High option ${high:,.2f}. "
+            "Order-by is the support date minus CCW lead time."
+        )
+    timeline = []
+    order = 1
+    labels = {
+        "overdue": ("order", "overdue", "Order now. Support has passed or the lead time already overruns the date."),
+        "30": ("order", "30 days", "Order in the next 30 days so the hardware arrives before support ends."),
+        "60": ("order", "60 days", "Order in the next 60 days. Lead time still fits the support date."),
+        "90": ("order", "90 days", "Order in the next 90 days. Lead time still fits the support date."),
+        "later": ("schedule", "later", "Support is far enough out that this is not a 90-day buy."),
+    }
+    for key in ("overdue", "30", "60", "90", "later"):
+        rows = buckets[key]
+        if not rows:
+            continue
+        stage, window, summary = labels[key]
+        timeline.append({
+            "order": order,
+            "stage": stage,
+            "pids": [pid for pid, _text in rows if pid][:12],
+            "window": window,
+            "summary": summary + " " + "; ".join(text for _pid, text in rows)[:500],
+        })
+        order += 1
     return {
-        "currency": currency if any_price else None,
-        "list_total": f"{total:.2f}" if any_price else None,
-        "priced_qty": priced,
-        "unpriced_qty": unpriced,
-        "notes": "Rolled from list prices already on the rows." if any_price else "No CCW prices on disk.",
+        "cost": {
+            "currency": currency if priced else None,
+            "list_total": f"{low:.2f}" if priced else None,
+            "priced_qty": priced,
+            "unpriced_qty": unpriced,
+            "notes": notes,
+        },
+        "timeline": timeline[:12],
+        "must_move": must[:12],
+        "can_wait": wait[:12],
+        "low": low if priced else None,
+        "high": high if priced else None,
     }
 
 
@@ -680,11 +790,18 @@ def cmd_assess(args):
     if not assessment.get("opinion"):
         assessment["opinion"] = PENDING
     plan = estate.setdefault("plan", shell(moment)["plan"])
-    plan["cost"] = roll_cost(items)
-    plan.setdefault("timeline", [])
-    if not plan.get("opinion"):
-        plan["opinion"] = PENDING
-    if args.mode == "plan" and guidance.get("objectives_status") == "missing":
+    facts = budget_facts(items, moment)
+    plan["cost"] = facts["cost"]
+    plan["timeline"] = facts["timeline"]
+    if facts["must_move"]:
+        assessment["must_move"] = facts["must_move"]
+    if facts["can_wait"]:
+        assessment["can_wait"] = facts["can_wait"]
+    if not plan.get("opinion") or plan.get("opinion") == PENDING:
+        plan["opinion"] = facts["cost"]["notes"]
+    if facts["timeline"]:
+        plan["status"] = "draft"
+    elif args.mode == "plan" and guidance.get("objectives_status") == "missing":
         plan["status"] = "asking"
     elif args.mode == "estate" and plan.get("status") == "asking":
         plan["status"] = "none"
@@ -731,7 +848,10 @@ def cmd_assess(args):
         "task": TASK if needs else None,
         "needs_opinion": needs_opinion,
         "open_asks": list(guidance.get("open_asks") or []),
-        "unpriced": [row.get("pid") for row in items if row.get("selected_replacement") and not row.get("list_cost_per_unit")],
+        "cost_low": facts["low"],
+        "cost_high": facts["high"],
+        "currency": facts["cost"]["currency"],
+        "windows": [stage["window"] + ": " + ", ".join(stage["pids"]) for stage in facts["timeline"]],
         "pids": [row.get("pid") for row in items],
         "stamped_pids": sorted(stamped),
         "unstamped_count": len(unstamped),
@@ -854,7 +974,14 @@ def cmd_annotate(args):
         estate["headline"] = args.plan_opinion.strip()[:240]
     elif args.opinion:
         estate["headline"] = args.opinion.strip()[:240]
-    plan["cost"] = roll_cost(items)
+    facts = budget_facts(items, moment)
+    plan["cost"] = facts["cost"]
+    if not args.stage:
+        plan["timeline"] = facts["timeline"]
+    if args.plan_status:
+        plan["status"] = args.plan_status
+    elif facts["timeline"] and plan.get("status") in {None, "", "none"}:
+        plan["status"] = "draft"
     stamped = set(stamped_map(load_json(ws / DEVICES_PATH)).values())
     identity, research_conf = confidence(items, moment, stamped)
     guidance["identity_confidence"] = identity
