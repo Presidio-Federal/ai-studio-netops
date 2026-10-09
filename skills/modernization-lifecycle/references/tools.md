@@ -38,10 +38,10 @@ and different from `pid`. Do not call estimate tools
 
 | Tool | Arguments |
 |------|-----------|
-| `cisco_get_eox_product_ids` | `product_ids` (one PID string) |
+| `cisco_get_eox_product_ids` | `product_ids` (array of PID strings) |
 | `cisco_get_eox_by_serial_numbers` | `serial_numbers` |
 | `cisco_get_product_info_by_serials` | `serial_numbers` |
-| `cisco_get_eox_by_sw_release` | `software_release`, and `product_id` when the tool accepts it |
+| `cisco_get_eox_by_sw_release` | `sw_releases` (array of version strings) |
 | `cisco_psirt_product_id_finder` | `product` |
 | `cisco_psirt_by_product` | `product` (retry `product_id` if rejected) |
 | `cisco_psirt_software` | `version` |

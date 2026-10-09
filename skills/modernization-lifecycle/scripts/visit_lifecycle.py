@@ -555,7 +555,7 @@ def collect_pid(row, limits, budget, gaps, lines):
     for variant in pid_variants(pid):
         payload, err = call_tool(
             "cisco_get_eox_product_ids",
-            {"product_ids": variant},
+            {"product_ids": [variant]},
             "cisco",
             limits,
             budget,
@@ -591,7 +591,7 @@ def collect_pid(row, limits, budget, gaps, lines):
                     if isinstance(found, str) and found.strip() and found.strip() != pid:
                         retry, retry_err = call_tool(
                             "cisco_get_eox_product_ids",
-                            {"product_ids": found.strip()},
+                            {"product_ids": [found.strip()]},
                             "cisco",
                             limits,
                             budget,
@@ -652,6 +652,9 @@ def collect_pid(row, limits, budget, gaps, lines):
         row["replacement_family"] = families[0]
     if dates.get("end_of_support"):
         research["eox"] = "complete"
+    elif eox_error and ("422" in eox_error or "schema" in eox_error.lower()):
+        research["eox"] = "missing"
+        item_gaps.append(f"hardware EoX: {eox_error}")
     elif saw_body or virtual:
         research["eox"] = "unavailable"
         if not virtual and eox_error:
@@ -671,19 +674,11 @@ def collect_pid(row, limits, budget, gaps, lines):
         for version in versions:
             payload, err = call_tool(
                 "cisco_get_eox_by_sw_release",
-                {"software_release": version, "product_id": pid},
+                {"sw_releases": [version]},
                 "cisco",
                 limits,
                 budget,
             )
-            if err and "product_id" in err.lower():
-                payload, err = call_tool(
-                    "cisco_get_eox_by_sw_release",
-                    {"software_release": version},
-                    "cisco",
-                    limits,
-                    budget,
-                )
             if err:
                 sw_error = err
                 continue
@@ -718,6 +713,9 @@ def collect_pid(row, limits, budget, gaps, lines):
             row["recommended_software"] = train
         if train or row.get("end_of_software_support"):
             research["software"] = "complete"
+        elif sw_error and ("422" in sw_error or "schema" in sw_error.lower()):
+            research["software"] = "missing"
+            item_gaps.append(f"software: {sw_error}")
         elif sw_error:
             research["software"] = "unavailable"
             item_gaps.append(f"software: {sw_error}")
@@ -955,6 +953,17 @@ def adopt_stamped(items, groups, moment):
     return [row for row in items if row.get("devices")]
 
 
+def prior_schema_failure(ws, row):
+    ref = row.get("detail_ref")
+    if not isinstance(ref, str):
+        return False
+    doc = load_json(ws / ref)
+    if not isinstance(doc, dict):
+        return False
+    text = " ".join(str(gap) for gap in (doc.get("gaps") or []))
+    return "422" in text or "did not match expected schema" in text
+
+
 def cmd_collect(args):
     ws = resolve_workspace(args.workspace)
     if ws is None:
@@ -1006,6 +1015,15 @@ def cmd_collect(args):
             continue
         ref = row.get("detail_ref")
         missing = not (isinstance(ref, str) and (ws / ref).is_file())
+        if prior_schema_failure(ws, row):
+            research = row.setdefault("research", {})
+            if not row.get("end_of_support"):
+                research["eox"] = "missing"
+            if row.get("software_versions") and not row.get("recommended_software"):
+                research["software"] = "missing"
+            row["expires_at"] = None
+            due.append(row)
+            continue
         if row_needs(row, moment, missing):
             due.append(row)
     if not due and not version_copied:
@@ -1035,6 +1053,8 @@ def cmd_collect(args):
             break
         family_ask, sku, bulletin, item_gaps = collect_pid(row, limits, budget, gaps, lines)
         merge_clock(row, moment)
+        if any("422" in gap or "did not match expected schema" in gap for gap in item_gaps):
+            row["expires_at"] = None
         if family_ask:
             needs_note.append(row["pid"])
         doc = item_from_row(row, moment, bulletin, item_gaps)
