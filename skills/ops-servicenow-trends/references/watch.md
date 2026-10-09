@@ -3,6 +3,57 @@
 A schedule line or a chat that names trends /
 ServiceNow-Trend-Analysis is authorization. Do not confirm.
 
+## Trend visit — run the script
+
+One `execute_command`, `execution_type: "mcp_orchestration"`. Use the
+path Studio shows for the attached
+`ops-servicenow-trends/scripts/visit_trends.py`. Copy it. Do not
+retype a path from memory. The transcript may render it as
+`Internal directory`; that is the real path.
+
+Each `execute_command` is a new container. In that container the
+workspace is the `file_explorer` folder beside `skills` on the path
+Studio shows for `visit_trends.py`. Copy that directory. Pass it as
+`--workspace`. Do not pass the relative name `file_explorer`, and do
+not `cd`.
+
+```text
+python3 <skill>/scripts/visit_trends.py collect --workspace <file_explorer>
+```
+
+Add `--schedule` when the task is a schedule line. The last stdout
+line is the summary. Ignore any runtime line above it.
+
+If `needs_scope` is true, ask with the summary `options` and stop.
+Do not collect by hand.
+
+If `needs_note` is non-empty, one `execute_command` with
+`execution_type: "standard"`, same copied path:
+
+```text
+python3 <copied script path> annotate --workspace <copied file_explorer directory> --stamp servicenow/trends/2026-10-09T15-00-00Z.json --headline "<one sentence>" --why "incident:NUMBER=<one sentence>" --theme "incident:NUMBER=<short theme>"
+```
+
+`--stamp` is the summary field `stamp`, copied exactly. It starts
+with `servicenow/trends/` and ends with `.json`. The date in the
+example is the shape, not a path to reuse. One `--why` and one
+`--theme` per `needs_note` item. The key is `incident:` plus that
+item's `example`. A `locked` item keeps `recommend` `kb`. For an
+unlocked item, `--recommend incident:NUMBER=<watch|restaff|problem|none>`
+may replace the script's choice. Do not set `kb` yourself.
+
+The why is one sentence: the class, whether the resolutions match,
+and the recommendation. Not the ticket list again.
+
+If stderr says `hai_mcp unavailable`, follow the manual order below.
+Any other failure: report that line and stop.
+
+Reply from the summary line. Do not open the stamp to fill it.
+
+## Manual order
+
+Use this only when the script reports `hai_mcp unavailable`.
+
 ## Shared order
 
 1. `read_file` `servicenow/metadata-trends.json`. Never
@@ -49,8 +100,17 @@ a device only if that name is in the file.
 
 ## Cluster
 
-Group in-scope tickets by similar short_description /
-category. A cluster needs at least `min_related_cases`.
+The script groups by category plus the normalized
+short_description (lowercase, punctuation collapsed). A cluster
+needs at least `min_related_cases`. `fix_consistent` is true only
+when at least two close notes share the same first sentence.
+`recommend` is `kb` only then. The model rewrites `theme` and
+`why` in `annotate`, and may change `recommend` when it is not
+`kb`.
+
+Manual fallback, when the script cannot run: group in-scope
+tickets by similar short_description / category. A cluster needs
+at least `min_related_cases`.
 
 For each cluster:
 

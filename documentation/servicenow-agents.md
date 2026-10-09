@@ -18,7 +18,7 @@ when it asks). Live ids are not in the prompt.
 
 | Agent | Role | Writes |
 |-------|------|--------|
-| Ops ServiceNow Trends | Nightly/on-demand scan of the named slice. Cluster tickets; recommend a KB when close_notes agree. | `servicenow/metadata-trends.json`, `servicenow/trends/<stamp>.json` |
+| Ops ServiceNow Trends | Nightly/on-demand scan of the named slice. `visit_trends.py` clusters repeating titles; the agent writes the why. Recommend a KB when close notes agree. | `servicenow/metadata-trends.json`, `servicenow/trends/<stamp>.json` |
 | Ops ServiceNow Operator | Who can go onsite; if they are on a Trends KB ticket, recommend a draft to free them. Lab cases and INC updates. | `servicenow/metadata-lab.json`, `state/servicenow.json`, `servicenow/cases/` |
 
 Health ServiceNow never writes `state/servicenow.json` or

@@ -11,7 +11,7 @@ Deployed model is **MiniMax** unless noted.
 | Ops Network Sync | 2.5.4 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
-| Ops ServiceNow Trends | 1.2.2 | MiniMax |
+| Ops ServiceNow Trends | 1.3.0 | MiniMax |
 | Modernization Analysis | 2.0.1 | MiniMax |
 | Modernization Lifecycle | 1.4.1 | MiniMax |
 | Compliance | 1.2.1 | MiniMax |
@@ -28,6 +28,8 @@ Deployed model is **MiniMax** unless noted.
 | Relationship agent | 1.2.0 | MiniMax |
 | Network Map | 1.0.2 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Ops ServiceNow Trends 1.3.0 (skill 1.3.0, workspace-handoff 1.70.12): the visit is one `execute_command` of `scripts/visit_trends.py collect` under `mcp_orchestration`. The script groups the same category and normalized title, writes the stamp, and the agent annotates theme and why. Empty scope asks unless `--schedule` is set. `kb` stays locked when close notes match.
 
 Health ServiceNow 1.9.0 (skill 2.1.0, workspace-handoff 1.70.11): the visit is one `execute_command` of `scripts/visit_servicenow.py collect` under `mcp_orchestration`. The script queries, diffs, and writes the board and the stamp. The agent reads the last stdout line and runs `annotate` only when `needs_note` is set. `unwrap_snow` reads `{ok, rows}`.
 

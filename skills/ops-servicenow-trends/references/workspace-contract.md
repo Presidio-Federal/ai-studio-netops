@@ -1,10 +1,11 @@
 # Produce — Ops ServiceNow Trends
 
 Paths, Kind, catalog: **`workspace-handoff`**.
-Write schemas live in this skill. Do not `execute_command`.
-Do not invent files. Persist with `write_file` on catalog
-paths (`servicenow/metadata-trends.json`,
-`servicenow/trends/<stamp>.json`). Never a bare filename.
+Write schemas live in this skill. The visit script writes
+`servicenow/metadata-trends.json` and
+`servicenow/trends/<stamp>.json`. Do not invent files. On the
+manual fallback, persist with `write_file` on those catalog
+paths. Never a bare filename.
 If Access denied lists `file_explorer`, retry once
 `file_explorer/<catalog row>`. Never write under
 `automations/schedules/`.

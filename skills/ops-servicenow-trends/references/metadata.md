@@ -5,6 +5,12 @@
 last-visit. **Not** the five-field envelope. Workspace first.
 Do not put live group names or markers in the prompt.
 
+The visit script reads this file. Empty scope with no `--schedule`
+returns options and does not write a slice. `--schedule` picks the
+largest repeating title, writes that scope (`provenance`
+`discovered`), and collects. The steps below are the manual order,
+used only when stderr says `hai_mcp unavailable`.
+
 ## Read before ServiceNow MCP
 
 1. `read_file` `servicenow/metadata-trends.json` if it exists.

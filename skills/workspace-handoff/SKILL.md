@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.11 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.11"
+description: "v1.70.12 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.12"
 ---
 
 # Workspace handoff
@@ -303,7 +303,8 @@ into the row. A ticket filed without them is prose to every reader.
 `scripts/visit_common.py` is the helper for a nurse visit that calls
 MCP from code. Health Device runs it through `health-device`
 `scripts/visit_iosxe.py`. Health ServiceNow runs it through
-`health-servicenow` `scripts/visit_servicenow.py`.
+`health-servicenow` `scripts/visit_servicenow.py`. Ops ServiceNow
+Trends runs `ops-servicenow-trends` `scripts/visit_trends.py`.
 
 `collect` runs under `execution_type: "mcp_orchestration"`. It calls
 the plane's MCP tool with `hai_mcp.call_mcp`, diffs the board, writes
@@ -316,7 +317,8 @@ probe: `result[0]` is `{ok, results, result_count, truncated}`.
 `data.values`) into rows. `unwrap_snow` parses `snow_query_table`:
 `result[0]` is `{ok, rows}`. A cell is a string, or `{sys_id, display}`
 when the stored value and the display differ. Health ServiceNow runs
-`health-servicenow` `scripts/visit_servicenow.py`.
+`health-servicenow` `scripts/visit_servicenow.py`. Trends uses that
+same table unwrap, then `snow_find_knowledge` for each cluster.
 
 ## Catalog
 

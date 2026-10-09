@@ -1,13 +1,14 @@
 ---
 name: ops-servicenow-trends
-version: "1.2.2"
-description: "v1.2.2 — One ServiceNow trend visit. write_file catalog rows only (servicenow/trends/<stamp>.json). Access denied → file_explorer/<row> once. Never the schedule folder. Do not mutate records."
+version: "1.3.0"
+description: "v1.3.0 — ServiceNow trend visit runs visit_trends.py; clusters repeating titles, stamp under servicenow/trends; does not mutate records."
 ---
 
 # Ops ServiceNow Trends skill
 
 One scan per conversation. A schedule line or a chat that
-names trends is authorization. Write one new stamp. Do not
+names trends is authorization. Run `scripts/visit_trends.py`
+(`references/watch.md`). The script writes one new stamp. Do not
 mutate ServiceNow.
 
 Write `servicenow/trends/<stamp>.json`. Update
@@ -20,24 +21,24 @@ reply `That's not what I do.` and stop.
 
 ## Hard boundaries
 
-Read: `snow_find_incidents`, `snow_get_incident`,
-`snow_find_changes`, `snow_get_change`, `snow_find_knowledge`,
-`snow_get_knowledge`, `snow_find_assignment_groups`.
-`snow_query_table` only when find is empty or unusable. Never
-`snow_create_*`, `snow_update_*`, catalog, or assets. Do not
+The script reads with `snow_query_table` (find has no lookback)
+and `snow_find_knowledge`. The manual fallback may use the
+find/get tools in `references/watch.md`. Never `snow_create_*`,
+`snow_update_*`, catalog, or assets. Do not
 write `health/`, `state/servicenow.json`, `servicenow/cases/`,
 `trends.json`, `trend-analysis.json`, or `health-board.md`.
 Do not invent files or ticket numbers. Unavailable: counts
 **null**, never `0`. Do not write under
-`automations/schedules/`. Do **not** call `execute_command`.
-Do not write scripts.
+`automations/schedules/`. Call `execute_command` only to run
+`scripts/visit_trends.py`. Do not write scripts.
 
 ## Files
 
 Paths and catalog: **`workspace-handoff`**. When/how:
-`references/workspace-contract.md`. Write from the schemas.
-Do not run a validator. Persist with `write_file` on catalog
-paths.
+`references/workspace-contract.md`. The script validates and
+writes the stamp and metadata. On the manual fallback, persist
+with `write_file` on catalog paths. Do not run a validator
+yourself.
 
 | Path | Kind | Envelope |
 |------|------|----------|
@@ -64,24 +65,21 @@ location is `site:` (never `location:`).
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**Visit — first tool:** `read_file`
-`servicenow/metadata-trends.json` (exact name, no schedule
-prefix). If Access denied and Allowed paths include
-`file_explorer`, retry once
-`file_explorer/servicenow/metadata-trends.json`. If
-`last_visit_id` is set, then
-`servicenow/trends/<last_visit_id>.json` (same prefix if that
-is what worked). Never a bare stamp filename. Never overwrite
-a timestamped file.
-
-`write_file` the same catalog rows. If Access denied lists
-`file_explorer`, retry
-`file_explorer/servicenow/trends/<stamp>.json` and
-`file_explorer/servicenow/metadata-trends.json`.
+**Visit — first tool:** one `execute_command`,
+`execution_type: "mcp_orchestration"`, the collect command in
+`references/watch.md`. Add `--schedule` when the task is a
+schedule line. If the summary `needs_scope` is true, ask with
+those options and stop. If `needs_note` is non-empty, one
+`annotate` command under `execution_type: "standard"`. Reply
+from the summary line. If stderr says `hai_mcp unavailable`,
+follow the manual order in `references/watch.md`. Never
+overwrite a timestamped file.
 
 ## State machine
 
-Named / schedule visit: READ_METADATA → READ_PRIOR_STAMP →
+READ_METADATA is inside the script. COLLECT_SCRIPT → [ASK_SCOPE]
+→ [ANNOTATE] → STOP. Manual fallback, only when hai_mcp is
+unavailable: READ_METADATA → READ_PRIOR_STAMP →
 RESOLVE_IF_NEEDED → PICK_STAMP → COLLECT → WRITE_CHECK →
 READ_BACK → WRITE_METADATA → READ_BACK → STOP
 
