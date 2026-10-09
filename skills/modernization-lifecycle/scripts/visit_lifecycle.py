@@ -299,6 +299,18 @@ def parse_train(payload):
     return None
 
 
+def tool_body_error(payload):
+    """Inner tool object that says success false. The text is in error."""
+    if not isinstance(payload, dict):
+        return None
+    err = payload.get("error")
+    if payload.get("success") is False or payload.get("ok") is False:
+        return str(err or "success false")[:300]
+    if isinstance(err, str) and err.strip():
+        return err.strip()[:300]
+    return None
+
+
 def parse_advisories(payload):
     found = []
     seen = set()
@@ -676,6 +688,7 @@ def collect_pid(row, limits, budget, gaps, lines):
     versions = versions[:SW_CAP]
     train = None
     sw_dates = {key: None for key in DATE_KEYS}
+    sw_advisories = []
     if not versions:
         research["software"] = "skipped"
     else:
@@ -704,22 +717,37 @@ def collect_pid(row, limits, budget, gaps, lines):
                 train = found
             checker, checker_err = call_tool(
                 "cisco_psirt_software",
-                {"version": version},
+                {"version": version, "product": pid},
                 "cisco",
                 limits,
                 budget,
             )
+            if checker_err and ("422" in checker_err or "schema" in checker_err.lower()):
+                checker, checker_err = call_tool(
+                    "cisco_psirt_software",
+                    {"version": version},
+                    "cisco",
+                    limits,
+                    budget,
+                )
             if checker_err:
                 sw_error = sw_error or checker_err
             else:
-                found = parse_train(checker)
-                if found and train is None:
-                    train = found
-                got_dates, _, _, _, empty = parse_eox(checker)
-                if not empty:
-                    for field in SW_DATES:
-                        if got_dates.get(field) and sw_dates[field] is None:
-                            sw_dates[field] = got_dates[field]
+                body_err = tool_body_error(checker)
+                if body_err:
+                    sw_error = sw_error or body_err
+                else:
+                    for advisory in parse_advisories(checker):
+                        if advisory["id"] not in {item["id"] for item in sw_advisories}:
+                            sw_advisories.append(advisory)
+                    found = parse_train(checker)
+                    if found and train is None:
+                        train = found
+                    got_dates, _, _, _, empty = parse_eox(checker)
+                    if not empty:
+                        for field in SW_DATES:
+                            if got_dates.get(field) and sw_dates[field] is None:
+                                sw_dates[field] = got_dates[field]
         apply_dates(row, sw_dates, SW_DATES)
         if train:
             row["recommended_software"] = train
@@ -737,20 +765,33 @@ def collect_pid(row, limits, budget, gaps, lines):
             research["software"] = "unavailable"
             item_gaps.append("software: Cisco returned no train")
 
-    payload, err = call_tool("cisco_psirt_by_product", {"product_names": [pid]}, "cisco", limits, budget)
-    if err and ("422" in err or "schema" in err.lower() or "product" in err.lower()):
+    version = versions[0] if versions else None
+    psirt_args = {"product": pid}
+    if version:
+        psirt_args["version"] = version
+    payload, err = call_tool("cisco_psirt_by_product", psirt_args, "cisco", limits, budget)
+    if err and ("422" in err or "schema" in err.lower()):
         payload, err = call_tool("cisco_psirt_by_product", {"product": pid}, "cisco", limits, budget)
-    advisories = []
+    advisories = list(sw_advisories)
     if err:
         research["psirt"] = "missing" if ("422" in err or "schema" in err.lower()) else "unavailable"
         item_gaps.append(f"PSIRT: {err}")
     else:
-        advisories = parse_advisories(payload)
-        row["psirts"] = advisories
-        if advisories:
-            research["psirt"] = "complete"
+        body_err = tool_body_error(payload)
+        if body_err:
+            item_gaps.append(f"PSIRT: {body_err}")
         else:
-            research["psirt"] = "unavailable"
+            for advisory in parse_advisories(payload):
+                if advisory["id"] not in {item["id"] for item in advisories}:
+                    advisories.append(advisory)
+    row["psirts"] = advisories[:MAX_ADV]
+    if advisories:
+        research["psirt"] = "complete"
+    elif any(gap.startswith("PSIRT:") and "422" in gap for gap in item_gaps):
+        research["psirt"] = "missing"
+    else:
+        research["psirt"] = "unavailable"
+        if not any(gap.startswith("PSIRT:") for gap in item_gaps):
             item_gaps.append(f"PSIRT: no advisories parsed ({glimpse(payload)})")
 
     cves = cve_ids(advisories, payload)
@@ -980,7 +1021,7 @@ def prior_schema_failure(ws, row):
     if not isinstance(doc, dict):
         return False
     text = " ".join(str(gap) for gap in (doc.get("gaps") or []))
-    return "422" in text or "did not match expected schema" in text or "cisco cap" in text
+    return "422" in text or "did not match expected schema" in text or "cisco cap" in text or "success,product,error" in text
 
 
 def cmd_collect(args):
