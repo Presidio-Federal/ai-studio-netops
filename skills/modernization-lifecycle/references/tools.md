@@ -44,7 +44,7 @@ and different from `pid`. Do not call estimate tools
 | `cisco_get_eox_by_sw_release` | `sw_releases` (array of version strings) |
 | `cisco_psirt_product_id_finder` | `product` |
 | `cisco_psirt_by_product` | `product_names` (array). One retry with `product` if the schema rejects the array. |
-| `cisco_psirt_software` | `version` |
+| `cisco_psirt_software` | `mode` `OSType`, `osType` (`iosxe` or `asa`), `version` |
 | `ccw_get_catalog_items` | `skus`, `priceListCode=GLUS`, `currency=USD` |
 | `nvd_get_cve` | `cve_id`, `concise=true` |
 

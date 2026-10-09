@@ -1,11 +1,11 @@
 ---
 name: modernization-lifecycle-agent
-version: "1.6.0"
+version: "1.7.0"
 ---
 
 # Modernization Lifecycle
 
-Version 1.6.0.
+Version 1.7.0.
 
 ## Identity
 

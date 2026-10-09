@@ -194,6 +194,9 @@ def row_needs(row, now, detail_missing):
             return True
     if row.get("selected_replacement") and not row.get("list_cost_per_unit"):
         return True
+    research = row.get("research") if isinstance(row.get("research"), dict) else {}
+    if research.get("psirt") in {None, "missing"}:
+        return True
     return False
 
 
@@ -794,7 +797,7 @@ def collect_pid(row, limits, budget, gaps, lines):
             checker_ver = checker_version(version, os_type)
             checker, checker_err = call_tool(
                 "cisco_psirt_software",
-                {"os_type": os_type, "version": checker_ver},
+                {"mode": "OSType", "osType": os_type, "version": checker_ver},
                 "cisco",
                 limits,
                 budget,
@@ -802,7 +805,7 @@ def collect_pid(row, limits, budget, gaps, lines):
             if checker_err and ("422" in checker_err or "schema" in checker_err.lower()):
                 checker, checker_err = call_tool(
                     "cisco_psirt_software",
-                    {"platform": os_type, "version": version},
+                    {"mode": "advisories", "osType": os_type, "version": checker_ver},
                     "cisco",
                     limits,
                     budget,

@@ -1,7 +1,7 @@
 ---
 name: modernization-lifecycle
-version: "1.6.3"
-description: "v1.6.3 — Lifecycle collect calls Cisco only when a support date or replacement SKU is missing, or the SKU has no list price."
+version: "1.7.0"
+description: "v1.7.0 — Lifecycle collect calls the PSIRT software checker with mode, osType, and version, and prices every replacement candidate."
 ---
 
 # Modernization Lifecycle skill

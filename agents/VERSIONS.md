@@ -13,7 +13,7 @@ Deployed model is **MiniMax** unless noted.
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
 | Modernization Analysis | 2.3.0 | MiniMax |
-| Modernization Lifecycle | 1.6.0 | MiniMax |
+| Modernization Lifecycle | 1.7.0 | MiniMax |
 | Compliance | 1.2.1 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
@@ -32,6 +32,8 @@ Deployed model is **MiniMax** unless noted.
 Network Ops skill 3.3.0 (agent prompt stays 3.2.0 until the Gate 3 rewrite): `network-ops-state/v3.3` adds `change.prescription`, `ci.passed_sha`, and `release`. GitOps Change skill 1.4.0: `scripts/submit_change.py` applies that prescription on `dev`.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0, workspace-handoff 1.70.16): `scripts/watch_run.py watch` is one `execute_command`, timeout 60. The script checks the run once. `running` is the same command plus `--run-id` and writes nothing. A finished watch writes `operational/runs`. Compliance Test skill stays 1.12.7. Its runner was not changed.
+
+Modernization Lifecycle 1.7.0 (skill 1.7.0): `cisco_psirt_software` is called with `mode` `OSType`, `osType` (`iosxe` or `asa`), and the stored software version. Every EoX replacement candidate is priced, with lead time, in `offers`.
 
 Modernization Lifecycle skill 1.6.2: one hardware EoX call and one software release per PID, then PSIRT and NVD. Cisco calls wait 0.6s. CCW lead time is stored on the estate row. A missing PSIRT list is not treated as finished.
 
