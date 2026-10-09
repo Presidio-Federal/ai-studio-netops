@@ -1,6 +1,6 @@
 # GitHub tools — GitOps Change
 
-Exact names. Do not invent tools.
+`scripts/submit_change.py` calls these. Do not invent tools.
 
 | Tool | Use |
 |------|-----|

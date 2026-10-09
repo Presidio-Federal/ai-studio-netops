@@ -84,7 +84,7 @@ Write ONLY:
 - `design/roadmap.md`
 
 Do not write `state/health.json`, `state/lifecycle.json`,
-`lifecycle/roadmap.md`, `compliance/*`, `inventory/*`,
+`inventory/assets/roadmap.md`, `compliance/*`, `inventory/*`,
 `health/`, or `state/servicenow.json`.
 
 ## How you work

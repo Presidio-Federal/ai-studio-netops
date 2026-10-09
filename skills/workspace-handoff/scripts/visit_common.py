@@ -10,6 +10,9 @@ unwrap_grafana uses that same outer envelope and pivots the Grafana
 13 frame body seen from /api/ds/query on 2026-10-05.
 unwrap_snow parses snow_query_table: {ok, rows}. Cells are the
 query_table_tool shape, checked against the Table API on 2026-10-09.
+unwrap_github reads github_list_files, github_get_file, and
+github_put_file. The tool dicts are from github-mcp server.py on
+2026-10-09. The outer list wrap is the one the Actions scripts use.
 """
 import json
 import sys
@@ -249,6 +252,59 @@ def unwrap_snow(envelope):
     if not isinstance(rows, list):
         return None, "rows not a list"
     return {"rows": rows, "returned": len(rows)}, None
+
+
+def _github_tool_dict(envelope):
+    """Return the GitHub tool dict inside a hai_mcp envelope.
+
+    call_mcp returns {success, result}. result is a list. result[0] is
+    the tool dict or a JSON string of it. result[1] is an artifact and
+    is ignored. A bare tool dict is accepted so a caller can pass either
+    shape. The tool dict uses ok, not success.
+    """
+    if not isinstance(envelope, dict):
+        return None, "envelope not an object"
+    if "ok" in envelope and "success" not in envelope:
+        return envelope, None
+    if not envelope.get("success"):
+        err = envelope.get("error")
+        return None, str(err or "success false")[:200]
+    outer = envelope.get("result")
+    raw = outer[0] if isinstance(outer, list) and outer else outer
+    if raw is None:
+        return None, "empty result"
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw, strict=False)
+        except json.JSONDecodeError:
+            return None, "result[0] not json"
+    if not isinstance(raw, dict):
+        return None, "inner envelope not an object"
+    return raw, None
+
+
+def unwrap_github(envelope):
+    """Return (payload, error) for the GitHub file tools.
+
+    Tool bodies read 2026-10-09 from github-mcp server.py and
+    tools/github_list_files_tool.py, github_get_file_tool.py,
+    github_put_file_tool.py. Each tool returns one dict.
+
+    github_list_files: entries[] of name, path, type, size, sha,
+    html_url, plus count. sha on an entry is the blob sha.
+    github_get_file: content (utf-8 text, or base64), encoding, sha.
+    No commit_sha. A directory path is ok false.
+    github_put_file: created, sha (new blob), commit_sha, html_url.
+    The body does not include the file text.
+    """
+    inner, err = _github_tool_dict(envelope)
+    if err:
+        return None, err
+    if inner.get("ok") is not True:
+        return None, str(inner.get("error") or "github ok false")[:200]
+    if "entries" in inner and not isinstance(inner.get("entries"), list):
+        return None, "entries not a list"
+    return inner, None
 
 
 def load_json(ws, rel):

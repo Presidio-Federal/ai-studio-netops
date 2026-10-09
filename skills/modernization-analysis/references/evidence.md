@@ -8,6 +8,15 @@ tag. Do not invent a commercial SKU. The product id is
 `device_type` / `node_definition` **as written** until a serial
 or Cisco lookup says otherwise.
 
+## Product id overlay
+
+`inventory/assets/devices.json` is the operator's product id. The assess
+script seeds one row per `inventory/prod.json` device
+(`name`, `node_definition`) and copies `product_id` and `serial`
+through. A set `product_id` is the estate `pid` (`pid_source`
+`asset`). An empty `product_id` stays the CML node type and is
+not sent to Lifecycle. Do not invent a PID from a hostname.
+
 ## Where identity lives
 
 Prefer Ops NetBox SoT when present. Then Sync access inventory.
@@ -91,5 +100,5 @@ of those from a map. New rows: `selected_replacement` null,
 `replacement_family` null, `replacement_candidates` `[]`,
 `replacement_ask` null.
 
-`detail_ref` `lifecycle/items/<pid>.json` (safe filename:
+`detail_ref` `inventory/assets/<pid>.json` (safe filename:
 letters, digits, `.` `_` `-` only).

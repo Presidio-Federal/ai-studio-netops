@@ -1,7 +1,7 @@
 ---
 name: modernization-analysis
-version: "2.0.1"
-description: "v2.0.1 — Ingest estate identity with ranked confidence. Analyze lifecycle data into a modernization plan with cost and timelines. Reasoner — not a Cisco collector."
+version: "2.3.0"
+description: "v2.3.0 — assess_estate.py seeds inventory/assets/devices.json and groups by the product_id you set. Research files live in inventory/assets/."
 ---
 
 # Modernization Analysis skill
@@ -10,7 +10,7 @@ Keep **`state/lifecycle.json`** the most accurate estate (what
 we have). Ingest SoT, inventory, upload, and verbal. Rank
 confidence. On a plan: ask where they want to go, then write
 **assessment plus a plan with cost and timelines**, and
-**`lifecycle/roadmap.md`**.
+**`inventory/assets/roadmap.md`**.
 
 You do not invent hardware from a hostname. You do not collect
 Cisco EoX, CCW, or NVD.
@@ -24,10 +24,12 @@ stop.
 ## Hard boundaries
 
 Do not call Cisco, CCW, NVD, Splunk, ThousandEyes, IOS-XE, or
-ServiceNow MCP. Do not write `lifecycle/items/` or health files.
+ServiceNow MCP. Do not write `inventory/assets/<pid>.json` or health files.
 Do not invent EoX dates, list prices, SKUs, or objectives. Do
-**not** call `execute_command`. Do not wait for the subagent.
-Never copy example hostnames or PIDs.
+not write scripts. `execute_command` runs only
+`scripts/assess_estate.py` under `execution_type: standard`.
+Do not wait for the subagent. Never copy example hostnames
+or PIDs.
 
 ## Files
 
@@ -37,7 +39,9 @@ Paths: **`workspace-handoff`**. Produce:
 Use exactly: `references/analyze.md`, `references/evidence.md`,
 `references/roadmap.md`, `references/workspace-contract.md`,
 `schemas/lifecycle-estate.schema.json`,
+`schemas/inventory-assets.schema.json`,
 `examples/lifecycle-estate.example.json`,
+`examples/inventory-assets.example.json`,
 `examples/roadmap.example.md`.
 
 The examples are **shape only**. Fill values from workspace
@@ -51,20 +55,47 @@ put recommendation IDs, PIDs, roadmap refs, replacement SKUs, or anything
 inferred from prose in `keys`. Continue writing recommendations as required;
 only their use as relationship keys is prohibited.
 
-**First tool:** `read_file` `state/lifecycle.json`. Then
-`inventory/infra-sot.json` if present. Then
-`inventory/prod.json` if needed.
+**First tool:** one `execute_command`, `execution_type: standard`.
+Copy the path Studio shows for `scripts/assess_estate.py`. Pass
+the `file_explorer` directory beside `skills` on that path as
+`--workspace`.
+
+```text
+python3 <skill>/scripts/assess_estate.py assess --workspace <file_explorer> --mode estate
+```
+
+Use `--mode plan` when they asked for a plan or roadmap. Add
+`--verbal <hostname>=<pid>` or `--upload <hostname>=<pid>` for
+assets they named this turn. The last stdout line is the estate. If `unstamped_count` is set,
+name `inventory/assets/devices.json` and the devices still missing a
+`product_id`. Do not dispatch Lifecycle for those. Dispatch only
+when `needs_lifecycle` is true. Do not open `state/lifecycle.json`
+to fill the reply.
+
+Then annotate the verdict on that same path, still `standard`:
+
+```text
+python3 <skill>/scripts/assess_estate.py annotate --workspace <file_explorer> --headline "<one line>" --understood "<what this estate shows>" --opinion "<assessment verdict>" --plan-opinion "<plan verdict>" --plan-status none
+```
+
+On a plan invoke add `--answers`, `--objectives stated`,
+`--open-ask` (one per question, why then the choice), `--must`,
+`--can-wait`, `--stage`, `--recommendation`, and `--selected
+<pid>=<sku>` when they named a SKU. `--dispatched` after you
+invoke Lifecycle. The script rolls `plan.cost` from prices
+already on the rows.
+
+If `needs_lifecycle` is true, follow **workspace-handoff** and
+do not wait. Then annotate `--dispatched`.
 
 Do not `ls` `lifecycle/`. Do not `get_folder_structure`.
 
 ## State machine
 
-READ_ESTATE → READ_SOT → READ_PROD → MERGE_UPLOAD_VERBAL →
-DISPATCH_STALE (via workspace-handoff, no wait) →
-WRITE_GUIDANCE → (objectives missing on a plan invoke → ASK,
-no roadmap) → SYNTHESIZE (assessment + plan) →
-(answers + plan → WRITE_ROADMAP) → WRITE_ESTATE → READ_BACK →
-STOP
+ASSESS_SCRIPT → ANNOTATE → (needs_lifecycle → DISPATCH, no wait)
+→ (answers and a plan invoke → WRITE_ROADMAP) → STOP. The
+script merges identity, confidence, coverage, and list-price
+totals. Annotate sets the verdict, the asks, and the plan.
 
 ## Reference routing
 

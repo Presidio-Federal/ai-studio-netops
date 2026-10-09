@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "network-ops-state/v3.2",
+  "$id": "network-ops-state/v3.3",
   "title": "state/network-ops.json",
-  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke. v3.2: problem_ref ties the treatment to a Health Analyzer problem; relations[] carries what Network Ops concluded (asserted) from git plus the chart; change.interfaces names the exact stanzas touched. 3.1: optional review[] — the ranked list a review-mode invoke produced; the top row is also this record's finding/change.",
+  "description": "This Network Ops recommendation or GitOps change. Replace in full each invoke. v3.3: change.prescription is the exact edit submit_change.py applies; ci.passed_sha is the last dev SHA whose apply.yml watch passed; release holds the CHG handoff. v3.2: problem_ref, relations[], change.interfaces. 3.1: optional review[].",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -19,13 +19,14 @@
     "git",
     "ci",
     "pr",
+    "release",
     "relations",
     "keys"
   ],
   "properties": {
     "schema": {
       "type": "string",
-      "const": "network-ops-state/v3.2"
+      "const": "network-ops-state/v3.3"
     },
     "updated_at": {
       "type": "string",
@@ -122,7 +123,8 @@
         "operational_ref",
         "monitoring_ref",
         "blast_radius",
-        "annotation_ref"
+        "annotation_ref",
+        "prescription"
       ],
       "properties": {
         "devices": {
@@ -246,6 +248,79 @@
           ],
           "maxLength": 200,
           "description": "Identifier returned by grafana_annotations(action=\"create\") after the merge, as a string. null in recommend / review, on any non-merged status, when Grafana is not attached, or when the create failed twice."
+        },
+        "prescription": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "description": "Exact edit for submit_change.py. Null in recommend and review. The script reads this object; nobody retypes it into argv.",
+          "required": [
+            "targets",
+            "operation",
+            "lines",
+            "old_lines",
+            "scope",
+            "placement",
+            "constraints"
+          ],
+          "properties": {
+            "targets": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 50,
+              "uniqueItems": true,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Hostnames as spelled in inventory. The script resolves each to one inventory/configs path from github_list_files."
+            },
+            "operation": {
+              "type": "string",
+              "enum": [
+                "ensure_present",
+                "ensure_absent",
+                "replace"
+              ]
+            },
+            "lines": {
+              "type": "array",
+              "maxItems": 40,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "Exact line text, including the leading indent the file must keep. One config line per item."
+            },
+            "old_lines": {
+              "type": "array",
+              "maxItems": 40,
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "description": "replace only: the contiguous lines to swap, exact text. Empty for ensure_present and ensure_absent."
+            },
+            "scope": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "global, or the exact block header (interface GigabitEthernet4, router bgp 65000, line vty 0 4). line vty with no range matches one line vty block."
+            },
+            "placement": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500,
+              "description": "end, start, after <exact line>, or before <exact line>. The anchor line is matched inside the scope."
+            },
+            "constraints": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          }
         }
       }
     },
@@ -287,7 +362,8 @@
         "run_id",
         "html_url",
         "result",
-        "marker"
+        "marker",
+        "passed_sha"
       ],
       "properties": {
         "workflow": {
@@ -333,6 +409,13 @@
             "null"
           ],
           "maxLength": 500
+        },
+        "passed_sha": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Last dev commit SHA whose apply.yml watch returned pass. Release compares the PR head to this. Null until a watch passes."
         }
       }
     },
@@ -362,6 +445,43 @@
             "boolean",
             "null"
           ]
+        }
+      }
+    },
+    "release": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "request_id",
+        "chg_number",
+        "status"
+      ],
+      "properties": {
+        "request_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "servicenow/requests/<request_id>.json written for this PR. Null until Network Ops writes the request."
+        },
+        "chg_number": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "pending",
+            "waiting",
+            "released",
+            null
+          ],
+          "description": "pending while the PR is open and the CHG is not released. A second commit on that PR is a batch."
         }
       }
     },

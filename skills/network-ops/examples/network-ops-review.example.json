@@ -1,5 +1,5 @@
 {
-  "schema": "network-ops-state/v3.2",
+  "schema": "network-ops-state/v3.3",
   "updated_at": "2026-09-29T16:10:00Z",
   "source_agent": "network-ops",
   "status": "recommended",
@@ -32,7 +32,8 @@
     },
     "annotation_ref": null,
     "operational_ref": null,
-    "monitoring_ref": null
+    "monitoring_ref": null,
+    "prescription": null
   },
   "git": {
     "ref": "dev",
@@ -45,12 +46,18 @@
     "run_id": null,
     "html_url": null,
     "result": null,
-    "marker": null
+    "marker": null,
+    "passed_sha": null
   },
   "pr": {
     "number": null,
     "html_url": null,
     "merged": null
+  },
+  "release": {
+    "request_id": null,
+    "chg_number": null,
+    "status": null
   },
   "relations": [
     {

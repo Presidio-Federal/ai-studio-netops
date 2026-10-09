@@ -75,7 +75,7 @@
       "end_of_security_vuln_support": null,
       "vulnerabilities": [],
       "psirts": [],
-      "detail_ref": "lifecycle/items/cat8000v.json",
+      "detail_ref": "inventory/assets/cat8000v.json",
       "updated_at": "2026-09-07T00:00:00Z",
       "expires_at": null,
       "research": {

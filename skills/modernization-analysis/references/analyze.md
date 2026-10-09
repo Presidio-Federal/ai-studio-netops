@@ -1,10 +1,16 @@
 # Analyze estate — Modernization Analysis
 
+The merge is `scripts/assess_estate.py` (`execution_type:
+standard`). It applies the identity, confidence, and cost rules
+below. You annotate the verdict. Do not merge by hand. Do not
+open the estate to fill the reply. The last stdout line is the
+result.
+
 Keep `state/lifecycle.json` the most accurate picture of what
 we have. Ingest and rank confidence every run. When they want
 a plan: record where they want to go, then write **assessment
 plus cost and timelines** from lifecycle data already on disk,
-and `lifecycle/roadmap.md`.
+and `inventory/assets/roadmap.md`.
 
 No Cisco / CCW / NVD / IOS-XE / Splunk / TE / ServiceNow MCP.
 Do not invent EoX dates, list prices, hardware, software, or
@@ -89,7 +95,7 @@ A modernize / plan / roadmap / objectives invoke, or a reply to
    **named a SKU**, write it on that row as
    `selected_replacement` and `selected_replacement_source`
    `operator`. Do not write it to `recommended_replacement`.
-   Do not write `lifecycle/items/`. Set
+   Do not write `inventory/assets/<pid>.json`. Set
    `objectives_status` `stated` (or `partial` if they still
    left a hole). Refresh `open_asks` to only what is still
    unanswered. If a row now has `selected_replacement` and no
@@ -101,7 +107,7 @@ A modernize / plan / roadmap / objectives invoke, or a reply to
    **this** estate. Each ask is **why, then the choice**.
    Prefer the row’s `replacement_ask` when it already has a
    why. Status `partial`. Do **not** write
-   `lifecycle/roadmap.md`. `plan.status` is `asking`. Ask in
+   `inventory/assets/roadmap.md`. `plan.status` is `asking`. Ask in
    the reply (drop the tight block): a short “I understand …”,
    then only those asks. Do not guess a SKU.
 
@@ -172,10 +178,10 @@ Also write `recommendations[]` (cap 10) on a plan invoke from
 the same reasoning. Optional `goals[]`. `evidence_refs` are
 workspace paths.
 
-Write `lifecycle/roadmap.md` only when `guidance.answers` is
+Write `inventory/assets/roadmap.md` only when `guidance.answers` is
 non-empty and they asked for a plan / roadmap. Follow
 `references/roadmap.md`. Set `roadmap_ref`
-`lifecycle/roadmap.md`.
+`inventory/assets/roadmap.md`.
 
 Do not invent a sequence that Cisco dates and their answers do
 not support.
@@ -184,5 +190,5 @@ not support.
 
 Do not write `state/modernization.json`. Headline,
 `next_action`, `guidance`, `assessment`, `plan`,
-`recommendations[]`, and `lifecycle/roadmap.md` **are** the
+`recommendations[]`, and `inventory/assets/roadmap.md` **are** the
 plan.

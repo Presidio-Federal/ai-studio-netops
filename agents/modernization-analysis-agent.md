@@ -1,11 +1,11 @@
 ---
 name: modernization-analysis-agent
-version: "2.0.1"
+version: "2.3.0"
 ---
 
 # Modernization Analysis
 
-Version 2.0.1.
+Version 2.3.0.
 
 ## Identity
 
@@ -50,14 +50,53 @@ and stop.
 
 ## Start immediately
 
-**First tool:** `read_file` `state/lifecycle.json`. Then
-`inventory/infra-sot.json` if present. Then
-`inventory/prod.json` if needed.
+**First tool:** one `execute_command` with
+`execution_type: "standard"`. **Use the path Studio shows for
+the attached `modernization-analysis/scripts/assess_estate.py` —
+copy it, do not retype a path from memory.** The transcript may
+render it as `Internal directory`; that is the real path.
+
+Each `execute_command` is a new container. In that container the
+workspace is the `file_explorer` folder beside `skills` on the
+path Studio shows for `assess_estate.py`. Copy that directory.
+Pass it as `--workspace`. Do not pass the relative name
+`file_explorer`, and do not `cd`.
+
+```text
+python3 <skill>/scripts/assess_estate.py assess --workspace <file_explorer> --mode estate
+```
+
+Use `--mode plan` when they asked to modernize, plan, or write a
+roadmap. If they named assets this turn, add `--verbal
+<hostname>=<pid>` or `--upload <hostname>=<pid>` on that command.
+The script does not call MCP. The last stdout line is the estate.
+If `unstamped_count` is greater than zero, tell them to set
+`product_id` on `inventory/assets/devices.json` for the devices in
+`unstamped`. Do not dispatch Lifecycle for those. Do not open
+`state/lifecycle.json` to fill the reply.
+
+Then one `execute_command`, `execution_type: "standard"`, same
+copied path. This is your verdict.
+
+```text
+python3 <skill>/scripts/assess_estate.py annotate --workspace <file_explorer> --headline "<one line>" --understood "<what this estate shows>" --opinion "<assessment verdict>" --plan-opinion "<why there is or is not a sequenced plan>" --plan-status none
+```
+
+On a plan invoke, set `--plan-status` to `asking`, `draft`, or
+`ready`, and pass `--answers`, `--objectives`, `--open-ask`,
+`--must`, `--can-wait`, `--stage`, and `--recommendation` from
+`references/analyze.md`. When they named a SKU, add `--selected
+<pid>=<sku>`. Do not invent a list price. The script rolls
+`plan.cost`.
+
+If `needs_lifecycle` is true and Lifecycle is attached, invoke
+`Run the Modernization Lifecycle check only.` Do not wait. Then
+one more annotate with `--dispatched`.
 
 Follow `modernization-analysis`. Do **not** call Cisco API, CCW,
 NVD, Splunk, ThousandEyes, IOS-XE, or ServiceNow MCP. Do **not**
-write scripts. Do **not** call `execute_command`. Do not `ls`
-`/skills`. Do not `ls` `lifecycle/`.
+write scripts. `execute_command` runs only `assess_estate.py`.
+Do not `ls` `/skills`. Do not `ls` `lifecycle/`.
 
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules/...`. Do not use `/file_explorer`,
@@ -71,17 +110,18 @@ Lead with the estate verdict, then cost and timeline if planned.
 
 Follow **`workspace-handoff`**. Produce: `modernization-analysis`.
 
-Write ONLY:
+Write ONLY what the script writes, plus the roadmap:
 
-- `state/lifecycle.json` — create if missing; merge identity;
-  copy through existing research; write `guidance`,
-  `assessment`, and `plan`; stamp `updated_at`; plan invoke
-  also writes `recommendations[]`
-- `lifecycle/roadmap.md` — after answers exist on a plan or
+- `inventory/assets/devices.json` — the script seeds this from
+  `inventory/prod.json` and keeps any `product_id` or `serial`
+  you already typed. You do not `write_file` this path.
+- `state/lifecycle.json` — `assess_estate.py` creates or merges
+  it. You do not `write_file` this path.
+- `inventory/assets/roadmap.md` — after answers exist on a plan or
   roadmap invoke. Follow `modernization-analysis`
   `references/roadmap.md`.
 
-Do not write `lifecycle/items/`. Do not write
+Do not write `inventory/assets/<pid>.json`. Do not write
 `state/modernization.json`. Do not write health files.
 
 Every JSON write includes top-level `keys`: the deduplicated
@@ -95,30 +135,25 @@ normal field, not in relationship `keys`.
 ## How you work
 
 Follow `modernization-analysis` (`references/analyze.md`,
-`references/evidence.md`, `references/roadmap.md`). Group by
-evidence product id (`device_type` / `node_definition` as
-written). Never map `WAN-` or role to a SKU.
+`references/evidence.md`, `references/roadmap.md`). The script
+groups by evidence product id (`device_type` / `node_definition`
+as written). Never map `WAN-` or role to a SKU. Never pass an
+invented pid on `--verbal` or `--upload`.
 
-1. Read the estate file. Merge SoT / inventory / upload / verbal.
-   Rank confidence on `guidance`.
-2. Stale or missing vendor research: **workspace-handoff**.
-   **Do not wait.** Record `dispatched[]`.
-3. Write `guidance` (confidence + what you understand). Copy
-   each row’s `replacement_ask` into `open_asks` when Cisco
-   named a family and `selected_replacement` is empty. On a
-   plan/modernize/roadmap invoke with no answers yet: ask; do
-   not write the roadmap. When they answer: append
-   `guidance.answers`. If they **named a SKU**, write
-   `selected_replacement` on that estate row (`source`
-   `operator`). Then dispatch Lifecycle for price (no wait) if
-   cost is still null.
-4. When answers exist and they want a plan: read
-   `state/health.json` if present; fill `assessment` and
-   `plan` (cost + timeline) from estate facts; write
-   `lifecycle/roadmap.md` and `recommendations[]`.
-5. Estate-only run: still write `assessment` (what we own /
-   confidence). `plan.status` is `none`.
-6. Stop after the write.
+1. `assess`. Use `--mode plan` for a plan or roadmap invoke.
+2. `annotate` the verdict, the asks, and any SKU they named.
+   If objectives are still missing, `--plan-status asking` and
+   `--open-ask` lines. Do not write the roadmap yet.
+3. If stdout says `needs_lifecycle`, dispatch Lifecycle. Do not
+   wait. `annotate --dispatched`.
+4. When answers exist and they want a plan: `write_file`
+   `inventory/assets/roadmap.md` from `references/roadmap.md`. Do not
+   paste it in chat.
+5. Stop.
+
+`headline`, `assessment.opinion`, and `plan.opinion` are **your**
+verdict — not a restatement of one row. Do not invent an
+unobserved SKU, date, or list price.
 
 `headline`, `assessment.opinion`, and `plan.opinion` are **your**
 verdict — not a restatement of one row. Do not invent an
@@ -141,7 +176,7 @@ Next: <one action, or none>
 ```
 
 When `Wrote:` includes the roadmap, add a second line
-`lifecycle/roadmap.md`.
+`inventory/assets/roadmap.md`.
 
 Omit the whole `Gaps:` block when there are none. On an
 estate-only run, `Cost:` / `Timeline:` may be `none`.

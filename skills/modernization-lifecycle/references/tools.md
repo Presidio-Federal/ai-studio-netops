@@ -27,10 +27,29 @@ unless PSIRT returned nothing and they asked for bugs.
 |------|---------|
 | `ccw_get_catalog_items` | Price / availability / lead time by SKU |
 
-`priceListCode=GLUS`, `currency=USD`. Only SKUs where
-`recommended_replacement` ≠ `pid`. Do not call estimate tools
+`priceListCode=GLUS`, `currency=USD`. Only a SKU already on the
+row (`selected_replacement`, else Cisco `recommended_replacement`)
+and different from `pid`. Do not call estimate tools
 (`ccw_search_estimates`, `ccw_get_estimate`, `ccw_copy_estimate`,
-`ccw_share_estimate`).
+`ccw_share_estimate`). `unitListPrice.cost` is the list price.
+`ERR-03` / `ERR-10` is unpriced, not a failed visit.
+
+## Arguments the collect script sends
+
+| Tool | Arguments |
+|------|-----------|
+| `cisco_get_eox_product_ids` | `product_ids` (one PID string) |
+| `cisco_get_eox_by_serial_numbers` | `serial_numbers` |
+| `cisco_get_product_info_by_serials` | `serial_numbers` |
+| `cisco_get_eox_by_sw_release` | `software_release`, and `product_id` when the tool accepts it |
+| `cisco_psirt_product_id_finder` | `product` |
+| `cisco_psirt_by_product` | `product` (retry `product_id` if rejected) |
+| `cisco_psirt_software` | `version` |
+| `ccw_get_catalog_items` | `skus`, `priceListCode=GLUS`, `currency=USD` |
+| `nvd_get_cve` | `cve_id`, `concise=true` |
+
+A schema error is a gap on that PID. The script does not guess a
+third argument name.
 
 ## NIST NVD (`nist-nvd`)
 

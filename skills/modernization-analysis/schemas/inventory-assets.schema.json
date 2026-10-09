@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "inventory-assets/v1",
+  "title": "inventory/assets/devices.json",
+  "description": "Operator overlay on production devices. Analysis seeds name and node_definition from inventory/prod.json and copies product_id and serial through. Lifecycle reads product_id and does not write this file.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "keys", "updated_at", "source_agent", "devices"],
+  "properties": {
+    "schema": { "type": "string", "const": "inventory-assets/v1" },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^device:[^ ].*$" }
+    },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "modernization-analysis" },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "node_definition", "serial", "product_id"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "node_definition": {
+            "type": ["string", "null"],
+            "description": "CML node type copied from prod.json. Not a Cisco PID."
+          },
+          "serial": {
+            "type": ["string", "null"],
+            "description": "Optional label. Not a lookup key."
+          },
+          "product_id": {
+            "type": ["string", "null"],
+            "description": "Cisco PID the operator typed. Null until set. Lifecycle looks this up."
+          }
+        }
+      }
+    }
+  }
+}

@@ -8,7 +8,7 @@ import re
 import sys
 from typing import Any
 
-SCHEMA = "network-ops-state/v3.2"
+SCHEMA = "network-ops-state/v3.3"
 SOURCE_AGENT = "network-ops"
 STATUSES = {
     "recommended",
@@ -57,9 +57,12 @@ REQUIRED = [
     "git",
     "ci",
     "pr",
+    "release",
     "relations",
     "keys",
 ]
+OPS = {"ensure_present", "ensure_absent", "replace"}
+RELEASE_STATUS = {None, "pending", "waiting", "released"}
 
 
 def fail(message: str) -> None:
@@ -171,6 +174,40 @@ def main() -> None:
             errors.append("change.annotation_ref must be a string or null")
         if annotation_ref is not None and data.get("status") != "merged":
             errors.append("change.annotation_ref is only set on a merged change")
+        prescription = change.get("prescription", "missing")
+        if prescription is None:
+            pass
+        elif not isinstance(prescription, dict):
+            errors.append("change.prescription must be an object or null")
+        else:
+            if prescription.get("operation") not in OPS:
+                errors.append("change.prescription.operation is not allowed")
+            targets = prescription.get("targets")
+            if (
+                not isinstance(targets, list)
+                or not targets
+                or any(not isinstance(item, str) or not item.strip() for item in targets)
+            ):
+                errors.append("change.prescription.targets must be hostnames")
+            elif len(targets) != len(set(targets)):
+                errors.append("change.prescription.targets must not contain duplicates")
+            for field in ("lines", "old_lines"):
+                rows = prescription.get(field)
+                if not isinstance(rows, list) or any(not isinstance(item, str) or not item for item in rows):
+                    errors.append(f"change.prescription.{field} must be an array of lines")
+            if prescription.get("operation") == "replace" and not prescription.get("old_lines"):
+                errors.append("change.prescription.old_lines is required for replace")
+            if prescription.get("operation") in {"ensure_present", "ensure_absent", "replace"} and not prescription.get("lines"):
+                errors.append("change.prescription.lines is required")
+            for field in ("scope", "placement", "constraints"):
+                value = prescription.get(field)
+                if not isinstance(value, str) or not value.strip():
+                    errors.append(f"change.prescription.{field} must be a non-empty string")
+    release = data.get("release")
+    if not isinstance(release, dict):
+        errors.append("release must be an object")
+    elif release.get("status") not in RELEASE_STATUS:
+        errors.append("release.status must be pending, waiting, released, or null")
     git = data.get("git")
     if isinstance(git, dict) and git.get("ref") == "main" and data.get("status") != "merged":
         errors.append("git.ref must be dev until merged")
@@ -179,6 +216,10 @@ def main() -> None:
         result = ci.get("result")
         if result is not None and result not in CI_RESULTS:
             errors.append("ci.result is not allowed")
+        if "passed_sha" not in ci:
+            errors.append("ci.passed_sha is required")
+        elif ci.get("passed_sha") is not None and not isinstance(ci.get("passed_sha"), str):
+            errors.append("ci.passed_sha must be a string or null")
     keys = data.get("keys")
     if not isinstance(keys, list):
         errors.append("keys must be an array")

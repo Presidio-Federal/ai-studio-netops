@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "3.2.0"
-description: "v3.2.0 — network-ops-state/v3.2: recommend, review, or implement exact git-verified config changes; change.blast_radius walked from state/relationships.json, one Grafana change annotation after merge, asserted relations[]."
+version: "3.3.0"
+description: "v3.3.0 — network-ops-state/v3.3 stores change.prescription for submit_change.py, plus ci.passed_sha and the release handoff."
 ---
 
 # Network Ops skill
@@ -131,7 +131,7 @@ Merged → one `grafana_annotations(action="create", …)` tagged
 ## Current operational state
 
 After every terminal outcome, replace `state/network-ops.json` following
-`schemas/network-ops-state.schema.json` (`network-ops-state/v3.2`). In
+`schemas/network-ops-state.schema.json` (`network-ops-state/v3.3`). In
 recommendation mode record the bounded proposal/evidence; in implementation
 mode copy only compact worker evidence:
 
@@ -141,6 +141,8 @@ mode copy only compact worker evidence:
   the prescription scoped), and changed repository paths
 - `change.blast_radius` (hosts, applications, services, basis) and
   `change.annotation_ref` (merged only, else null)
+- `change.prescription` (exact targets, operation, lines, old lines, scope, placement, constraints) or null in recommend / review
+- `ci.passed_sha` and `release` (`request_id`, `chg_number`, `status`)
 - one-line change summary plus GitOps and Pipeline Monitor
   `operational/runs/<stamp>.json` references
 - final `dev` commit, CI run/result, and one marker line

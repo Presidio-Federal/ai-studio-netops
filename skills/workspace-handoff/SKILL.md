@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.14 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.14"
+description: "v1.70.19 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.19"
 ---
 
 # Workspace handoff
@@ -305,9 +305,14 @@ MCP from code. Health Device runs it through `health-device`
 `scripts/visit_iosxe.py`. Health ServiceNow runs it through
 `health-servicenow` `scripts/visit_servicenow.py`. Ops ServiceNow
 Trends runs `ops-servicenow-trends` `scripts/visit_trends.py`.
-Health Analyzer runs `health-analyzer` `scripts/assess_health.py`
-under `execution_type: standard`. It does not call MCP. The
-relationship compile runs `relationship-compiler`
+Modernization Lifecycle runs `modernization-lifecycle`
+`scripts/visit_lifecycle.py` the same way (`collect` under
+`mcp_orchestration`, `annotate` under `standard` for the family
+ask only). Health Analyzer runs `health-analyzer`
+`scripts/assess_health.py` under `execution_type: standard`.
+Modernization Analysis runs `modernization-analysis`
+`scripts/assess_estate.py` the same way. Neither assess script
+calls MCP. The relationship compile runs `relationship-compiler`
 `scripts/compile_graph.py` the same way.
 
 `collect` runs under `execution_type: "mcp_orchestration"`. It calls
@@ -320,7 +325,13 @@ probe: `result[0]` is `{ok, results, result_count, truncated}`.
 `unwrap_grafana` pivots Grafana 13 frames (`schema.fields` plus
 `data.values`) into rows. `unwrap_snow` parses `snow_query_table`:
 `result[0]` is `{ok, rows}`. A cell is a string, or `{sys_id, display}`
-when the stored value and the display differ. Health ServiceNow runs
+when the stored value and the display differ. `unwrap_github` parses
+`github_list_files`, `github_get_file`, and `github_put_file`:
+`result[0]` is the tool dict (`ok`, `entries` or `content`/`sha` or
+`commit_sha`). `scripts/github_common.py` is the Actions client
+Pipeline Monitor uses. It was copied from the compliance runner.
+That runner does not import it. `poll_run` checks a run once and
+does not sleep. Health ServiceNow runs
 `health-servicenow` `scripts/visit_servicenow.py`. Trends uses that
 same table unwrap, then `snow_find_knowledge` for each cluster.
 
@@ -376,9 +387,10 @@ visits).
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `window` (the `since` used) `coverage` `metrics` (one `lab` row) `threads` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `row state urgency device interface ip service rfc issue updated`) `concerns`. Written only when a ticket moved. `status` is `ok`/`unknown`; tickets do not vote on vitals. |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` (iosxe `stale_devices[]`) `series` (`series_ref` to each board; no points) `coverage` `mode` `problems[]` (`id` `status` `keys` `symptom_refs` `evidence_refs` `hypothesis` `impact` — `applications[]` `services[]` `hosts[]` `basis`, walked from `state/relationships.json` — `order` `treatment_ref` `outcome` — carried forward by `id`) `orders[]` (`agent` `task` `problem_ref` `dispatched`) `relations[]` (asserted, `evidence_ref`) `dispatched` `read`. `next_action` is `soap.plan`, the prose of `orders[0]`. Network Ops starts from `problems[]` and sets `problem_ref`. |
-| `state/lifecycle.json` | state | Modernization Analysis and Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | envelope, `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. Current iff now < `expires_at`. |
-| `lifecycle/items/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | `eox` `replacement` `recommended_software` `psirts` `vulnerabilities` `expires_at`. Path is `items[].detail_ref`. |
-| `lifecycle/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | path is `roadmap_ref` |
+| `inventory/assets/devices.json` | configuration | Modernization Analysis | `modernization-analysis` `schemas/inventory-assets.schema.json` | `name` `node_definition` (CML type) `serial` (optional label) `product_id` (operator Cisco PID, null until set). Seeded from `inventory/prod.json`. `product_id` and `serial` are copied through. Lifecycle reads `product_id` and does not write this file. |
+| `state/lifecycle.json` | state | Modernization Analysis and Modernization Lifecycle | `modernization-analysis` / `modernization-lifecycle` `schemas/lifecycle-estate.schema.json` | envelope, `items[].pid` `selected_replacement` `recommended_replacement` `replacement_ask` `recommended_software` `list_cost_per_unit` `guidance` `roadmap_ref` `research`. `pid` is `inventory/assets/devices.json` `product_id` when set. Current iff now < `expires_at`. |
+| `inventory/assets/<pid>.json` | observation | Modernization Lifecycle | `modernization-lifecycle` `schemas/lifecycle-item.schema.json` | `eox` `replacement` `recommended_software` `psirts` `vulnerabilities` `expires_at`. Path is `items[].detail_ref`. |
+| `inventory/assets/roadmap.md` | observation | Modernization Analysis | `modernization-analysis` `references/roadmap.md` | path is `roadmap_ref` |
 | `servicenow/metadata-lab.json` | metadata | Ops ServiceNow Operator | `ops-snow-mcp` `schemas/servicenow-metadata-lab.schema.json` | `marker` `match_terms` `last_visit_id` |
 | `servicenow/metadata-trends.json` | metadata | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-metadata-trends.schema.json` | `groups` `categories` `match_terms` `marker` `lookback_days` `min_related_cases` `last_visit_id` |
 | `servicenow/trends/<stamp>.json` | observation | Ops ServiceNow Trends | `ops-servicenow-trends` `schemas/servicenow-trend.schema.json` | `clusters` `metrics` |

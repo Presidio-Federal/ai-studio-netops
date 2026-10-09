@@ -1,5 +1,5 @@
 {
-  "schema": "network-ops-state/v3.2",
+  "schema": "network-ops-state/v3.3",
   "updated_at": "2026-09-25T16:00:00Z",
   "source_agent": "network-ops",
   "status": "merged",
@@ -42,7 +42,16 @@
     },
     "annotation_ref": "1042",
     "operational_ref": "operational/runs/2026-09-25T15-58-10Z.json",
-    "monitoring_ref": "operational/runs/2026-09-25T15-59-40Z.json"
+    "monitoring_ref": "operational/runs/2026-09-25T15-59-40Z.json",
+    "prescription": {
+      "targets": ["WAN-01"],
+      "operation": "ensure_present",
+      "lines": [" ip mtu 1400"],
+      "old_lines": [],
+      "scope": "interface GigabitEthernet4",
+      "placement": "end",
+      "constraints": "preserve all unrelated content; do not reformat; do not duplicate"
+    }
   },
   "git": {
     "ref": "main",
@@ -55,12 +64,18 @@
     "run_id": "32123456789",
     "html_url": "https://github.com/example-org/network-sot/actions/runs/32123456789",
     "result": "pass",
-    "marker": "Live: PASS"
+    "marker": "Live: PASS",
+    "passed_sha": "abc123def4567890abc123def4567890abc123de"
   },
   "pr": {
     "number": 42,
     "html_url": "https://github.com/example-org/network-sot/pull/42",
     "merged": true
+  },
+  "release": {
+    "request_id": null,
+    "chg_number": null,
+    "status": "released"
   },
   "relations": [
     {

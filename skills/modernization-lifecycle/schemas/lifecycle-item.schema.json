@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "lifecycle-item/v1",
-  "title": "lifecycle/items/<pid>.json",
+  "title": "inventory/assets/<pid>.json",
   "description": "Per-PID raw research. Writer Modernization-Lifecycle. Replace when that PID is refreshed.",
   "type": "object",
   "additionalProperties": false,

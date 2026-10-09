@@ -1,6 +1,6 @@
 # Roadmap markdown — Modernization Analysis
 
-Write **`lifecycle/roadmap.md`** only after operator answers
+Write **`inventory/assets/roadmap.md`** only after operator answers
 are on `guidance` (`objectives_status` `stated` or `partial`
 with a non-empty `answers`). Do not invent objectives. Do not
 invent EoX dates, SKUs, or trains.

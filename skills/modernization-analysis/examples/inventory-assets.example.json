@@ -1,0 +1,14 @@
+{
+  "schema": "inventory-assets/v1",
+  "keys": ["device:device-a"],
+  "updated_at": "2026-10-09T00:00:00Z",
+  "source_agent": "modernization-analysis",
+  "devices": [
+    {
+      "name": "device-a",
+      "node_definition": "cat8000v",
+      "serial": null,
+      "product_id": null
+    }
+  ]
+}

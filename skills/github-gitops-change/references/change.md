@@ -12,6 +12,18 @@ writes.
 
 ## Edit
 
+The script applies the prescription. `scope` is `global` or the exact
+block header (`interface GigabitEthernet4`, `router bgp 65000`,
+`line vty 0 4`). `line vty` with no range matches one `line vty` block.
+A block is that header plus the indented lines under it.
+
+`placement` is `end`, `start`, `after <exact line>`, or `before <exact line>`.
+The anchor is matched inside the scope. Global `end` inserts before a
+column-0 `end` line when the file has one.
+
+Lines are exact text, including the indent a block line already has.
+A block line with no indent is `blocked`.
+
 Apply only the named operation:
 
 - `ensure_present`: add the exact line only when absent from the named scope

@@ -12,8 +12,8 @@ Deployed model is **MiniMax** unless noted.
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
-| Modernization Analysis | 2.0.1 | MiniMax |
-| Modernization Lifecycle | 1.4.1 | MiniMax |
+| Modernization Analysis | 2.3.0 | MiniMax |
+| Modernization Lifecycle | 1.6.0 | MiniMax |
 | Compliance | 1.2.1 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
 | Compliance Author | 1.3.1 | MiniMax |
@@ -28,6 +28,18 @@ Deployed model is **MiniMax** unless noted.
 | Relationship agent | 1.3.0 | MiniMax |
 | Network Map | 1.0.2 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Network Ops skill 3.3.0 (agent prompt stays 3.2.0 until the Gate 3 rewrite): `network-ops-state/v3.3` adds `change.prescription`, `ci.passed_sha`, and `release`. GitOps Change skill 1.4.0: `scripts/submit_change.py` applies that prescription on `dev`.
+
+Pipeline Monitor 2.0.0 (github-actions skill 4.5.0, workspace-handoff 1.70.16): `scripts/watch_run.py watch` is one `execute_command`, timeout 60. The script checks the run once. `running` is the same command plus `--run-id` and writes nothing. A finished watch writes `operational/runs`. Compliance Test skill stays 1.12.7. Its runner was not changed.
+
+workspace-handoff 1.70.19: Cisco research and the roadmap moved from `lifecycle/` to `inventory/assets/`. The operator product list is `inventory/assets/devices.json`. `state/lifecycle.json` stays the rollup.
+
+workspace-handoff 1.70.18: `inventory/assets.json` is the operator product-id overlay. Analysis seeds it from `inventory/prod.json` and copies `product_id` through. Lifecycle calls MCP only for those product ids.
+
+workspace-handoff 1.70.17: Modernization Lifecycle `scripts/visit_lifecycle.py collect` runs under `mcp_orchestration` (Cisco EoX, PSIRT, NVD, CCW). `annotate` sets only the family ask. Modernization Analysis `scripts/assess_estate.py` runs under `standard` and does not call MCP.
+
+workspace-handoff 1.70.15: `unwrap_github` reads `github_list_files`, `github_get_file`, and `github_put_file`. The tool dict is `{ok, entries}` or `{ok, content, sha}` or `{ok, sha, commit_sha}`. `result` on `call_mcp` is a list; `result[0]` is that dict.
 
 Relationship agent 1.3.0 (skill 1.3.0): `scripts/compile_graph.py compile` copies nurse columns, CMDB declarations, and asserted relations into `state/relationships.json`. No MCP. Unchanged watermarks write nothing.
 
@@ -45,7 +57,7 @@ Compliance Test skill 1.12.6: a compliance run still writes `operational/testing
 
 Compliance 1.2.0 (skill 1.2.0): `scripts/assess_chart.py` writes `state/compliance.json` from the visits on disk. The agent sets the opinion, the narrative, and the plan with `annotate`. It does not fold the series or score the chart.
 
-Pipeline Monitor 2.0.0 (github-actions skill 4.5.0): the watch is one `execute_command` of `scripts/watch_run.py`, same orchestration as the Splunk and Grafana visit scripts. The script polls, judges the live marker, and writes `operational/runs`. The agent reads the last stdout line.
+An earlier Pipeline Monitor 2.0.0 note said the script polls inside one command. That design was not what shipped. The watch checks once and returns.
 
 Compliance Test skill 1.12.5: a static failure that is gone on the next run in the same lab is a PASS row and `newly_passing`. The job names static failures, so that absence is the pass.
 

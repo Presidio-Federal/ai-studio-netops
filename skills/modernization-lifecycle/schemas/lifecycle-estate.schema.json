@@ -75,7 +75,7 @@
     "plan": { "$ref": "#/$defs/plan" },
     "roadmap_ref": {
       "type": ["string", "null"],
-      "description": "Catalog path of the roadmap markdown. lifecycle/roadmap.md once written."
+      "description": "Catalog path of the roadmap markdown. inventory/assets/roadmap.md once written."
     },
     "goals": {
       "type": "array",
@@ -210,7 +210,7 @@
       "properties": {
         "kind": {
           "type": "string",
-          "enum": ["live", "inventory", "cmdb", "upload", "verbal"]
+          "enum": ["live", "inventory", "cmdb", "upload", "verbal", "asset"]
         },
         "reliability": {
           "type": "string",
@@ -301,7 +301,7 @@
         },
         "pid_source": {
           "type": "string",
-          "enum": ["serial", "netbox", "device_type", "upload", "verbal", "unknown"]
+          "enum": ["serial", "netbox", "device_type", "upload", "verbal", "unknown", "asset"]
         },
         "quantity": { "type": "integer", "minimum": 0 },
         "devices": {

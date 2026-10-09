@@ -1,12 +1,31 @@
 # Modernization Lifecycle visit
 
-**First:** `read_file` `state/lifecycle.json`. Access denied and
-Allowed paths include `file_explorer`: retry once
-`file_explorer/state/lifecycle.json`. Missing: stop `unknown`. Do
-not create the estate. Do not add devices or change pid from
-inventory — that is Modernization. You may copy
-`software_version` from `inventory/infra-sot.json` onto hostnames
-already on the row.
+The visit is `scripts/visit_lifecycle.py`. The agent runs `collect`
+under `mcp_orchestration` and `annotate` under `standard`. This
+file is the manual order when stderr says `hai_mcp unavailable`.
+Any other script failure: one line from stderr, then stop. Do not
+collect by hand.
+
+`collect` reads `state/lifecycle.json` and
+`inventory/assets/devices.json`. It calls MCP only for estate rows whose
+`pid` is a `product_id` on the asset file. No `product_id` means
+Cisco is not called. It writes `inventory/assets/<pid>.json` and
+merges onto the matching estate row. A family bulletin with no
+single SKU is `needs_note`.
+`annotate --ask <pid>=<why, then the choice>` writes
+`replacement_ask`. The script does not invent that sentence, a
+date, a train, or a price.
+
+Checked and empty is `research.eox` / `software` / `ccw`
+`unavailable`. That row is not collected again until `expires_at`.
+`unavailable` is a real Cisco answer, including a virtual PID and
+a SKU CCW will not price.
+
+**First:** `read_file` `state/lifecycle.json` only on the manual
+fallback. Missing: stop `unknown`. Do not create the estate. Do
+not add devices or change pid from inventory — that is
+Modernization. You may copy `software_version` from
+`inventory/infra-sot.json` onto hostnames already on the row.
 
 The example JSON is **shape only**. Never copy its hostnames or
 PIDs. Use the `pid` already on each estate row.
@@ -114,13 +133,13 @@ Call budget: <= 28 Cisco API + 4 CCW + 8 NVD.
 ## Write
 
 Catalog rows (also the `detail_ref` string):
-`lifecycle/items/<pid>.json` and `state/lifecycle.json`.
+`inventory/assets/<pid>.json` and `state/lifecycle.json`.
 
 If `write_file` / `read_file` returns Access denied and Allowed
 paths include `file_explorer`, retry **once** with prefix
 `file_explorer/` (no leading slash, no UUID):
 
-- `file_explorer/lifecycle/items/<pid>.json`
+- `file_explorer/inventory/assets/<pid>.json`
 - `file_explorer/state/lifecycle.json`
 
 Never `/shared_workspace/HAI-ASSISTANTS-WAPSPACES/...`. Never
@@ -130,7 +149,7 @@ Never `/shared_workspace/HAI-ASSISTANTS-WAPSPACES/...`. Never
 
 For each PID collected:
 
-1. `write_file` `lifecycle/items/<pid>.json` (or the
+1. `write_file` `inventory/assets/<pid>.json` (or the
    `file_explorer/` form after Access denied). Safe filename:
    letters, digits, `.` `_` `-` only. If that write still fails:
    merge onto the estate anyway; Gaps the detail file.

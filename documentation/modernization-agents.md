@@ -28,7 +28,7 @@ flowchart LR
   MA[Modernization Analysis]
   ML[Modernization Lifecycle]
   Cisco[Cisco EoX PSIRT CCW NVD]
-  Road[lifecycle/roadmap.md]
+  Road[inventory/assets/roadmap.md]
   SoT --> MA
   Sync --> MA
   Upload --> MA
@@ -56,11 +56,11 @@ operator’s selected SKU lives only on that row.
 Analysis writes `guidance` (confidence), `assessment` (must
 move / can wait / contradictions / opinion), and `plan` (cost
 rolled from prices already on rows, timeline stages). Headline
-and opinions are this agent’s verdict. `lifecycle/roadmap.md`
+and opinions are this agent’s verdict. `inventory/assets/roadmap.md`
 is the human sequence after they answered.
 
 Lifecycle writes Cisco facts onto matching `pid` rows and dumps
-detail at `lifecycle/items/<pid>.json`. It copies through
+detail at `inventory/assets/<pid>.json`. It copies through
 assessment and plan. It does not invent a replacement SKU.
 Family-only bulletin becomes an ask on the row.
 `recommended_software` comes from Cisco software EoX / PSIRT,

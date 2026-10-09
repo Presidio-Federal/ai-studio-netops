@@ -1,14 +1,34 @@
 ---
 name: github-gitops-change
-version: "1.3.1"
-description: "v1.3.1 — Record interfaces[] (<device>/<interface>) on the operation-run for every interface stanza the prescription scoped. Mechanically apply an exact Network Ops prescription without polling Actions."
+version: "1.4.0"
+description: "v1.4.0 — submit_change.py applies change.prescription to inventory/configs on dev and writes one operation-run. No Actions, no PR."
 ---
 
 # GitHub GitOps Change
 
 Mechanical config work only. Network Ops owns config discovery, comparison,
-the decision, and PR merge. Pipeline Monitor owns Actions. This skill performs
+and the decision. Pipeline Monitor owns Actions. This skill performs
 surgical `dev` puts from an exact prescription.
+
+## Script
+
+`scripts/submit_change.py` is the editor. It reads `change.prescription`
+from `state/network-ops.json`. It does not take the lines on argv.
+
+```text
+python3 <skill>/scripts/submit_change.py submit --workspace <file_explorer> [--state state/network-ops.json]
+```
+
+`execution_type` is `mcp_orchestration`. `timeout` is 60. One `python3`.
+The last stdout line is the result. `--dry-run --fixture <file>` edits
+that file in memory and prints a diff. No MCP.
+
+The bytes edited are the body `github_get_file` returned for `ref=dev`.
+The script does not read `main` and does not fast-forward `dev`. A `dev`
+branch that is behind `main` is edited as it stands.
+
+An open `pr.number` with `release.status` `pending` still commits.
+The line then has `batch` true.
 
 ## Contract
 
