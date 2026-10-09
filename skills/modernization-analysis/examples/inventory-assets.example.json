@@ -8,7 +8,8 @@
       "name": "device-a",
       "node_definition": "cat8000v",
       "serial": null,
-      "product_id": null
+      "product_id": null,
+      "software_version": "17.15.1a"
     }
   ]
 }

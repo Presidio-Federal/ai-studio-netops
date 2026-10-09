@@ -156,6 +156,39 @@ def blank_row(pid, pid_source, source, moment):
     }
 
 
+def ensure_item_fields(row):
+    """Old estate rows omit keys added later. Null means Cisco has not answered yet."""
+    for key in (
+        "recommended_replacement",
+        "recommended_software",
+        "selected_replacement",
+        "selected_replacement_source",
+        "replacement_family",
+        "replacement_ask",
+        "list_cost_per_unit",
+        "total_list_cost",
+        "currency",
+        "end_of_sale",
+        "end_of_support",
+        "end_of_software_support",
+        "end_of_security_vuln_support",
+        "expires_at",
+    ):
+        row.setdefault(key, None)
+    for key in ("vulnerabilities", "psirts", "replacement_candidates", "software_versions", "roles", "platforms"):
+        if not isinstance(row.get(key), list):
+            row[key] = []
+    if not isinstance(row.get("research"), dict):
+        row["research"] = {
+            "eox": "missing",
+            "software": "skipped",
+            "psirt": "missing",
+            "ccw": "skipped",
+            "nvd": "skipped",
+        }
+    return row
+
+
 def finish_row(row):
     names = [name for name in row.get("devices") or [] if isinstance(name, str) and name.strip()]
     row["devices"] = names
@@ -167,8 +200,9 @@ def finish_row(row):
         research["software"] = "skipped"
     if versions and research.get("software") == "skipped":
         research["software"] = "missing"
-    if names:
+    if names and not str(row.get("summary") or "").strip():
         row["summary"] = f"{len(names)} devices, product id {row.get('pid')}."
+    ensure_item_fields(row)
     row["detail_ref"] = f"inventory/assets/{safe_pid(row.get('pid') or 'pid')}.json"
     return row
 
@@ -200,8 +234,35 @@ def keep_text(value):
     return None
 
 
+def observed_versions(ws):
+    """Live version by hostname. Topology wins over SoT. Not a recommendation."""
+    found = {}
+    sot = load_json(ws / "inventory" / "infra-sot.json")
+    if isinstance(sot, dict):
+        for device in sot.get("devices") or []:
+            if not isinstance(device, dict) or not isinstance(device.get("name"), str):
+                continue
+            version = keep_text(device.get("software_version"))
+            if version:
+                found[device["name"]] = version
+    topo = load_json(ws / "inventory" / "topology-observed.json")
+    if isinstance(topo, dict):
+        for device in topo.get("devices") or []:
+            if not isinstance(device, dict) or not isinstance(device.get("name"), str):
+                continue
+            version = keep_text(device.get("software_version"))
+            if version:
+                found[device["name"]] = version
+    return found
+
+
 def sync_assets(ws, moment):
-    """Seed inventory/assets/devices.json from prod.json. Copy product_id and serial through."""
+    """Write the device list from prod.json before any lifecycle file is touched.
+
+    product_id and serial are copied through. software_version is the
+    observed train from the topology map or SoT. recommended_software
+    is not this field and is not set here.
+    """
     prod = load_json(ws / "inventory" / "prod.json")
     if not isinstance(prod, dict):
         return None
@@ -213,6 +274,7 @@ def sync_assets(ws, moment):
         for row in prior.get("devices") or []:
             if isinstance(row, dict) and isinstance(row.get("name"), str):
                 kept[row["name"]] = row
+    versions = observed_versions(ws)
     devices = []
     for incoming in prod_rows(prod):
         old = kept.get(incoming["name"]) or {}
@@ -221,6 +283,7 @@ def sync_assets(ws, moment):
             "node_definition": incoming["node_definition"],
             "serial": keep_text(old.get("serial")),
             "product_id": keep_text(old.get("product_id")),
+            "software_version": versions.get(incoming["name"]),
         })
     doc = {
         "schema": "inventory-assets/v1",
@@ -275,6 +338,13 @@ def group_add(groups, pid, pid_source, source, hostname, role, platform, version
 def evidence_groups(ws, verbal, upload, assets):
     groups = {}
     stamped = stamped_map(assets)
+    versions = {}
+    if isinstance(assets, dict):
+        for row in assets.get("devices") or []:
+            if isinstance(row, dict) and isinstance(row.get("name"), str):
+                version = keep_text(row.get("software_version"))
+                if version:
+                    versions[row["name"]] = version
     sot = load_json(ws / "inventory" / "infra-sot.json")
     prod = load_json(ws / "inventory" / "prod.json")
     sot_names = set()
@@ -287,8 +357,9 @@ def evidence_groups(ws, verbal, upload, assets):
             if not isinstance(pid, str) or not pid.strip():
                 pid = None
             sot_names.add(name)
+            version = versions.get(name) or keep_text(device.get("software_version"))
             if name in stamped:
-                group_add(groups, stamped[name], "asset", ASSET_SOURCE, name, device.get("role"), pid, device.get("software_version"))
+                group_add(groups, stamped[name], "asset", ASSET_SOURCE, name, device.get("role"), pid, version)
                 continue
             if pid is None:
                 continue
@@ -300,13 +371,14 @@ def evidence_groups(ws, verbal, upload, assets):
                 name,
                 device.get("role"),
                 pid.strip(),
-                device.get("software_version"),
+                version,
             )
     if isinstance(prod, dict):
         for incoming in prod_rows(prod):
             name = incoming["name"]
+            version = versions.get(name)
             if name in stamped:
-                group_add(groups, stamped[name], "asset", ASSET_SOURCE, name, incoming.get("role"), incoming.get("node_definition"), None)
+                group_add(groups, stamped[name], "asset", ASSET_SOURCE, name, incoming.get("role"), incoming.get("node_definition"), version)
                 continue
             if name in sot_names:
                 continue
@@ -321,7 +393,7 @@ def evidence_groups(ws, verbal, upload, assets):
                 name,
                 incoming.get("role"),
                 incoming.get("platform"),
-                None,
+                version,
             )
     for kind, rows in (("verbal", verbal), ("upload", upload)):
         for hostname, pid in rows:
@@ -438,6 +510,8 @@ def locked_hosts(items):
 
 def merge(existing, groups, kinds, moment):
     items = [row for row in (existing.get("items") or []) if isinstance(row, dict) and row.get("pid")]
+    for row in items:
+        ensure_item_fields(row)
     asset_home = {}
     for pid, group in groups.items():
         if group.get("pid_source") == "asset":
@@ -494,6 +568,7 @@ def merge(existing, groups, kinds, moment):
         finish_row(row)
     kept = [row for row in items if row.get("devices")]
     for row in kept:
+        ensure_item_fields(row)
         row["detail_ref"] = f"inventory/assets/{safe_pid(row.get('pid') or 'pid')}.json"
     return kept
 
@@ -556,6 +631,9 @@ def parse_pairs(values, label):
 
 
 def write_estate(path, estate):
+    for row in estate.get("items") or []:
+        if isinstance(row, dict):
+            ensure_item_fields(row)
     visit_common.validate(estate, SCHEMA)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(estate, indent=2) + "\n", encoding="utf-8")

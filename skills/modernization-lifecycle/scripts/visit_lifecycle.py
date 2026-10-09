@@ -976,6 +976,18 @@ def cmd_collect(args):
             ref = row.get("detail_ref")
             write_json(ws / ref, doc, ITEM_SCHEMA)
     estate["items"] = items
+    for row in items:
+        if isinstance(row, dict):
+            row.setdefault("recommended_software", None)
+            row.setdefault("recommended_replacement", None)
+            row.setdefault("list_cost_per_unit", None)
+            row.setdefault("total_list_cost", None)
+            row.setdefault("end_of_support", None)
+            row.setdefault("end_of_software_support", None)
+            if not isinstance(row.get("vulnerabilities"), list):
+                row["vulnerabilities"] = []
+            if not isinstance(row.get("psirts"), list):
+                row["psirts"] = []
     estate["keys"] = device_keys([name for row in items for name in (row.get("devices") or [])])
     estate["coverage"] = coverage_of(items)
     estate["updated_at"] = stamp_text(moment)

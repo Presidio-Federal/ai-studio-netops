@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "inventory-assets/v1",
   "title": "inventory/assets/devices.json",
-  "description": "Operator overlay on production devices. Analysis seeds name and node_definition from inventory/prod.json and copies product_id and serial through. Lifecycle reads product_id and does not write this file.",
+  "description": "Device list built from inventory/prod.json. software_version is the observed train from the topology map or SoT. product_id stays null until the operator types a Cisco PID. Lifecycle does not write this file.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "keys", "updated_at", "source_agent", "devices"],
@@ -20,7 +20,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["name", "node_definition", "serial", "product_id"],
+        "required": ["name", "node_definition", "serial", "product_id", "software_version"],
         "properties": {
           "name": { "type": "string", "minLength": 1 },
           "node_definition": {
@@ -34,6 +34,10 @@
           "product_id": {
             "type": ["string", "null"],
             "description": "Cisco PID the operator typed. Null until set. Lifecycle looks this up."
+          },
+          "software_version": {
+            "type": ["string", "null"],
+            "description": "Version observed on the box, from inventory/topology-observed.json or inventory/infra-sot.json. Not a Cisco recommendation."
           }
         }
       }

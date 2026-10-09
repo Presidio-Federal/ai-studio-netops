@@ -10,12 +10,15 @@ or Cisco lookup says otherwise.
 
 ## Product id overlay
 
-`inventory/assets/devices.json` is the operator's product id. The assess
-script seeds one row per `inventory/prod.json` device
-(`name`, `node_definition`) and copies `product_id` and `serial`
-through. A set `product_id` is the estate `pid` (`pid_source`
-`asset`). An empty `product_id` stays the CML node type and is
-not sent to Lifecycle. Do not invent a PID from a hostname.
+`inventory/assets/devices.json` is the device list. The assess
+script writes it from `inventory/prod.json` before it touches
+`state/lifecycle.json`. `node_definition` is the CML type.
+`software_version` is copied from `inventory/topology-observed.json`
+when that map has one, otherwise from `inventory/infra-sot.json`.
+That version is what is running. It is not `recommended_software`.
+`product_id` stays null until the operator types a Cisco PID.
+`recommended_software` stays null until Lifecycle receives a train
+from Cisco for a stamped `product_id`.
 
 ## Where identity lives
 
