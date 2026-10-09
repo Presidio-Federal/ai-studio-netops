@@ -1,7 +1,7 @@
 ---
 name: modernization-lifecycle
-version: "1.6.0"
-description: "v1.6.0 — visit_lifecycle.py writes Cisco research to inventory/assets/<pid>.json and prices only product_id values from inventory/assets/devices.json."
+version: "1.6.1"
+description: "v1.6.1 — visit_lifecycle.py researches each product_id on inventory/assets/devices.json, even when the estate still lists the CML type."
 ---
 
 # Modernization Lifecycle skill

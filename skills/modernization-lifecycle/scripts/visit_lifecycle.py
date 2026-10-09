@@ -838,19 +838,121 @@ def apply_price(row, doc, quote):
 
 def stamped_product_ids(ws):
     """PIDs the operator typed on inventory/assets/devices.json. None if that file is missing."""
+    groups = asset_groups(ws)
+    if groups is None:
+        return None
+    return set(groups)
+
+
+def asset_groups(ws):
+    """Group devices.json by product_id. None if the file is missing."""
     doc = load_json(ws / "inventory" / "assets" / "devices.json")
     if doc is None:
         doc = load_json(ws / "inventory" / "assets.json")
     if not isinstance(doc, dict):
         return None
-    found = set()
-    for row in doc.get("devices") or []:
-        if not isinstance(row, dict):
+    groups = {}
+    for device in doc.get("devices") or []:
+        if not isinstance(device, dict) or not isinstance(device.get("name"), str):
             continue
-        pid = row.get("product_id")
-        if isinstance(pid, str) and pid.strip():
-            found.add(pid.strip())
-    return found
+        pid = device.get("product_id")
+        if not isinstance(pid, str) or not pid.strip():
+            continue
+        bucket = groups.setdefault(pid.strip(), {"devices": [], "versions": []})
+        name = device["name"].strip()
+        if name and name not in bucket["devices"]:
+            bucket["devices"].append(name)
+        version = device.get("software_version")
+        if isinstance(version, str) and version.strip() and version.strip() not in bucket["versions"]:
+            bucket["versions"].append(version.strip())
+    return groups
+
+
+def blank_stamped_row(pid, names, versions, moment):
+    return {
+        "pid": pid,
+        "pid_source": "asset",
+        "quantity": len(names),
+        "devices": list(names),
+        "roles": [],
+        "platforms": [],
+        "software_versions": list(versions),
+        "sample_device": names[0] if names else None,
+        "summary": f"{len(names)} devices, product id {pid}.",
+        "source": {"kind": "asset", "reliability": "high", "ref": "inventory/assets/devices.json"},
+        "recommended_replacement": None,
+        "selected_replacement": None,
+        "selected_replacement_source": None,
+        "replacement_family": None,
+        "replacement_candidates": [],
+        "replacement_ask": None,
+        "recommended_software": None,
+        "list_cost_per_unit": None,
+        "total_list_cost": None,
+        "currency": None,
+        "end_of_sale": None,
+        "end_of_support": None,
+        "end_of_software_support": None,
+        "end_of_security_vuln_support": None,
+        "vulnerabilities": [],
+        "psirts": [],
+        "detail_ref": f"inventory/assets/{safe_pid(pid)}.json",
+        "updated_at": stamp_text(moment),
+        "expires_at": None,
+        "research": {
+            "eox": "missing",
+            "software": "missing" if versions else "skipped",
+            "psirt": "missing",
+            "ccw": "skipped",
+            "nvd": "skipped",
+        },
+    }
+
+
+def adopt_stamped(items, groups, moment):
+    """Make sure each product_id on the asset list has an estate row.
+
+    Hostnames move off the CML node-type row onto that product id.
+    A new row has no Cisco research yet, so the visit will collect it.
+    """
+    by_pid = {}
+    for row in items:
+        if isinstance(row, dict) and row.get("pid") and row["pid"] not in by_pid:
+            by_pid[row["pid"]] = row
+    claimed = set()
+    for pid, group in groups.items():
+        claimed.update(group["devices"])
+        row = by_pid.get(pid)
+        if row is None:
+            row = blank_stamped_row(pid, group["devices"], group["versions"], moment)
+            items.append(row)
+            by_pid[pid] = row
+            continue
+        devices = [name for name in (row.get("devices") or []) if isinstance(name, str)]
+        for name in group["devices"]:
+            if name not in devices:
+                devices.append(name)
+        row["devices"] = devices
+        row["quantity"] = len(devices)
+        versions = [v for v in (row.get("software_versions") or []) if isinstance(v, str)]
+        added = False
+        for version in group["versions"]:
+            if version not in versions:
+                versions.append(version)
+                added = True
+        row["software_versions"] = versions
+        if added:
+            research = row.setdefault("research", {})
+            if research.get("software") in {None, "skipped", "complete"}:
+                research["software"] = "missing"
+        if not row.get("detail_ref"):
+            row["detail_ref"] = f"inventory/assets/{safe_pid(pid)}.json"
+    for row in items:
+        if row.get("pid") in groups:
+            continue
+        row["devices"] = [name for name in (row.get("devices") or []) if name not in claimed]
+        row["quantity"] = len(row["devices"])
+    return [row for row in items if row.get("devices")]
 
 
 def cmd_collect(args):
@@ -884,6 +986,9 @@ def cmd_collect(args):
         }))
         return 0
     items = [row for row in (estate.get("items") or []) if isinstance(row, dict) and row.get("pid")]
+    groups = asset_groups(ws)
+    if groups:
+        items = adopt_stamped(items, groups, moment)
     version_copied = False
     for row in items:
         if row.get("pid") not in stamped or row.get("software_versions"):
