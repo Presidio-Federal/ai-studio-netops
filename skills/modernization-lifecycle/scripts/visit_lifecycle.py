@@ -20,6 +20,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -38,12 +39,12 @@ SCHEMA_DIR = Path(__file__).resolve().parent.parent / "schemas"
 ESTATE_SCHEMA = SCHEMA_DIR / "lifecycle-estate.schema.json"
 ITEM_SCHEMA = SCHEMA_DIR / "lifecycle-item.schema.json"
 MAX_PIDS = 8
-MAX_CISCO = 28
+MAX_CISCO = 48
 MAX_CCW = 4
-MAX_NVD = 8
-MAX_ADV = 15
+MAX_NVD = 12
+MAX_ADV = 8
 NVD_PER_PID = 3
-SW_CAP = 2
+SW_CAP = 1
 VIRTUAL = ("cat8000v", "c8000v", "csr1000v", "iosvl2", "iosv", "asav", "ftdv", "c9800-cl", "virtual")
 DATE_KEYS = {
     "end_of_sale": ("EndOfSaleDate", "end_of_sale", "endOfSale"),
@@ -177,9 +178,9 @@ def row_needs(row, now, detail_missing):
     if row.get("end_of_support") is None and research.get("eox") != "unavailable":
         return True
     versions = [v for v in (row.get("software_versions") or []) if isinstance(v, str) and v.strip()]
-    if versions and not row.get("recommended_software") and research.get("software") in {None, "missing"}:
+    if versions and not row.get("recommended_software") and research.get("software") in {None, "missing", "partial"}:
         return True
-    if research.get("psirt") == "missing":
+    if research.get("psirt") in {None, "missing"}:
         return True
     rec = row.get("recommended_replacement")
     ccw = research.get("ccw")
@@ -301,6 +302,12 @@ def parse_train(payload):
 def parse_advisories(payload):
     found = []
     seen = set()
+    if isinstance(payload, str):
+        for aid in re.findall(r"cisco-sa-[\w.-]+", payload, re.I):
+            if aid not in seen:
+                seen.add(aid)
+                found.append({"id": aid, "title": None, "severity": None, "cve": None, "cvss": None})
+        return found[:MAX_ADV]
     if not isinstance(payload, (dict, list)):
         return found
     for obj in walk(payload):
@@ -416,6 +423,8 @@ def call_tool(tool, args, bucket, limits, budget):
     if limits[bucket] <= 0:
         return None, f"{bucket} cap"
     limits[bucket] -= 1
+    if bucket == "cisco":
+        time.sleep(0.6)
     payload, err = unwrap(visit_common.mcp_call(tool, args))
     return payload, err
 
@@ -552,7 +561,7 @@ def collect_pid(row, limits, budget, gaps, lines):
     bulletin = None
     saw_body = False
     eox_error = None
-    for variant in pid_variants(pid):
+    for variant in (pid,):
         payload, err = call_tool(
             "cisco_get_eox_product_ids",
             {"product_ids": [variant]},
@@ -682,11 +691,14 @@ def collect_pid(row, limits, budget, gaps, lines):
             if err:
                 sw_error = err
                 continue
-            got_dates, _, _, _, empty = parse_eox(payload)
+            got_dates, got_skus, _, _, empty = parse_eox(payload)
             if not empty:
                 for field in SW_DATES:
                     if got_dates.get(field) and sw_dates[field] is None:
                         sw_dates[field] = got_dates[field]
+                for sku in got_skus:
+                    if train is None and re.search(r"\d+\.\d+", sku):
+                        train = sku
             found = parse_train(payload)
             if found and train is None:
                 train = found
@@ -711,8 +723,10 @@ def collect_pid(row, limits, budget, gaps, lines):
         apply_dates(row, sw_dates, SW_DATES)
         if train:
             row["recommended_software"] = train
-        if train or row.get("end_of_software_support"):
+        if train:
             research["software"] = "complete"
+        elif row.get("end_of_software_support"):
+            research["software"] = "partial"
         elif sw_error and ("422" in sw_error or "schema" in sw_error.lower()):
             research["software"] = "missing"
             item_gaps.append(f"software: {sw_error}")
@@ -723,17 +737,21 @@ def collect_pid(row, limits, budget, gaps, lines):
             research["software"] = "unavailable"
             item_gaps.append("software: Cisco returned no train")
 
-    payload, err = call_tool("cisco_psirt_by_product", {"product": pid}, "cisco", limits, budget)
+    payload, err = call_tool("cisco_psirt_by_product", {"product_names": [pid]}, "cisco", limits, budget)
+    if err and ("422" in err or "schema" in err.lower() or "product" in err.lower()):
+        payload, err = call_tool("cisco_psirt_by_product", {"product": pid}, "cisco", limits, budget)
     advisories = []
-    if err and "product" in err.lower():
-        payload, err = call_tool("cisco_psirt_by_product", {"product_id": pid}, "cisco", limits, budget)
     if err:
-        research["psirt"] = "unavailable"
+        research["psirt"] = "missing" if ("422" in err or "schema" in err.lower()) else "unavailable"
         item_gaps.append(f"PSIRT: {err}")
     else:
         advisories = parse_advisories(payload)
         row["psirts"] = advisories
-        research["psirt"] = "complete"
+        if advisories:
+            research["psirt"] = "complete"
+        else:
+            research["psirt"] = "unavailable"
+            item_gaps.append(f"PSIRT: no advisories parsed ({glimpse(payload)})")
 
     cves = cve_ids(advisories, payload)
     vulns = []
@@ -823,6 +841,7 @@ def apply_price(row, doc, quote):
     row["list_cost_per_unit"] = amount
     row["currency"] = quote.get("currency")
     row["total_list_cost"] = money_total(amount, row.get("quantity") or 0)
+    row["lead_time"] = quote.get("lead_time")
     research = row.setdefault("research", {})
     research["ccw"] = "complete"
     repl = doc["replacement"]
@@ -961,7 +980,7 @@ def prior_schema_failure(ws, row):
     if not isinstance(doc, dict):
         return False
     text = " ".join(str(gap) for gap in (doc.get("gaps") or []))
-    return "422" in text or "did not match expected schema" in text
+    return "422" in text or "did not match expected schema" in text or "cisco cap" in text
 
 
 def cmd_collect(args):
@@ -1024,6 +1043,9 @@ def cmd_collect(args):
             row["expires_at"] = None
             due.append(row)
             continue
+        research = row.setdefault("research", {})
+        if research.get("psirt") == "complete" and not row.get("psirts"):
+            research["psirt"] = "missing"
         if row_needs(row, moment, missing):
             due.append(row)
     if not due and not version_copied:
@@ -1091,7 +1113,10 @@ def cmd_collect(args):
         for row, doc in pairs:
             if quote:
                 apply_price(row, doc, quote)
-                lines.append(f"{row['pid']} list {quote['amount']} {quote.get('currency') or 'USD'} for {sku}")
+                lines.append(
+                    f"{row['pid']} list {quote['amount']} {quote.get('currency') or 'USD'} for {sku}"
+                    + (f", lead {quote['lead_time']}" if quote.get("lead_time") else "")
+                )
             elif sku in invalid:
                 row.setdefault("research", {})["ccw"] = "unavailable"
                 gaps.append(f"{sku}: CCW invalid or not entitled")

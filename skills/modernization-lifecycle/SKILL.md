@@ -1,7 +1,7 @@
 ---
 name: modernization-lifecycle
-version: "1.6.1"
-description: "v1.6.1 — visit_lifecycle.py researches each product_id on inventory/assets/devices.json, even when the estate still lists the CML type."
+version: "1.6.2"
+description: "v1.6.2 — Lifecycle collect paces Cisco calls so every stamped PID gets EoX, one software release, PSIRT, NVD, and CCW lead time."
 ---
 
 # Modernization Lifecycle skill

@@ -33,6 +33,8 @@ Network Ops skill 3.3.0 (agent prompt stays 3.2.0 until the Gate 3 rewrite): `ne
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0, workspace-handoff 1.70.16): `scripts/watch_run.py watch` is one `execute_command`, timeout 60. The script checks the run once. `running` is the same command plus `--run-id` and writes nothing. A finished watch writes `operational/runs`. Compliance Test skill stays 1.12.7. Its runner was not changed.
 
+Modernization Lifecycle skill 1.6.2: one hardware EoX call and one software release per PID, then PSIRT and NVD. Cisco calls wait 0.6s. CCW lead time is stored on the estate row. A missing PSIRT list is not treated as finished.
+
 Modernization Lifecycle skill 1.6.1: `collect` takes `product_id` from `inventory/assets/devices.json` and researches those PIDs. An estate that still lists only CML node types is not treated as current.
 
 workspace-handoff 1.70.19: Cisco research and the roadmap moved from `lifecycle/` to `inventory/assets/`. The operator product list is `inventory/assets/devices.json`. `state/lifecycle.json` stays the rollup.
