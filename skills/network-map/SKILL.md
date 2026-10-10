@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.2.4"
-description: "v1.2.4 — Network Map: compile workspace boards into one HTML map; standing compliance and health percents, collapsed side cards, and a toggleable trend from the compliance and nurse series."
+version: "1.3.0"
+description: "v1.3.0 — Network Map: compile workspace boards into one HTML map with lifecycle support dates, replacement offers, and PSIRT advisories on the same devices."
 ---
 
 # Network Map skill
@@ -53,6 +53,7 @@ the page and a `missing_boards` entry in the summary — not an error.
 | `state/network-ops.json` | review rows, last change blast radius |
 | `state/servicenow.json` | headline, open counts |
 | `state/network-sync.json` | inventory headline |
+| `state/lifecycle.json` | support dates, replacement offers, lead times, PSIRT advisories, list-price range |
 | `health/metadata-application.json` | probes, containers, hosts per tier |
 | `health/metadata-netflow.json` | conversations, exporter state |
 | `health/metadata-splunk.json` | per-device syslog buckets (`hosts` map resolves addresses) |
@@ -73,6 +74,7 @@ by another agent. Overwrite every run. Do not write anywhere else.
 ```text
 Result: ok  Wrote: reports/network-map.html (<bytes> B, generated <ts>)
 Map: <nodes> devices · <links> cables (<link_source>) · <edges> edges · <problems> problems · <findings> findings · <review_rows> review rows
+Lifecycle: <lifecycle_items> products · <psirts> advisories · list <lifecycle_cost_low>–<lifecycle_cost_high>
 Application: <services joined> on <hosts_mapped joined | no host resolved>
 Gaps: <one line per missing board, or "none">
 Open: download reports/network-map.html and open it in a browser.

@@ -32,6 +32,7 @@ BOARDS = {
     "netops": "state/network-ops.json",
     "servicenow": "state/servicenow.json",
     "sync": "state/network-sync.json",
+    "lifecycle": "state/lifecycle.json",
     "md_application": "health/metadata-application.json",
     "md_netflow": "health/metadata-netflow.json",
     "md_splunk": "health/metadata-splunk.json",
@@ -266,6 +267,117 @@ def layout(nodes, links, override):
     return "auto"
 
 
+def _money(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _support_window(iso, now):
+    if not iso:
+        return "undated"
+    text = str(iso).strip().replace("Z", "+00:00")
+    try:
+        moment = datetime.fromisoformat(text)
+    except ValueError:
+        return "undated"
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=timezone.utc)
+    days = (moment.date() - now.date()).days
+    if days < 0:
+        return "overdue"
+    if days <= 90:
+        return "soon"
+    return "later"
+
+
+def lifecycle_out(life, now):
+    if not life:
+        return {"present": False, "items": [], "by_device": {}, "psirts": 0,
+                "cost_low": None, "cost_high": None, "currency": None, "headline": None, "updated_at": None}
+    low = high = 0.0
+    any_price = False
+    currency = None
+    items = []
+    by_device = {}
+    psirts = 0
+    for row in life.get("items") or []:
+        if not isinstance(row, dict) or not row.get("pid"):
+            continue
+        offers = []
+        amounts = []
+        for offer in row.get("offers") or []:
+            if not isinstance(offer, dict) or not offer.get("sku"):
+                continue
+            amount = _money(offer.get("list_cost_per_unit"))
+            offers.append({
+                "sku": offer.get("sku"),
+                "list_cost_per_unit": None if amount is None else ("%.2f" % amount),
+                "currency": offer.get("currency"),
+                "lead_time": offer.get("lead_time"),
+                "availability": offer.get("availability"),
+            })
+            if amount is not None:
+                amounts.append(amount)
+                if offer.get("currency"):
+                    currency = offer.get("currency")
+        if not amounts:
+            amount = _money(row.get("list_cost_per_unit"))
+            if amount is not None:
+                amounts.append(amount)
+                if row.get("currency"):
+                    currency = row.get("currency")
+        qty = int(row.get("quantity") or 0)
+        if amounts and qty:
+            any_price = True
+            low += min(amounts) * qty
+            high += max(amounts) * qty
+        advisories = []
+        for adv in row.get("psirts") or []:
+            if isinstance(adv, dict) and adv.get("id"):
+                advisories.append({
+                    "id": adv.get("id"),
+                    "title": adv.get("title"),
+                    "severity": adv.get("severity"),
+                    "cve": adv.get("cve"),
+                    "cvss": adv.get("cvss"),
+                })
+        advisories.sort(key=lambda a: _money(a.get("cvss")) or 0, reverse=True)
+        psirts += len(advisories)
+        support = row.get("end_of_support") or row.get("end_of_software_support")
+        item = {
+            "pid": row.get("pid"),
+            "qty": qty,
+            "devices": [n for n in (row.get("devices") or []) if isinstance(n, str)],
+            "support": support,
+            "window": _support_window(support, now),
+            "replacement": row.get("recommended_replacement"),
+            "candidates": [s for s in (row.get("replacement_candidates") or []) if isinstance(s, str)][:8],
+            "offers": offers[:8],
+            "lead_time": row.get("lead_time"),
+            "software": row.get("recommended_software"),
+            "psirts": advisories[:5],
+        }
+        items.append(item)
+        for name in item["devices"]:
+            by_device[name] = row.get("pid")
+    plan = life.get("plan") or {}
+    cost = plan.get("cost") or {}
+    return {
+        "present": True,
+        "headline": life.get("headline"),
+        "updated_at": life.get("updated_at"),
+        "cost_low": ("%.2f" % low) if any_price else cost.get("list_total"),
+        "cost_high": ("%.2f" % high) if any_price else None,
+        "currency": currency or cost.get("currency"),
+        "notes": (cost.get("notes") or "")[:240],
+        "items": items,
+        "by_device": by_device,
+        "psirts": psirts,
+    }
+
+
 def build(ws, template_path):
     missing, sources = [], {}
 
@@ -288,6 +400,7 @@ def build(ws, template_path):
     netops = board("netops") or {}
     snow = board("servicenow") or {}
     sync = board("sync") or {}
+    life = board("lifecycle") or {}
     mda = (board("md_application") or {}).get("application") or {}
     mdn = (board("md_netflow") or {}).get("netflow") or {}
     mds = (board("md_splunk") or {}).get("splunk") or {}
@@ -667,6 +780,7 @@ def build(ws, template_path):
                  "coverage": ((sync.get("inventories") or {}).get("prod") or {}).get("current_snapshot", {}).get("coverage") if sync else None,
                  "device_count": len(nodes), "collected_at": inv.get("collected_at"),
                  "status": inv.get("status")},
+        "lifecycle": lifecycle_out(life, datetime.now(timezone.utc)),
         "app": app_out,
         "syslog": syslog_out,
         "flows": flows,
@@ -718,6 +832,10 @@ def main():
         "problems": len(bundle["health"]["problems"]),
         "findings": len(bundle["compliance"]["findings"]),
         "review_rows": len(bundle["netops"]["review"]),
+        "lifecycle_items": len(bundle["lifecycle"]["items"]),
+        "psirts": bundle["lifecycle"]["psirts"],
+        "lifecycle_cost_low": bundle["lifecycle"]["cost_low"],
+        "lifecycle_cost_high": bundle["lifecycle"]["cost_high"],
         "services": [s["service"] for s in bundle["app"]["services"]],
         "hosts_mapped": [s["host_node"] for s in bundle["app"]["services"] if s["host_node"]],
         "missing_boards": bundle["missing"],

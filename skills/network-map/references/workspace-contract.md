@@ -16,6 +16,7 @@ Paths are `workspace-handoff` catalog rows. Nothing else.
 | `state/network-ops.json` | Network Ops | no |
 | `state/servicenow.json` | Ops ServiceNow Operator | no |
 | `state/network-sync.json` | Ops Network Sync | no |
+| `state/lifecycle.json` | Modernization Lifecycle | no |
 | `health/metadata-application.json` | Health Application | no |
 | `health/metadata-netflow.json` | Health Monitor | no |
 | `health/metadata-splunk.json` | Health Monitor | no |

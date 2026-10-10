@@ -33,10 +33,10 @@ table{border-collapse:collapse;width:100%;font-size:12px}td{padding:4px 6px;bord
 footer{padding:4px 22px;border-top:1px solid var(--line);color:#64748b;font-size:11px;display:flex;gap:14px;flex-wrap:wrap}
 </style></head><body>
 <header><h1 id="title">Network map</h1><div class="scorebar" id="scorebar"></div><div class="sub" id="sub"></div>
-<div class="toggles"><span class="tg" id="trendTg">Trend</span><span class="tg on" data-l="flows">NetFlow flows</span><span class="tg on" data-l="mgmt">OOB mgmt</span><span class="tg on" data-l="comp">Compliance</span><span class="tg on" data-l="tick">Incidents</span><span class="tg on" data-l="probs">Problems</span><span class="tg" data-l="peers">BGP peers</span><span class="tg" id="reset">Reset</span></div></header>
+<div class="toggles"><span class="tg" id="trendTg">Trend</span><span class="tg on" data-l="flows">NetFlow flows</span><span class="tg on" data-l="mgmt">OOB mgmt</span><span class="tg on" data-l="comp">Compliance</span><span class="tg on" data-l="tick">Incidents</span><span class="tg on" data-l="probs">Problems</span><span class="tg on" data-l="life">Lifecycle</span><span class="tg" data-l="peers">BGP peers</span><span class="tg" id="reset">Reset</span></div></header>
 <div id="trend"></div>
 <div class="wrap"><div class="topo" id="topo"><svg id="svg"><defs><marker id="pa" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#a78bfa"/></marker></defs><g id="view"></g></svg>
-<div class="legend"><span><i style="border-color:#3b82f6"></i>IOS-XE</span><span><i style="border-color:#06b6d4"></i>NX-OS</span><span><i style="border-color:#f97316"></i>ASA</span><span><i style="border-color:#64748b"></i>L2 switch</span><span><i style="border-color:#a3e635"></i>Linux host</span><span style="color:#ef4444">&#9711; active problem</span><span style="color:#f59e0b">&#9711; watching</span><span><b style="background:#f59e0b;color:#0b1220;padding:0 4px;border-radius:3px">C</b> compliance FAIL</span><span><b style="background:#ec4899;color:#0b1220;padding:0 4px;border-radius:3px">I</b> incident</span><span style="color:#a78bfa">&#10230; flows_to</span><span style="color:#fbbf24">&mdash; peers_with</span> &middot; click a device &middot; scroll to zoom &middot; drag to pan</div>
+<div class="legend"><span><i style="border-color:#3b82f6"></i>IOS-XE</span><span><i style="border-color:#06b6d4"></i>NX-OS</span><span><i style="border-color:#f97316"></i>ASA</span><span><i style="border-color:#64748b"></i>L2 switch</span><span><i style="border-color:#a3e635"></i>Linux host</span><span style="color:#ef4444">&#9711; active problem</span><span style="color:#f59e0b">&#9711; watching</span><span><b style="background:#f59e0b;color:#0b1220;padding:0 4px;border-radius:3px">C</b> compliance FAIL</span><span><b style="background:#ec4899;color:#0b1220;padding:0 4px;border-radius:3px">I</b> incident</span><span><b style="background:#fb7185;color:#0b1220;padding:0 4px;border-radius:3px">L</b> support overdue</span><span style="color:#a78bfa">&#10230; flows_to</span><span style="color:#fbbf24">&mdash; peers_with</span> &middot; click a device &middot; scroll to zoom &middot; drag to pan</div>
 <div id="drawer"></div></div>
 <div class="side" id="side"></div></div>
 <footer id="foot"></footer>
@@ -64,7 +64,8 @@ const cur=e=>e.status!=='retired';
 const flows=D.edges.filter(e=>e.rel==='flows_to'&&cur(e)&&e.from.startsWith('device:')&&e.to.startsWith('device:')).map(e=>[e.from.slice(7),e.to.slice(7)]);
 const peers=D.edges.filter(e=>e.rel==='peers_with'&&cur(e)&&e.from.startsWith('device:')&&e.to.startsWith('device:')).map(e=>[e.from.slice(7),e.to.slice(7)]);
 const hostSvc={};D.app.services.forEach((s,i)=>{if(s.host_node)hostSvc[s.host_node]=i});
-const layers={flows:true,mgmt:true,comp:true,tick:true,probs:true,peers:false};
+const lifeOf={};(D.lifecycle=D.lifecycle||{items:[]});(D.lifecycle.items||[]).forEach(it=>(it.devices||[]).forEach(n=>{lifeOf[n]=it}));
+const layers={flows:true,mgmt:true,comp:true,tick:true,probs:true,life:true,peers:false};
 // ---- render topology
 const view=document.getElementById('view');
 function render(){let s='';const sites={};D.nodes.forEach(n=>{if(n.site)(sites[n.site]??=[]).push(pos[n.label])});
@@ -74,9 +75,11 @@ if(layers.peers)peers.forEach(([a,b])=>{if(!pos[a]||!pos[b])return;const[p,q]=[p
 if(layers.flows)flows.forEach(([a,b])=>{if(!pos[a]||!pos[b])return;const[p,q]=[pos[a],pos[b]];const cx=(p[0]+q[0])/2+(q[1]-p[1])*.25,cy=(p[1]+q[1])/2-(q[0]-p[0])*.25;s+=`<path class="fl" data-a="${esc(a)}" data-b="${esc(b)}" d="M${p[0]},${p[1]} Q${cx},${cy} ${q[0]},${q[1]}" fill="none" stroke="#a78bfa" stroke-width="1.6" opacity=".7" marker-end="url(#pa)"><title>NetFlow: ${esc(a)} flows_to ${esc(b)}</title></path>`});
 D.nodes.forEach(n=>{const[x,y]=pos[n.label],nm=n.label,col=C[n.platform]||'#94a3b8',r=n.platform==='iosxe'?18:14;let g=`<g class="node" data-n="${esc(nm)}">`;
 if(layers.probs&&probsOf[nm]){const act=probsOf[nm].some(p=>p.status==='active');g+=`<circle cx="${x}" cy="${y}" r="${r+7}" fill="none" stroke="${act?'#ef4444':'#f59e0b'}" stroke-width="3"/>`}
+if(layers.life&&lifeOf[nm]&&(lifeOf[nm].window==='overdue'||lifeOf[nm].window==='soon')){const rr=(layers.probs&&probsOf[nm])?r+12:r+7;g+=`<circle cx="${x}" cy="${y}" r="${rr}" fill="none" stroke="${lifeOf[nm].window==='overdue'?'#fb7185':'#fdba74'}" stroke-width="2" stroke-dasharray="3,3"/>`}
 g+=`<circle class="body" cx="${x}" cy="${y}" r="${r}" fill="#0f172a" stroke="${col}" stroke-width="3" ${n.access?'':'stroke-dasharray="4,3"'}/>`;
 if(layers.comp&&failDev.has(nm))g+=`<rect x="${x+r-4}" y="${y-r-10}" width="14" height="14" rx="3" fill="#f59e0b"/><text x="${x+r+3}" y="${y-r+1}" class="bd" text-anchor="middle">C</text>`;
 if(layers.tick&&tickOf[nm])g+=`<rect x="${x-r-10}" y="${y-r-10}" width="14" height="14" rx="3" fill="#ec4899"/><text x="${x-r-3}" y="${y-r+1}" class="bd" text-anchor="middle">I</text>`;
+if(layers.life&&lifeOf[nm]&&lifeOf[nm].window==='overdue')g+=`<rect x="${x+r-4}" y="${y+r-4}" width="14" height="14" rx="3" fill="#fb7185"/><text x="${x+r+3}" y="${y+r+7}" class="bd" text-anchor="middle">L</text>`;
 if(hostSvc[nm]!==undefined){const sv=D.app.services[hostSvc[nm]];const nc=sv.tiers.reduce((a,t)=>a+t.containers.length,0);g+=`<text x="${x}" y="${y-r-14}" class="nl" style="fill:#a3e635" text-anchor="middle">${esc(sv.service)} · ${nc} containers</text>`}
 g+=`<text x="${x}" y="${y+r+14}" class="nl" text-anchor="middle">${esc(nm)}</text></g>`;s+=g});
 view.innerHTML=s;view.querySelectorAll('.node').forEach(el=>el.addEventListener('click',ev=>{ev.stopPropagation();select(el.dataset.n)}));applyFocus()}
@@ -97,6 +100,13 @@ if(hh){const cs=containersOn(nm);h+=`<p><b>Host</b> · ${esc(hh.instance||'')} �
 if(ps.length)h+=`<p><b>Chart problems</b>`+ps.map(p=>`<div class="item" onclick="selProblem('${p.id}')"><span class="pill" style="background:${pillc(p.status)}">${p.status}</span><b>${p.id}</b><div class="hyp">${esc(p.hypothesis)}</div></div>`).join('')+`</p>`;
 if(cf.length)h+=`<p><b>Compliance</b>`+cf.map(f=>`<div class="item">${fpill(f)}${esc(f.summary)} <span class="keys">${(f.keys||[]).filter(k=>k.startsWith('control:')).map(esc).join(' ')}</span></div>`).join('')+`</p>`;else if(scanned.size&&!scanned.has(nm))h+=`<p><b>Compliance</b><div class="fine">not in the last test run scope</div></p>`;
 if(no.length)h+=`<p><b>Network Ops review</b>`+no.map(r=>`<div class="item">${esc(r.finding)}${r.proposed?`<div class="fine">proposed: ${esc(typeof r.proposed==='string'?r.proposed:JSON.stringify(r.proposed))}</div>`:''}</div>`).join('')+`</p>`;
+const lc=lifeOf[nm];
+if(lc){h+=`<p><b>Lifecycle</b> ${esc(lc.pid)} · support ${esc(lc.support||'undated')} · ${esc(lc.window)}`;
+if((lc.offers||[]).length)h+=lc.offers.map(o=>`<div class="fine">${esc(o.sku)} ${esc(o.list_cost_per_unit||'')} ${esc(o.currency||'')} · lead ${esc(o.lead_time||o.availability||'')}</div>`).join('');
+else if(lc.replacement)h+=`<div class="fine">replacement ${esc(lc.replacement)}</div>`;
+if((lc.psirts||[]).length)h+=`<div class="fine">${lc.psirts.map(a=>`${esc(a.id)} ${esc(a.severity||'')} ${a.cvss??''}`).join(' · ')}</div>`;
+if(lc.software)h+=`<div class="fine">fix train ${esc(lc.software)}</div>`;
+h+=`</p>`}
 if(sl)h+=`<p><b>Syslog</b> <span class="fine">${Object.entries(sl).map(([k,v])=>`${esc(k)} ${v}`).join(' · ')}</span></p>`;
 if(tickOf[nm])h+=`<p><b>Incidents</b> ${[...tickOf[nm]].map(esc).join(', ')}</p>`;
 h+=`<p><b>Links</b> (${ifs.length})<div class="fine">${ifs.map(esc).join('<br>')||'none in inventory'}</div></p>`;
@@ -109,6 +119,10 @@ function crow(c){return`${esc(c.name||'?')} <span class="fine">${esc(c.image||''
 function selProblem(id){const p=D.health.problems.find(x=>x.id===id);if(!p)return;const devs=(p.keys||[]).filter(k=>k.startsWith('device:')||k.startsWith('interface:')).map(k=>k.split(':')[1].split('/')[0]);const im=p.impact||{};(im.hosts||[]).forEach(x=>devs.push(x));focusNodes(devs,null);
 drawer.innerHTML=`<span class="x" onclick="clearFocus()">✕</span><h2>${p.id} <span class="pill" style="background:${pillc(p.status)}">${p.status}</span></h2><div class="keys">${(p.keys||[]).map(esc).join(' ')}</div><p>${esc(p.hypothesis)}</p>${p.impact?`<div class="fine">impact — applications: ${(im.applications||[]).map(esc).join(', ')||'none'} · services: ${(im.services||[]).map(esc).join(', ')||'none'} · hosts: ${(im.hosts||[]).map(esc).join(', ')||'none'} (${esc(im.basis||'')})</div>`:''}${p.order?`<div class="fine">order → ${esc(p.order.agent)}: ${esc(p.order.task)}</div>`:''}<div class="fine">opened ${esc(p.opened_at)}</div>`;drawer.classList.add('open');mark(id)}
 function selFinding(i){const f=D.compliance.findings[i];const devs=(f.keys||[]).filter(k=>k.startsWith('device:')).map(k=>k.slice(7));focusNodes(devs,null);drawer.innerHTML=`<span class="x" onclick="clearFocus()">✕</span><h2>Compliance finding <span class="pill" style="background:${pillc(f.severity)}">${f.severity}</span></h2><p>${esc(f.summary)}</p><div class="keys">${(f.keys||[]).filter(k=>!k.startsWith('device:')).map(esc).join(' ')}</div><div class="fine">${devs.length} devices · next owner ${esc(f.next_owner||'')}</div>`;drawer.classList.add('open');mark('f'+i)}
+function selLife(i){const it=(D.lifecycle.items||[])[i];if(!it)return;focusNodes(it.devices||[],(it.devices||[])[0]||null);
+const offers=(it.offers||[]).map(o=>`<div class="fine">${esc(o.sku)} ${esc(o.list_cost_per_unit||'')} ${esc(o.currency||'')} · lead ${esc(o.lead_time||'')}</div>`).join('');
+const adv=(it.psirts||[]).map(a=>`<div class="item"><span class="pill" style="background:${pillc(a.severity)}">${esc(a.severity||'psirt')}</span> <b>${esc(a.id)}</b> ${a.cvss??''}<div class="hyp">${esc(a.title||'')}</div><div class="fine">${esc(a.cve||'')}</div></div>`).join('');
+drawer.innerHTML=`<span class="x" onclick="clearFocus()">✕</span><h2>${esc(it.pid)} <span class="pill" style="background:${it.window==='overdue'?'#ef4444':it.window==='soon'?'#f59e0b':'#64748b'}">${esc(it.window)}</span></h2><div class="fine">support ${esc(it.support||'undated')} · qty ${it.qty||0}${it.software?` · fix ${esc(it.software)}`:''}</div><p><b>Devices</b> <span class="fine">${(it.devices||[]).map(esc).join(', ')||'none on the map'}</span></p><p><b>Offers</b>${offers||`<div class="fine">${esc(it.replacement||'no priced replacement')}</div>`}</p><p><b>Advisories</b>${adv||'<div class="fine">none on this product</div>'}</p>`;drawer.classList.add('open');mark('life'+i)}
 function selTier(si,tn){const sv=D.app.services[si];const t=sv.tiers.find(x=>x.name===tn);if(!t)return;focusNodes([...sv.path,...t.hosts],sv.host_node);
 let h=`<span class="x" onclick="clearFocus()">✕</span><h2>application: ${esc(tn)}</h2><div class="fine">service ${esc(sv.service)}${t.depends_on.length?` · depends on ${t.depends_on.map(esc).join(', ')}`:''}${t.status?` · ${esc(t.status)}`:''}</div>`;
 const pr=Object.entries(t.probes);h+=`<p><b>Probes</b>`+(pr.length?pr.map(([site,v])=>`<br><span class="dot" style="background:${v.up?'#22c55e':'#ef4444'}"></span>${esc(site)}: ${v.up?'UP':esc(v.state||'DOWN')} · HTTP ${esc(v.http??'?')} · ${v.ms??'?'} ms · ${esc(v.target||'')}`).join(''):'<div class="fine">no probe rows</div>')+`</p>`;
@@ -134,6 +148,16 @@ const issues=[...Cp.findings].filter(f=>f.status!=='remediated').sort((a,b)=>(se
 const worst=Cp.worst_devices||[];
 const compBody=Cp.present?`<div class="fine">${worst.length?`${worst.length} devices with findings`:''}</div>`+(worst.length?worst.map(d=>`<div class="item" onclick="focusNodes(${esc(JSON.stringify([d.name]))},'${esc(d.name)}')"><b>${esc(d.name)}</b> <span class="fine">${d.findings} findings</span></div>`).join(''):'')+(issues.length?`<div class="fine" style="margin-top:8px">Critical issues</div>`:'')+issues.slice(0,8).map(f=>`<div class="item" data-id="f${Cp.findings.indexOf(f)}" onclick="selFinding(${Cp.findings.indexOf(f)})">${fpill(f)}${esc(f.summary)}</div>`).join(''):EMPTY;
 s+=card('Compliance',pctLabel(tp&&tp.percent),compBody,true);
+const Lc=D.lifecycle||{items:[],present:false};
+const winRank={overdue:0,soon:1,later:2,undated:3};
+const lifeRows=(Lc.items||[]).map((it,i)=>({it,i})).sort((a,b)=>(winRank[a.it.window]??9)-(winRank[b.it.window]??9));
+const overdue=lifeRows.filter(r=>r.it.window==='overdue').length;
+const soon=lifeRows.filter(r=>r.it.window==='soon').length;
+const lifeWord=overdue?'overdue':soon?'in 90 days':'products';
+const lifeN=Lc.present?(overdue||soon||lifeRows.length):null;
+const money=(v,cur)=>v==null?'':`${cur||''} ${Number(v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`.trim();
+const lifeBody=Lc.present?`<div class="fine">${Lc.cost_low?`${money(Lc.cost_low,Lc.currency)} – ${money(Lc.cost_high||Lc.cost_low,Lc.currency)} list`:'no list price'} · ${Lc.psirts||0} advisories</div>`+lifeRows.slice(0,16).map(({it,i})=>`<div class="item" data-id="life${i}" onclick="selLife(${i})"><span class="pill" style="background:${it.window==='overdue'?'#ef4444':it.window==='soon'?'#f59e0b':'#64748b'}">${esc(it.window)}</span> <b>${esc(it.pid)}</b> <span class="fine">${esc(it.support||'')} · ${(it.psirts||[]).length} advisories · ${(it.offers||[]).length||(it.replacement?1:0)} offers</span></div>`).join(''):EMPTY;
+s+=card(`Lifecycle · ${lifeWord}`,lifeN==null?'—':String(lifeN),lifeBody,true);
 const cn={};D.edges.forEach(e=>{if(cur(e))cn[e.rel]=(cn[e.rel]||0)+1});
 s+=card('Relationships',esc(D.rel_head||'no relationship board'),D.edges.length?`<div style="margin-top:6px">`+Object.entries(cn).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<span class="chip" data-rel="${esc(k)}" onclick="selRel('${esc(k)}')">${esc(k)} <b>${v}</b></span>`).join('')+`</div><div class="fine">${D.drift.length?`${D.drift.length} drift rows · `:''}click a rel to light up every device it touches</div>`:EMPTY);
 s+=card(`Network Ops${D.netops.mode?` · ${esc(D.netops.mode)}`:''}`,esc(D.netops.headline||'no review board'),D.netops.present?D.netops.review.map((r,i)=>`<div class="item" onclick="focusNodes(${esc(JSON.stringify(r.devices||[]))},null)">${r.rank||i+1}. <b>${(r.devices||[]).map(esc).join(', ')}</b> — ${esc(r.finding)}</div>`).join(''):EMPTY);

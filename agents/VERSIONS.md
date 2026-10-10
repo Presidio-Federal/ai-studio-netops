@@ -26,8 +26,10 @@ Deployed model is **MiniMax** unless noted.
 | Health ServiceNow | 1.9.0 | MiniMax |
 | Health Analyzer | 5.1.0 | MiniMax |
 | Relationship agent | 1.4.0 | MiniMax |
-| Network Map | 1.0.2 | MiniMax |
+| Network Map | 1.1.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Network Map 1.1.0 (skill 1.3.0, workspace-handoff 1.70.21): the map reads `state/lifecycle.json`. A device drawer and the Lifecycle card show support date, replacement offers with list price and lead time, and the top PSIRT advisories. Overdue products get an L badge. The list range is min and max offer × quantity.
 
 Relationship agent 1.4.0 (skill 1.4.0, workspace-handoff 1.70.20): `compile_graph.py` copies `state/lifecycle.json` into `lifecycle` (cost, timeline, per-device replacement, list price, CCW lead time, and the order window already on `plan.timeline`). It does not recompute order-by. Compliance failures come from `results.by_device`; older `results.ran[]` rows still copy. Health `relations[]` is unchanged.
 
