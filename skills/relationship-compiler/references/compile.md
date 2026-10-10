@@ -8,7 +8,7 @@ no edge.
 Schema: `schemas/relationships-state.schema.json`. Example:
 `examples/relationships-state.example.json`.
 
-## 1. Read (fixed list, this order, fifteen at most)
+## 1. Read (fixed list, this order, sixteen at most)
 
 | # | Path | Take | Watermark |
 |---|------|------|-----------|
@@ -25,12 +25,16 @@ Schema: `schemas/relationships-state.schema.json`. Example:
 | 11 | the path in `state/network-ops.json` `change.operational_ref` | `git.commit_sha`, `devices[]`, `interfaces[]`, `updated_at` | `updated_at` |
 | 12 | `inventory/prod.json` | `links[]` | `collected_at`, else `snapshot_id`, else `updated_at` |
 | 13 | `state/testing.json` | `latest`, `updated_at` | `updated_at` |
-| 14 | the path in `state/testing.json` `latest` | `results.ran[]` rows (`device`, `keys`), `updated_at` | `updated_at` |
+| 14 | the path in `state/testing.json` `latest` | `results.by_device[]` (`device`, `failing[]`); older runs may still fill `results.ran[]` (`device`, `keys`) | `updated_at` |
+| 15 | `state/lifecycle.json` | `items[]` (`pid`, `devices[]`, dates, replacement, cost, `lead_time`, `offers[]`), `plan.cost`, `plan.timeline[]` | `updated_at` |
 
 A path that does not exist goes in `coverage.missing`; keep going.
 Rows 5, 6, and 7 are new planes and are often missing on an older
-workspace — that is `missing`, not a failure. Never list `health/`,
-`state/`, `inventory/`, or `operational/`. Rows 11 and 14 are the
+workspace — that is `missing`, not a failure. Row 15 is the same
+when modernization has not written an estate yet. Never list
+`health/`, `state/`, `inventory/`, or `operational/`. Do not open
+`inventory/assets/<pid>.json`; the estate row already carries the
+columns, and `detail_ref` is only a pointer. Rows 11 and 14 are the
 only run records you open — each named by the state file before
 it; if that state file is missing or the pointer is null, skip the
 run. `coverage.read[]` lists the paths that returned content, in
@@ -85,16 +89,23 @@ that needs → the thing it needs.
 | ServiceNow `current[]` `type` `change` | `interface` column not null | `change:<number>` | `changed` | the `interface:` key on that row | observed | board `last_collected_at` |
 | run (row 11) | `git.commit_sha` not null | `change:<commit_sha>` | `changed` | `device:<d>` for each of `devices[]`, `interface:<i>` for each of `interfaces[]` | observed | run `updated_at` |
 | `state/network-ops.json` | `status` `merged` and `git.commit_sha` not null | `change:<commit_sha>` | `changed` | `device:<d>` for each `change.devices`, `interface:<i>` for each `change.interfaces` | observed | its `updated_at` |
-| `state/health.json` `relations[]` | every row | `from` | `rel` | `to` | asserted | its `updated_at` |
+| `state/health.json` `relations[]` | every row. A problem's `keys` are not an edge | `from` | `rel` | `to` | asserted | its `updated_at` |
 | `state/network-ops.json` `relations[]` | every row | `from` | `rel` | `to` | asserted | its `updated_at` |
 | `prod.json` `links[]` | every row | `interface:<a_device>/<a_interface>` | `connected_to` | `interface:<b_device>/<b_interface>` | intended | `collected_at` |
+| testing run (row 14) `results.by_device[]` | `device` not null and `failing[]` entry not blank | `test:<id>` (the entry, already prefixed if the run wrote it that way) | `tests` | `device:<device>` | observed | run `updated_at` |
 | testing run (row 14) `results.ran[]` | row has a `test:` key and `device` not null | that `test:` key | `tests` | `device:<device>` | observed | run `updated_at` |
 | testing run (row 14) `results.ran[]` | row `keys` carry a `control:` key and `device` not null | each `control:` key | `checks` | `device:<device>` | observed | run `updated_at` |
 
-A testing row's `status` (PASS / FAIL / SKIP) stays on the run; the
-edge says the check or control was evaluated against the device,
-not how it came out. A row in `results.not_applicable[]` produces
-nothing. A NetFlow conversation's `dst_port`, `protocol`, `bytes`,
+A current compliance run stores failures only in `results.by_device`.
+Each `failing[]` id becomes one `tests` edge. Passes stay on
+`results.counts_ran` and produce no edge. There is no `control:`
+key on that row. An older run that still fills `results.ran[]`
+keeps the previous copy: the edge says the check or control was
+evaluated, and the PASS / FAIL / SKIP stays on the run. A row in
+`results.not_applicable[]` produces nothing. Health is unchanged:
+only `relations[]` is copied. An empty `relations[]` is not a gap.
+
+A NetFlow conversation's `dst_port`, `protocol`, `bytes`,
 and `state` stay on the board; the edge says the pair was seen,
 not how much or whether it is still present. A probe's `success`
 and a container's `state` likewise stay on the board.
@@ -170,8 +181,35 @@ whose condition no longer holds is dropped — including prior
   what is new since the prior `compiled_at` — new edges, newly
   stale edges, new drift. One line. Names, not addresses.
 - `next_action`: `none`, or `Review drift[]: <n> rows`.
-- `watermarks`: the thirteen source values from step 1 (rows 2–14;
-  null for a missing path).
+- `watermarks`: the source values from step 1 (rows 2–15, plus
+  the two pointer paths when those files were opened; null for a
+  missing path).
+- `lifecycle`: section 6. Empty block when the estate was never read.
+
+## 6. Lifecycle overlay
+
+Copied from `state/lifecycle.json` into `lifecycle`. Not edges.
+Not added to `keys` unless that `device:` key is already an edge
+end. Replaced in full when the file was read. Carried forward
+when it is missing.
+
+| Column | Onto |
+|--------|------|
+| `plan.cost` | `lifecycle.cost` |
+| `plan.timeline[]` (`order`, `stage`, `pids`, `window`, `summary`) | `lifecycle.timeline[]` |
+| `items[].devices[]` | one `lifecycle.devices[]` row per device that forms a `device:` key |
+| `pid`, support dates, `recommended_replacement`, `selected_replacement`, `recommended_software`, `list_cost_per_unit`, `total_list_cost`, `currency`, `lead_time`, `offers[]` (`sku`, `list_cost_per_unit`, `currency`, `lead_time`, `availability`), `detail_ref`, `quantity`, `updated_at` | that device row |
+| the timeline stage whose `pids` contain this `pid` | `order`, `stage`, `window` on the device row. Null when the pid is on no stage. |
+
+`list_cost_per_unit` is one device. `total_list_cost` and
+`quantity` are the pid group. `lead_time` is the CCW string for
+the priced SKU. When several candidates are priced, `lead_time`
+is null and each candidate's lead time is on `offers[]`. Do not
+subtract lead time from a support date. The analysis already
+wrote the window.
+
+Do not copy `summary`, `opinion`, `assessment`, `vulnerabilities`,
+or `psirts`.
 
 `write_file` `state/relationships.json`, replace in full, read it
 back. One write.

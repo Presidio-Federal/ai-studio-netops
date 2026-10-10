@@ -1,7 +1,7 @@
 ---
 name: modernization-analysis
-version: "2.5.0"
-description: "v2.5.0 — assess_estate.py turns support dates, lead times, and CCW offers into a low and high budget and 30, 60, and 90 day order windows."
+version: "2.5.2"
+description: "v2.5.2 — The reply must quote the low and high budget and the order windows. A missing product_id does not hide that budget."
 ---
 
 # Modernization Analysis skill

@@ -284,7 +284,7 @@ def sync_assets(ws, moment):
             "node_definition": incoming["node_definition"],
             "serial": keep_text(old.get("serial")),
             "product_id": keep_text(old.get("product_id")),
-            "software_version": versions.get(incoming["name"]),
+            "software_version": keep_text(old.get("software_version")) or versions.get(incoming["name"]),
         })
     doc = {
         "schema": "inventory-assets/v1",
@@ -589,7 +589,7 @@ def budget_facts(items, moment):
         timeline.append({
             "order": order,
             "stage": stage,
-            "pids": [pid for pid, _text in rows if pid][:12],
+            "pids": [pid for pid, _text in rows if pid],
             "window": window,
             "summary": summary + " " + "; ".join(text for _pid, text in rows)[:500],
         })

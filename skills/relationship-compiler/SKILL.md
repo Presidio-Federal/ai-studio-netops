@@ -1,7 +1,7 @@
 ---
 name: relationship-compiler
-version: "1.3.0"
-description: "v1.3.0 — Relationship compiler: compile_graph.py copies nurse and CMDB columns into state/relationships.json; it infers nothing."
+version: "1.4.0"
+description: "v1.4.0 — Relationship compiler: compile_graph.py copies nurse columns, lifecycle cost and order windows, and compliance failures into state/relationships.json."
 ---
 
 # Relationship compiler skill
@@ -36,9 +36,15 @@ on cables and peerings. `drift[]` lists where `intended` and
 declared: cables against `prod.json` `links[]`, application-on-host
 against `applications.json`.
 
+`lifecycle` is not an edge. It is the estate copied from
+`state/lifecycle.json`: per-device pid, support dates, replacement
+SKU, list cost, CCW lead time and offers, and the order window
+the analysis already assigned. The compiler does not subtract
+lead time from a support date.
+
 ## Hard boundaries
 
-Read only the fifteen paths in `references/compile.md`. Do not list
+Read only the sixteen paths in `references/compile.md`. Do not list
 `health/`, `state/`, `inventory/`, or `operational/`. Do not open a
 stamp. Do not read `inventory/infra-sot.json`,
 `compliance/intel.json`, or `inventory/services.json`. Do not call
@@ -77,7 +83,7 @@ the file. Reply from its last stdout line.
 
 ## Canonical top-level keys
 
-Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every `edges[].from` and `edges[].to`; use `[]` when there are none. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Drift rows, paths, and shas never become keys on their own.
+Every structured JSON file you write requires top-level `keys`. Set it to the deduplicated union of every `edges[].from` and `edges[].to`; use `[]` when there are none. Keys must match exactly `^(device|interface|site|service|test|control|incident|change|application):[^ ].*$`; never infer one. Drift rows, lifecycle device rows, paths, and shas never become keys on their own.
 
 ## State machine
 

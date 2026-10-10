@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "relationships-state.schema.json",
   "title": "relationships-state/v1",
-  "description": "state/relationships.json - the compiled edge set. Every edge is copied from a column another writer already filled (topology neighbors[], a bgp row's peer, a NetFlow conversation's src_device/dst_device/exporter, an application board row's application/device/site, a ticket's typed columns and rfc, a run's git.commit_sha + devices[]/interfaces[]), from an operator declaration (prod.json links[], inventory/applications.json service/hosts[]/depends_on[]), or from an asserted relations[] row on state/health.json or state/network-ops.json. The compiler infers nothing.",
+  "description": "state/relationships.json - the compiled edge set, plus a lifecycle overlay copied from state/lifecycle.json. Every edge is copied from a column another writer already filled (topology neighbors[], a bgp row's peer, a NetFlow conversation's src_device/dst_device/exporter, an application board row's application/device/site, a ticket's typed columns and rfc, a run's git.commit_sha + devices[]/interfaces[], a compliance run's results.by_device failing check ids or an older results.ran[] row), from an operator declaration (prod.json links[], inventory/applications.json service/hosts[]/depends_on[]), or from an asserted relations[] row on state/health.json or state/network-ops.json. Lifecycle cost, lead time, offers, and order windows are copied from columns the analysis already wrote. The compiler infers nothing.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -17,6 +17,7 @@
     "watermarks",
     "edges",
     "drift",
+    "lifecycle",
     "keys"
   ],
   "properties": {
@@ -65,7 +66,7 @@
       "properties": {
         "read": {
           "type": "array",
-          "maxItems": 15,
+          "maxItems": 16,
           "uniqueItems": true,
           "items": {
             "type": "string",
@@ -109,6 +110,10 @@
       },
       "description": "Mechanical intended-vs-observed differences for connected_to and depends_on (application on host) only, and only where an intended edge of that rel exists. Empty when prod.json links[] is empty and inventory/applications.json is absent."
     },
+    "lifecycle": {
+      "$ref": "#/$defs/lifecycle",
+      "description": "Copied from state/lifecycle.json. Replaced in full each compile that reads that file. Carried forward when the file is absent. Device keys here are not added to top-level keys unless they are also an edge end."
+    },
     "keys": {
       "type": "array",
       "uniqueItems": true,
@@ -120,6 +125,130 @@
     }
   },
   "$defs": {
+    "lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["updated_at", "cost", "timeline", "devices"],
+      "properties": {
+        "updated_at": {
+          "type": ["string", "null"],
+          "description": "state/lifecycle.json updated_at. Null when that file was absent and no prior block was carried."
+        },
+        "cost": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["currency", "list_total", "priced_qty", "unpriced_qty", "notes"],
+          "properties": {
+            "currency": { "type": ["string", "null"] },
+            "list_total": { "type": ["string", "null"] },
+            "priced_qty": { "type": "integer", "minimum": 0 },
+            "unpriced_qty": { "type": "integer", "minimum": 0 },
+            "notes": { "type": "string" }
+          }
+        },
+        "timeline": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["order", "stage", "pids", "window", "summary"],
+            "properties": {
+              "order": { "type": "integer", "minimum": 1 },
+              "stage": { "type": "string", "minLength": 1 },
+              "pids": {
+                "type": "array",
+                "maxItems": 32,
+                "items": { "type": "string", "minLength": 1 }
+              },
+              "window": { "type": ["string", "null"] },
+              "summary": { "type": "string", "minLength": 1 }
+            }
+          }
+        },
+        "devices": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/lifecycle_device" }
+        }
+      }
+    },
+    "lifecycle_device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device",
+        "pid",
+        "quantity",
+        "end_of_sale",
+        "end_of_support",
+        "end_of_software_support",
+        "recommended_replacement",
+        "selected_replacement",
+        "recommended_software",
+        "list_cost_per_unit",
+        "total_list_cost",
+        "currency",
+        "lead_time",
+        "offers",
+        "order",
+        "stage",
+        "window",
+        "detail_ref",
+        "updated_at"
+      ],
+      "properties": {
+        "device": {
+          "type": "string",
+          "pattern": "^device:[^ ].*$"
+        },
+        "pid": { "type": "string", "minLength": 1 },
+        "quantity": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "How many devices share this pid. total_list_cost is the pid total; list_cost_per_unit is one device."
+        },
+        "end_of_sale": { "type": ["string", "null"] },
+        "end_of_support": { "type": ["string", "null"] },
+        "end_of_software_support": { "type": ["string", "null"] },
+        "recommended_replacement": { "type": ["string", "null"] },
+        "selected_replacement": { "type": ["string", "null"] },
+        "recommended_software": { "type": ["string", "null"] },
+        "list_cost_per_unit": { "type": ["string", "null"] },
+        "total_list_cost": { "type": ["string", "null"] },
+        "currency": { "type": ["string", "null"] },
+        "lead_time": {
+          "type": ["string", "null"],
+          "description": "CCW lead time for the priced replacement. Null when several offers are listed."
+        },
+        "offers": {
+          "type": "array",
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sku", "list_cost_per_unit", "currency", "lead_time", "availability"],
+            "properties": {
+              "sku": { "type": "string", "minLength": 1 },
+              "list_cost_per_unit": { "type": ["string", "null"] },
+              "currency": { "type": ["string", "null"] },
+              "lead_time": { "type": ["string", "null"] },
+              "availability": { "type": ["string", "null"] }
+            }
+          }
+        },
+        "order": {
+          "type": ["integer", "null"],
+          "description": "plan.timeline order for this pid. Null when the pid is on no stage."
+        },
+        "stage": { "type": ["string", "null"] },
+        "window": {
+          "type": ["string", "null"],
+          "description": "Copied from the timeline stage whose pids include this pid. The analysis already set it from support date minus lead time."
+        },
+        "detail_ref": { "type": ["string", "null"] },
+        "updated_at": { "type": "string", "minLength": 1 }
+      }
+    },
     "key": {
       "type": "string",
       "pattern": "^((device|site|service|test|control|incident|change|application):[^ ].*|interface:[^ /]+/[^ ].*)$",

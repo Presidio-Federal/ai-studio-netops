@@ -297,6 +297,17 @@ def copy_edges(sources):
         for key in keys:
             if key.startswith("control:"):
                 add_edge(bag, key, device_key(row.get("device")), "checks", "observed", test_when, test_path)
+    by_device = ((test_run.get("results") or {}).get("by_device") or []) if test_path else []
+    for item in by_device:
+        if not isinstance(item, dict) or not device_key(item.get("device")):
+            continue
+        for check in item.get("failing") or []:
+            text = blank(check)
+            if not text:
+                continue
+            test = text if text.startswith("test:") else "test:%s" % text
+            if key_ok(test):
+                add_edge(bag, test, device_key(item.get("device")), "tests", "observed", test_when, test_path)
     return bag
 
 
@@ -426,6 +437,107 @@ def drift_rows(edges, applications_read, prior_drift, compiled_at):
     return rows
 
 
+def copy_offer(offer):
+    if not isinstance(offer, dict) or not blank(offer.get("sku")):
+        return None
+    return {
+        "sku": blank(offer.get("sku")),
+        "list_cost_per_unit": blank(offer.get("list_cost_per_unit")),
+        "currency": blank(offer.get("currency")),
+        "lead_time": blank(offer.get("lead_time")),
+        "availability": blank(offer.get("availability")),
+    }
+
+
+def copy_lifecycle(doc):
+    """Copy estate columns. Do not recompute order-by from dates."""
+    if not isinstance(doc, dict):
+        return None
+    plan = doc.get("plan") if isinstance(doc.get("plan"), dict) else {}
+    cost = plan.get("cost") if isinstance(plan.get("cost"), dict) else None
+    if cost is not None:
+        total = cost.get("list_total")
+        cost = {
+            "currency": blank(cost.get("currency")),
+            "list_total": blank(total) if total is not None else None,
+            "priced_qty": int(cost.get("priced_qty") or 0),
+            "unpriced_qty": int(cost.get("unpriced_qty") or 0),
+            "notes": cost.get("notes") if isinstance(cost.get("notes"), str) else "",
+        }
+    timeline = []
+    windows = {}
+    for stage in plan.get("timeline") or []:
+        if not isinstance(stage, dict) or not isinstance(stage.get("order"), int):
+            continue
+        summary = stage.get("summary") if isinstance(stage.get("summary"), str) else ""
+        if not summary.strip() or not blank(stage.get("stage")):
+            continue
+        row = {
+            "order": stage["order"],
+            "stage": blank(stage.get("stage")),
+            "pids": [pid for pid in (stage.get("pids") or []) if blank(pid)][:32],
+            "window": blank(stage.get("window")),
+            "summary": summary,
+        }
+        timeline.append(row)
+        for pid in row["pids"]:
+            windows.setdefault(pid, row)
+    devices = []
+    seen = {}
+    for item in doc.get("items") or []:
+        if not isinstance(item, dict) or not blank(item.get("pid")):
+            continue
+        stage = windows.get(item["pid"]) or {}
+        offers = []
+        for offer in item.get("offers") or []:
+            copied = copy_offer(offer)
+            if copied:
+                offers.append(copied)
+            if len(offers) == 8:
+                break
+        for name in item.get("devices") or []:
+            device = device_key(name)
+            if not device:
+                continue
+            row = {
+                "device": device,
+                "pid": blank(item.get("pid")),
+                "quantity": int(item.get("quantity") or 0),
+                "end_of_sale": blank(item.get("end_of_sale")),
+                "end_of_support": blank(item.get("end_of_support")),
+                "end_of_software_support": blank(item.get("end_of_software_support")),
+                "recommended_replacement": blank(item.get("recommended_replacement")),
+                "selected_replacement": blank(item.get("selected_replacement")),
+                "recommended_software": blank(item.get("recommended_software")),
+                "list_cost_per_unit": blank(item.get("list_cost_per_unit")),
+                "total_list_cost": blank(item.get("total_list_cost")),
+                "currency": blank(item.get("currency")),
+                "lead_time": blank(item.get("lead_time")),
+                "offers": offers,
+                "order": stage.get("order"),
+                "stage": stage.get("stage"),
+                "window": stage.get("window"),
+                "detail_ref": blank(item.get("detail_ref")),
+                "updated_at": blank(item.get("updated_at")) or blank(doc.get("updated_at")),
+            }
+            if not row["updated_at"]:
+                continue
+            previous = seen.get(device)
+            if previous is None or (parse_time(row["updated_at"]) and parse_time(previous["updated_at"]) and parse_time(row["updated_at"]) >= parse_time(previous["updated_at"])):
+                seen[device] = row
+    devices = [seen[key] for key in sorted(seen)]
+    return {
+        "updated_at": blank(doc.get("updated_at")),
+        "cost": cost,
+        "timeline": timeline[:12],
+        "devices": devices,
+    }
+
+
+def empty_lifecycle():
+    return {"updated_at": None, "cost": None, "timeline": [], "devices": []}
+
+
 def union_keys(edges):
     found = []
     for edge in edges:
@@ -470,6 +582,7 @@ def cmd_compile(args):
         "state/network-ops.json",
         "inventory/prod.json",
         "state/testing.json",
+        "state/lifecycle.json",
     ]
     if prior:
         read.append("state/relationships.json")
@@ -516,6 +629,7 @@ def cmd_compile(args):
         "state/network-ops.json": lambda doc: blank(doc.get("updated_at")),
         "inventory/prod.json": lambda doc: blank(doc.get("collected_at")) or blank(doc.get("snapshot_id")),
         "state/testing.json": lambda doc: blank(doc.get("updated_at")),
+        "state/lifecycle.json": lambda doc: blank(doc.get("updated_at")),
     }
     for rel, getter in marks.items():
         watermarks[rel] = getter(sources[rel]) if rel in sources else None
@@ -537,6 +651,12 @@ def cmd_compile(args):
     produced = copy_edges(sources)
     edges, fresh, newly_stale = upsert(produced, prior.get("edges") or [], compiled_at)
     drift = drift_rows(edges, sources.get("inventory/applications.json"), prior.get("drift") or [], compiled_at)
+    if "state/lifecycle.json" in sources:
+        lifecycle = copy_lifecycle(sources["state/lifecycle.json"]) or empty_lifecycle()
+    elif isinstance(prior.get("lifecycle"), dict):
+        lifecycle = prior["lifecycle"]
+    else:
+        lifecycle = empty_lifecycle()
     current = sum(1 for edge in edges if edge["status"] == "current")
     stale = sum(1 for edge in edges if edge["status"] == "stale")
     headline = "%s edges (%s current, %s stale) from %s sources; %s new, %s newly stale; drift %s." % (
@@ -550,10 +670,11 @@ def cmd_compile(args):
         "headline": headline,
         "next_action": "Review drift[]: %s rows" % len(drift) if drift else "none",
         "compiled_at": compiled_at,
-        "coverage": {"read": read[:15], "missing": missing},
+        "coverage": {"read": read[:16], "missing": missing},
         "watermarks": watermarks,
         "edges": edges[:500],
         "drift": drift[:100],
+        "lifecycle": lifecycle,
         "keys": union_keys(edges),
     }
     try:
@@ -573,6 +694,7 @@ def cmd_compile(args):
         "new": fresh,
         "newly_stale": newly_stale,
         "drift": len(drift),
+        "lifecycle_devices": len(lifecycle.get("devices") or []),
         "read": len(read),
         "absent": missing,
     }))

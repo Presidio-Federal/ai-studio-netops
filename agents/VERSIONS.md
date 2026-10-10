@@ -12,7 +12,7 @@ Deployed model is **MiniMax** unless noted.
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
-| Modernization Analysis | 2.5.0 | MiniMax |
+| Modernization Analysis | 2.5.2 | MiniMax |
 | Modernization Lifecycle | 1.7.0 | MiniMax |
 | Compliance | 1.2.1 | MiniMax |
 | Compliance Intelligence | 2.0.4 | MiniMax |
@@ -25,13 +25,23 @@ Deployed model is **MiniMax** unless noted.
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
 | Health Analyzer | 5.1.0 | MiniMax |
-| Relationship agent | 1.3.0 | MiniMax |
+| Relationship agent | 1.4.0 | MiniMax |
 | Network Map | 1.0.2 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+
+Relationship agent 1.4.0 (skill 1.4.0, workspace-handoff 1.70.20): `compile_graph.py` copies `state/lifecycle.json` into `lifecycle` (cost, timeline, per-device replacement, list price, CCW lead time, and the order window already on `plan.timeline`). It does not recompute order-by. Compliance failures come from `results.by_device`; older `results.ran[]` rows still copy. Health `relations[]` is unchanged.
+
+Modernization Analysis skill 2.5.1 (agent prompt stays 2.5.0): an order stage lists every pid in that window. The previous 12-pid cap dropped priced rows such as C8500L-8S4X off `plan.timeline`.
+
+workspace-handoff 1.70.20: `state/relationships.json` readers may rely on `lifecycle`.
 
 Network Ops skill 3.3.0 (agent prompt stays 3.2.0 until the Gate 3 rewrite): `network-ops-state/v3.3` adds `change.prescription`, `ci.passed_sha`, and `release`. GitOps Change skill 1.4.0: `scripts/submit_change.py` applies that prescription on `dev`.
 
 Pipeline Monitor 2.0.0 (github-actions skill 4.5.0, workspace-handoff 1.70.16): `scripts/watch_run.py watch` is one `execute_command`, timeout 60. The script checks the run once. `running` is the same command plus `--run-id` and writes nothing. A finished watch writes `operational/runs`. Compliance Test skill stays 1.12.7. Its runner was not changed.
+
+Modernization Analysis 2.5.2 (skill 2.5.2): the reply must quote `cost_low`, `cost_high`, and `windows`. A missing product_id is a gap. It does not blank the budget. Operator `software_version` on `devices.json` is kept.
+
+Modernization Analysis 2.5.1 (skill 2.5.1): the reply must quote `cost_low`, `cost_high`, and `windows`. A missing product_id is a gap. It does not blank the budget. Operator `software_version` on `devices.json` is kept.
 
 Modernization Analysis 2.5.0 (skill 2.5.0): assess writes the budget and the order windows from support dates, lead times, and every CCW offer. The opinion cites those figures.
 
@@ -51,7 +61,7 @@ workspace-handoff 1.70.17: Modernization Lifecycle `scripts/visit_lifecycle.py c
 
 workspace-handoff 1.70.15: `unwrap_github` reads `github_list_files`, `github_get_file`, and `github_put_file`. The tool dict is `{ok, entries}` or `{ok, content, sha}` or `{ok, sha, commit_sha}`. `result` on `call_mcp` is a list; `result[0]` is that dict.
 
-Relationship agent 1.3.0 (skill 1.3.0): `scripts/compile_graph.py compile` copies nurse columns, CMDB declarations, and asserted relations into `state/relationships.json`. No MCP. Unchanged watermarks write nothing.
+Relationship agent 1.3.0 (skill 1.3.0): `scripts/compile_graph.py compile` copies nurse columns, CMDB declarations, and asserted relations into `state/relationships.json`. No MCP. Unchanged watermarks write nothing. Superseded by 1.4.0.
 
 Health Analyzer 5.1.0 (skill 5.1.0): `scripts/assess_health.py assess` writes `state/health.json` from the five boards under `execution_type: standard`. It does not call MCP. `annotate` sets the verdict, hypotheses, relations, and Network Ops orders. Impact, freshness, and problem status stay on the script.
 
