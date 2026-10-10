@@ -96,13 +96,40 @@ def _ratio(part, whole):
 
 
 def posture_pct(point):
-    """Tested posture: verified / (verified + failing), else the checks_*_all shape."""
+    """Checks passed / checks ran. Falls back to verified tests only when check counts are absent."""
     row = posture_point(point)
     return None if row is None else row["pct"]
 
 
+def _count(point, *keys):
+    for key in keys:
+        value = _num(point.get(key))
+        if value is not None:
+            return value
+    return None
+
+
 def posture_point(point):
-    """One trend point with the percent and the counts that produced it."""
+    """One trend point. Percent is checks passed / (passed + failed + errored)."""
+    passed = _count(point, "pass", "checks_passed_all")
+    failed = _count(point, "fail", "checks_failed_all")
+    errored = _count(point, "error", "checks_errored_all")
+    if passed is not None and failed is not None and passed + failed + (errored or 0) > 0:
+        err = int(errored or 0)
+        row = {
+            "at": point.get("at"),
+            "pct": round(100.0 * passed / (passed + failed + err), 1),
+            "pass": int(passed),
+            "fail": int(failed),
+            "method": "checks passed / (passed + failed + errored)",
+        }
+        if err:
+            row["error"] = err
+        verified, failing = _num(point.get("verified_tests")), _num(point.get("failing_tests"))
+        if verified is not None and failing is not None and verified + failing > 0:
+            row["tests_verified"] = int(verified)
+            row["tests_failing"] = int(failing)
+        return row
     verified, failing = _num(point.get("verified_tests")), _num(point.get("failing_tests"))
     if verified is not None and failing is not None and verified + failing > 0:
         return {
@@ -111,18 +138,6 @@ def posture_point(point):
             "pass": int(verified),
             "fail": int(failing),
             "method": "verified tests / (verified + failing)",
-        }
-    passed = _num(point.get("checks_passed_all"))
-    failed = _num(point.get("checks_failed_all"))
-    errored = _num(point.get("checks_errored_all"))
-    if None not in (passed, failed, errored) and passed + failed + errored > 0:
-        return {
-            "at": point.get("at"),
-            "pct": round(100.0 * passed / (passed + failed + errored), 1),
-            "pass": int(passed),
-            "fail": int(failed),
-            "error": int(errored),
-            "method": "checks passed / (passed + failed + errored)",
         }
     return None
 
@@ -169,6 +184,49 @@ def plane_series(rows, kind):
                         "method": "100% if no idle BGP and no interfaces down, else 0%"})
         out.append(row)
     return out
+
+
+def health_trend(problems):
+    """One point each time the health state opens or closes a problem.
+
+    The percent is problems closed / problems opened by that moment.
+    Nurse measurements are not on this series.
+    """
+    events = []
+    for problem in problems or []:
+        if not isinstance(problem, dict) or not problem.get("id"):
+            continue
+        opened = problem.get("opened_at")
+        if opened:
+            events.append((opened, "opened", problem))
+        closed = problem.get("closed_at")
+        if not closed and problem.get("status") == "resolved" and opened:
+            closed = opened
+        if closed:
+            events.append((closed, "closed", problem))
+    events.sort(key=lambda item: (item[0], 0 if item[1] == "opened" else 1))
+    seen = {}
+    closed_ids = set()
+    points = []
+    for at, kind, problem in events:
+        pid = problem["id"]
+        seen[pid] = problem
+        if kind == "closed":
+            closed_ids.add(pid)
+        else:
+            closed_ids.discard(pid)
+        total = len(seen)
+        open_ids = [item for item in seen if item not in closed_ids]
+        points.append({
+            "at": at,
+            "pct": round(100.0 * (total - len(open_ids)) / total, 1) if total else 100.0,
+            "open": len(open_ids),
+            "closed": len(closed_ids),
+            "event": "%s %s" % (kind, pid),
+            "open_ids": open_ids,
+            "method": "problems closed / problems opened on the health state",
+        })
+    return points
 
 
 def health_score(health):
@@ -488,7 +546,13 @@ def build(ws, template_path):
     # ---- health
     problems = []
     for p in health.get("problems") or []:
-        problems.append({k: p.get(k) for k in ("id", "status", "keys", "hypothesis", "opened_at", "order", "impact", "outcome")})
+        problems.append({k: p.get(k) for k in (
+            "id", "status", "keys", "hypothesis", "opened_at", "closed_at",
+            "order", "impact", "outcome", "evidence_refs")})
+    trend_points = health_trend(health.get("problems") or [])
+    if trend_points:
+        trend_points[-1]["opinion"] = (health.get("assessment") or {}).get("opinion")
+        trend_points[-1]["narrative"] = (health.get("trend_analysis") or {}).get("narrative")
     health_out = {
         "present": bool(health),
         "headline": health.get("headline"),
@@ -499,11 +563,7 @@ def build(ws, template_path):
         "assessment": health.get("assessment") or {},
         "next_action": health.get("next_action"),
         "score": health_score(health) if health else None,
-        "planes": {
-            "application": plane_series(mda.get("series"), "application"),
-            "netflow": plane_series(mdn.get("series"), "netflow"),
-            "iosxe": plane_series(mdi.get("series"), "iosxe"),
-        },
+        "trend": {"points": trend_points},
     }
 
     # ---- compliance + testing

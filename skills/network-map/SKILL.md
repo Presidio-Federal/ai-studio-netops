@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.3.0"
-description: "v1.3.0 — Network Map: compile workspace boards into one HTML map with lifecycle support dates, replacement offers, and PSIRT advisories on the same devices."
+version: "1.3.2"
+description: "v1.3.2 — Network Map: trend the compliance state and the health problem state; a click opens the interpretation and the evidence."
 ---
 
 # Network Map skill

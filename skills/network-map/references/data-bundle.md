@@ -16,7 +16,7 @@ reads only these fields. Change both together.
 | `links[]` | `prod.json links[]`; fallback compiled `connected_to` edges | `a` `ai` `b` `bi` `mgmt`; both ends must resolve to a node (case-insensitive) |
 | `edges[]` | `relationships.json edges[]` | `from` `to` `rel` `basis` `status` `sources` `last_seen` |
 | `rel_head`, `rel_updated`, `drift[]` | `relationships.json` | |
-| `health` | `state/health.json` plus nurse `series[]` | `present` `headline` `status` `score` `coverage` `updated_at` `problems[]` (`id` `status` `keys` `hypothesis` `opened_at` `order` `impact` `outcome`) `assessment` `next_action` `planes` (`application` `netflow` `iosxe`, each `{at, pct}`) |
+| `health` | `state/health.json` | `present` `headline` `status` `score` `coverage` `updated_at` `problems[]` (`id` `status` `keys` `hypothesis` `opened_at` `closed_at` `order` `impact` `outcome` `evidence_refs`) `assessment` `next_action` `trend.points[]` |
 | `compliance` | `state/compliance.json` + `state/testing.json` | `present` `headline` `updated_at` `test_updated` `scores` `findings[]` (`kind` `status` `severity` `summary` `keys` `next_owner`) `trend` (`direction` `environment` `newly_passing` `newly_failing` `still_failing` `narrative` `points[]` `{at, pct}` `flips[]`) `counts` `risk` `run` `failing_devices` `scanned_devices` |
 | `netops` | `state/network-ops.json` | `present` `headline` `updated_at` `mode` `review[]` (`rank` `devices` `interfaces` `finding` `kind` `proposed` `verified_in_git` `problem_ref`) `change` (`devices` `interfaces` `blast_radius` `annotation_ref`) |
 | `snow` | `state/servicenow.json` | `present` `headline` `updated_at` `open` `next_action` |
@@ -32,11 +32,11 @@ reads only these fields. Change both together.
 
 `health.score` is 100 × voting consults with `status: ok` / voting consults that exist. Voting planes are `application`, `netflow`, `splunk`, `iosxe`. ServiceNow does not vote. `degraded` is not ok. Null when no voting consult is present. The envelope `status` is shown beside the number and is not folded into it.
 
-`compliance.trend.points[]` is tested posture from `series.testing.points`: `{at, pct, pass, fail, method}` from `verified_tests / (verified_tests + failing_tests)` when those fields exist, otherwise pass/fail/error from `checks_*_all`. A point with neither shape is omitted. The header percent is `scores.tested_posture.percent`, not a recomputation. Hover and click on the trend use `method` and the counts.
+`compliance.trend.points[]` is checks passed / (passed + failed + errored) from `series.testing.points` (`pass` / `fail` / `error`, or `checks_*_all`). `{at, pct, pass, fail, method}`. When the same point also has `verified_tests` and `failing_tests`, those ride along as `tests_verified` and `tests_failing` and are not the percent. A point with neither check counts nor verified-test counts is omitted. The header and the Compliance card use the newest trend point. Hover and click show the check counts and, when present, how many canonical tests are fully green.
 
 `counts` prefer `state/testing.json` `results.counts_ran`. When that object is absent, the newest series point that has `pass` / `fail` / `error` supplies them. `failing_devices` prefers the testing board list; otherwise `device:` keys on `test_failure` findings that are not `remediated`. `worst_devices` is those devices ranked by finding count, cap 10.
 
-`health.planes` percents, one point per `series[]` row: application is probes up / probes; netflow is exporters reporting / exporters; iosxe is 100 when `bgp_not_established` and `oper_not_ready` are both zero, else 0. Splunk event totals are not a percent. A flip is drawn on the trend only when it is an object with `at`; prose flips stay as text.
+`health.trend.points[]` is built from `problems[]` only. Each `opened_at` and `closed_at` is a point. `pct` is problems closed by that moment / problems opened by that moment. The point carries `open`, `closed`, `event`, and `open_ids`. The newest point also carries `assessment.opinion` and `trend_analysis.narrative`. Probe counts, exporter silence, and IOS-XE flags are not a line. A flip is drawn on the trend only when it is an object with `at`; prose flips stay as text.
 
 ## Layout
 

@@ -29,6 +29,10 @@ Deployed model is **MiniMax** unless noted.
 | Network Map | 1.1.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 
+Network Map skill 1.3.2 (agent prompt stays 1.1.0): the trend is the compliance state and the health problem state. Probe, exporter, and IOS-XE series are not lines. Clicking a point or a problem opens the interpretation and the evidence.
+
+Network Map skill 1.3.1 (agent prompt stays 1.1.0): the gold line and the compliant header are checks passed / (passed + failed + errored). Canonical tests that are fully green stay on the point detail and are not the percent.
+
 Network Map 1.1.0 (skill 1.3.0, workspace-handoff 1.70.21): the map reads `state/lifecycle.json`. A device drawer and the Lifecycle card show support date, replacement offers with list price and lead time, and the top PSIRT advisories. Overdue products get an L badge. The list range is min and max offer × quantity.
 
 Relationship agent 1.4.0 (skill 1.4.0, workspace-handoff 1.70.20): `compile_graph.py` copies `state/lifecycle.json` into `lifecycle` (cost, timeline, per-device replacement, list price, CCW lead time, and the order window already on `plan.timeline`). It does not recompute order-by. Compliance failures come from `results.by_device`; older `results.ran[]` rows still copy. Health `relations[]` is unchanged.
