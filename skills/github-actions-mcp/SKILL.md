@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.5.0"
-description: "v4.5.0 — watch_run.py checks apply.yml or test.yml once per command and writes the operation-run. running means the same command with --run-id."
+version: "4.5.1"
+description: "v4.5.1 — watch_run.py checks apply.yml or test.yml once and writes the operation-run. Its Actions helper lives in this skill. running means the same command with --run-id."
 ---
 
 # GitHub Actions skill

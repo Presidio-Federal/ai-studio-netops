@@ -6,7 +6,7 @@ Deployed model is **MiniMax** unless noted.
 |-------|---------|-------|
 | Network Ops | 3.2.0 | Frontier (operator-selected; GitOps orchestration risk) |
 | GitHub GitOps Change | 1.3.1 | MiniMax |
-| Pipeline Monitor | 2.0.0 | MiniMax |
+| Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.5.4 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
@@ -29,6 +29,8 @@ Deployed model is **MiniMax** unless noted.
 | Network Map | 1.1.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 
+Network Map skill 1.3.3 (agent prompt stays 1.1.0): the Lifecycle card is a scorecard — overdue, approaching (inside 90 days), and the list-price total for approaching products. Advisories are a separate card, counted and colored Critical, High, and Medium.
+
 Network Map skill 1.3.2 (agent prompt stays 1.1.0): the trend is the compliance state and the health problem state. Probe, exporter, and IOS-XE series are not lines. Clicking a point or a problem opens the interpretation and the evidence.
 
 Network Map skill 1.3.1 (agent prompt stays 1.1.0): the gold line and the compliant header are checks passed / (passed + failed + errored). Canonical tests that are fully green stay on the point detail and are not the percent.
@@ -43,7 +45,7 @@ workspace-handoff 1.70.20: `state/relationships.json` readers may rely on `lifec
 
 Network Ops skill 3.3.0 (agent prompt stays 3.2.0 until the Gate 3 rewrite): `network-ops-state/v3.3` adds `change.prescription`, `ci.passed_sha`, and `release`. GitOps Change skill 1.4.0: `scripts/submit_change.py` applies that prescription on `dev`.
 
-Pipeline Monitor 2.0.0 (github-actions skill 4.5.0, workspace-handoff 1.70.16): `scripts/watch_run.py watch` is one `execute_command`, timeout 60. The script checks the run once. `running` is the same command plus `--run-id` and writes nothing. A finished watch writes `operational/runs`. Compliance Test skill stays 1.12.7. Its runner was not changed.
+Pipeline Monitor 2.0.1 (github-actions skill 4.5.1): `watch_run.py` and `github_common.py` both live in that skill. `workspace-handoff` is attached only for `visit_common`. The script checks the run once. `running` is the same command plus `--run-id`. Compliance Test skill stays 1.12.7.
 
 Modernization Analysis 2.5.2 (skill 2.5.2): the reply must quote `cost_low`, `cost_high`, and `windows`. A missing product_id is a gap. It does not blank the budget. Operator `software_version` on `devices.json` is kept.
 

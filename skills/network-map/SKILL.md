@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.3.2"
-description: "v1.3.2 — Network Map: trend the compliance state and the health problem state; a click opens the interpretation and the evidence."
+version: "1.3.3"
+description: "v1.3.3 — Network Map: lifecycle scorecard of overdue, approaching, and refresh cost; advisories on their own card by severity."
 ---
 
 # Network Map skill

@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""GitHub Actions helpers shared by the compliance runner and Pipeline Monitor.
+"""Actions client for Pipeline Monitor's watch_run.py.
 
-Lifted unchanged from compliance-test-runner scripts/run_suite.py.
-call_tool uses visit_common.mcp_call. poll_run reads a run once and
-does not sleep.
+Copied from the compliance runner. That runner does not import this
+module. call_tool uses visit_common.mcp_call. poll_run reads a run
+once and does not sleep.
 """
 import json
 import re
 import sys
 from pathlib import Path
 
-_HERE = Path(__file__).resolve().parent
-if str(_HERE) not in sys.path:
-    sys.path.insert(0, str(_HERE))
+_HANDOFF = Path(__file__).resolve().parents[2] / "workspace-handoff" / "scripts"
+if str(_HANDOFF) not in sys.path:
+    sys.path.insert(0, str(_HANDOFF))
 
 import visit_common  # noqa: E402
 

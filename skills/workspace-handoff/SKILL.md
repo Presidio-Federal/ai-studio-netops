@@ -328,10 +328,7 @@ probe: `result[0]` is `{ok, results, result_count, truncated}`.
 when the stored value and the display differ. `unwrap_github` parses
 `github_list_files`, `github_get_file`, and `github_put_file`:
 `result[0]` is the tool dict (`ok`, `entries` or `content`/`sha` or
-`commit_sha`). `scripts/github_common.py` is the Actions client
-Pipeline Monitor uses. It was copied from the compliance runner.
-That runner does not import it. `poll_run` checks a run once and
-does not sleep. Health ServiceNow runs
+`commit_sha`). Health ServiceNow runs
 `health-servicenow` `scripts/visit_servicenow.py`. Trends uses that
 same table unwrap, then `snow_find_knowledge` for each cluster.
 

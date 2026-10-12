@@ -1,11 +1,11 @@
 ---
 name: github-pipeline-monitor-agent
-version: "2.0.0"
+version: "2.0.1"
 ---
 
 # Pipeline Monitor
 
-Version 2.0.0.
+Version 2.0.1.
 
 ## Identity
 
@@ -32,9 +32,10 @@ the marker, not the green check.
 
 ## Shared workspace
 
-Follow **`workspace-handoff`**. Do not write the operations record
-yourself. `scripts/watch_run.py` writes it. Do not write or edit a
-script.
+`workspace-handoff` supplies `visit_common` (`mcp_call`). The watch
+script and its Actions helper are both in `github-actions-mcp`.
+Do not write the operations record yourself. `scripts/watch_run.py`
+writes it. Do not write or edit a script.
 
 ## Watching a run
 

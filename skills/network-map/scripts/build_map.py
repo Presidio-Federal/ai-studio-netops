@@ -353,13 +353,17 @@ def _support_window(iso, now):
 def lifecycle_out(life, now):
     if not life:
         return {"present": False, "items": [], "by_device": {}, "psirts": 0,
-                "cost_low": None, "cost_high": None, "currency": None, "headline": None, "updated_at": None}
+                "cost_low": None, "cost_high": None, "currency": None, "headline": None, "updated_at": None,
+                "advisory_counts": {"Critical": 0, "High": 0, "Medium": 0, "Low": 0},
+                "advisories": [], "approaching_cost_low": None, "approaching_cost_high": None}
     low = high = 0.0
     any_price = False
     currency = None
     items = []
     by_device = {}
     psirts = 0
+    advisory_counts = {"Critical": 0, "High": 0, "Medium": 0, "Low": 0}
+    all_advisories = []
     for row in life.get("items") or []:
         if not isinstance(row, dict) or not row.get("pid"):
             continue
@@ -401,7 +405,7 @@ def lifecycle_out(life, now):
                     "cve": adv.get("cve"),
                     "cvss": adv.get("cvss"),
                 })
-        advisories.sort(key=lambda a: _money(a.get("cvss")) or 0, reverse=True)
+        advisories.sort(key=lambda a: (_sev_rank(a.get("severity")), -(_money(a.get("cvss")) or 0)))
         psirts += len(advisories)
         support = row.get("end_of_support") or row.get("end_of_software_support")
         item = {
@@ -420,8 +424,23 @@ def lifecycle_out(life, now):
         items.append(item)
         for name in item["devices"]:
             by_device[name] = row.get("pid")
+        for adv in advisories:
+            sev = adv.get("severity") or ""
+            if sev in advisory_counts:
+                advisory_counts[sev] += 1
+            all_advisories.append({
+                "id": adv.get("id"),
+                "title": adv.get("title"),
+                "severity": sev,
+                "cve": adv.get("cve"),
+                "cvss": adv.get("cvss"),
+                "pid": item["pid"],
+                "devices": item["devices"],
+            })
     plan = life.get("plan") or {}
     cost = plan.get("cost") or {}
+    approach_low, approach_high = _window_cost(items, "soon")
+    all_advisories.sort(key=lambda a: (_sev_rank(a.get("severity")), -(_money(a.get("cvss")) or 0)))
     return {
         "present": True,
         "headline": life.get("headline"),
@@ -433,7 +452,36 @@ def lifecycle_out(life, now):
         "items": items,
         "by_device": by_device,
         "psirts": psirts,
+        "advisory_counts": advisory_counts,
+        "advisories": all_advisories,
+        "approaching_cost_low": approach_low,
+        "approaching_cost_high": approach_high,
     }
+
+
+def _sev_rank(severity):
+    return {"Critical": 0, "High": 1, "Medium": 2, "Low": 3}.get(severity or "", 9)
+
+
+def _window_cost(items, window):
+    low = high = 0.0
+    priced = False
+    for item in items:
+        if item.get("window") != window:
+            continue
+        amounts = []
+        for offer in item.get("offers") or []:
+            amount = _money(offer.get("list_cost_per_unit"))
+            if amount is not None:
+                amounts.append(amount)
+        qty = int(item.get("qty") or 0)
+        if amounts and qty:
+            priced = True
+            low += min(amounts) * qty
+            high += max(amounts) * qty
+    if not priced:
+        return None, None
+    return "%.2f" % low, "%.2f" % high
 
 
 def build(ws, template_path):
