@@ -11,8 +11,17 @@ GitOps Change or Pipeline Monitor, put files, create a PR, or merge unless the
 operator explicitly commands implementation. “How would you configure” is not
 authorization. Ambiguity stays read-only.
 
+## Exact operator edit
+
+When the operator names the hostname and the exact text to add, remove, or
+replace, invoke GitOps Change with that prescription and skip this
+section. Do not read the chart, a peer, or `state/relationships.json`
+first. Do not rewrite their line from topology. A line under an
+interface is passed with one leading space. Placement is `end`.
+
 ## Handoff
 
+This section is for an ask that does not already contain the exact lines.
 Read the relevant workspace state and detailed visit. When the symptom
 sits on an application or a Linux host, the boards are
 `health/metadata-application.json` (probe, container, host rows) and

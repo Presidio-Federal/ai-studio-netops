@@ -4,8 +4,8 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 3.2.0 | Frontier (operator-selected; GitOps orchestration risk) |
-| GitHub GitOps Change | 1.3.1 | MiniMax |
+| Network Ops | 3.2.2 | Frontier (operator-selected; GitOps orchestration risk) |
+| GitHub GitOps Change | 1.4.1 | MiniMax |
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.5.4 | MiniMax |
@@ -43,7 +43,11 @@ Modernization Analysis skill 2.5.1 (agent prompt stays 2.5.0): an order stage li
 
 workspace-handoff 1.70.20: `state/relationships.json` readers may rely on `lifecycle`.
 
-Network Ops skill 3.3.0 (agent prompt stays 3.2.0 until the Gate 3 rewrite): `network-ops-state/v3.3` adds `change.prescription`, `ci.passed_sha`, and `release`. GitOps Change skill 1.4.0: `scripts/submit_change.py` applies that prescription on `dev`.
+Network Ops 3.2.2 (skill 3.3.2, workspace-handoff 1.70.22): `scripts/recommend.py assess` writes `state/recommendations.json` under `execution_type: standard`. It reads the testing visit, active chart problems, and the sync watermark. The same fingerprint writes nothing. An exact operator edit still skips the board and goes to GitOps Change.
+
+Network Ops 3.2.1 (skill 3.3.1): an operator who names the hostname and the exact text is implemented at once. GitOps Change gets that prescription. The chart, the peer, and the blast-radius walk are for asks that do not already contain the lines.
+
+GitHub GitOps Change 1.4.1 (skill 1.4.1): a direct request is committed with `scripts/submit_change.py` on `ref=dev`. The agent does not read a peer or call the GitHub file tools itself.
 
 Pipeline Monitor 2.0.1 (github-actions skill 4.5.1): `watch_run.py` and `github_common.py` both live in that skill. `workspace-handoff` is attached only for `visit_common`. The script checks the run once. `running` is the same command plus `--run-id`. Compliance Test skill stays 1.12.7.
 

@@ -1,7 +1,7 @@
 ---
 name: github-gitops-change
-version: "1.4.0"
-description: "v1.4.0 — submit_change.py applies change.prescription to inventory/configs on dev and writes one operation-run. No Actions, no PR."
+version: "1.4.1"
+description: "v1.4.1 — submit_change.py commits an exact edit to inventory/configs on dev from --target and --line flags, or from change.prescription. No Actions, no PR."
 ---
 
 # GitHub GitOps Change
@@ -12,11 +12,13 @@ surgical `dev` puts from an exact prescription.
 
 ## Script
 
-`scripts/submit_change.py` is the editor. It reads `change.prescription`
-from `state/network-ops.json`. It does not take the lines on argv.
+`scripts/submit_change.py` is the editor. A direct request passes
+`--target`, `--operation`, `--scope`, `--line`, and `--old-line` for
+`replace`. With no flags it reads `change.prescription` from
+`state/network-ops.json`.
 
 ```text
-python3 <skill>/scripts/submit_change.py submit --workspace <file_explorer> [--state state/network-ops.json]
+python3 <skill>/scripts/submit_change.py submit --workspace <file_explorer> --target <hostname> --operation replace --scope "interface GigabitEthernet3" --placement end --old-line " description OLD" --line " description NEW"
 ```
 
 `execution_type` is `mcp_orchestration`. `timeout` is 60. One `python3`.

@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "3.3.0"
-description: "v3.3.0 — network-ops-state/v3.3 stores change.prescription for submit_change.py, plus ci.passed_sha and the release handoff."
+version: "3.3.2"
+description: "v3.3.2 — recommend.py writes state/recommendations.json from the testing visit, the chart, and network sync. Unchanged input writes nothing."
 ---
 
 # Network Ops skill
@@ -24,7 +24,8 @@ open git; none of them is a precondition for the others.
 
 Read `symptom_refs` / `evidence_refs` (chart) or the result rows
 (testing) before listing configs — they say which device, interface,
-or path to open. Then **always** list `inventory/configs` on `dev` and
+or path to open. An exact operator edit skips this. Otherwise list
+`inventory/configs` on `dev` and
 read the target and a passing or canonical peer. The config on `dev`
 is the current intent by definition; the age of the evidence that
 pointed you at it is a note in `Gaps:`, never a reason to skip git or
@@ -55,7 +56,8 @@ compiled edges name for that host, never a guess from the hostname.
 |--------|-----|
 | “How would”, “what should”, recommend, explain — **one** problem, device, or feature named | `recommend`: read evidence and the two configs; return an exact recommendation; no delegation or Git mutation. |
 | Open-ended — “look at everything”, “what should I improve”, “review”, no problem named | `review`: read the chart, the five boards, testing, topology, prod, relationships; list configs once, read up to six; return a ranked `review[]` of exact git-verified proposals ([references/review.md](references/review.md)). Read-only. |
-| Change / fix / implement / apply — explicit imperative | `implement`: same reads as `recommend` → blast radius → decide → GitOps Change commit → Pipeline Monitor → PR (body carries the blast radius) → one Grafana annotation. |
+| Operator names the hostname and the exact old/new text | `implement` immediately: GitOps Change with that prescription. No chart, peer, or blast-radius read first. Then Pipeline Monitor → PR → one Grafana annotation. |
+| Change / fix / implement / apply — feature named, lines not given | `implement`: same reads as `recommend` → blast radius → decide → GitOps Change commit → Pipeline Monitor → PR (body carries the blast radius) → one Grafana annotation. |
 | Check bug | Compliance Author. |
 | Hardware / replace / warehouse / CHG | Network Design. |
 | Run a suite with no config change | Compliance Test. |
@@ -64,7 +66,7 @@ Exact tools: [references/tools.md](references/tools.md).
 
 Questions and hypotheticals are `recommend`, never implementation
 authorization. Ambiguous intent is also `recommend`. Only an explicit
-imperative such as `apply`, `implement`, `make this change`, `push`, `commit`,
+imperative such as `apply`, `implement`, `update`, `change`, `set`, `make this change`, `push`, `commit`,
 `fix it`, or `proceed with that recommendation` authorizes delegation, Git
 mutation, pipeline monitoring, and PR merge.
 
@@ -87,7 +89,8 @@ Send only:
 - exact scope and placement
 - preserve-unrelated-content constraints
 
-Never send a full config to the worker. Read the evidence source (chart
+Never send a full config to the worker. An exact operator edit sends
+their lines and stops. Otherwise read the evidence source (chart
 problem refs, at most four files; or `state/testing.json` and its latest
 run; or the operator's words), list `inventory/configs` on `dev`, then get
 only the target and relevant passing/canonical peer paths returned by that

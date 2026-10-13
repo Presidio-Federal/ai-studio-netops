@@ -514,6 +514,13 @@ def main():
     parser.add_argument("--state", default="state/network-ops.json")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--fixture")
+    parser.add_argument("--target", action="append")
+    parser.add_argument("--operation", default="")
+    parser.add_argument("--scope", default="")
+    parser.add_argument("--placement", default="end")
+    parser.add_argument("--line", action="append")
+    parser.add_argument("--old-line", action="append")
+    parser.add_argument("--constraints", default="preserve all unrelated content; do not reformat; do not duplicate")
     args = parser.parse_args()
     started = time.monotonic()
     moment = datetime.now(timezone.utc)
@@ -525,6 +532,28 @@ def main():
         return
     if args.fixture and not args.dry_run:
         emit({"result": "failed", "reason": "--fixture is only valid with --dry-run"})
+        return
+    if args.target:
+        raw, err = prescription_of({
+            "change": {
+                "prescription": {
+                    "targets": args.target,
+                    "operation": args.operation,
+                    "lines": args.line or [],
+                    "old_lines": args.old_line or [],
+                    "scope": args.scope,
+                    "placement": args.placement or "end",
+                    "constraints": args.constraints,
+                }
+            }
+        })
+        if err:
+            emit({"result": "blocked", "reason": err})
+            return
+        if args.dry_run:
+            dry(args, raw, False, started)
+            return
+        live(args, {}, raw, False, started, moment)
         return
     state_path = Path(args.state)
     if not state_path.is_absolute():

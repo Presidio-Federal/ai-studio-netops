@@ -1,5 +1,15 @@
 # Bounded config change
 
+## Direct request
+
+`scripts/submit_change.py` is the editor. An operator who names the
+hostname and the exact text is a complete prescription. Map it to
+`--target`, `--operation`, `--scope`, and `--line`. A description under
+an interface keeps one leading space. Do not compare a peer. Do not
+block because the request did not use the words Targets and Constraints.
+
+This section is the manual fallback when stderr says `hai_mcp unavailable`.
+
 ## Preflight
 
 List `inventory/configs` on `dev`. Resolve every requested hostname or

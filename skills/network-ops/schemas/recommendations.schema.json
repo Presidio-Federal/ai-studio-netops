@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "recommendations/v1",
+  "title": "state/recommendations.json",
+  "description": "Open config recommendations folded from the testing visit, active chart problems, and the network-sync watermark. Rewritten only when those inputs change.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "fingerprint",
+    "sync",
+    "rows",
+    "keys"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "recommendations/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "network-ops" },
+    "status": { "type": "string", "enum": ["ok", "unknown"] },
+    "headline": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "next_action": { "type": ["string", "null"], "maxLength": 500 },
+    "fingerprint": { "type": "string", "minLength": 1 },
+    "sync": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["completed_at", "operation", "newer"],
+      "properties": {
+        "completed_at": { "type": ["string", "null"] },
+        "operation": { "type": ["string", "null"] },
+        "newer": { "type": "boolean" }
+      }
+    },
+    "rows": {
+      "type": "array",
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "feature", "devices", "peer", "problem_ref", "evidence_ref"],
+        "properties": {
+          "source": { "type": "string", "enum": ["testing", "health"] },
+          "feature": { "type": "string", "minLength": 1 },
+          "devices": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "uniqueItems": true,
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "peer": { "type": ["string", "null"] },
+          "problem_ref": { "type": ["string", "null"] },
+          "evidence_ref": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "keys": {
+      "type": "array",
+      "maxItems": 80,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$"
+      }
+    }
+  }
+}
