@@ -123,6 +123,9 @@ def judge_live(parsed):
     if not parsed.get("live_present"):
         if not parsed.get("static_present"):
             return "unknown", "no network test report"
+        static = parsed.get("static_counts") or {}
+        if int(static.get("fail") or 0) or int(static.get("error") or 0):
+            return "fail", "static failures and no live block"
         return "unknown", "no live block"
     live = parsed.get("live_counts") or {}
     if int(live.get("fail") or 0) or int(live.get("error") or 0):
@@ -140,8 +143,14 @@ def marker_line(text, parsed):
             stripped = line.strip()
             if stripped and not stripped.startswith("#"):
                 return stripped[:500]
-    live = parsed.get("live_counts") or {}
     static = parsed.get("static_counts") or {}
+    if not parsed.get("live_present"):
+        if not parsed.get("static_present"):
+            return "no network test report"
+        return ("static pass=%s fail=%s error=%s" % (
+            static.get("pass", 0), static.get("fail", 0), static.get("error", 0),
+        ))[:500]
+    live = parsed.get("live_counts") or {}
     line = "live pass=%s fail=%s error=%s" % (
         live.get("pass", 0), live.get("fail", 0), live.get("error", 0),
     )
@@ -196,7 +205,7 @@ def finish(result, workflow, ref, sha, run_id, html_url, marker, wrote, reason=N
         }
         if phase:
             payload["phase"] = phase
-    elif reason and result == "unknown":
+    elif reason and result in {"unknown", "fail"}:
         payload["reason"] = reason
     emit(payload)
 

@@ -132,13 +132,77 @@ def sync_of(sync, prior_updated):
     return {"completed_at": completed, "operation": operation, "newer": newer}
 
 
-def fingerprint(sync, latest, rows):
+def stamp_in(path):
+    name = Path(str(path or "")).name
+    if name.endswith(".json"):
+        name = name[:-5]
+    return name
+
+
+def commits(root):
+    """Submitted config commits that name a feature. Newer than the visit, they close that row."""
+    found = []
+    folder = root / "operational" / "runs"
+    if not folder.is_dir():
+        return found
+    for path in sorted(folder.glob("*.json")):
+        data = load(path)
+        if not isinstance(data, dict):
+            continue
+        if data.get("operation") != "config_change" or data.get("result") != "submitted":
+            continue
+        summary = str(data.get("summary") or data.get("headline") or "")
+        if not summary.startswith("feature "):
+            continue
+        feature = summary.split(":", 1)[0].replace("feature ", "", 1).strip()
+        devices = [item for item in (data.get("devices") or []) if isinstance(item, str)]
+        if feature and devices:
+            found.append((feature, set(devices), "operational/runs/%s" % path.name, stamp_in(path.name)))
+    return found
+
+
+def close_rows(rows, covers):
+    """Drop a device once a later commit names that feature. A newer visit keeps a regression."""
+    open_rows = []
+    resolved = []
+    for row in rows:
+        evidence_stamp = stamp_in(row.get("evidence_ref"))
+        still = []
+        closed = []
+        evidence = None
+        for device in row["devices"]:
+            match = None
+            for feature, devices, ref, committed in covers:
+                if feature == row["feature"] and device in devices and committed >= evidence_stamp:
+                    match = ref
+                    break
+            if match:
+                closed.append(device)
+                evidence = match
+            else:
+                still.append(device)
+        if closed and evidence:
+            resolved.append({
+                "feature": row["feature"],
+                "devices": closed,
+                "evidence_ref": evidence,
+            })
+        if still:
+            kept = dict(row)
+            kept["devices"] = still
+            open_rows.append(kept)
+    return open_rows, resolved
+
+
+def fingerprint(sync, latest, rows, resolved):
     parts = [
         "sync:%s" % (sync.get("completed_at") or ""),
         "testing:%s" % (latest or ""),
     ]
     for row in rows:
         parts.append("%s:%s=%s" % (row["source"], row["feature"], ",".join(row["devices"])))
+    for row in resolved:
+        parts.append("resolved:%s=%s" % (row["feature"], ",".join(row["devices"])))
     return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
@@ -163,10 +227,10 @@ def assess(workspace):
     sync = load(root / "state" / "network-sync.json")
     prior = load(root / BOARD)
     test_rows, latest = testing_rows(root, testing)
-    rows = test_rows + health_rows(health)
+    rows, resolved = close_rows(test_rows + health_rows(health), commits(root))
     prior_updated = prior.get("updated_at") if isinstance(prior, dict) else None
     sync_row = sync_of(sync, prior_updated if isinstance(prior_updated, str) else None)
-    digest = fingerprint(sync_row, latest, rows)
+    digest = fingerprint(sync_row, latest, rows, resolved)
     if isinstance(prior, dict) and prior.get("fingerprint") == digest:
         emit({
             "result": "unchanged",
@@ -182,14 +246,18 @@ def assess(workspace):
         action = None
     elif not rows:
         status = "ok"
-        headline = "No failing checks and no active chart problems."
+        headline = "No open recommendations."
+        if resolved:
+            headline = "%d implemented. No open recommendations." % len(resolved)
         action = None
     else:
         status = "ok"
         headline = "%d open recommendation%s." % (len(rows), "" if len(rows) == 1 else "s")
+        if resolved:
+            headline += " %d implemented." % len(resolved)
         if sync_row["newer"]:
-            headline = headline[:-1] + ". Prod sync is newer than the last board."
-        action = "Implement a row only when its exact line is known"
+            headline += " Prod sync is newer than the last board."
+        action = None if not rows else "Implement a row only when its exact line is known"
     payload = {
         "schema": "recommendations/v1",
         "updated_at": moment,
@@ -200,6 +268,7 @@ def assess(workspace):
         "fingerprint": digest,
         "sync": sync_row,
         "rows": rows[:24],
+        "resolved": resolved[:24],
         "keys": keys_of(rows[:24]),
     }
     visit_common.validate(payload, SCHEMA)

@@ -1,7 +1,7 @@
 ---
 name: github-actions-mcp
-version: "4.5.1"
-description: "v4.5.1 — watch_run.py checks apply.yml or test.yml once and writes the operation-run. Its Actions helper lives in this skill. running means the same command with --run-id."
+version: "4.5.3"
+description: "v4.5.3 — watch_run.py reads the Static and Live jobs. A counts_ran report is the live block. A static-only failure is fail."
 ---
 
 # GitHub Actions skill
@@ -91,7 +91,8 @@ failure: stop. Do not poll by hand.
 4. `github_get_action_job_logs` on the job id (`tail_lines=20000`).
    A run id is not a job id.
 5. Parse `# Network test report`. Live fail → `fail`. A live pass
-   with a static fail is still `pass`. No live block → `unknown`.
+   with a static fail is still `pass`. A static report with failures
+   and no live block is `fail`. No report at all is `unknown`.
 
 ## Reference routing
 

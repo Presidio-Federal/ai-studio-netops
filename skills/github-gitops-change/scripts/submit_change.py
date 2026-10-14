@@ -457,6 +457,8 @@ def live(args, state, raw, batch, started, moment):
             reason="no_change %s" % raw["scope"].strip(),
         )
     message = "%s %s on %s" % (raw["operation"], raw["scope"].strip(), ", ".join(devices))
+    if raw.get("feature"):
+        message = "feature %s: %s" % (raw["feature"], message)
     message = message[:120]
     commit_sha = None
     for device, path, sha, _before, edited in changed:
@@ -521,6 +523,7 @@ def main():
     parser.add_argument("--line", action="append")
     parser.add_argument("--old-line", action="append")
     parser.add_argument("--constraints", default="preserve all unrelated content; do not reformat; do not duplicate")
+    parser.add_argument("--feature", default="")
     args = parser.parse_args()
     started = time.monotonic()
     moment = datetime.now(timezone.utc)
@@ -550,6 +553,8 @@ def main():
         if err:
             emit({"result": "blocked", "reason": err})
             return
+        if args.feature:
+            raw["feature"] = args.feature.strip()
         if args.dry_run:
             dry(args, raw, False, started)
             return

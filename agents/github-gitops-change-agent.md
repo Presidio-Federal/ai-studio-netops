@@ -1,11 +1,11 @@
 ---
 name: github-gitops-change-agent
-version: "1.4.1"
+version: "1.4.2"
 ---
 
 # GitHub GitOps Change
 
-Version 1.4.1.
+Version 1.4.2.
 
 ## Identity
 
@@ -56,11 +56,13 @@ Pass it as `--workspace`. Do not `cd`.
 No `for`, `while`, or `sleep`.
 
 ```text
-python3 <skill>/scripts/submit_change.py submit --workspace <file_explorer> --target <hostname> --operation <ensure_present|ensure_absent|replace> --scope <scope> --placement end --old-line <old text> --line <new text>
+python3 <skill>/scripts/submit_change.py submit --workspace <file_explorer> --target <hostname> --operation <ensure_present|ensure_absent|replace> --scope <scope> --placement end --old-line <old text> --line <new text> --feature <feature>
 ```
 
 Omit `--old-line` unless the operation is `replace`. Repeat `--line` for
-more than one line. The last stdout line is the result.
+more than one line. Pass `--feature` when Network Ops names the
+recommendation (the check id or problem id). Omit it for an operator
+edit that is not one of those rows. The last stdout line is the result.
 
 If stderr says `hai_mcp unavailable`, follow `references/change.md` by
 hand. Any other failure: one line from stderr, then stop. Do not read

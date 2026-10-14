@@ -1,7 +1,7 @@
 ---
 name: github-gitops-change
-version: "1.4.1"
-description: "v1.4.1 — submit_change.py commits an exact edit to inventory/configs on dev from --target and --line flags, or from change.prescription. No Actions, no PR."
+version: "1.4.2"
+description: "v1.4.2 — submit_change.py commits an exact edit on dev. --feature names the recommendation so the board can close that row. No Actions, no PR."
 ---
 
 # GitHub GitOps Change

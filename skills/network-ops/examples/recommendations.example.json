@@ -21,5 +21,6 @@
       "evidence_ref": "operational/testing/2026-10-13T14-00-00Z.json"
     }
   ],
+  "resolved": [],
   "keys": ["device:WAN-01", "device:WAN-02", "test:ssh-v2"]
 }

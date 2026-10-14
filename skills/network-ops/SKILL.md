@@ -1,7 +1,7 @@
 ---
 name: network-ops
-version: "3.3.2"
-description: "v3.3.2 — recommend.py writes state/recommendations.json from the testing visit, the chart, and network sync. Unchanged input writes nothing."
+version: "3.3.3"
+description: "v3.3.3 — recommend.py keeps open rows only. A later commit that names the feature moves that row to resolved."
 ---
 
 # Network Ops skill

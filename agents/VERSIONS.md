@@ -4,8 +4,8 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 3.2.2 | Frontier (operator-selected; GitOps orchestration risk) |
-| GitHub GitOps Change | 1.4.1 | MiniMax |
+| Network Ops | 3.2.4 | Frontier (operator-selected; GitOps orchestration risk) |
+| GitHub GitOps Change | 1.4.2 | MiniMax |
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.5.4 | MiniMax |
@@ -43,11 +43,17 @@ Modernization Analysis skill 2.5.1 (agent prompt stays 2.5.0): an order stage li
 
 workspace-handoff 1.70.20: `state/relationships.json` readers may rely on `lifecycle`.
 
+Network Ops 3.2.4 (skill 3.3.3, GitOps Change 1.4.2): an implemented recommendation leaves `state/recommendations.json` `rows` and is listed under `resolved`. The commit summary starts with `feature <id>:`. The same open set writes nothing. An exact operator edit that is not a board row omits `--feature`.
+
 Network Ops 3.2.2 (skill 3.3.2, workspace-handoff 1.70.22): `scripts/recommend.py assess` writes `state/recommendations.json` under `execution_type: standard`. It reads the testing visit, active chart problems, and the sync watermark. The same fingerprint writes nothing. An exact operator edit still skips the board and goes to GitOps Change.
 
 Network Ops 3.2.1 (skill 3.3.1): an operator who names the hostname and the exact text is implemented at once. GitOps Change gets that prescription. The chart, the peer, and the blast-radius walk are for asks that do not already contain the lines.
 
 GitHub GitOps Change 1.4.1 (skill 1.4.1): a direct request is committed with `scripts/submit_change.py` on `ref=dev`. The agent does not read a peer or call the GitHub file tools itself.
+
+Pipeline Monitor skill 4.5.3 (agent prompt stays 2.0.1): `apply.yml` prints the live report in the Live tests job as `# Network test report — FAILED` and `counts_ran:`. The watch reads the Static and Live jobs, not the first three. Run 38474971784 live is pass=65 fail=2.
+
+Pipeline Monitor skill 4.5.2 (agent prompt stays 2.0.1): a finished `apply.yml` whose report is only static failures is `fail`, and the marker line does not invent a live score of zero. `unknown` is a missing report. A live pass with static failures is still `pass`.
 
 Pipeline Monitor 2.0.1 (github-actions skill 4.5.1): `watch_run.py` and `github_common.py` both live in that skill. `workspace-handoff` is attached only for `visit_common`. The script checks the run once. `running` is the same command plus `--run-id`. Compliance Test skill stays 1.12.7.
 

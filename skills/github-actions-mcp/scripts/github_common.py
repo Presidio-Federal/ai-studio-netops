@@ -324,6 +324,10 @@ def parse_report(text):
             lab = block_lab
         if block_requested:
             requested = block_requested
+        if mode is None and re.search(r"(?m)^static:\s+pass=", block):
+            mode = "static"
+        elif mode is None and re.search(r"(?m)^counts_ran:\s+pass=", block):
+            mode = "live"
         if mode == "static":
             static_text = block
         elif mode == "live":
@@ -550,9 +554,9 @@ def log_text(body):
     """
     found = []
     collect_text(flatten(body), found)
-    for text in found:
-        if MARKER in text or "NETWORK_TEST_RESULT_JSON=" in text:
-            return text
+    marked = [text for text in found if MARKER in text or "NETWORK_TEST_RESULT_JSON=" in text]
+    if marked:
+        return max(marked, key=len)
     if not found:
         return None
     return max(found, key=len)
@@ -742,20 +746,30 @@ def read_logs(jobs, run_id, body):
     embedded = log_text(body) if body is not None else None
     if report_in(embedded):
         return embedded, None
-    ids = []
+    named = []
+    rest = []
     for job in jobs or []:
-        if isinstance(job, dict) and not (job.get("sha") or job.get("branch") or job.get("jobs_url")):
-            jid = str(job.get("id") or job.get("job_id") or "")
-            if jid.isdigit() and jid != str(run_id) and jid not in ids:
-                ids.append(jid)
+        if not isinstance(job, dict) or job.get("sha") or job.get("branch") or job.get("jobs_url"):
+            continue
+        jid = str(job.get("id") or job.get("job_id") or "")
+        if not jid.isdigit() or jid == str(run_id):
+            continue
+        if str(job.get("conclusion") or "").lower() == "skipped":
+            continue
+        name = str(job.get("name") or "")
+        if re.search(r"live|static", name, re.I):
+            named.append(jid)
+        else:
+            rest.append(jid)
     for jid in job_ids_in(body, run_id):
-        if jid not in ids:
-            ids.append(jid)
+        if jid not in named and jid not in rest:
+            rest.append(jid)
+    ids = named[:4] or rest[:4]
     if not ids:
         return "", "run payload had no job id (%s)" % payload_hint(body)
     chunks = []
     errors = []
-    for jid in ids[:3]:
+    for jid in ids:
         fetched, err = call_tool("github_get_action_job_logs", {"job_id": int(jid), "tail_lines": 20000})
         if err:
             errors.append(err)

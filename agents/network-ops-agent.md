@@ -1,11 +1,11 @@
 ---
 name: network-ops-agent
-version: "3.2.2"
+version: "3.2.4"
 ---
 
 # Network Ops
 
-Version 3.2.2.
+Version 3.2.4.
 
 ## Identity
 
@@ -110,8 +110,11 @@ current: say that and stop. Do not read the sources. `wrote` means
 read only `state/recommendations.json`. Recommend from its rows. A row
 is a feature and the devices that failed it. Pass that sentence to
 GitOps Change only when the operator then says to implement that row
-and the exact line is already known. Do not open a running-config to
-invent the line.
+and the exact line is already known. Name the row's feature on that
+handoff. After GitOps Change returns `submitted`, run `recommend.py`
+again. The implemented feature leaves `rows` and is recorded under
+`resolved`. Do not edit `state/recommendations.json` yourself. Do not
+open a running-config to invent the line.
 
 In `recommend` and `review` modes, answer from that board, then write
 `state/network-ops.json` with `mode=recommend`, `status=recommended` only
@@ -213,8 +216,11 @@ Follow `network-ops` (`references/relations.md`, `references/review.md`,
    once; no `time`; one retry on `Connection closed`; record the
    returned identifier in `change.annotation_ref`, or null with a
    `Gaps:` line.
-7. Monitor `fail|unknown`, or apply `no_change|blocked|failed` → do not create
-   or merge a PR. Report the compact evidence.
+7. Monitor `fail` → do not create or merge a PR. Report the marker line.
+   That includes a finished run whose only report is static failures.
+   Monitor `unknown` means the report was missing. Apply
+   `no_change|blocked|failed` → do not create or merge a PR. Report the
+   compact evidence.
 8. After the terminal outcome, replace `state/network-ops.json` using the
    `network-ops-state/v3.2` schema: `problem_ref`, `finding` with
    `verified_in_git`, devices and `interfaces` (`<device>/<interface>` for
