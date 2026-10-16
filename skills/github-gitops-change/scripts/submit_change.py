@@ -158,6 +158,13 @@ def scope_span(parts, scope):
         elif scope == "line vty" and header.startswith("line vty"):
             matches.append((start, end))
     if not matches:
+        headers = [
+            parts[start]
+            for start, _end in blocks(parts)
+            if parts[start].startswith("interface ")
+        ]
+        if headers:
+            return None, None, "scope not found. interface headers: %s" % "; ".join(headers[:40])
         return None, None, "scope not found"
     if len(matches) > 1:
         return None, None, "scope matched more than one block"

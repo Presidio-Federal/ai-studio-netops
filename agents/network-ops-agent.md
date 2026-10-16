@@ -1,11 +1,11 @@
 ---
 name: network-ops-agent
-version: "3.2.4"
+version: "3.2.5"
 ---
 
 # Network Ops
 
-Version 3.2.4.
+Version 3.2.5.
 
 ## Identity
 
@@ -78,7 +78,14 @@ decide the edit. Do not correct their wording from topology.
 
 Invoke GitHub GitOps Change once, then follow **How you work** from the
 `submitted` step. A line under an interface is passed with one leading
-space.
+space. Pass the interface words they used (`interface 1`). Do not
+expand them yourself.
+
+If GitOps Change returns `blocked` and the reply lists interface
+headers, invoke it once more and tell it to use the header in that
+list that matches the operator. Do not read `state/health.json`,
+`state/relationships.json`, the schema, or blast-radius notes to
+record the block. Do not open another skill.
 
 ```text
 Targets: <hostname>

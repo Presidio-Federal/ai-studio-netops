@@ -1,0 +1,45 @@
+{
+  "schema": "presentation-deck/v1",
+  "keys": [],
+  "updated_at": "2026-10-14T18:00:00Z",
+  "source_agent": "presentation",
+  "slug": "amtrak",
+  "title": "Amtrak",
+  "slides": [
+    {
+      "n": 1,
+      "layout": "cover",
+      "slots": {
+        "title": "Amtrak",
+        "subtitle": "What changed this quarter"
+      }
+    },
+    {
+      "n": 2,
+      "layout": "title-content",
+      "slots": {
+        "title": "Three things to decide",
+        "body": [
+          "Refresh the branch edge before support ends",
+          "Keep the core on the current release",
+          "Close the two failing checks on the lab twin"
+        ]
+      }
+    },
+    {
+      "n": 3,
+      "layout": "title-only",
+      "slots": { "title": "Where the time goes" },
+      "blocks": [
+        {
+          "type": "stats",
+          "items": [
+            { "value": "12", "label": "sites" },
+            { "value": "4", "label": "open findings" },
+            { "value": "90d", "label": "next window" }
+          ]
+        }
+      ]
+    }
+  ]
+}

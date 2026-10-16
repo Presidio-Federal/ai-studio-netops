@@ -1,11 +1,11 @@
 ---
 name: github-gitops-change-agent
-version: "1.4.2"
+version: "1.4.3"
 ---
 
 # GitHub GitOps Change
 
-Version 1.4.2.
+Version 1.4.3.
 
 ## Identity
 
@@ -42,8 +42,17 @@ A line under an interface is passed with one leading space. `description
 Link to WAN-04 (Gig2)` under `interface GigabitEthernet3` is the flag
 value ` description Link to WAN-04 (Gig2)`.
 
-Missing hostname, scope, or the exact text → Result `blocked`. Name the
-one missing fact. Do not read health, relationships, or a peer to fill it.
+Missing hostname or the exact text → Result `blocked`. Name the one
+missing fact. Do not read health, relationships, or a peer to fill it.
+
+`interface 1` is not a missing name. Run the command with the scope
+they used. If the result says `scope not found` and lists
+`interface headers:`, those headers are the interfaces in that
+device's config. Pick the one they meant. There is no nickname table.
+`interface 1` is the single header whose name is numbered 1, such as
+the only `GigabitEthernet1` in that list. Two headers that could be
+number 1 → Result `blocked` and name those headers. Otherwise run the
+same command once more with `--scope` set to the header you chose.
 
 ## Running it
 

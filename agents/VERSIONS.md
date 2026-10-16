@@ -4,8 +4,8 @@ Deployed model is **MiniMax** unless noted.
 
 | Agent | Version | Model |
 |-------|---------|-------|
-| Network Ops | 3.2.4 | Frontier (operator-selected; GitOps orchestration risk) |
-| GitHub GitOps Change | 1.4.2 | MiniMax |
+| Network Ops | 3.2.5 | Frontier (operator-selected; GitOps orchestration risk) |
+| GitHub GitOps Change | 1.4.3 | MiniMax |
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.5.4 | MiniMax |
@@ -28,6 +28,22 @@ Deployed model is **MiniMax** unless noted.
 | Relationship agent | 1.4.0 | MiniMax |
 | Network Map | 1.1.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
+| Presentation | 1.2.6 | MiniMax |
+| Presentation Builder | 1.2.1 | MiniMax |
+
+Presentation 1.2.6 (skill 1.2.6): file tools use `<customer>/deck.json`. `file_explorer/acme/deck.json` is `/app/file_explorer/acme/deck.json` and Access denied. "Acme Corp" is `acme-corp`. File not found on the customer path means there is no deck yet. MiniMax.
+
+Presentation 1.2.5 (skill 1.2.5, presentation-build 1.2.1): every write of `deck.json` invokes Presentation Builder. The Disney template's Title Slide 2 Blue is slide 1 only. Neighboring slides may not share a layout. MiniMax.
+
+Presentation 1.2.3 (skill 1.2.3): invoke Presentation Builder and end the turn. Do not poll. Its result is delivered when the parent is idle. MiniMax.
+
+Presentation 1.2.2 (skill 1.2.2, presentation-build 1.2.0): the pptx is `<customer>/<customer>.pptx`. Body slides use the Presidio master layouts (Title Slide 2 Blue, Title and Content, 1_Two Content, Section, Chapter, Large Quote), not the generic second-master Title, Content layouts. MiniMax.
+
+Presentation 1.2.1 (skill 1.2.1): Acme is `file_explorer/acme/deck.json`. The folder is the name they said. `acme/deck.json` and `acme-corp/deck.json` are the wrong path, and file-not-found on those is not "no deck". MiniMax.
+
+Presentation 1.2.0 (skill 1.2.0, presentation-build 1.1.0): a customer is a folder at the workspace root. Amtrak is `file_explorer/amtrak/deck.json`. Acme is `file_explorer/acme/deck.json`. The builder writes `<customer>/deck.pptx` beside it. These agents do not use the network-ops catalog. MiniMax.
+
+Presentation 1.1.0 (skill 1.1.0, presentation-build 1.0.0, workspace-handoff 1.70.24): the parent writes `reports/presentations/<slug>/deck.json` with the file tools and does not compile. Presentation Builder runs `deck.py compile` only when the parent sends `Compile the deck only.` `python-pptx` is already in the sandbox. MiniMax.
 
 Network Map skill 1.3.3 (agent prompt stays 1.1.0): the Lifecycle card is a scorecard — overdue, approaching (inside 90 days), and the list-price total for approaching products. Advisories are a separate card, counted and colored Critical, High, and Medium.
 
@@ -43,7 +59,7 @@ Modernization Analysis skill 2.5.1 (agent prompt stays 2.5.0): an order stage li
 
 workspace-handoff 1.70.20: `state/relationships.json` readers may rely on `lifecycle`.
 
-Network Ops 3.2.4 (skill 3.3.3, GitOps Change 1.4.2): an implemented recommendation leaves `state/recommendations.json` `rows` and is listed under `resolved`. The commit summary starts with `feature <id>:`. The same open set writes nothing. An exact operator edit that is not a board row omits `--feature`.
+GitOps Change 1.4.3 (skill 1.4.3) and Network Ops 3.2.5: `interface 1` is not a nickname table. The script returns the interface headers from that device file. The change agent picks the one numbered 1 and submits again. A blocked reply does not send Network Ops into the chart or the relationship map.
 
 Network Ops 3.2.2 (skill 3.3.2, workspace-handoff 1.70.22): `scripts/recommend.py assess` writes `state/recommendations.json` under `execution_type: standard`. It reads the testing visit, active chart problems, and the sync watermark. The same fingerprint writes nothing. An exact operator edit still skips the board and goes to GitOps Change.
 

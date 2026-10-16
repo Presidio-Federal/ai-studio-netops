@@ -1,7 +1,7 @@
 ---
 name: github-gitops-change
-version: "1.4.2"
-description: "v1.4.2 — submit_change.py commits an exact edit on dev. --feature names the recommendation so the board can close that row. No Actions, no PR."
+version: "1.4.3"
+description: "v1.4.3 — submit_change.py commits an exact edit on dev. A scope that is not a header returns that file's interface headers for the agent to choose. No Actions, no PR."
 ---
 
 # GitHub GitOps Change
