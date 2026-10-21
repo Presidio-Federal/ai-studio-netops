@@ -85,13 +85,15 @@ than becoming relationship keys.
 
 ## Intelligence loop
 
-The Intelligence script processes the pinned NIST index inside Python and
-returns at most twenty unresolved titles. The model never receives the full
-framework.
+`scripts/scan_catalog.py` runs under MCP orchestration. It lists `catalog`
+and `tests/compliance` on `main`, reads the job catalog and the test
+bridge, and returns unresolved titles from the pinned NIST index. A NIST
+id counts as covered only when its check is on the bridge. The model
+never receives the catalog body or the full framework.
 
-The agent removes controls already covered, already classified not
-applicable, or already active recommendations. It interprets the remaining
-titles against inventory and maintains up to ten ranked recommendations.
+The agent ranks those titles against the estate in the packet and keeps
+at most ten recommendations. Each candidate is `evidence` `static`
+(committed config, a pytest rule) or `live` (the device must be asked).
 It does not author tests, run tests, score posture, or invoke another agent.
 
 The published catalog is a token-efficient coverage index only because

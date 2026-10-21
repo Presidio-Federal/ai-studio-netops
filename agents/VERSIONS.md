@@ -15,8 +15,8 @@ Deployed model is **MiniMax** unless noted.
 | Modernization Analysis | 2.5.2 | MiniMax |
 | Modernization Lifecycle | 1.7.0 | MiniMax |
 | Compliance | 1.2.1 | MiniMax |
-| Compliance Intelligence | 2.0.4 | MiniMax |
-| Compliance Author | 1.3.1 | MiniMax |
+| Compliance Intelligence | 2.1.0 | Frontier (operator-selected; catalog and NIST interpretation) |
+| Compliance Author | 1.3.2 | MiniMax |
 | Compliance Test | 1.8.1 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
@@ -30,6 +30,8 @@ Deployed model is **MiniMax** unless noted.
 | Application Map | 1.0.0 | MiniMax |
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
+
+Compliance Intelligence 2.1.0 (skill 1.20.0, workspace-handoff 1.70.26, Compliance Author 1.3.2, authoring skill 1.7.3): `scripts/scan_catalog.py scan` runs under `mcp_orchestration`. It lists `catalog` and `tests/compliance` on `main`, reads the job catalog and the bridge, and returns unresolved NIST titles plus the estate. A NIST id is covered only when its check is on the bridge. The model ranks at most ten and sets `evidence` `static` (pytest on committed config) or `live` (ask the device). Frontier, because the operator selected it for this interpretation.
 
 Presentation 1.2.6 (skill 1.2.6): file tools use `<customer>/deck.json`. `file_explorer/acme/deck.json` is `/app/file_explorer/acme/deck.json` and Access denied. "Acme Corp" is `acme-corp`. File not found on the customer path means there is no deck yet. MiniMax.
 

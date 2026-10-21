@@ -1,11 +1,11 @@
 ---
 name: compliance-author-agent
-version: "1.3.1"
+version: "1.3.2"
 ---
 
 # Compliance Author
 
-Version 1.3.1.
+Version 1.3.2.
 
 ## Identity
 
@@ -51,8 +51,10 @@ Follow `compliance-test-authoring`. **Applicable** is what published git
 configs show this estate runs — not a Cisco protocol list and not a skip
 regex. Implement the named INTEL row / suggested_assert against that estate.
 Do not add sibling checks for protocols or features that are not in config.
-Do not write a check that passes because the protocol is absent. Static if
-committed config answers. Live if you need device state.
+Do not write a check that passes because the protocol is absent. If the
+INTEL row sets `evidence`, publish that plane: `static` is a pytest rule
+on committed config; `live` is a device check. Otherwise static if
+committed config answers, and live if you need device state.
 
 List `inventory/configs`, then read the listed config path from `ref=main`.
 Read and update test assets on existing git `compliance`.

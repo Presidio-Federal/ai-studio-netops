@@ -8,8 +8,8 @@ Do not scrape HTML. Do not clone `usnistgov/OSCAL` (schemas only).
 | [STIG Viewer Crosswalk](https://docs.stigviewer.com/crosswalk-resolve) | Optional 800-171 → 800-53 paths | SAMS token if the public call returns 401 |
 | [oscal-content v1.5.0](https://github.com/usnistgov/oscal-content/releases/tag/v1.5.0) | Pinned 800-53 Rev 5.2.0 titles and related ids | None (local index) |
 | NIST SP 800-171 Rev 2 Table D-1 | Fallback 800-171 → 800-53 when crosswalk is locked | None (local map) |
-| Local catalog `nist:` tags | Which controls we already test | Git `catalog/job-catalog.json` via `github_get_file` |
-| Pinned OSCAL title index (via `query_sources.py unresolved`) | Bounded unresolved titles for Intel | None (local index) |
+| Local catalog `nist:` tags on bridged checks | Which controls we already test | Git `catalog/job-catalog.json` and `tests/compliance/matrix/test-bridge.yml` via `scan_catalog.py` |
+| Pinned OSCAL title index (via `scan_catalog.py`) | Unresolved titles for Intel | None (local index) |
 
 STIG Viewer 800-171 is **Rev 2** (`3.1.7`). NIST OSCAL 800-171 is **Rev 3** (`03.01.07`). Do not mix versions silently.
 

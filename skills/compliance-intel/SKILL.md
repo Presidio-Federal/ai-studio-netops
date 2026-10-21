@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.19.0"
-description: "v1.19.0 — Compliance Intelligence: NIST title delta vs the git catalog; unresolved scan runs the skill script at its Studio-shown path from file_explorer."
+version: "1.20.0"
+description: "v1.20.0 — Compliance Intelligence: one mcp_orchestration scan reads the published catalog and returns unresolved NIST titles to mark live or static."
 ---
 
 # Compliance intel
@@ -33,50 +33,57 @@ Do **not** write `compliance/_git_input.json`, `prepare_*.py`, any `.py`,
 the matrix, the bridge, check files, `testing/`, `runs/`, or any other
 path.
 
-Do not `github_get_file` the matrix, bridge, or running-configs.
-The test list is `catalog/job-catalog.json` only. NIST titles come
-from `query_sources.py`. Running-configs are Author’s job.
+Do not `github_get_file` running-configs. The scan script reads
+`catalog/job-catalog.json` and `tests/compliance/matrix/test-bridge.yml`
+on `main`. NIST titles come from that script. Running-configs are
+Author’s job.
 
-GitHub is read-only: `github_get_file` only. Never `github_run_action`.
-Never `github_put_file`.
+GitHub is read-only, and only inside `scripts/scan_catalog.py`. Never
+`github_run_action`. Never `github_put_file`. Do not call GitHub tools
+yourself on a scan.
 
 Do not create helper scripts. Do not scrape HTML. **No curl.** Never
 `--output`. No icons/emoji. Do not dump raw tool payloads.
 
-`execute_command` runs only this skill's `scripts/query_sources.py`.
+`execute_command` on a scan runs only this skill's `scripts/scan_catalog.py`.
 **Use the path Studio shows for that attached skill file — copy it, do
 not retype a path from memory.** The transcript may render it as
-`Internal directory`; that is the real path, displayed. Inside the
-sandbox the workspace is the `file_explorer` folder; `cd` there first
-and keep the two workspace arguments relative.
+`Internal directory`; that is the real path. Do not `cd`. Pass the
+`file_explorer` directory beside `skills` on that path as `--workspace`.
 
-**Standard scan is one `unresolved` call** — not six `family` calls:
+**Standard scan is one `scan` call** under `execution_type:
+mcp_orchestration`. `timeout` is 60. One `python3`. The script lists
+`catalog` and `tests/compliance` on `main`, gets the job catalog and
+the bridge, and returns unresolved titles. A NIST id counts as covered
+only when its check is on the bridge. The last stdout line is the
+packet. Do not read the catalog body. Do not `write_file` git into the
+workspace.
 
 ```text
-cd file_explorer && cat <<'EOF' | python3 <skill>/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
-{"suites":{"compliance":{"checks":[<the compliance suite's checks[] from github_get_file — id and nist only>]}}}
-EOF
+python3 <skill>/scripts/scan_catalog.py scan --workspace <file_explorer>
 ```
 
-Stdin is the `compliance` suite's `checks[]` only (`id`, `nist`). Never
-the whole catalog — `jobs`, `intent_aliases`, and descriptions make the
-command too large and it aborts. A missing coverage or intel file is
-normal on a first scan; the script says so under `warnings` and
-continues. Stdout only. Do not `write_file` the catalog or redirect
-into a workspace file.
+A missing coverage or intel file is normal on a first scan. The packet
+still returns. `estate.devices` is platform, role, and tags from
+`inventory/prod.json`. `unresolved` is id, title, and family only.
+`backlog_full` true means ten active candidates remain: reconcile
+`now_covered` and do not add an eleventh. `result` `sources_degraded`
+means GitHub failed: write intel with `sources_status` `failed`, one
+error line, and stop. Do not invent titles.
 
-`family` and `lookup` are troubleshooting / named-control only. Never
-run `family` AC, AU, CM, IA, SC, SI on a scheduled or gaps visit.
+`query_sources.py` `family` and `lookup` are named-control only, under
+`execution_type: standard`. Never run `family` AC, AU, CM, IA, SC, SI
+on a scheduled or gaps visit.
 
-If the command exits non-zero or the file is not found: stop, set
+If the scan command exits non-zero or the file is not found: stop, set
 `sources_status` `failed`, put the error on one line in the reply. Do
-not retype a path, do not `ls`, do not write a copy of the script.
+not retype a path, do not `ls`, do not write a copy of the script. If
+stderr says `hai_mcp unavailable`, stop. Do not call GitHub yourself.
 
 ## CRITICAL RULES
 
-1. **Tests live in git.** One fetch:
-   `github_get_file(path="catalog/job-catalog.json", ref="main")`.
-   Use the MCP result in this turn. Never write that JSON to the workspace.
+1. **Tests live in git.** One `scan_catalog.py scan` under
+   `mcp_orchestration` reads `main`. Never write that JSON to the workspace.
 2. **Write every run** — coverage, append-only Intel stamp, current intel,
    then metadata (even if `candidates` is empty).
 3. **Relevance is this estate.** Read `inventory/prod.json` when it
@@ -90,8 +97,9 @@ not retype a path, do not `ls`, do not write a copy of the script.
    800-53 before a candidate.
 5. **No copyrighted control text** — your words; cite URL + date. Titles
    and identifiers are fine.
-6. **Delta, then rank.** Catalog `nist:` on a check is covered, not a
-   gap. Candidates are relevant missing / partial controls only. Sort
+6. **Delta, then rank.** A NIST id on a bridged catalog check is covered,
+   not a gap. An unwired catalog id is not covered. Candidates are
+   relevant missing / partial controls only. Sort
    `critical` → `high` → `medium` → `low`. Cap 10. Fill `delta`.
 7. **status stays `proposed`.** Do not edit git tests.
 8. **Reuse `INTEL-` ids** when re-proposing the same theme; bump `run_id`.
@@ -105,39 +113,37 @@ not retype a path, do not `ls`, do not write a copy of the script.
 
 ## Estate
 
-`inventory/prod.json` is the kinds of things we have (platform, role,
-tags) — so you recommend network-gear controls and skip endpoint /
-server / SaaS titles. Typical lab: IOS-XE edge / WAN / branch. Do
-not open running-configs to see which protocol is configured. Do
-not assume a device that is not in the file.
+`estate.devices` on the scan packet is the kinds of things we have
+(platform, role, tags) — so you recommend network-gear controls and
+skip endpoint / server / SaaS titles. Typical lab: IOS-XE edge / WAN /
+branch. Do not open running-configs to see which protocol is configured.
+Do not assume a device that is not in the packet.
 
 ## Scripts (stdout only — not workspace files)
 
 | Script | When |
 |--------|------|
-| `query_sources.py unresolved --limit 20` | **Standard scan.** Bounded unresolved titles |
+| `scan_catalog.py scan` | **Standard scan.** `mcp_orchestration`, timeout 60 |
 | `query_sources.py lookup <id-or-url>` | They named a control or STIG Viewer URL |
 | `query_sources.py family AC` | Troubleshooting / they asked to skim one family |
 
 ```text
-cd file_explorer && cat <<'EOF' | python3 <skill>/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage compliance/coverage.json --intel compliance/intel.json
+python3 <skill>/scripts/scan_catalog.py scan --workspace <file_explorer>
 python3 <skill>/scripts/query_sources.py lookup AC-17
 python3 <skill>/scripts/query_sources.py family AC
 ```
 
-`<skill>` is the attached skill's path as Studio shows it. The
-`unresolved` command reads coverage and intel from the sandbox's
-`file_explorer` workspace folder; built-in file tools use the same
-workspace-relative catalog paths with no prefix. Do not paste the
-historical coverage file or the git catalog into chat. Evaluate only
-the returned `controls` list (plus current candidates and inventory).
+`<skill>` is the attached skill's path as Studio shows it. Evaluate
+only the scan packet: `unresolved`, `estate`, `prior_candidates`,
+`now_covered`, and `catalog.published_checks`. Do not paste the git
+catalog into chat.
 
 The skill ships a **pinned NIST OSCAL title index**. That is the standard,
 not our test list. Do not copy it into the workspace.
 
 | They give you | Command |
 |---------------|---------|
-| Scheduled / gaps / what’s missing | `unresolved --limit 20` |
+| Scheduled / gaps / what’s missing | `scan_catalog.py scan` under `mcp_orchestration` |
 | `AC-17` / `nist-800-53:AC-17` | `lookup AC-17` |
 | `3.1.7` / 800-171 URL | `lookup 'https://www.stigviewer.com/controls/nist-800-171/3.1.7'` |
 | Skim one family (troubleshooting) | `family AC` |
@@ -150,44 +156,37 @@ Table D-1 and a `warnings` line. STIG Viewer 800-171 is **Rev 2**. OSCAL
 Use `title`, `source_control`, `resolved_from`, `maps_to_existing`,
 `disa_footnote`, `oscal_release`. Never print control statements.
 
-If `github_get_file` fails: still write intel with `sources_status: failed`
-/ `SOURCES_DEGRADED`. Do not invent a test list.
+If the scan packet says `sources_degraded`: still write intel with
+`sources_status: failed` / `SOURCES_DEGRADED`. Do not invent a test list.
 
 ## Execution
 
 ```text
-1. READ     metadata-intel.json and its latest Intel stamp if present;
-            read intel.json if present (keep stable INTEL- ids)
-2. ESTATE   inventory/prod.json if present (kinds of devices only)
-3. FETCH    github_get_file catalog/job-catalog.json ref=main
-            (only git path; never running-configs)
-4. COVER    read_file coverage.json if present
-            (merge later; do not dump it into the reply)
-5. RECONCILE drop intel candidates whose nist ids are now on a
-            catalog check (nist:). Keep other proposed/accepted
-            candidates and their INTEL- ids. No duplicates.
-6. FULL?    if remaining active candidates = 10:
-            skip unresolved. Write coverage (catalog reconcile
-            only — keep existing rows) then intel. Reply.
-7. NIST     else one execute_command, the fixed unresolved command
-            above (cd file_explorer; --coverage and --intel always;
-            stdin = compliance checks[] id+nist only). Do not
-            write_file the catalog.
-8. JUDGE    each returned control against this estate
-            (applicability, priority, suggested_assert)
-9. MERGE    coverage is accumulated working state — do not rebuild
+1. SCAN     one execute_command, mcp_orchestration, timeout 60:
+            scan_catalog.py scan --workspace <file_explorer>
+            The last stdout line is the packet. Do not call GitHub.
+2. ESTATE   estate.devices in that packet (platform, role, tags).
+            known false: still judge, and say the estate is unknown.
+3. RECONCILE drop prior candidates listed in now_covered.
+            Keep other proposed/accepted candidates and their INTEL- ids.
+4. FULL?    backlog_full true: do not add a candidate. Write coverage
+            from the packet's published counts, then intel. Reply.
+5. JUDGE    each unresolved title against this estate
+            (applicability, priority, evidence, suggested_assert)
+6. MERGE    coverage is accumulated working state — do not rebuild
             from six families. Upsert:
-            catalog nist: → covered
+            a NIST id on `catalog.published_checks` → covered
             reviewed N/A → not_applicable
             selected candidate → gap (or partial if tests exist)
             keep untouched prior rows
-10. DRAFT   keep remaining candidates; add new ones up to cap 10;
+7. DRAFT   keep remaining candidates; add new ones up to cap 10;
             rank critical → high → medium → low
-11. WRITE   coverage.json; intel/<stamp>.json; intel.json; metadata-intel.json.
-            The stamp and current intel have the same evidence. Set
+8. WRITE   coverage.json; intel/<stamp>.json; intel.json; metadata-intel.json.
+            The stamp and current intel carry the same candidates, including
+            each `evidence` value. Set
             vs_prior.prior_visit_id from metadata, compare stable metrics and
             candidate ids, keep 10 stamps, and never list the directory.
-12. REPLY   Action + headline + ranked candidates. Stop.
+9. REPLY   Action + headline + ranked candidates. Stop.
             Do not invoke Author or Test.
 ```
 
@@ -227,10 +226,14 @@ Each candidate **must** include:
 - `priority` — `critical` | `high` | `medium` | `low` (impact if we
   do not test it on this estate)
 - `nist_sp_800_53` — 1–3 control ids
-- `suggested_assert` — what to add to the test catalog (static vs
-  live, on these platforms from inventory). Do not inspect device
-  configs to pick a protocol. Author reads configs when it writes
-  the check.
+- `evidence` — `static` or `live`. `static` means committed config
+  answers it, so Author publishes a pytest rule. `live` means the
+  device must be asked (session up, clock synced, neighbor established).
+  One plane. Config-visible intent is `static`. Current device state is
+  `live`.
+- `suggested_assert` — what that plane would assert, on the platforms
+  in `estate.devices`. Do not inspect device configs to pick a protocol.
+  Author reads configs when it writes the check.
 - `maps_to_existing` — `none` or existing check id / `NET-COMP-####`
 - `source_control` — `nist-800-53:AC-17`
 - `oscal_release` — pinned `v1.5.0`
@@ -287,7 +290,7 @@ Candidates: <n>
 Headline: <one line>
 File: intel catalog row
 Ranked:
-- INTEL-0001 <priority>: <title> → <NIST ids>
+- INTEL-0001 <priority> <live|static>: <title> → <NIST ids>
 ```
 
 ## Handoffs

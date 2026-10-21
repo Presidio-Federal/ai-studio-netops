@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.25 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.25"
+description: "v1.70.26 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.26"
 ---
 
 # Workspace handoff
@@ -365,7 +365,7 @@ visits).
 | `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results.counts_by_plane` (`live` and `static`) `results.ran` row `plane` `keys` `risk` |
 | `state/compliance.json` | state | Compliance | `compliance-analyzer` `schemas/compliance-state.schema.json` | envelope, `mode` `freshness` `consults` `series` `scores` `findings` `assessment` `trend_analysis` `soap` `dispatched`; `next_action` is `soap.plan` |
 | `compliance/coverage.json` | snapshot | Compliance Intelligence | `compliance-intel` `schemas/coverage.schema.json` | `updated_at` `source_agent` `rows` `counts`, row `keys` |
-| `compliance/intel.json` | result | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` `candidates[]` `skipped_non_network` `why_network`, candidate `keys` |
+| `compliance/intel.json` | result | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` `candidates[]` (`evidence` `live` or `static`) `skipped_non_network` `why_network`, candidate `keys` |
 | `compliance/metadata-intel.json` | metadata | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel-metadata.schema.json` | `last_visit_id` `last_collected_at` |
 | `compliance/intel/<stamp>.json` | observation | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` `metrics` `candidates[].keys` `vs_prior` |
 | `branch-deploy-summary.json` | result | Network Design | `network-design` `schemas/branch-deploy-summary.schema.json` | envelope, ticket slot |

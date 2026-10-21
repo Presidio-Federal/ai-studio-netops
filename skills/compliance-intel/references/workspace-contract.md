@@ -6,11 +6,9 @@ Write from this skill’s schemas and examples. Do not invent files.
 Built-in `read_file` / `write_file`: catalog rows. Do not invent
 prefixes. `write_file` creates parents. Never `mkdir`.
 
-`execute_command` is the query script (stdout). Job catalog is
-`github_get_file` — do not `write_file` it. Pass that JSON on
-stdin to `unresolved --catalog -`. Use the tool's stdin field when present;
-otherwise use one direct heredoc on the Python command. Do not pipe from
-`cat` or write a scratch file.
+`execute_command` on a scan is `scripts/scan_catalog.py scan` under
+`mcp_orchestration`. The script gets the job catalog and the bridge.
+Do not `write_file` either file. Do not pass the catalog on stdin.
 
 Every completed intel run writes **only**:
 
@@ -29,13 +27,14 @@ Read metadata first and open its `last_visit_id`; do not list
 `compliance/intel/`. Write the visit before advancing metadata. Keep ten
 stamps and delete older ones only after the new visit and metadata are valid.
 
-Read-only: inventory when present (estate for relevance).
-Git `catalog/job-catalog.json` is read with `github_get_file`. Do not
-`write_file` the job catalog, matrix, bridge, or a scratch input file.
+The scan script reads `inventory/prod.json` when present and puts
+platform, role, and tags on `estate.devices`. It gets
+`catalog/job-catalog.json` and `tests/compliance/matrix/test-bridge.yml`
+from `main`. Do not `write_file` the job catalog, matrix, bridge, or a
+scratch input file.
 
 ```text
-github_get_file(path="catalog/job-catalog.json", ref="main")
-python3 /skills/user/compliance-intel/scripts/query_sources.py unresolved --limit 20 --catalog - --coverage /workspace/compliance/coverage.json --intel /workspace/compliance/intel.json
+python3 <skill>/scripts/scan_catalog.py scan --workspace <file_explorer>
 ```
 
 `Internal directory` is never a script path. Built-in file tools use

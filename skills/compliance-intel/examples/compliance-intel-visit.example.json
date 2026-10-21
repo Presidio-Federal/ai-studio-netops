@@ -23,12 +23,14 @@
       "id": "INTEL-0001",
       "priority": "high",
       "status": "proposed",
+      "evidence": "static",
       "keys": ["control:SC-8"]
     },
     {
       "id": "INTEL-0002",
       "priority": "medium",
       "status": "proposed",
+      "evidence": "static",
       "keys": ["control:AC-17"]
     }
   ],

@@ -1,7 +1,7 @@
 ---
 name: compliance-test-authoring
-version: "1.7.2"
-description: "v1.7.2 — Publish complete catalog-to-check-to-bridge-to-NET-COMP chains on git compliance."
+version: "1.7.3"
+description: "v1.7.3 — Publish the intel evidence plane as a complete catalog-to-check-to-bridge chain on git compliance."
 ---
 
 # Compliance test authoring
@@ -33,8 +33,11 @@ helper scripts, or `Internal directory`.
    mapping. Match those shapes.
    Formats: [`references/live-checks.md`](references/live-checks.md),
    [`references/static-rules.md`](references/static-rules.md).
-5. **Static** if committed config can answer. **Live** if you need
-   device state (BGP up, ping, NTP sync). Both if they asked configured *and* working.
+5. If the INTEL row sets `evidence`, publish that plane. `static` is a
+   pytest rule on committed config. `live` is a device check (BGP up,
+   ping, NTP sync). Without `evidence`: static if committed config can
+   answer, live if you need device state. Both if they asked configured
+   *and* working.
 6. Build one complete compliance implementation chain on existing git
    **`compliance`** (GitHub contents — not a new branch, not `dev`, not
    `main`):

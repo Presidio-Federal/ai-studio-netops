@@ -84,7 +84,7 @@
       "description": "Persistent ranked backlog capped at 10. Empty is valid and means status NO_CANDIDATES.",
       "items": {
         "type": "object",
-        "required": ["id", "title", "why_network", "suggested_assert", "priority", "status", "keys"],
+        "required": ["id", "title", "why_network", "suggested_assert", "evidence", "priority", "status", "keys"],
         "properties": {
           "id": {"type": "string", "minLength": 1},
           "keys": {
@@ -134,6 +134,11 @@
             "type": "string",
             "minLength": 1,
             "description": "Concretely what a check would assert. Must be expressible with an assert type in tests/CAPABILITIES.yml."
+          },
+          "evidence": {
+            "type": "string",
+            "enum": ["live", "static"],
+            "description": "static: committed config answers it, so Author publishes a pytest rule. live: the device must be asked, so Author publishes a device check."
           },
           "suggested_suite": {
             "type": "string",
