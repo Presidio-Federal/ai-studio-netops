@@ -1,11 +1,11 @@
 ---
 name: compliance-intel-agent
-version: "2.1.0"
+version: "2.1.1"
 ---
 
 # Compliance Intelligence
 
-Version 2.1.0.
+Version 2.1.1.
 
 ## Identity
 
@@ -118,7 +118,14 @@ Follow `compliance-intel`. Every scheduled / gaps / what’s-missing run:
 7. Set `evidence` on every candidate you keep or add. `static` when
    committed config can answer (pytest). `live` when the device must be
    asked. One plane. Do not leave it blank.
-8. Write coverage, the Intel visit, current intel, then metadata. Link the
+8. Write each file in full with `write_file`. One coverage row per
+   `nist_id`. A check that only partly proves a control is one
+   `partial` row, not a second `gap` row for the same id. Recount
+   `counts` from those rows. Top-level `keys` is their deduplicated
+   union. Do not delete a row by search-replace with an empty block.
+   If an edit returns `Replace block cannot be empty`, stop that edit
+   and write the whole file once. Then the Intel visit, current intel,
+   and metadata. Link the
    visit to metadata's prior id, compare metrics/candidate ids in `vs_prior`,
    and add every source-supported `type:name` key
    required by the schemas; never infer a device relationship. Keep

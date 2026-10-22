@@ -15,7 +15,7 @@ Deployed model is **MiniMax** unless noted.
 | Modernization Analysis | 2.5.2 | MiniMax |
 | Modernization Lifecycle | 1.7.0 | MiniMax |
 | Compliance | 1.2.1 | MiniMax |
-| Compliance Intelligence | 2.1.0 | Frontier (operator-selected; catalog and NIST interpretation) |
+| Compliance Intelligence | 2.1.1 | Frontier (operator-selected; catalog and NIST interpretation) |
 | Compliance Author | 1.3.2 | MiniMax |
 | Compliance Test | 1.8.1 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
@@ -24,12 +24,14 @@ Deployed model is **MiniMax** unless noted.
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
-| Health Analyzer | 5.1.0 | MiniMax |
+| Health Analyzer | 5.2.0 | MiniMax |
 | Relationship agent | 1.4.0 | MiniMax |
 | Network Map | 1.1.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
+
+Compliance Intelligence 2.1.1 (skill 1.20.1): coverage.json is one row per NIST id, replaced in full. A partial proof is `partial` on that row. An empty search-replace is not a delete; write the file once and stop retrying. Frontier.
 
 Compliance Intelligence 2.1.0 (skill 1.20.0, workspace-handoff 1.70.26, Compliance Author 1.3.2, authoring skill 1.7.3): `scripts/scan_catalog.py scan` runs under `mcp_orchestration`. It lists `catalog` and `tests/compliance` on `main`, reads the job catalog and the bridge, and returns unresolved NIST titles plus the estate. A NIST id is covered only when its check is on the bridge. The model ranks at most ten and sets `evidence` `static` (pytest on committed config) or `live` (ask the device). Frontier, because the operator selected it for this interpretation.
 
@@ -98,6 +100,8 @@ workspace-handoff 1.70.17: Modernization Lifecycle `scripts/visit_lifecycle.py c
 workspace-handoff 1.70.15: `unwrap_github` reads `github_list_files`, `github_get_file`, and `github_put_file`. The tool dict is `{ok, entries}` or `{ok, content, sha}` or `{ok, sha, commit_sha}`. `result` on `call_mcp` is a list; `result[0]` is that dict.
 
 Relationship agent 1.3.0 (skill 1.3.0): `scripts/compile_graph.py compile` copies nurse columns, CMDB declarations, and asserted relations into `state/relationships.json`. No MCP. Unchanged watermarks write nothing. Superseded by 1.4.0.
+
+Health Analyzer 5.2.0 (skill 5.2.0): MiniMax. A question is chat: `read_file` catalog rows, no `execute_command`, no write. Analyze / chart / trend / refresh still runs `assess_health.py` then `annotate`. Built-in paths stay workspace-relative.
 
 Health Analyzer 5.1.0 (skill 5.1.0): `scripts/assess_health.py assess` writes `state/health.json` from the five boards under `execution_type: standard`. It does not call MCP. `annotate` sets the verdict, hypotheses, relations, and Network Ops orders. Impact, freshness, and problem status stay on the script.
 

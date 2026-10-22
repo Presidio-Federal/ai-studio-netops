@@ -1,17 +1,20 @@
 # Produce — Health Analyzer
 
 Paths, Kind, catalog: **`workspace-handoff`**.
-Write schemas live in this skill. Do not `execute_command`. Do not
-invent files. Persist with `write_file` on the catalog path.
+Write schemas live in this skill. Chat does not
+`execute_command`. Assess persists by running
+`scripts/assess_health.py` as the prompt copies it — do not
+hand-build the JSON. Do not invent files.
 
-Every completed analysis replaces **`state/health.json`**.
-Do not write `health/<source>/` or other catalog files.
+A completed **assess** replaces **`state/health.json`**. A **chat**
+turn does not write. Do not write `health/<source>/` or other
+catalog files.
 
 ## When to write
 
 | File | Kind | When |
 |------|------|------|
-| `state/health.json` | state | Every completed analysis; replace in full. |
+| `state/health.json` | state | Assess only (analyze / chart / trend / refresh / update the chart). Replace in full. Chat reads; it does not write. |
 
 Envelope `status`: `ok` when current vital consults were rolled up
 and none degraded; `partial` when a vital plane is missing or

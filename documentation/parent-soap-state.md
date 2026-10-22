@@ -139,8 +139,15 @@ Compliance: `soap.plan` is one route.
 
 ## How the file is produced
 
-The parent does not hand-build the JSON. The skill script folds the
-visits. The parent sets the opinion through a second command.
+A question to the parent is not a chart write. Health Analyzer
+**chat** uses built-in `read_file` on catalog rows
+(`state/health.json`, the five boards, and the other `state/`
+rows the ask names) and does not call `execute_command`. Paths are
+workspace-relative, with no `/workspace/` prefix.
+
+The parent does not hand-build the JSON. On **assess**, the skill
+script folds the visits. The parent sets the opinion through a
+second command.
 
 Health, `skills/health-analyzer/scripts/assess_health.py`:
 
@@ -248,11 +255,15 @@ latest Intel visit and the latest test visit per lab.
 
 ## Reply after the write
 
-The chat reply is the chart's summary, not a second chart. No
-preamble, no tool narration, no raw JSON.
+A Health Analyzer **chat** turn answers the question from the files
+already on disk. It does not use the assess reply block and does
+not claim `Wrote: state/health.json`.
 
-Health ends with `Next:` equal to `soap.plan` (the agent and the
-task line, or `none`).
+The **assess** chat reply is the chart's summary, not a second
+chart. No preamble, no tool narration, no raw JSON.
+
+Health assess ends with `Next:` equal to `soap.plan` (the agent
+and the task line, or `none`).
 
 Compliance uses the fixed block in `agents/compliance-agent.md`:
 `Result`, `Mode`, `Wrote: state/compliance.json`, `Dispatched`,

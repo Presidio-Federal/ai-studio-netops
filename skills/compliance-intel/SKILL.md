@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.20.0"
-description: "v1.20.0 — Compliance Intelligence: one mcp_orchestration scan reads the published catalog and returns unresolved NIST titles to mark live or static."
+version: "1.20.1"
+description: "v1.20.1 — Compliance Intelligence: one mcp_orchestration scan reads the published catalog and returns unresolved NIST titles to mark live or static."
 ---
 
 # Compliance intel
@@ -181,7 +181,13 @@ If the scan packet says `sources_degraded`: still write intel with
             keep untouched prior rows
 7. DRAFT   keep remaining candidates; add new ones up to cap 10;
             rank critical → high → medium → low
-8. WRITE   coverage.json; intel/<stamp>.json; intel.json; metadata-intel.json.
+8. WRITE   each file in full with write_file. coverage.json has one
+            row per nist_id. A partial proof is status partial on that
+            row, not a second gap row. Recount counts from rows.
+            Do not search-replace a row with an empty block. If an edit
+            returns "Replace block cannot be empty", write the whole
+            file once and stop retrying. Then intel/<stamp>.json;
+            intel.json; metadata-intel.json.
             The stamp and current intel carry the same candidates, including
             each `evidence` value. Set
             vs_prior.prior_visit_id from metadata, compare stable metrics and
@@ -214,7 +220,10 @@ still return — that is remaining work, not a skip.
 
 Do not require a six-family scan to write a valid coverage file.
 Preserve top-level fields from the schema (`version`, `updated_at`,
-`source_agent`, `rows`, `counts`). Recount `counts` from `rows`.
+`source_agent`, `rows`, `counts`). One `nist_id` appears on one row.
+Recount `counts` from `rows`. Top-level `keys` is the deduplicated
+union of the row `keys`. Replace the file in full. A delete is a
+rewritten file, not an empty search-replace.
 
 ### Candidate quality bar
 

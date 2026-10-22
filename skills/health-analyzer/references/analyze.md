@@ -69,11 +69,34 @@ the plane itself is current. `[]` when none; other planes `null`.
 
 ## Modes
 
-Default `assess-now` unless they asked to refresh/wait then assess.
+Default is **chat** unless they asked to analyze, assess, chart,
+trend, refresh, or update the health chart.
+
+### chat
+
+`read_file` catalog rows. Answer the question. Do not write
+`state/health.json`. Do not `execute_command`. Do not
+`get_folder_structure`. Do not `search_files`. Do not `ls`.
+
+Read `state/health.json` first. Then only paths the ask needs, from
+this set: `health/metadata-application.json`,
+`health/metadata-netflow.json`, `health/metadata-splunk.json`,
+`health/metadata-iosxe.json`, `health/metadata-servicenow.json`,
+`health/<plane>/<last_visit_id>.json` when that id is on the board,
+`state/relationships.json`, `state/recommendations.json`,
+`state/design.json`, `state/compliance.json`. Built-in file tools
+use those catalog paths as written — no `/workspace/` prefix.
+
+Quote `updated_at` or `last_collected_at`. A clock-stale board
+(26h) is answered as of that time. If they asked for a live
+picture, follow **workspace-handoff** for that row (invoke the
+attached writer, do not wait). Do not collect. Do not fold a new
+chart on a chat turn.
 
 ### assess-now
 
-Read what is on disk. If a plane is clock-stale or missing, follow
+On assess, default this mode unless they asked to refresh/wait
+then assess. Read what is on disk. If a plane is clock-stale or missing, follow
 **workspace-handoff** for that catalog row (writer / attach /
 invoke). **Do not wait.** Continue on the files already on disk.
 Record `dispatched[]` when you invoked. State coverage of **this**
