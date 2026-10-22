@@ -136,16 +136,32 @@ def hostname_of(payload):
 def primary_on(node):
     ip = node.get("ip")
     if not isinstance(ip, dict):
-        return None
+        return None, None
     address = ip.get("address")
     if not isinstance(address, dict):
-        return None
+        return None, None
     primary = address.get("primary")
-    if isinstance(primary, dict):
-        found = primary.get("address")
-        if isinstance(found, str) and found.strip():
-            return found.strip()
-    return None
+    if not isinstance(primary, dict):
+        return None, None
+    found = primary.get("address")
+    if not isinstance(found, str) or not found.strip() or found.strip().lower() == "dhcp":
+        return None, None
+    return found.strip(), primary.get("mask")
+
+
+def prefix_len(mask):
+    if mask is None or mask == "":
+        return "32"
+    text = str(mask).strip()
+    if text.isdigit():
+        return text
+    parts = text.split(".")
+    if len(parts) != 4:
+        return "32"
+    try:
+        return str(sum(bin(int(part)).count("1") for part in parts))
+    except ValueError:
+        return "32"
 
 
 def shutdown(node):
@@ -154,7 +170,7 @@ def shutdown(node):
 
 
 def interface_address(payload):
-    """Loopback0 with a static IPv4, else the first static IPv4."""
+    """Loopback0 with a static IPv4, else the first static IPv4. Returns name, host, prefix."""
     loopback = None
     first = None
     for node in walk(payload):
@@ -166,16 +182,17 @@ def interface_address(payload):
             for row in rows:
                 if not isinstance(row, dict) or shutdown(row):
                     continue
-                addr = primary_on(row)
-                if not addr or addr.lower() == "dhcp":
+                addr, mask = primary_on(row)
+                if not addr:
                     continue
                 name = str(row.get("name") or "")
+                prefix = prefix_len(mask)
                 if kind == "Loopback" and name in ("0", "Loopback0"):
-                    loopback = ("Loopback0", host_of(addr))
+                    loopback = ("Loopback0", host_of(addr), prefix)
                 elif first is None:
                     label = name if name.startswith(kind) else f"{kind}{name}"
-                    first = (label, host_of(addr))
-    return loopback or first or (None, None)
+                    first = (label, host_of(addr), prefix)
+    return loopback or first or (None, None, "32")
 
 
 def inner_dict(envelope):
@@ -314,10 +331,8 @@ def finish(workspace, state, result, gaps):
 
 
 def accept_lab(record, tenant):
-    found = tenant_name(record)
-    if found != tenant:
-        return False
-    return f"{tenant}-simulate" in tag_slugs(record)
+    """Tenant match is the lab boundary. Tags are often absent on a find row."""
+    return tenant_name(record) == tenant
 
 
 def primary_ip(record):
@@ -396,7 +411,7 @@ def sync(workspace, device_name, signal):
                 retries=0,
             )
         )
-    interface, address = (None, None) if iface_err else interface_address(iface_payload)
+    interface, address, prefix = (None, None, "32") if iface_err else interface_address(iface_payload)
     state["device_values"]["interface"] = interface
     state["device_values"]["primary_ipv4"] = address
     if hostname == device_name:
@@ -424,9 +439,41 @@ def sync(workspace, device_name, signal):
         if len(rows) > 5:
             return finish(workspace, state, "failed", ["unscoped netbox result"])
         matched = [row for row in rows if row.get("name") == device_name and accept_lab(row, tenant)]
-        if len(matched) != 1:
-            return finish(workspace, state, "failed", ["no netbox device" if not matched else "netbox name not unique"])
-        record = matched[0]
+        if len(matched) > 1:
+            return finish(workspace, state, "failed", ["netbox name not unique"])
+        record = matched[0] if matched else None
+
+    created = False
+    if record is None:
+        meta = device.get("source_metadata") if isinstance(device.get("source_metadata"), dict) else {}
+        type_slug = str(meta.get("node_definition") or device.get("platform") or "").strip()
+        role_slug = str(device.get("role") or "unknown").strip()
+        site_slug = ""
+        netbox_meta = prod.get("netbox") if isinstance(prod.get("netbox"), dict) else {}
+        site_slug = str(netbox_meta.get("site") or tenant).strip()
+        if not type_slug:
+            return finish(workspace, state, "failed", ["no device type in inventory"])
+        inner, err = call_tool(
+            "netbox_manage",
+            {
+                "action": "create",
+                "object_type": "device",
+                "data": {
+                    "name": device_name,
+                    "device_type": {"slug": type_slug},
+                    "role": {"slug": role_slug},
+                    "site": {"slug": site_slug},
+                    "tenant": {"slug": tenant},
+                    "status": "active",
+                    "tags": [{"slug": f"{tenant}-simulate"}],
+                },
+            },
+        )
+        rows = object_rows(inner) if err is None and inner else None
+        record = rows[0] if rows else None
+        if record is None or not accept_lab(record, tenant):
+            return finish(workspace, state, "failed", [err or "netbox create failed"])
+        created = True
 
     state["device"]["netbox_id"] = record.get("id") if isinstance(record.get("id"), int) else None
     ip_id, ip_address = primary_ip(record)
@@ -436,88 +483,152 @@ def sync(workspace, device_name, signal):
         if ip_rows:
             ip_address = cell(ip_rows[0].get("address"))
 
-    query = (
-        f"name={device_name}^comments={tenant}^sys_class_nameIN{','.join(SNOW_CLASSES)}"
-    )
-    snow_payload, snow_err = visit_common.unwrap_snow(
-        visit_common.mcp_call(
-            "snow_query_table",
-            {"table": "cmdb_ci", "query": query, "fields": SNOW_FIELDS, "limit": 5},
-            retries=1,
-        )
-    )
-    if snow_err:
-        return finish(workspace, state, "failed", [f"servicenow unread: {snow_err}"[:180]])
-    snow_rows = []
-    for row in snow_payload.get("rows") or []:
-        if not isinstance(row, dict):
-            continue
-        if cell(row.get("name")) != device_name:
-            continue
-        kind = cell(row.get("sys_class_name"))
-        if kind not in SNOW_CLASSES and kind not in SNOW_LABELS:
-            continue
-        snow_rows.append(row)
-    if len(snow_rows) > 1:
-        return finish(workspace, state, "failed", ["servicenow name not unique"])
-    snow = snow_rows[0] if snow_rows else None
+    inner, err = call_tool("snow_get_asset", {"serial_number": device_name})
+    snow = None
+    if inner and inner.get("ok") and isinstance(inner.get("asset"), dict):
+        snow = inner["asset"]
+        company = cell(snow.get("company"))
+        if company and company != "Cisco AI Lab":
+            return finish(workspace, state, "failed", ["asset is not in Cisco AI Lab"])
+    elif err and "not found" not in str(err).lower():
+        return finish(workspace, state, "failed", [f"servicenow unread: {err}"[:180]])
     if snow:
-        state["device"]["servicenow_sys_id"] = sys_id_of(snow.get("sys_id"))
+        state["device"]["servicenow_sys_id"] = snow.get("sys_id")
+        comment = cell(snow.get("comments"))
+        parts = comment.split()
+        snow_host = parts[-1] if len(parts) > 1 else ""
+    else:
+        snow_host = ""
 
     gaps = []
     compared = []
-    wrote = "none"
+    netbox_wrote = created
+    snow_wrote = False
     netbox_host = host_of(ip_address)
-    snow_host = host_of(snow.get("ip_address")) if snow else ""
     if not address:
         gaps.append("no address on device")
         verdict = "gap"
-    elif netbox_host == address:
+    elif netbox_host == address and not created:
         verdict = "match"
-    elif ip_id is None or not prefix_of(ip_address):
-        gaps.append("no netbox primary")
-        verdict = "gap"
     else:
-        new_address = f"{address}/{prefix_of(ip_address)}"
-        inner, err = call_tool(
-            "netbox_manage",
-            {
-                "action": "update",
-                "object_type": "ip_address",
-                "data": {"id": ip_id, "address": new_address},
-            },
-        )
-        check, check_err = (None, err or "netbox update failed")
-        if err is None and inner is not None:
-            check, check_err = call_tool(
-                "netbox_get",
-                {"object_type": "ip_address", "object_id": ip_id},
+        cidr = f"{address}/{prefix or '32'}"
+        if ip_id is None and isinstance(record.get("id"), int) and interface:
+            kind = "virtual"
+            if interface.startswith("TenGigabit"):
+                kind = "10gbase-x-sfpp"
+            elif interface.startswith("Gigabit"):
+                kind = "1000base-t"
+            face, face_err = call_tool(
+                "netbox_manage",
+                {
+                    "action": "create",
+                    "object_type": "interface",
+                    "data": {
+                        "device": record["id"],
+                        "name": interface,
+                        "type": kind,
+                    },
+                },
             )
-        checked = object_rows(check) if check_err is None and check else None
-        if not checked or host_of(checked[0].get("address")) != address:
-            gaps.append("netbox update failed")
-            verdict = "gap"
-        else:
-            wrote = "netbox"
-            verdict = "updated"
-            netbox_host = address
-            pointer = record.get("primary_ip4")
-            pointer_id = pointer.get("id") if isinstance(pointer, dict) else pointer
-            if pointer_id != ip_id and isinstance(record.get("id"), int):
-                call_tool(
+            face_rows = object_rows(face) if face_err is None and face else None
+            face_id = face_rows[0].get("id") if face_rows else None
+            if face_id is None:
+                gaps.append(face_err or "netbox interface create failed")
+                verdict = "gap"
+            else:
+                made, made_err = call_tool(
                     "netbox_manage",
                     {
-                        "action": "update",
-                        "object_type": "device",
-                        "data": {"id": record["id"], "primary_ip4": ip_id},
+                        "action": "create",
+                        "object_type": "ip_address",
+                        "data": {
+                            "address": cidr,
+                            "status": "active",
+                            "assigned_object_type": "dcim.interface",
+                            "assigned_object_id": face_id,
+                            "tenant": {"slug": tenant},
+                        },
                     },
                 )
-    if snow is None:
-        gaps.append("no servicenow ci")
-    elif address and snow_host != address:
-        gaps.append("servicenow address differs")
-        if verdict == "match":
+                made_rows = object_rows(made) if made_err is None and made else None
+                ip_id = made_rows[0].get("id") if made_rows else None
+                if ip_id is None:
+                    gaps.append(made_err or "netbox address create failed")
+                    verdict = "gap"
+                else:
+                    call_tool(
+                        "netbox_manage",
+                        {
+                            "action": "update",
+                            "object_type": "device",
+                            "data": {"id": record["id"], "primary_ip4": ip_id},
+                        },
+                    )
+                    netbox_wrote = True
+                    verdict = "updated"
+                    netbox_host = address
+        elif ip_id is None:
+            gaps.append("no netbox primary")
             verdict = "gap"
+        else:
+            inner, err = call_tool(
+                "netbox_manage",
+                {
+                    "action": "update",
+                    "object_type": "ip_address",
+                    "data": {"id": ip_id, "address": cidr},
+                },
+            )
+            check, check_err = (None, err or "netbox update failed")
+            if err is None and inner is not None:
+                check, check_err = call_tool(
+                    "netbox_get",
+                    {"object_type": "ip_address", "object_id": ip_id},
+                )
+            checked = object_rows(check) if check_err is None and check else None
+            if not checked or host_of(checked[0].get("address")) != address:
+                gaps.append("netbox update failed")
+                verdict = "gap"
+            else:
+                netbox_wrote = True
+                verdict = "updated"
+                netbox_host = address
+                pointer = record.get("primary_ip4")
+                pointer_id = pointer.get("id") if isinstance(pointer, dict) else pointer
+                if pointer_id != ip_id and isinstance(record.get("id"), int):
+                    call_tool(
+                        "netbox_manage",
+                        {
+                            "action": "update",
+                            "object_type": "device",
+                            "data": {"id": record["id"], "primary_ip4": ip_id},
+                        },
+                    )
+    comment = f"{tenant} {address}".strip() if address else tenant
+    asset_comment = cell(snow.get("comments")) if snow else ""
+    asset_name = cell(snow.get("display_name")) if snow else ""
+    if snow is None or asset_name != device_name or (address and address not in asset_comment.split()):
+        updated, update_err = call_tool(
+            "snow_upsert_asset",
+            {
+                "serial_number": device_name,
+                "asset_tag": device_name,
+                "display_name": device_name,
+                "install_status": "in_use",
+                "company": "Cisco AI Lab",
+                "comments": comment,
+            },
+        )
+        if update_err or not updated or updated.get("ok") is False:
+            gaps.append(update_err or (updated or {}).get("error") or "servicenow write failed")
+            if verdict == "match":
+                verdict = "gap"
+        else:
+            snow_wrote = True
+            snow_host = address or ""
+            asset = updated.get("asset") if isinstance(updated.get("asset"), dict) else {}
+            if asset.get("sys_id"):
+                state["device"]["servicenow_sys_id"] = asset.get("sys_id")
     compared.append(
         {
             "field": "primary_ipv4",
@@ -534,11 +645,17 @@ def sync(workspace, device_name, signal):
     for gap in gaps:
         if gap not in seen:
             seen.append(gap)
-    state["compared"] = compared
-    state["wrote"] = wrote
+    if netbox_wrote and snow_wrote:
+        state["wrote"] = "both"
+    elif netbox_wrote:
+        state["wrote"] = "netbox"
+    elif snow_wrote:
+        state["wrote"] = "servicenow"
+    else:
+        state["wrote"] = "none"
     if seen:
         result = "gaps"
-    elif wrote == "netbox":
+    elif state["wrote"] != "none":
         result = "updated"
     else:
         result = "in_sync"

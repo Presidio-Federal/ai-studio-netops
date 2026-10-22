@@ -29,6 +29,7 @@ Forbidden: `netbox_bulk`, `netbox_delete`, `netbox_test_connection`. There is no
 
 | Tool | Arguments | Use |
 |------|-----------|-----|
-| `snow_query_table` | `table=cmdb_ci`, `query`, `fields`, `limit=5` | The query in `fields.md` |
+| `snow_get_asset` | `serial_number` = the device name | One lab asset |
+| `snow_upsert_asset` | `serial_number`, `asset_tag`, `display_name`, `install_status=in_use`, `company=Cisco AI Lab`, `comments` | Create or update that asset. `comments` is `<tenant> <address>` |
 
-Forbidden: every other `snow_` tool. `snow_query_table` does not write.
+Do not call `snow_find_assets` with an empty serial. Do not call `snow_query_table`.

@@ -77,7 +77,7 @@
         }
       }
     },
-    "wrote": { "type": "string", "enum": ["netbox", "none"] },
+    "wrote": { "type": "string", "enum": ["netbox", "servicenow", "both", "none"] },
     "gaps": { "type": "array", "items": { "type": "string" } },
     "relations": {
       "type": "array",

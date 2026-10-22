@@ -30,7 +30,9 @@ Deployed model is **MiniMax** unless noted.
 | Application Map | 1.0.0 | MiniMax |
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
-| Ops CMDB Sync | 1.1.0 | MiniMax |
+| Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Ops CMDB Sync 1.2.0 (skill 1.2.0): the ServiceNow record is an `alm_hardware` asset. Serial and asset tag are the device name. `snow_get_asset` / `snow_upsert_asset`. The address is written in `comments` with the lab tenant, because the asset tools have no IP field. A missing NetBox device is created. MiniMax.
 
 Ops CMDB Sync skill 1.1.1: the ServiceNow query also requires `comments` equal to the lab tenant and includes `cmdb_ci_ip_firewall`. Application CIs share that comment. The network set is company Cisco AI Lab. MiniMax. Agent prompt stays 1.1.0.
 

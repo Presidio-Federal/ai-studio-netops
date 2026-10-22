@@ -1,7 +1,7 @@
 ---
 name: ops-cmdb-sync
-version: "1.1.1"
-description: "v1.1.1 — Sync one lab-tenant device to live IOS-XE with sync_cmdb.py under mcp_orchestration, and never query the other inventories."
+version: "1.2.0"
+description: "v1.2.0 — Sync one lab device to live IOS-XE, creating or updating NetBox and the ServiceNow hardware asset."
 ---
 
 # Ops CMDB Sync
@@ -16,13 +16,13 @@ Write **`state/cmdb-sync.json` only**, then `read_file` it back. Paths: **`works
 
 Do not write the box. Do not call `iosxe_restconf_put`, `iosxe_restconf_patch`, `iosxe_restconf_delete`, `iosxe_save_config`, or `iosxe_ssh_command`.
 
-Do not create a NetBox device, interface, cable, type, site, or tag. Do not call `netbox_bulk` or `netbox_delete`. Do not change `device_type`, site, status, serial, asset tag, comments, tags, `origin`, or `lab_platform`.
+Do not create cables, device types, or tags beyond `{tenant}-simulate` on the one device this invoke is creating. Do not call `netbox_bulk` or `netbox_delete`. Do not change `device_type` on a device that already exists.
 
-Do not write ServiceNow. `snow_query_table` is the only ServiceNow tool. Do not call `snow_find_cis`, `snow_get_ci`, `snow_upsert_asset`, or any other `snow_` write. There is no network-CI write tool.
+Do not write ServiceNow except `snow_get_asset` and `snow_upsert_asset` for this one lab device. The asset serial and asset tag are the device name. `comments` is `<lab tenant> <address>`. Do not call `snow_find_assets` without that serial. Do not call `snow_query_table`, `snow_find_cis`, or `snow_get_ci`.
 
 Do not write `inventory/prod.json`, `inventory/infra-sot.json`, or `state/netbox.json`. Do not bootstrap NetBox. Do not rename either record. The task-line name is the join key.
 
-Scope is the lab on `inventory/prod.json`: `netbox.tenant`, otherwise `source.name`. The device must be a `devices[]` row in that file. NetBox calls send that tenant and accept the device only when its tenant matches and it carries the `{tenant}-simulate` tag. `origin` is not a separator: other inventories use `origin` `prod-twin` too. ServiceNow is one `name=<device>` query, network CI classes only, `limit` 5. No `alm_hardware`. No serial search. No company query. A name that is not in the lab inventory is not looked up.
+Scope is the lab on `inventory/prod.json`: `netbox.tenant`, otherwise `source.name`. The device must be a `devices[]` row in that file. NetBox calls send that tenant. A missing NetBox device is created from that inventory row and the live address. ServiceNow is one hardware asset, serial and asset tag equal to the device name, company Cisco AI Lab. Do not list assets. A name that is not in the lab inventory is not looked up.
 
 Call `execute_command` only to run `scripts/sync_cmdb.py`. Do not write scripts. Do not call MCP yourself unless stderr says `hai_mcp unavailable`. Do not `get_folder_structure`. Do not list `automations/schedules`.
 
@@ -35,7 +35,8 @@ Call `execute_command` only to run `scripts/sync_cmdb.py`. Do not write scripts.
 | `netbox_get` | Device by id from `inventory/infra-sot.json` when that name is there. |
 | `netbox_find` | Device by name + tenant only when the snap has no id. |
 | `netbox_manage` | `action=update` on the existing IP object, or on the device `primary_ip4` pointer. One or two calls. Only when the address host differs. |
-| `snow_query_table` | One exact-name read. |
+| `snow_get_asset` | One asset by `serial_number` = the device name. |
+| `snow_upsert_asset` | Create or update that asset. Serial, asset tag, and display name are the device name. `comments` is the lab tenant and the address. `install_status` is `in_use`. `company` is `Cisco AI Lab`. |
 
 Details: [references/tools.md](references/tools.md).
 
