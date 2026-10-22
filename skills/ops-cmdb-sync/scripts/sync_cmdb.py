@@ -512,26 +512,55 @@ def sync(workspace, device_name, signal):
         verdict = "match"
     else:
         cidr = f"{address}/{prefix or '32'}"
-        if ip_id is None and isinstance(record.get("id"), int) and interface:
-            kind = "virtual"
-            if interface.startswith("TenGigabit"):
-                kind = "10gbase-x-sfpp"
-            elif interface.startswith("Gigabit"):
-                kind = "1000base-t"
-            face, face_err = call_tool(
-                "netbox_manage",
+        already = False
+        if ip_id is None and isinstance(record.get("id"), int):
+            fresh, fresh_err = call_tool(
+                "netbox_get",
+                {"object_type": "device", "object_id": record["id"]},
+            )
+            fresh_rows = object_rows(fresh) if fresh_err is None and fresh else None
+            if fresh_rows:
+                ip_id, ip_address = primary_ip(fresh_rows[0])
+                netbox_host = host_of(ip_address) or netbox_host
+                if netbox_host == address:
+                    already = True
+                    verdict = "match"
+        if already:
+            pass
+        elif ip_id is None and isinstance(record.get("id"), int) and interface:
+            found, found_err = call_tool(
+                "netbox_find",
                 {
-                    "action": "create",
                     "object_type": "interface",
-                    "data": {
-                        "device": record["id"],
-                        "name": interface,
-                        "type": kind,
-                    },
+                    "device_id": record["id"],
+                    "name": interface,
+                    "limit": 5,
                 },
             )
-            face_rows = object_rows(face) if face_err is None and face else None
-            face_id = face_rows[0].get("id") if face_rows else None
+            found_rows = object_rows(found) if found_err is None and found else None
+            named = [row for row in (found_rows or []) if row.get("name") == interface]
+            face_id = named[0].get("id") if named else None
+            face_err = None
+            if face_id is None:
+                kind = "virtual"
+                if interface.startswith("TenGigabit"):
+                    kind = "10gbase-x-sfpp"
+                elif interface.startswith("Gigabit"):
+                    kind = "1000base-t"
+                face, face_err = call_tool(
+                    "netbox_manage",
+                    {
+                        "action": "create",
+                        "object_type": "interface",
+                        "data": {
+                            "device": record["id"],
+                            "name": interface,
+                            "type": kind,
+                        },
+                    },
+                )
+                face_rows = object_rows(face) if face_err is None and face else None
+                face_id = face_rows[0].get("id") if face_rows else None
             if face_id is None:
                 gaps.append(face_err or "netbox interface create failed")
                 verdict = "gap"

@@ -54,7 +54,7 @@ Compare address hosts. Strip anything after `/` on NetBox `primary_ip4.address`.
 | null | anything | gap `no address on device`. No address write. |
 | equals NetBox host | set | `compared` verdict `match`. No `netbox_manage`. |
 | differs | `primary_ip4.id` present | One `netbox_manage` `action=update` `object_type=ip_address`. `data.id` is that id. `data.address` is `<device host>/<prefix length already on that object>`. Keep the existing prefix length. Do not create an interface or a new IP. Then `netbox_get` that IP. Verdict `updated`. `wrote` `netbox`. |
-| differs | no `primary_ip4.id` | gap `no netbox primary`. Do not create an IP. |
+| differs | no `primary_ip4.id` | `netbox_find` the interface by device id and name. It already exists → use that id. Missing → one `netbox_manage` create. Then create the IP on that interface and set `primary_ip4`. A 400 "already exists" means the find was skipped. Do not create the interface again. |
 
 When the IP object you just confirmed is not the device `primary_ip4`, one more `netbox_manage` `action=update` `object_type=device` with `data.id` the device id and `data.primary_ip4` that IP id. Then `netbox_get` the device. If it was already the pointer, do not call it.
 

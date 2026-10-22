@@ -1,7 +1,7 @@
 ---
 name: ops-cmdb-sync
-version: "1.2.0"
-description: "v1.2.0 — Sync one lab device to live IOS-XE, creating or updating NetBox and the ServiceNow hardware asset."
+version: "1.2.1"
+description: "v1.2.1 — Sync one lab device to live IOS-XE, creating or updating NetBox and the ServiceNow hardware asset."
 ---
 
 # Ops CMDB Sync
