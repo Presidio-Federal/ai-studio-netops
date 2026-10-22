@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "cmdb-sync-state/v1",
+  "title": "state/cmdb-sync.json",
+  "description": "This CMDB sync invoke only. The box is the authority. The signal is a label.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "operation_id",
+    "operation",
+    "started_at",
+    "completed_at",
+    "signal",
+    "result",
+    "device",
+    "device_values",
+    "compared",
+    "wrote",
+    "gaps",
+    "relations",
+    "keys"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "cmdb-sync-state/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "ops-cmdb-sync" },
+    "status": { "type": "string", "enum": ["ok", "gaps", "failed"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"], "not": { "const": "none" } },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation": { "type": "string", "const": "sync" },
+    "started_at": { "type": "string", "minLength": 1 },
+    "completed_at": { "type": "string", "minLength": 1 },
+    "signal": { "type": "string", "enum": ["netbox", "servicenow", "unknown"] },
+    "result": { "type": "string", "enum": ["in_sync", "updated", "gaps", "failed"] },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "netbox_id", "servicenow_sys_id"],
+      "properties": {
+        "name": { "type": "string" },
+        "netbox_id": { "type": ["integer", "null"] },
+        "servicenow_sys_id": { "type": ["string", "null"] }
+      }
+    },
+    "device_values": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["hostname", "primary_ipv4", "interface"],
+      "properties": {
+        "hostname": { "type": ["string", "null"] },
+        "primary_ipv4": { "type": ["string", "null"] },
+        "interface": { "type": ["string", "null"] }
+      }
+    },
+    "compared": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["field", "device", "netbox", "servicenow", "verdict"],
+        "properties": {
+          "field": {
+            "type": "string",
+            "enum": ["primary_ipv4", "serial", "asset_tag", "status", "model", "site"]
+          },
+          "device": { "type": ["string", "null"] },
+          "netbox": { "type": "string" },
+          "servicenow": { "type": "string" },
+          "verdict": { "type": "string", "enum": ["match", "updated", "gap", "reported"] }
+        }
+      }
+    },
+    "wrote": { "type": "string", "enum": ["netbox", "none"] },
+    "gaps": { "type": "array", "items": { "type": "string" } },
+    "relations": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"
+      }
+    }
+  }
+}

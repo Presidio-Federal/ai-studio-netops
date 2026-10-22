@@ -99,6 +99,10 @@
     "assessment": {"$ref": "#/$defs/assessment"},
     "trend_analysis": {"$ref": "#/$defs/trend"},
     "soap": {"$ref": "#/$defs/soap"},
+    "frameworks": {
+      "type": ["object", "null"],
+      "description": "Copied from the latest compliance test visit. PCI DSS v4.0 and FFIEC inherit NIST status. Null when that visit had no federal brief."
+    },
     "dispatched": {
       "type": "array",
       "maxItems": 2,

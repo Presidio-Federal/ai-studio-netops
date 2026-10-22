@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.12.7"
-description: "v1.12.7 — Write failures only as by_device. Do not copy each check into results.ran."
+version: "1.13.0"
+description: "v1.13.0 — A compliance visit keeps the federal brief counts. PCI and FFIEC inherit NIST status."
 ---
 
 # Compliance test runner skill
@@ -71,7 +71,11 @@ There is no poll loop. A finished run writes the visit before the
 script returns. The next command repeats the same flags and adds
 `--run-id`. Do not drop `--workspace` or `--suites`. Pass `--phase`
 only when the line has one of those two phases. Do not invent a phase.
-The last stdout line is the result. Do not read the files to fill the reply.
+The last stdout line is the result. When it has `frameworks`, those
+counts are the federal brief. PCI DSS v4.0 and FFIEC inherit NIST
+status from `banking-framework-crosswalk.v1.json`. Do not read the
+files to fill the reply. An explain ask reads the compliance visit
+this run wrote and names the NIST control. Do not dispatch again.
 
 The visit is filled from `NETWORK_TEST_RESULT_JSON`, the line the emit
 step prints at the end of the job. The job summary on the Actions page

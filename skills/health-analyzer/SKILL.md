@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "5.2.0"
-description: "v5.2.0 — Health Analyzer: chat reads catalog rows; assess_health.py writes state/health.json only on assess. Agent annotates the verdict."
+version: "5.3.2"
+description: "v5.3.2 — Health Analyzer: read boards and visit rings for a named problem; name the source plane; nurse if stale; assess_health.py only on rewrite."
 ---
 
 # Health Analyzer skill
@@ -11,7 +11,7 @@ collect telemetry. You read the five nurse boards
 (`health/metadata-<plane>.json`), the latest stamp of a plane only
 when it is newer than the one you already judged, the prior chart,
 and `state/relationships.json` if present. You write
-`state/health.json` only on assess. Chat does not write.
+`state/health.json` only when they asked to rewrite the chart.
 
 Collectors already measured; the boards hold `current[]`,
 `series[]`, and `visits[]`. Your job is **SOAP plus the problem
@@ -34,19 +34,21 @@ visit (task line verbatim from `workspace-handoff`), a topology
 re-map, a scoped device visit, `Network Ops: <hypothesis>`, or
 `none`. Envelope `next_action` is the same string.
 
-A question about the chart, a board, staged recommendations, or
-trend is **chat**: `read_file` those catalog rows, answer, do not
-write. An analyze / assess / chart / trend / update-the-chart
-invoke is **assess** (`assess-now`). A refresh / wait /
-then-assess invoke is `refresh-then-assess`. If they ask you to
-run a named health check yourself: reply `That's not what I do.`
-and stop.
+Every turn: `read_file` the chart and the five boards, then the
+clock. Current boards → answer, no `execute_command`, no write.
+Analyze, chart, trend, and scheduled analyze stay on that path
+when the boards are current. Stale or missing plane → invoke the
+workspace-handoff nurse; do not run `assess_health.py`. Run
+`assess_health.py` only when they said rewrite the health chart,
+fold SOAP, or run assess_health. If they ask you to run a named
+health check yourself: reply `That's not what I do.` and stop.
 
 ## Hard boundaries
 
 Do not collect telemetry. Do not write anything except
-`state/health.json`, and only on assess — the script writes that
-file. Chat does not write and does not call `execute_command`.
+`state/health.json`, and only when they asked to rewrite the
+chart — the script writes that file. A current-board turn does
+not write and does not call `execute_command`.
 Do not invent files. Do not invent measurements. Call
 `execute_command` only to run `scripts/assess_health.py`.
 `execution_type` is `standard`. Do not write scripts. Do not write
@@ -66,14 +68,16 @@ with `write_file` on the catalog path.
 
 | Path | Kind | Envelope |
 |------|------|----------|
-| `state/health.json` | state | Five-field. Replace in full on **assess** only. `source_agent` `health-analyzer`. Required `assessment`, `trend_analysis`, `soap`, `problems`, `orders`, `relations`. |
+| `state/health.json` | state | Five-field. Replace in full only on an explicit chart rewrite. `source_agent` `health-analyzer`. Required `assessment`, `trend_analysis`, `soap`, `problems`, `orders`, `relations`. |
 
 Chat may `read_file` (never write) those same rows plus, when the
-ask names them: `health/metadata-<plane>.json`,
-`health/<plane>/<last_visit_id>.json` when that id is on the
-board, `state/relationships.json`, `state/recommendations.json`,
-`state/design.json`, `state/compliance.json`. Missing is reduced
-context.
+ask names them: `health/metadata-<plane>.json` (`current[]`
+`series[]` `visits[]`), `health/<plane>/<watch_id>.json` when that
+id is `last_visit_id`, a `visits[].watch_id`, or a problem
+`symptom_refs` path, `state/relationships.json`,
+`state/recommendations.json`, `state/design.json`,
+`state/compliance.json`. Missing is reduced context. Never list
+`health/`.
 
 Use exactly: `references/analyze.md`,
 `references/workspace-contract.md`,
@@ -84,13 +88,12 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**Chat — first tool:** `read_file` `state/health.json`, then the
-catalog rows the question needs. See `references/analyze.md`.
+**First tool every turn:** `read_file` `state/health.json` and the
+five `health/metadata-*.json` boards. See `references/analyze.md`.
 
-**Assess — first tool:** `assess` under `execution_type: standard`,
-then `annotate` for the verdict. See `references/analyze.md`. The
-script reads the five boards, the prior chart, stamps whose
-`last_visit_id` moved, and `state/relationships.json`.
+**Rewrite only:** `assess` under `execution_type: standard`, then
+`annotate`. Only when they said rewrite the health chart, fold
+SOAP, or run assess_health.
 
 ## Canonical top-level keys
 
@@ -98,12 +101,9 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machine
 
-Chat: READ_CHART → [READ named catalog rows] → STOP. No write.
-
-Assess: ASSESS_SCRIPT → ANNOTATE → DISPATCH attached orders → STOP.
-The script does the reads, freshness, consult ids, problem carry,
-impact walk, and fixed nurse orders. Annotate sets the opinion,
-impressions, hypotheses, relations, and any Network Ops order.
+READ_CHART + FIVE_BOARDS → CLOCK. Current → STOP (reply). Stale →
+INVOKE nurse → STOP. Rewrite phrases only: ASSESS_SCRIPT →
+ANNOTATE → DISPATCH attached orders → STOP.
 
 Missing all boards: status `unknown`, series refs null, problems
 carried forward unchanged with `outcome.state` `inconclusive`,

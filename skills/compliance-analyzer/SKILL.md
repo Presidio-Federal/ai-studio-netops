@@ -1,7 +1,7 @@
 ---
 name: compliance-analyzer
-version: "1.2.1"
-description: "v1.2.1 — Score the chart from the visit metrics; findings come from the failing rows."
+version: "1.3.0"
+description: "v1.3.0 — Score the chart from the visits. PCI and FFIEC counts on the chart inherit NIST status."
 ---
 
 # Compliance Analyzer
@@ -94,6 +94,11 @@ fills the opinion. `state/compliance.json` (`compliance-state/v2`) contains:
 - findings with `status`, `first_seen`, `resolved_at`, exact keys
 - `trend_analysis`: direction, prior → current scores, flips, narrative
 - assessment, SOAP, dispatches, and read paths
+
+`frameworks` on the chart is copied from the latest compliance test
+visit. PCI DSS v4.0 and FFIEC inherit NIST status. They are not a
+fourth score. An explain ask reads `state/compliance.json` and answers
+from it. Do not run `assess` for that ask.
 
 The plan may request a stale Intelligence/Test visit, refer operator-selected
 recommendations to Compliance Author, refer proven failures to Network Ops,

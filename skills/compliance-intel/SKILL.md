@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.20.1"
-description: "v1.20.1 — Compliance Intelligence: one mcp_orchestration scan reads the published catalog and returns unresolved NIST titles to mark live or static."
+version: "1.21.0"
+description: "v1.21.0 — Compliance Intelligence: the scan returns the banking crosswalk so one NIST gap checks the PCI and FFIEC rows that cite it."
 ---
 
 # Compliance intel
@@ -181,7 +181,9 @@ If the scan packet says `sources_degraded`: still write intel with
             keep untouched prior rows
 7. DRAFT   keep remaining candidates; add new ones up to cap 10;
             rank critical → high → medium → low
-8. WRITE   each file in full with write_file. coverage.json has one
+8. WRITE   copy the packet's banking_crosswalk (path, version, join,
+            controls) onto intel.json. Then each file in full with
+            write_file. coverage.json has one
             row per nist_id. A partial proof is status partial on that
             row, not a second gap row. Recount counts from rows.
             Do not search-replace a row with an empty block. If an edit
@@ -235,6 +237,10 @@ Each candidate **must** include:
 - `priority` — `critical` | `high` | `medium` | `low` (impact if we
   do not test it on this estate)
 - `nist_sp_800_53` — 1–3 control ids
+- `frameworks` — `pci_dss_v4` and `ffiec` id lists copied from
+  `banking_crosswalk.controls` for this candidate's NIST ids. The
+  crosswalk adds no evidence. A label whose NIST ids are already on a
+  bridged check is covered. Do not invent an id.
 - `evidence` — `static` or `live`. `static` means committed config
   answers it, so Author publishes a pytest rule. `live` means the
   device must be asked (session up, clock synced, neighbor established).

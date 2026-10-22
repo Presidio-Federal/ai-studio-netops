@@ -78,6 +78,27 @@
         }
       }
     },
+    "banking_crosswalk": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Compact copy of tests/compliance/matrix/banking-framework-crosswalk.v1.json. NIST id to PCI DSS v4.0 and FFIEC ids. Adds no evidence.",
+      "properties": {
+        "path": {"type": "string"},
+        "version": {"type": "string"},
+        "join": {"type": "string"},
+        "controls": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "pci_dss_v4": {"type": "array", "items": {"type": "string"}},
+              "ffiec": {"type": "array", "items": {"type": "string"}}
+            }
+          }
+        }
+      }
+    },
     "candidates": {
       "type": "array",
       "maxItems": 10,
@@ -139,6 +160,15 @@
             "type": "string",
             "enum": ["live", "static"],
             "description": "static: committed config answers it, so Author publishes a pytest rule. live: the device must be asked, so Author publishes a device check."
+          },
+          "frameworks": {
+            "type": "object",
+            "additionalProperties": false,
+            "description": "PCI DSS v4.0 and FFIEC ids copied from banking_crosswalk for this candidate's NIST ids. Empty arrays when the crosswalk has no row. Do not invent ids.",
+            "properties": {
+              "pci_dss_v4": {"type": "array", "items": {"type": "string"}},
+              "ffiec": {"type": "array", "items": {"type": "string"}}
+            }
           },
           "suggested_suite": {
             "type": "string",

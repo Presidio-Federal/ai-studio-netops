@@ -1,7 +1,7 @@
 ---
 name: compliance-test-authoring
-version: "1.7.3"
-description: "v1.7.3 — Publish the intel evidence plane as a complete catalog-to-check-to-bridge chain on git compliance."
+version: "1.8.0"
+description: "v1.8.0 — Publish the NIST check. PCI DSS v4.0 and FFIEC inherit it from the banking crosswalk."
 ---
 
 # Compliance test authoring
@@ -29,7 +29,11 @@ helper scripts, or `Internal directory`.
    `catalog/job-catalog.json`, and
    `tests/compliance/matrix/test-bridge.yml`. List
    `tests/compliance/matrix` and read the returned matrix path; never guess
-   its filename. Read one neighbouring check/rule and one neighbouring bridge
+   its filename. Read `banking-framework-crosswalk.v1.json` from that
+   listing. The NIST id is the join. PCI DSS v4.0 and FFIEC inherit that
+   control. Do not add a check whose only purpose is a PCI or FFIEC label
+   already pointed at a NIST id you are tagging. Copy those ids into the
+   reply. Read one neighbouring check/rule and one neighbouring bridge
    mapping. Match those shapes.
    Formats: [`references/live-checks.md`](references/live-checks.md),
    [`references/static-rules.md`](references/static-rules.md).

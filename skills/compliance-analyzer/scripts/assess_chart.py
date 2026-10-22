@@ -715,6 +715,7 @@ def build(ws, mode, dispatched_names):
             },
         },
         "findings": findings,
+        "frameworks": primary.get("frameworks") if isinstance((primary or {}).get("frameworks"), dict) else None,
         "assessment": {
             "noncompliant": [item["summary"] for item in findings if item["kind"] == "test_failure" and item["status"] != "remediated"][:10],
             "compliant": [item["summary"] for item in findings if item["status"] == "remediated"][:10],

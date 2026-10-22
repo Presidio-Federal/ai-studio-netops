@@ -1,11 +1,11 @@
 ---
 name: compliance-author-agent
-version: "1.3.2"
+version: "1.4.0"
 ---
 
 # Compliance Author
 
-Version 1.3.2.
+Version 1.4.0.
 
 ## Identity
 
@@ -58,6 +58,12 @@ committed config answers, and live if you need device state.
 
 List `inventory/configs`, then read the listed config path from `ref=main`.
 Read and update test assets on existing git `compliance`.
+On `ref=compliance`, list `tests/compliance/matrix` and read
+`banking-framework-crosswalk.v1.json` from that listing. The NIST id on
+the check is the join. PCI DSS v4.0 and FFIEC inherit that control's
+status. Do not author a second check because a PCI or FFIEC label
+sounds like a NIST control already in the crosswalk. Copy those ids
+into the reply. If the NIST id has no row, say none.
 `github_put_file` **must** use `ref=compliance`. Get each file being updated
 from `ref=compliance` so its `sha` matches. Do **not**
 `github_create_branch`. Do not put test assets on `dev` or `main`.
@@ -90,6 +96,8 @@ Result: authored
 Checks:
 - <id> (<live|static>, suite=<...>)
 Rule: <NET-COMP-id>
+Crosswalk:
+- <nist-id> pci=<ids or none> ffiec=<ids or none>
 Bridge:
 - <check-or-static-id> -> <NET-COMP-id>
 Catalog: <updated | already_current>

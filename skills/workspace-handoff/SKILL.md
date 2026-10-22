@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.26 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.26"
+description: "v1.70.29 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.29"
 ---
 
 # Workspace handoff
@@ -91,6 +91,8 @@ named under Edges as columns, a compliance result row's `device`
 with its `test:` / `control:` keys, the CMDB model's `service` /
 `hosts[]` / `depends_on[]` as `intended`, and the asserted
 `relations[]`.
+
+**Ops CMDB Sync.** Task line `Sync <device-name>.` Optional `signal netbox` or `signal servicenow` is a label, not a direction. One device. Reads `inventory/prod.json` and, when present, `inventory/infra-sot.json`. Writes only `state/cmdb-sync.json`. IOS-XE is GET-only. It does not bootstrap NetBox and it does not write ServiceNow.
 
 **Application Map.** Task line `Run the application map only.` Four
 `snow_query_table` reads scoped by the lab marker (`cmdb_ci_service`,
@@ -356,13 +358,14 @@ visits).
 | `inventory/applications.json` | snapshot | Application Map | `application-map` `schemas/applications.schema.json` | `updated_at` `source_updated_at` `source_agent` `applications[]` (`name` — the `application:` spelling, matching the Grafana `service` label; `service_ci` — CMDB service name as text; `service` — a `services[].name` from `inventory/services.json` or null; `hosts[]` — `inventory/prod.json` device names only; `hosts_unmapped[]` text; `depends_on[]` — other `applications[].name`; `source_ref` — `servicenow:cmdb_ci_appl/<sys_id>`), `services[]`, `servers[]`. Intended layer; the compiler turns `service` / `hosts[]` / `depends_on[]` into `depends_on` edges and host drift. Absent file: no intended application edges, no application drift. |
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
+| `state/cmdb-sync.json` | state | Ops CMDB Sync | `ops-cmdb-sync` `schemas/cmdb-sync-state.schema.json` | envelope, `operation` `signal` (`netbox` `servicenow` `unknown` — label only) `result` `device.name` `device_values` (`hostname` `primary_ipv4` `interface`) `compared[]` `wrote` (`netbox` or `none`) `gaps` `keys` (`device:` plus `interface:<device>/<name>` when the address interface was cited). This invoke only. `relations` is `[]`. Scope is the lab tenant on `inventory/prod.json` and one device name. |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
 | `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
 | `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |
 | `operational/runs/YYYY-MM-DDTHH-MM-SSZ.json` | result | Pipeline Monitor or GitHub GitOps Change | `github-actions-mcp` `schemas/operation-run.schema.json` | envelope, `operation` `git` `workflow` `result` `devices` `files` `interfaces[]` (GitOps Change: `<device>/<interface>` stanzas written) `summary` `keys`; `git.commit_sha` + `devices[]` / `interfaces[]` is the change → device / interface edge as columns, no `relations[]`; never config bodies, patches, or full logs |
 | `state/testing.json` | state | Compliance Test | `compliance-test-runner` `schemas/testing-state.schema.json` | envelope, `latest` `risk` `run.suites` |
 | `compliance/metadata-testing.json` | metadata | Compliance Test | `compliance-test-runner` `schemas/compliance-test-metadata.schema.json` | `last_visit_id` `last_collected_at` `last_visit_by_environment` (`dev`, `prod` — newest visit per lab; `vs_prior` compares within one lab) |
-| `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results.counts_by_plane` (`live` and `static`) `results.ran` row `plane` `keys` `risk` |
+| `compliance/testing/<stamp>.json` | observation | Compliance Test | `compliance-test-runner` `schemas/compliance-test-visit.schema.json` | `visit_id` `checked_at` `status` `coverage` via results, `metrics` `vs_prior` `results.counts_by_plane` (`live` and `static`) `results.by_device` `keys` `risk` `frameworks` (NIST, PCI DSS v4.0, and FFIEC counts from the federal brief; PCI and FFIEC inherit NIST status) |
 | `state/compliance.json` | state | Compliance | `compliance-analyzer` `schemas/compliance-state.schema.json` | envelope, `mode` `freshness` `consults` `series` `scores` `findings` `assessment` `trend_analysis` `soap` `dispatched`; `next_action` is `soap.plan` |
 | `compliance/coverage.json` | snapshot | Compliance Intelligence | `compliance-intel` `schemas/coverage.schema.json` | `updated_at` `source_agent` `rows` `counts`, row `keys` |
 | `compliance/intel.json` | result | Compliance Intelligence | `compliance-intel` `schemas/compliance-intel.schema.json` | envelope, `delta` `candidates[]` (`evidence` `live` or `static`) `skipped_non_network` `why_network`, candidate `keys` |

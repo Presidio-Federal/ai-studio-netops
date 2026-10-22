@@ -32,6 +32,7 @@ flowchart LR
 | Onboard | Workspace control board. Turns inventory / config sync / NetBox planes on. Reset flips sync and NetBox off and runs them again. |
 | Ops Network Sync | Access inventory and the Actions runner (collect, push, drift). Runs twin workflows only when Twin names them. |
 | Ops NetBox SoT | Puts infrastructure into NetBox from Sync seed + live IOS-XE / CDP. |
+| Ops CMDB Sync | One device. A NetBox or ServiceNow webhook wakes it. The box decides hostname and primary address. |
 | Digital Twin | Owns deploy and reconcile of the lab. Prints a plan, waits for go, then Sync runs the Actions. |
 
 ## Ops Network Sync
@@ -82,6 +83,20 @@ Every structured inventory/state write carries top-level `keys`. Device,
 qualified interface, and site keys are derived only from explicit inventory
 or NetBox identity fields; metadata-only outcomes use `keys: []`.
 
+## Ops CMDB Sync
+
+Owns one device's address alignment. It does not own inventory, cables, or bootstrap.
+
+A webhook from NetBox or ServiceNow is the same invoke: `Sync <device-name>.` The signal word is stored and ignored. `scripts/sync_cmdb.py` runs under `mcp_orchestration`. It reads the box over RESTCONF (host and port from `inventory/prod.json`), then that one device in NetBox and ServiceNow.
+
+Scope is the lab tenant on `inventory/prod.json` (`netbox.tenant`, otherwise `source.name`) and a `devices[]` name. In NetBox that tenant is the lab; the other estate has no tenant and uses site and topology tags. `origin` `prod-twin` is on both, so it is not a separator. The lab tag is `{tenant}-simulate`. ServiceNow has no CI for these lab names. The query is `name=<device>` on network CI classes, limit 5. It does not search serials, assets, or another company.
+
+Hostname must equal the task-line name. It does not rename either record. Primary IPv4 comes from Loopback0, else the first static address. When NetBox's existing primary host differs, it updates that IP object and reads it back. It does not create a device or an interface.
+
+ServiceNow is a read. There is no network-CI write tool, so a missing CI or a different address is a gap. A ServiceNow address is never written onto NetBox. Serial, asset tag, status, model, and site are reported and not copied, which is what keeps the echo from flipping those fields.
+
+It writes `state/cmdb-sync.json` only (`device:` and, when it cited the address interface, `interface:<device>/<name>`). `relations` stays empty. A later webhook that already matches the box writes nothing.
+
 ## What readers use
 
 - `inventory/prod.json` — published access snapshot (RESTCONF
@@ -91,6 +106,7 @@ or NetBox identity fields; metadata-only outcomes use `keys: []`.
 - `state/network-sync.json` — this collect only; last-known-good
   snapshot is preserved on a failed collect.
 - `state/netbox.json` — mode, counts, seed match, links.
+- `state/cmdb-sync.json` — this CMDB sync only; address verdict and gaps.
 - `state/workspace.json` — Onboard only: which planes are up.
 
 The twin is a gate, not a planner. A passing test on a drifted lab

@@ -38,6 +38,7 @@ CATALOG_DIR = "catalog"
 COMPLIANCE_DIR = "tests/compliance"
 CATALOG_NAME = "job-catalog.json"
 BRIDGE_NAME = "test-bridge.yml"
+CROSSWALK_NAME = "banking-framework-crosswalk.v1.json"
 ACTIVE = {"proposed", "accepted"}
 RULE_RE = re.compile(r"^(NET-COMP-\d+)$")
 
@@ -247,7 +248,36 @@ def published_index(published, rules):
     return rows
 
 
-def build_packet(catalog, bridge_text, catalog_sha, bridge_sha, catalog_names, compliance_names, matrix_names, inventory, coverage, intel):
+def compact_crosswalk(data, path, sha):
+    """NIST id to PCI DSS v4.0 and FFIEC ids. The file adds no evidence."""
+    raw = data.get("controls") if isinstance(data, dict) else None
+    if not isinstance(raw, dict):
+        return None
+    controls = {}
+    for nist_id, body in raw.items():
+        if not isinstance(nist_id, str) or not isinstance(body, dict):
+            continue
+        row = {}
+        for plane in ("pci_dss_v4", "ffiec"):
+            ids = []
+            for item in body.get(plane) or []:
+                if isinstance(item, dict) and isinstance(item.get("id"), str) and item["id"] not in ids:
+                    ids.append(item["id"])
+            if ids:
+                row[plane] = ids
+        if row:
+            controls[nist_id] = row
+    meta = data.get("metadata") if isinstance(data.get("metadata"), dict) else {}
+    return {
+        "path": path,
+        "sha": sha,
+        "version": meta.get("version"),
+        "join": meta.get("join"),
+        "controls": controls,
+    }
+
+
+def build_packet(catalog, bridge_text, catalog_sha, bridge_sha, catalog_names, compliance_names, matrix_names, inventory, coverage, intel, banking_crosswalk=None):
     pin = query_sources.load_json(query_sources.REF / "oscal-pin.json")
     rules = parse_bridge(bridge_text)
     checks = compliance_checks(catalog)
@@ -303,6 +333,7 @@ def build_packet(catalog, bridge_text, catalog_sha, bridge_sha, catalog_names, c
         "backlog_full": full,
         "unresolved_total": found.get("unresolved_total") or 0,
         "unresolved": controls,
+        "banking_crosswalk": banking_crosswalk,
     }
 
 
@@ -349,6 +380,7 @@ def scan(workspace):
     bridge_path = entry_path(entries, BRIDGE_NAME, "file")
     if not bridge_path:
         return degraded("matrix listing has no %s" % BRIDGE_NAME)
+    crosswalk_path = entry_path(entries, CROSSWALK_NAME, "file")
     matrix_names = names_of(entries, "file")
 
     catalog_body, err = call("github_get_file", {"path": catalog_path, "ref": REF})
@@ -373,6 +405,21 @@ def scan(workspace):
     if not isinstance(bridge_text, str) or not isinstance(bridge_sha, str):
         return degraded("bridge get had no content or sha")
 
+    banking = None
+    if crosswalk_path:
+        crosswalk_body, err = call("github_get_file", {"path": crosswalk_path, "ref": REF})
+        if err:
+            return degraded(err)
+        crosswalk_text = file_text(crosswalk_body)
+        crosswalk_sha = crosswalk_body.get("sha") if isinstance(crosswalk_body, dict) else None
+        if not isinstance(crosswalk_text, str) or not isinstance(crosswalk_sha, str):
+            return degraded("crosswalk get had no content or sha")
+        try:
+            crosswalk = json.loads(crosswalk_text)
+        except json.JSONDecodeError:
+            return degraded("crosswalk JSON")
+        banking = compact_crosswalk(crosswalk, crosswalk_path, crosswalk_sha)
+
     return build_packet(
         catalog,
         bridge_text,
@@ -384,6 +431,7 @@ def scan(workspace):
         load_optional(workspace, "inventory/prod.json"),
         load_optional(workspace, "compliance/coverage.json"),
         load_optional(workspace, "compliance/intel.json"),
+        banking_crosswalk=banking,
     )
 
 

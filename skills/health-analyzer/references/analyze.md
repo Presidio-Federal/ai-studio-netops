@@ -69,34 +69,44 @@ the plane itself is current. `[]` when none; other planes `null`.
 
 ## Modes
 
-Default is **chat** unless they asked to analyze, assess, chart,
-trend, refresh, or update the health chart.
+Default every turn: **read, then clock.** Analyze / chart / trend
+is not a rewrite. Rewrite only the phrases in the prompt
+(rewrite the health chart / fold SOAP / run assess_health).
 
-### chat
+### read (every turn)
 
-`read_file` catalog rows. Answer the question. Do not write
-`state/health.json`. Do not `execute_command`. Do not
-`get_folder_structure`. Do not `search_files`. Do not `ls`.
+`read_file` the chart and the five boards first. If those planes
+are current, answer. Do not write `state/health.json`. Do not
+`execute_command`. Do not `get_folder_structure`. Do not
+`search_files`. Do not `ls`. Stale or missing → invoke the
+workspace-handoff nurse; still do not run `assess_health.py`.
 
 Read `state/health.json` first. Then only paths the ask needs, from
 this set: `health/metadata-application.json`,
 `health/metadata-netflow.json`, `health/metadata-splunk.json`,
 `health/metadata-iosxe.json`, `health/metadata-servicenow.json`,
-`health/<plane>/<last_visit_id>.json` when that id is on the board,
-`state/relationships.json`, `state/recommendations.json`,
-`state/design.json`, `state/compliance.json`. Built-in file tools
-use those catalog paths as written — no `/workspace/` prefix.
+`health/<plane>/<watch_id>.json` when that id is on the board
+(`last_visit_id` or `visits[].watch_id`) or on a problem
+`symptom_refs` / `evidence_refs` path, `state/relationships.json`,
+`state/recommendations.json`, `state/design.json`,
+`state/compliance.json`. Built-in file tools use those catalog
+paths as written — no `/workspace/` prefix.
 
-Quote `updated_at` or `last_collected_at`. A clock-stale board
-(26h) is answered as of that time. If they asked for a live
-picture, follow **workspace-handoff** for that row (invoke the
-attached writer, do not wait). Do not collect. Do not fold a new
-chart on a chat turn.
+A named problem: find it on the chart, then the board for its
+keys (`interface:` → iosxe). Compare `current[]` for that subject
+to `problems[].status`. If `last_collected_at` is newer than the
+chart `consults` / `opened_at` and the row is healthy or gone,
+the last nurse visit did not include that incident — say the
+SOAP list is behind the board. `series[]` and `visits[]` are the
+history; do not `ls` `health/` and do not walk
+`vs_prior.prior_watch_id`.
+
+Quote `updated_at` or `last_collected_at`.
 
 ### assess-now
 
-On assess, default this mode unless they asked to refresh/wait
-then assess. Read what is on disk. If a plane is clock-stale or missing, follow
+Only when they asked to rewrite the health chart, fold SOAP, or
+run assess_health. Read what is on disk. If a plane is clock-stale or missing, follow
 **workspace-handoff** for that catalog row (writer / attach /
 invoke). **Do not wait.** Continue on the files already on disk.
 Record `dispatched[]` when you invoked. State coverage of **this**
@@ -104,7 +114,8 @@ invoke.
 
 ### refresh-then-assess
 
-Wait only for planes that are **both stale (or missing) and
+Only when they asked to wait, then refresh, then rewrite the
+chart. Wait only for planes that are **both stale (or missing) and
 material** to the question — still via workspace-handoff. Then
 re-read that plane's board (and its stamp if `last_visit_id`
 moved). Then write the chart.
@@ -269,7 +280,11 @@ container's `application:` and `device:`, the host `device:`, the
 exporter `device:`, the ticket's number, the interface).
 `symptom_refs` = the catalog paths (optionally `#<scope>`) where
 the symptom is seen. `evidence_refs` = other planes' records for or
-against. `hypothesis` = one sentence naming where the fault must
+against. In a reply, the **source** of a fault is the plane in
+those paths: `iosxe` is IOS-XE RESTCONF, `splunk` is Splunk
+syslog, `netflow` is Grafana NetFlow, `application` is Grafana
+Prometheus, `servicenow` is ServiceNow. A `device:` key is the
+affected box, not the source. `hypothesis` = one sentence naming where the fault must
 lie **given the evidence and no more specific**: "between the
 vantage and `device:H`" when a probe is down and the container and
 host are clean; "on `container:<host>/<name>`" when the container

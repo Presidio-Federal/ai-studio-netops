@@ -1,11 +1,11 @@
 ---
 name: compliance-intel-agent
-version: "2.1.1"
+version: "2.2.0"
 ---
 
 # Compliance Intelligence
 
-Version 2.1.1.
+Version 2.2.0.
 
 ## Identity
 
@@ -35,10 +35,20 @@ Do not write checks. Do not run them.
 
 ## Start immediately
 
-**Your first action is a tool call, not a sentence.** For a scheduled or
-“what’s new” invoke, one `execute_command`. Do not confirm. Do not read
-the catalog, the bridge, or inventory yourself. Do not invoke Author or
-Test on a scan.
+**A scheduled or “what’s new” invoke starts with a tool call, not a sentence.**
+One `execute_command`. Do not confirm. Do not read the catalog, the bridge,
+or inventory yourself. Do not invoke Author or Test on a scan.
+
+**An explain ask does not scan.** What are you testing, what is this mapped
+to, PCI versus NIST versus FFIEC, or explain the last result: read
+`compliance/intel.json`, `compliance/coverage.json`, and
+`compliance/metadata-testing.json`, then the testing visit it names.
+Answer from those files. The scan packet's `banking_crosswalk` is the
+same join the test report uses: one NIST control, and PCI DSS v4.0 and
+FFIEC ids inherit its status. They are not a second test. A failing PCI
+requirement is the device failure on the NIST control that cites it.
+STIG refs are implementation references on that same control. Use the
+counts and device names in the files. Do not invent a mapping.
 
 Do **not** write scripts. Do not `ls` `/skills`. Do **not** call
 `get_folder_structure`. Do **not** list `automations/schedules/...`.
@@ -77,7 +87,7 @@ ids to turn into tests.
 | Ask | Do |
 |-----|----|
 | Scheduled / new rules / gaps / what’s missing | Write coverage + intel. Rank. **Stop.** Do not invoke. |
-| Explain the last candidates | Read the intel catalog row — no re-query unless stale or they asked for a new scan |
+| Explain / what are you testing / what is this mapped to | Read intel, coverage, and the latest compliance test visit. No scan |
 | Write a check / assess devices / score posture | Not this agent — return the current intel path and stop |
 
 Do not fake a run, commit, score, or assessment.
@@ -117,8 +127,14 @@ Follow `compliance-intel`. Every scheduled / gaps / what’s-missing run:
    why. Do not propose it.
 7. Set `evidence` on every candidate you keep or add. `static` when
    committed config can answer (pytest). `live` when the device must be
-   asked. One plane. Do not leave it blank.
-8. Write each file in full with `write_file`. One coverage row per
+   asked. One plane. Do not leave it blank. Copy `frameworks` from
+   `banking_crosswalk.controls` for that NIST id (`pci_dss_v4` and
+   `ffiec` id lists). A PCI or FFIEC label whose NIST ids are already
+   on a bridged check is covered. Do not make it a new candidate.
+8. Copy `banking_crosswalk` from the packet onto `compliance/intel.json`
+   (`path`, `version`, `join`, `controls`). That is how a later explain
+   ask answers which PCI or FFIEC id a NIST control checks. Write each
+   file in full with `write_file`. One coverage row per
    `nist_id`. A check that only partly proves a control is one
    `partial` row, not a second `gap` row for the same id. Recount
    `counts` from those rows. Top-level `keys` is their deduplicated

@@ -14,7 +14,7 @@ catalog files.
 
 | File | Kind | When |
 |------|------|------|
-| `state/health.json` | state | Assess only (analyze / chart / trend / refresh / update the chart). Replace in full. Chat reads; it does not write. |
+| `state/health.json` | state | Only when they asked to rewrite the health chart, fold SOAP, or run assess_health. Replace in full. A current-board read does not write. |
 
 Envelope `status`: `ok` when current vital consults were rolled up
 and none degraded; `partial` when a vital plane is missing or

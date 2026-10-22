@@ -143,6 +143,28 @@
         "skipped_tests": {"type": "integer", "minimum": 0}
       }
     },
+    "frameworks": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Count lines from the federal brief. PCI DSS v4.0 and FFIEC inherit NIST status from banking-framework-crosswalk.v1.json. Absent when the log has no brief.",
+      "required": ["source", "join"],
+      "properties": {
+        "source": {"type": "string", "minLength": 1},
+        "join": {"type": "string", "minLength": 1},
+        "stig_headline": {"type": "string"},
+        "nist": {"$ref": "#/$defs/framework_counts"},
+        "pci_dss_v4": {"$ref": "#/$defs/framework_counts"},
+        "ffiec": {"$ref": "#/$defs/framework_counts"},
+        "failing": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "nist": {"type": "array", "maxItems": 30, "items": {"$ref": "#/$defs/framework_failure"}},
+            "pci_dss_v4": {"type": "array", "maxItems": 30, "items": {"$ref": "#/$defs/framework_failure"}}
+          }
+        }
+      }
+    },
     "vs_prior": {
       "type": "object",
       "additionalProperties": false,
@@ -178,6 +200,27 @@
     }
   },
   "$defs": {
+    "framework_failure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "devices"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string"},
+        "devices": {"type": "array", "maxItems": 20, "items": {"type": "string"}}
+      }
+    },
+    "framework_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verified", "failing", "config_only", "not_assessed"],
+      "properties": {
+        "verified": {"type": "integer", "minimum": 0},
+        "failing": {"type": "integer", "minimum": 0},
+        "config_only": {"type": "integer", "minimum": 0},
+        "not_assessed": {"type": "integer", "minimum": 0}
+      }
+    },
     "counts": {
       "type": "object",
       "additionalProperties": false,

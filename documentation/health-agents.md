@@ -223,18 +223,16 @@ Open in-scope tickets do not degrade vital status. Filing cases is
 
 ## Health Analyzer
 
-Reasoner. Two modes. **Chat** (questions): `read_file` the chart,
-boards, and named catalog rows (`state/recommendations.json` when
-they ask what is staged). No script, no write. Stale boards are
-answered as of `last_collected_at`; a live ask may invoke the
-nurse and does not wait. **Assess** (analyze / chart / trend /
-refresh): `assess_health.py` writes `state/health.json`. It reads
-the five boards, the prior chart, at most five new stamps, and
-`state/relationships.json`; twelve reads at most. It never opens
-`inventory/applications.json` — the compiled edges already carry
-the CMDB model. `series` is by reference to each board. Envelope
-status is worst of application, NetFlow, Splunk, and IOS-XE.
-ServiceNow does not vote.
+Reasoner. Every turn `read_file`s the chart and the five boards
+and checks the 26h clock. Current → answer from disk, no script.
+Stale → invoke the nurse (workspace-handoff task line), not
+`assess_health.py`. Analyze / chart / trend is not a rewrite when
+the boards are current. `assess_health.py` writes
+`state/health.json` only when they said rewrite the health chart.
+It never opens `inventory/applications.json` — the compiled edges
+already carry the CMDB model. `series` is by reference to each
+board. Envelope status is worst of application, NetFlow, Splunk,
+and IOS-XE. ServiceNow does not vote.
 
 Every problem carries **`impact`**: the applications, services, and
 hosts reached by walking `state/relationships.json` upward from the
@@ -260,10 +258,8 @@ the annotation alone says it *coincides*. See
   host; never a Network Ops order for a container that is simply
   gone.
 
-Modes: **chat** is the default for questions. **assess-now**
-dispatches stale planes if attached and does not wait, then writes
-the chart. **refresh-then-assess** waits only for planes that are
-both stale and material.
+Modes: **read then clock** every turn. **assess-now** / 
+**refresh-then-assess** only on an explicit chart rewrite.
 
 ## Example notes
 

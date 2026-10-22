@@ -42,6 +42,16 @@ VISIT_SCHEMA = SKILL / "schemas" / "compliance-test-visit.schema.json"
 META_SCHEMA = SKILL / "schemas" / "compliance-test-metadata.schema.json"
 
 MARKER = "# Network test report"
+FRAMEWORK_LINE = re.compile(
+    r"^(NIST|PCI DSS v4\.0|FFIEC): verified=(\d+) failing=(\d+) config_only=(\d+) not_assessed=(\d+)\s*$",
+    re.M,
+)
+STIG_LINE = re.compile(r"^STIG refs: (.+)$", re.M)
+FAIL_LINE = re.compile(
+    r"^- ([A-Z]{2}-\d+(?:\(\d+\))?|\d+\.\d+\.\d+)\s+(.+?) — devices: (.+)$",
+    re.M,
+)
+FRAMEWORK_KEY = {"NIST": "nist", "PCI DSS v4.0": "pci_dss_v4", "FFIEC": "ffiec"}
 HEADER = re.compile(r"(PASSED|FAILED)\s+·\s+(live|static)\b", re.IGNORECASE)
 COUNTS = re.compile(
     r"(?:counts_ran|static):\s+pass=(\d+)\s+fail=(\d+)\s+error=(\d+)\s+skip=(\d+)"
@@ -344,6 +354,61 @@ def report_blocks(text):
     return blocks
 
 
+def _brief_failures(text, header):
+    """Failing id lines under one brief heading. Capped so the visit stays small."""
+    start = (text or "").find(header)
+    if start < 0:
+        return []
+    rest = text[start + len(header):]
+    stop = rest.find("\n## ")
+    if stop < 0:
+        stop = rest.find("\n_Full matrix")
+    chunk = rest if stop < 0 else rest[:stop]
+    rows = []
+    for match in FAIL_LINE.finditer(chunk):
+        devices = [part.strip() for part in match.group(3).split(",") if part.strip()]
+        rows.append({
+            "id": match.group(1),
+            "title": match.group(2).strip()[:120],
+            "devices": devices[:20],
+        })
+        if len(rows) >= 30:
+            break
+    return rows
+
+
+def parse_frameworks(text):
+    """Count lines from the federal brief. PCI and FFIEC inherit NIST status."""
+    found = {}
+    for match in FRAMEWORK_LINE.finditer(text or ""):
+        found[FRAMEWORK_KEY[match.group(1)]] = {
+            "verified": int(match.group(2)),
+            "failing": int(match.group(3)),
+            "config_only": int(match.group(4)),
+            "not_assessed": int(match.group(5)),
+        }
+    if "nist" not in found and "pci_dss_v4" not in found:
+        return None
+    payload = {
+        "source": "banking-framework-crosswalk.v1.json",
+        "join": "NIST SP 800-53 Rev 5. PCI DSS v4.0 and FFIEC inherit this status and add no evidence.",
+    }
+    payload.update(found)
+    stig = STIG_LINE.search(text or "")
+    if stig:
+        payload["stig_headline"] = stig.group(1).strip()[:300]
+    failing = {}
+    nist_rows = _brief_failures(text, "## Failing controls")
+    pci_rows = _brief_failures(text, "## Failing PCI DSS v4.0 requirements")
+    if nist_rows:
+        failing["nist"] = nist_rows
+    if pci_rows:
+        failing["pci_dss_v4"] = pci_rows
+    if failing:
+        payload["failing"] = failing
+    return payload
+
+
 def parse_report(text):
     """Return planes, rows, and whether the static compliance block was present.
 
@@ -394,6 +459,7 @@ def parse_report(text):
         "not_applicable": not_applicable,
         "gaps": gaps,
         "counts_na": int(na_match.group(1)) if na_match else len(not_applicable),
+        "frameworks": parse_frameworks(text),
     }
     data = result_json(text)
     if lab is None:
@@ -873,6 +939,8 @@ def build_records(args, moment, run_id, html_url, parsed):
             "metrics": visit_metrics,
             "vs_prior": vs_prior(prior, rows, visit_metrics, scanned),
         }
+        if isinstance(parsed.get("frameworks"), dict):
+            visit["frameworks"] = parsed["frameworks"]
         other[lab] = visit_id
         meta = {
             "keys": [],
@@ -907,6 +975,13 @@ def summary_payload(status, run_id, html_url, lab, suites, parsed, level, push, 
         payload["newly_failing"] = failing
         payload["still_failing"] = still
         payload["prior_visit_id"] = None
+    frameworks = parsed.get("frameworks")
+    if isinstance(frameworks, dict):
+        payload["frameworks"] = {
+            key: frameworks[key]
+            for key in ("source", "join", "stig_headline", "nist", "pci_dss_v4", "ffiec")
+            if key in frameworks
+        }
     return payload
 
 

@@ -14,22 +14,31 @@ Deployed model is **MiniMax** unless noted.
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
 | Modernization Analysis | 2.5.2 | MiniMax |
 | Modernization Lifecycle | 1.7.0 | MiniMax |
-| Compliance | 1.2.1 | MiniMax |
-| Compliance Intelligence | 2.1.1 | Frontier (operator-selected; catalog and NIST interpretation) |
-| Compliance Author | 1.3.2 | MiniMax |
-| Compliance Test | 1.8.1 | MiniMax |
+| Compliance | 1.3.0 | MiniMax |
+| Compliance Intelligence | 2.2.0 | Frontier (operator-selected; catalog and NIST interpretation) |
+| Compliance Author | 1.4.0 | MiniMax |
+| Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
 | Health Telemetry | 1.1.0 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
-| Health Analyzer | 5.2.0 | MiniMax |
+| Health Analyzer | 5.3.2 | Frontier (operator-selected; SOAP synthesis) |
 | Relationship agent | 1.4.0 | MiniMax |
 | Network Map | 1.1.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
+| Ops CMDB Sync | 1.1.0 | MiniMax |
+
+Ops CMDB Sync skill 1.1.1: the ServiceNow query also requires `comments` equal to the lab tenant and includes `cmdb_ci_ip_firewall`. Application CIs share that comment. The network set is company Cisco AI Lab. MiniMax. Agent prompt stays 1.1.0.
+
+Ops CMDB Sync 1.1.0 (skill 1.1.0, workspace-handoff 1.70.28): `scripts/sync_cmdb.py sync` runs under `mcp_orchestration`. Scope is `inventory/prod.json` `netbox.tenant` (else `source.name`) and one `devices[]` name. NetBox find sends that tenant and requires the `{tenant}-simulate` tag. ServiceNow is one exact-name query, limit 5, network CI classes only. `origin` `prod-twin` is not a separator. MiniMax.
+
+Ops CMDB Sync 1.0.0 (skill 1.0.0, workspace-handoff 1.70.27): a NetBox or ServiceNow webhook is the same job. `Sync <device>.` The signal is a label. IOS-XE hostname must match that name. Primary IPv4 is copied onto the existing NetBox address only. ServiceNow is read with `snow_query_table`; a mismatch is a gap because there is no network-CI write tool. Serial, asset tag, status, model, and site are reported and not copied. `state/cmdb-sync.json` is this invoke only. A second webhook that already matches writes nothing. MiniMax.
+
+Compliance 1.3.0 (skill 1.3.0), Intelligence 2.2.0 (skill 1.21.0), Author 1.4.0 (skill 1.8.0), Test 1.9.0 (skill 1.13.0), workspace-handoff 1.70.29: `banking-framework-crosswalk.v1.json` joins NIST SP 800-53 to PCI DSS v4.0 and FFIEC. The scan returns that map. A compliance visit stores the federal brief counts. PCI and FFIEC inherit NIST status and are not a second test. Explain asks read the workspace files. MiniMax, except Intelligence stays Frontier.
 
 Compliance Intelligence 2.1.1 (skill 1.20.1): coverage.json is one row per NIST id, replaced in full. A partial proof is `partial` on that row. An empty search-replace is not a delete; write the file once and stop retrying. Frontier.
 
@@ -100,6 +109,12 @@ workspace-handoff 1.70.17: Modernization Lifecycle `scripts/visit_lifecycle.py c
 workspace-handoff 1.70.15: `unwrap_github` reads `github_list_files`, `github_get_file`, and `github_put_file`. The tool dict is `{ok, entries}` or `{ok, content, sha}` or `{ok, sha, commit_sha}`. `result` on `call_mcp` is a list; `result[0]` is that dict.
 
 Relationship agent 1.3.0 (skill 1.3.0): `scripts/compile_graph.py compile` copies nurse columns, CMDB declarations, and asserted relations into `state/relationships.json`. No MCP. Unchanged watermarks write nothing. Superseded by 1.4.0.
+
+Health Analyzer 5.3.2 (skill 5.3.2): Frontier. A named problem is checked against that plane's board `current[]`, `visits[]`, and `series[]`, and the stamps those ids already name. If the latest collect no longer shows the fault, say the SOAP row is behind the nurse, do not ls `health/`.
+
+Health Analyzer 5.3.1 (skill 5.3.1): Frontier. A "where did this fault come from" answer names the telemetry plane from `problems[].symptom_refs` (IOS-XE, Splunk, Grafana NetFlow, Grafana application, ServiceNow), not only the device. Model is Frontier per the operator (SOAP synthesis).
+
+Health Analyzer 5.3.0 (skill 5.3.0): MiniMax. Every turn reads the chart and five boards first. Current boards → answer, no script. Stale board → invoke the nurse, not `assess_health.py`. The assess script runs only on rewrite the health chart / fold SOAP / run assess_health. Analyze and scheduled analyze are not a rewrite when the boards are current.
 
 Health Analyzer 5.2.0 (skill 5.2.0): MiniMax. A question is chat: `read_file` catalog rows, no `execute_command`, no write. Analyze / chart / trend / refresh still runs `assess_health.py` then `annotate`. Built-in paths stay workspace-relative.
 

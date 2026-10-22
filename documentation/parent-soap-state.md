@@ -140,9 +140,10 @@ Compliance: `soap.plan` is one route.
 ## How the file is produced
 
 A question to the parent is not a chart write. Health Analyzer
-**chat** uses built-in `read_file` on catalog rows
-(`state/health.json`, the five boards, and the other `state/`
-rows the ask names) and does not call `execute_command`. Paths are
+starts every turn with built-in `read_file` on `state/health.json`
+and the five boards. If those planes are current it answers and
+does not call `execute_command`. If a plane is stale it invokes
+the nurse; it does not run `assess_health.py`. Paths are
 workspace-relative, with no `/workspace/` prefix.
 
 The parent does not hand-build the JSON. On **assess**, the skill
@@ -255,9 +256,9 @@ latest Intel visit and the latest test visit per lab.
 
 ## Reply after the write
 
-A Health Analyzer **chat** turn answers the question from the files
-already on disk. It does not use the assess reply block and does
-not claim `Wrote: state/health.json`.
+A Health Analyzer turn that only read the files answers from disk.
+It does not use the assess reply block and does not claim
+`Wrote: state/health.json`.
 
 The **assess** chat reply is the chart's summary, not a second
 chart. No preamble, no tool narration, no raw JSON.

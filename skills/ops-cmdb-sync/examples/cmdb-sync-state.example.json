@@ -1,0 +1,72 @@
+{
+  "schema": "cmdb-sync-state/v1",
+  "updated_at": "2026-10-21T18:30:00Z",
+  "source_agent": "ops-cmdb-sync",
+  "status": "gaps",
+  "headline": "gaps EXAMPLE-EDGE: NetBox address updated, no ServiceNow CI",
+  "next_action": "ServiceNow has no network CI for EXAMPLE-EDGE and no CI write tool.",
+  "operation_id": "2026-10-21T18-29-40Z",
+  "operation": "sync",
+  "started_at": "2026-10-21T18:29:40Z",
+  "completed_at": "2026-10-21T18:30:00Z",
+  "signal": "netbox",
+  "result": "gaps",
+  "device": {
+    "name": "EXAMPLE-EDGE",
+    "netbox_id": 41,
+    "servicenow_sys_id": null
+  },
+  "device_values": {
+    "hostname": "EXAMPLE-EDGE",
+    "primary_ipv4": "10.1.1.1",
+    "interface": "Loopback0"
+  },
+  "compared": [
+    {
+      "field": "primary_ipv4",
+      "device": "10.1.1.1",
+      "netbox": "10.1.1.1",
+      "servicenow": "",
+      "verdict": "updated"
+    },
+    {
+      "field": "serial",
+      "device": null,
+      "netbox": "",
+      "servicenow": "",
+      "verdict": "reported"
+    },
+    {
+      "field": "asset_tag",
+      "device": null,
+      "netbox": "",
+      "servicenow": "",
+      "verdict": "reported"
+    },
+    {
+      "field": "status",
+      "device": null,
+      "netbox": "active",
+      "servicenow": "",
+      "verdict": "reported"
+    },
+    {
+      "field": "model",
+      "device": null,
+      "netbox": "cat8000v",
+      "servicenow": "",
+      "verdict": "reported"
+    },
+    {
+      "field": "site",
+      "device": null,
+      "netbox": "example-lab",
+      "servicenow": "",
+      "verdict": "reported"
+    }
+  ],
+  "wrote": "netbox",
+  "gaps": ["no servicenow ci"],
+  "relations": [],
+  "keys": ["device:EXAMPLE-EDGE", "interface:EXAMPLE-EDGE/Loopback0"]
+}
