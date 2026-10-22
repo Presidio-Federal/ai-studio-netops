@@ -42,6 +42,8 @@ Ops CMDB Sync 1.1.0 (skill 1.1.0, workspace-handoff 1.70.28): `scripts/sync_cmdb
 
 Ops CMDB Sync 1.0.0 (skill 1.0.0, workspace-handoff 1.70.27): a NetBox or ServiceNow webhook is the same job. `Sync <device>.` The signal is a label. IOS-XE hostname must match that name. Primary IPv4 is copied onto the existing NetBox address only. ServiceNow is read with `snow_query_table`; a mismatch is a gap because there is no network-CI write tool. Serial, asset tag, status, model, and site are reported and not copied. `state/cmdb-sync.json` is this invoke only. A second webhook that already matches writes nothing. MiniMax.
 
+Compliance Test skill 1.13.1: the federal brief writes failing control rows. The id is in backticks in the log (`AC-11`, `8.2.8`). Skill 1.13.0 stored the counts and dropped those rows.
+
 Compliance 1.3.0 (skill 1.3.0), Intelligence 2.2.0 (skill 1.21.0), Author 1.4.0 (skill 1.8.0), Test 1.9.0 (skill 1.13.0), workspace-handoff 1.70.29: `banking-framework-crosswalk.v1.json` joins NIST SP 800-53 to PCI DSS v4.0 and FFIEC. The scan returns that map. A compliance visit stores the federal brief counts. PCI and FFIEC inherit NIST status and are not a second test. Explain asks read the workspace files. MiniMax, except Intelligence stays Frontier.
 
 Compliance Intelligence 2.1.1 (skill 1.20.1): coverage.json is one row per NIST id, replaced in full. A partial proof is `partial` on that row. An empty search-replace is not a delete; write the file once and stop retrying. Frontier.

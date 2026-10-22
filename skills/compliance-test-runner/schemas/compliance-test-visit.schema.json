@@ -207,7 +207,7 @@
       "properties": {
         "id": {"type": "string", "minLength": 1},
         "title": {"type": "string"},
-        "devices": {"type": "array", "maxItems": 20, "items": {"type": "string"}}
+        "devices": {"type": "array", "maxItems": 64, "items": {"type": "string"}}
       }
     },
     "framework_counts": {

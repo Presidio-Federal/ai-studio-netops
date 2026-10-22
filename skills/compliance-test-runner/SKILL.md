@@ -1,7 +1,7 @@
 ---
 name: compliance-test-runner
-version: "1.13.0"
-description: "v1.13.0 — A compliance visit keeps the federal brief counts. PCI and FFIEC inherit NIST status."
+version: "1.13.1"
+description: "v1.13.1 — Federal brief failing rows keep the backticked control id and its devices."
 ---
 
 # Compliance test runner skill

@@ -48,7 +48,7 @@ FRAMEWORK_LINE = re.compile(
 )
 STIG_LINE = re.compile(r"^STIG refs: (.+)$", re.M)
 FAIL_LINE = re.compile(
-    r"^- ([A-Z]{2}-\d+(?:\(\d+\))?|\d+\.\d+\.\d+)\s+(.+?) — devices: (.+)$",
+    r"^- (?:`([^`]+)`|([A-Za-z0-9._()-]+))\s+(.+?) — devices: (.+)$",
     re.M,
 )
 FRAMEWORK_KEY = {"NIST": "nist", "PCI DSS v4.0": "pci_dss_v4", "FFIEC": "ffiec"}
@@ -366,11 +366,11 @@ def _brief_failures(text, header):
     chunk = rest if stop < 0 else rest[:stop]
     rows = []
     for match in FAIL_LINE.finditer(chunk):
-        devices = [part.strip() for part in match.group(3).split(",") if part.strip()]
+        devices = [part.strip() for part in match.group(4).split(",") if part.strip()]
         rows.append({
-            "id": match.group(1),
-            "title": match.group(2).strip()[:120],
-            "devices": devices[:20],
+            "id": match.group(1) or match.group(2),
+            "title": match.group(3).strip()[:120],
+            "devices": devices[:64],
         })
         if len(rows) >= 30:
             break
