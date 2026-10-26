@@ -1,7 +1,7 @@
 ---
 name: health-elastic
-version: "1.1.3"
-description: "v1.1.3 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; a port spread or surge is a finding."
+version: "1.1.4"
+description: "v1.1.4 — Health Elastic nurse: NetFlow visits run visit_netflow.py. The stamp lists port spreads; the board stays the short status."
 ---
 
 # Health Elastic skill

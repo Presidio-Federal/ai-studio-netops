@@ -889,6 +889,16 @@ def note_for(row, prior, first, migration=False):
     return "Row updated."
 
 
+def slim_board(row):
+    """Drop empty columns. The board is the short status; the stamp keeps the detail."""
+    keep = {"kind", "scope", "source", "exporter_name", "keys", "at", "state", "bytes", "flows"}
+    slim = {}
+    for key, value in row.items():
+        if key in keep or value not in (None, [], ""):
+            slim[key] = value
+    return slim
+
+
 def cap_board(rows):
     if len(rows) <= 120:
         return rows
@@ -1132,13 +1142,13 @@ def cmd_collect(args):
     else:
         conversations = [row for row in prior_rows if row["kind"] == "conversation" and row.get("protocol") != "scan"]
 
+    f4_failed = False
     if f4_query and not f2_failed and not budget.exhausted():
         f4_text = substitute(f4_query, measurement, window)
         f4_payload, f4_error = elastic_query("f4", f4_text, window) if f4_text else (None, "window")
         if f4_error or f4_payload is None:
-            truncated = True
+            f4_failed = True
         else:
-            truncated = truncated or bool(f4_payload.get("truncated"))
             seen_scopes = {row["scope"] for row in conversations}
             for raw in f4_payload.get("rows") or []:
                 if not isinstance(raw, dict):
@@ -1149,6 +1159,8 @@ def cmd_collect(args):
                 if row and row["scope"] not in seen_scopes:
                     conversations.append(row)
                     seen_scopes.add(row["scope"])
+    elif f4_query:
+        f4_failed = True
 
     firewalls = []
     fw_failed = False
@@ -1187,6 +1199,7 @@ def cmd_collect(args):
         if prior["kind"] == "exporter" and prior["scope"] not in seen_exporter_scopes:
             carried.append(carry_exporter(prior, at, window, by_lower, access, nets, review))
     current_rows = cap_board(built_exporters + carried + conversations + firewalls)
+    current_rows = [row for row in current_rows if row.get("state") not in ("not_in_top_n", "absent")]
     top = None
     present = [row for row in conversations if row["state"] == "present"]
     if present:
@@ -1212,7 +1225,7 @@ def cmd_collect(args):
             if item[0]["kind"] != "conversation" or item[0].get("protocol") == "scan"
         ]
 
-    coverage = "partial" if f2_failed or fw_failed or truncated else "complete"
+    coverage = "partial" if f2_failed or fw_failed or f4_failed or truncated else "complete"
     denies = any(row["kind"] == "firewall" and is_worse(row, prior) for row, prior, _field in pairs)
     scans = any(row.get("protocol") == "scan" and row.get("state") == "present" for row in current_rows)
     silent = any(row["kind"] == "exporter" and row["state"] == "silent" for row in current_rows)
@@ -1417,7 +1430,7 @@ def cmd_collect(args):
             "last_visit_id": watch if write_stamp else prior_watch,
             "last_collected_at": at,
             "baseline_visit_id": baseline if baseline else (watch if first and write_stamp else None),
-            "current": current_rows,
+            "current": [slim_board(row) for row in current_rows],
             "series": ring(series),
             "visits": ring(visits),
         },

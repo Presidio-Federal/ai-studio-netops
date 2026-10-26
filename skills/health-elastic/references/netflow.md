@@ -120,10 +120,10 @@ FROM <measurement>
 | EVAL exporter_name = COALESCE(observer.name, ""), src_name = COALESCE(lab.source.device, TO_STRING(source.ip)), dst_name = COALESCE(lab.destination.device, TO_STRING(destination.ip))
 | STATS flows = COUNT(*), bytes = SUM(network.bytes), ports = COUNT_DISTINCT(destination.port), last_at = MAX(@timestamp) BY observer.ip, exporter_name, src_name, dst_name
 | WHERE ports >= 20
-| EVAL source = TO_STRING(observer.ip), src = src_name, dst = dst_name, dst_port = TO_STRING(ports), protocol = "scan"
-| KEEP source, exporter_name, src, dst, dst_port, protocol, bytes, flows, last_at
 | SORT ports DESC
 | LIMIT 20
+| EVAL source = TO_STRING(observer.ip), src = src_name, dst = dst_name, dst_port = TO_STRING(ports), protocol = "scan"
+| KEEP source, exporter_name, src, dst, dst_port, protocol, bytes, flows, last_at
 ```
 `)`
 
