@@ -130,7 +130,7 @@
           "items": {
             "$ref": "#/$defs/row"
           },
-          "description": "Last-known row per device + kind + subject. A visit replaces the rows its S2 results name and keeps the rest."
+          "description": "This window only. The stamp holds the detail. A later visit replaces current[]; it does not keep subjects that did not recur."
         },
         "series": {
           "type": "array",

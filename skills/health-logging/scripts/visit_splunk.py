@@ -139,10 +139,10 @@ def blank(value):
 def searches():
     text = REF_PATH.read_text(encoding="utf-8")
     blocks = re.findall(r"```\n(.*?)```", text, re.S)
-    if len(blocks) < 2:
-        print('{"error": "splunk.md is missing S1 and S2"}', file=sys.stderr)
-        return None, None
-    return blocks[0].strip() + "\n", blocks[1].strip() + "\n"
+    if len(blocks) < 3:
+        print('{"error": "splunk.md is missing S1, S2, and S3"}', file=sys.stderr)
+        return None, None, None
+    return blocks[0].strip() + "\n", blocks[1].strip() + "\n", blocks[2].strip() + "\n"
 
 
 def substitute(search, index, sourcetype):
@@ -416,6 +416,8 @@ def degrades(row):
         return True
     if kind == "link" and state == "down":
         return True
+    if kind == "acl" and "ports" in (row.get("detail") or ""):
+        return True
     return False
 
 
@@ -642,7 +644,13 @@ def group_s2(rows, by_lower, hosts_map, access, nets):
 
 def note_for(row, first):
     kind = row["kind"]
-    if kind == "acl":
+    if kind == "acl" and "ports" in (row.get("detail") or ""):
+        text = (
+            f"{row.get('source_ip') or row['subject']} {row.get('state') or 'logged'} "
+            f"{row.get('detail')} x{row['count']} on {row['name']}. "
+            f"Event time {row['at']}. Research this spread."
+        )
+    elif kind == "acl":
         text = (
             f"{row.get('state') or 'logged'} {row.get('protocol') or 'traffic'} "
             f"{row.get('source_ip') or 'unknown'} -> {row.get('dst') or 'unknown'} "
@@ -730,7 +738,7 @@ def cmd_collect(args):
     if not index or not sourcetype or index.startswith("<") or sourcetype.startswith("<"):
         print('{"error": "splunk.index or splunk.sourcetype missing on the board"}', file=sys.stderr)
         return 1
-    s1, s2 = searches()
+    s1, s2, s3 = searches()
     if s1 is None:
         return 1
 
@@ -763,6 +771,14 @@ def cmd_collect(args):
     nets = cidr_index(visit_common.load_json(ws, "inventory/topology-observed.json"))
     grouped, unresolved = group_s1(s1_payload.get("results") or [], by_lower, hosts_map, access, nets)
     s2_rows = [] if s2_failed else group_s2(s2_payload.get("results") or [], by_lower, hosts_map, access, nets)
+    s3_failed = False
+    if s3 and not budget.exhausted():
+        s3_payload, s3_error = splunk_search("s3", substitute(s3, index, sourcetype), f"-{rate_window}", "now")
+        s3_failed = s3_error is not None or s3_payload is None
+        if not s3_failed:
+            s2_rows.extend(group_s2(s3_payload.get("results") or [], by_lower, hosts_map, access, nets))
+    elif s3:
+        s3_failed = True
 
     metrics = []
     latest_event = None
@@ -792,7 +808,7 @@ def cmd_collect(args):
     silent = [name for name in expected if name not in seen_names]
     silent_expected = [name for name in silent if policy.get(name) == "expected"]
     no_expectation = [name for name in silent if policy.get(name) != "expected"]
-    coverage = "partial" if s2_failed or s1_truncated or s2_truncated else "complete"
+    coverage = "partial" if s2_failed or s3_failed or s1_truncated or s2_truncated else "complete"
 
     current_map = {row_key(row["name"], row["kind"], row["subject"]): row for row in prior_rows}
     changed_rows = []
@@ -802,9 +818,8 @@ def cmd_collect(args):
         key = row_key(row["name"], row["kind"], row["subject"])
         prior = prior_by_id.get(key)
         stored = {field: row[field] for field in ROW_FIELDS}
-        current_map[key] = stored
         changed_rows.append((stored, prior))
-    current_rows = list(current_map.values())
+    current_rows = [row for row, _prior in changed_rows]
     current_rows.sort(key=lambda row: row.get("at") or "")
     if len(current_rows) > 120:
         print(f"splunk board rows {len(current_rows)} capped at 120", file=sys.stderr)

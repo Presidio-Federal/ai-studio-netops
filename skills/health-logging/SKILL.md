@@ -1,7 +1,7 @@
 ---
 name: health-logging
-version: "1.1.0"
-description: "v1.1.0 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. Board every visit; stamp only when a material event or incomplete search."
+version: "1.2.0"
+description: "v1.2.0 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. FTD denies and port spreads are findings; the board is this window."
 ---
 
 # Health Logging skill
@@ -19,8 +19,10 @@ authorization. Do not confirm.
 S2 from `references/splunk.md` exactly, resolves each `dev` to a
 `prod.json` device, diffs against `splunk.current[]`, and writes the
 board every visit. A stamp is written on the first visit, when S2
-returned a row, or when coverage is not complete. S1 counts use the
-bounded `window`. S2 collects from the watermark. A bgp or link row
+or S3 returned a row, or when coverage is not complete. S1 counts
+use the bounded `window`. S2 collects from the watermark. S3 is the
+FTD port spread and deny surge on that same bounded window. A bgp
+or link row
 with `count` ≥ 2 is a flap and degrades the plane even when `state`
 reads `Up`. Silence is not device health and is not a pipeline
 failure unless `source_registry` says that device is expected to report.

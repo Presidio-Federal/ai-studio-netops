@@ -19,7 +19,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Author | 1.4.0 | MiniMax |
 | Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
-| Health Logging | 1.1.0 | MiniMax |
+| Health Logging | 1.2.0 | MiniMax |
 | Health Telemetry | 1.3.3 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
@@ -31,6 +31,8 @@ Deployed model is **MiniMax** unless noted.
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Health Logging 1.2.0 (skill 1.2.0): FTD syslog is included with ASA. A source denied or allowed across 20 destinations or ports, or denied 100 times, is a stamp reading. The board keeps this window only. MiniMax.
 
 Health Telemetry 1.3.3 (skill health-elastic 1.1.4): the port-spread query sorts before it drops the port count, so a scan is a stamp reading. The board drops empty columns and paths that left the window. The stamp is the detail. MiniMax.
 
