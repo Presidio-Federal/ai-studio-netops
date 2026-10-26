@@ -106,7 +106,9 @@ FROM <measurement>
 
 **F4 — port spread. Always, on the same stream.** One row per
 exporter, source name, and destination name when that pair used
-at least 20 destination ports this window. Ports are not folded
+at least 20 destination ports this window. Ports at or above
+32768 are the return path of a normal session and are not counted.
+Ports are not folded
 into a service name. A port scan is many ports and few bytes, so
 it does not have to win the F2 byte sort. `dst_port` in the result
 is the distinct port count. The script stores `protocol` `scan`.
@@ -116,7 +118,7 @@ is the distinct port count. The script stores `protocol` `scan`.
 FROM <measurement>
 | WHERE @timestamp >= NOW() - <window>
   AND network.transport IN ("tcp", "udp")
-  AND destination.port > 0
+  AND destination.port > 0 AND destination.port < 32768
 | EVAL exporter_name = COALESCE(observer.name, ""), src_name = COALESCE(lab.source.device, TO_STRING(source.ip)), dst_name = COALESCE(lab.destination.device, TO_STRING(destination.ip))
 | STATS flows = COUNT(*), bytes = SUM(network.bytes), ports = COUNT_DISTINCT(destination.port), last_at = MAX(@timestamp) BY observer.ip, exporter_name, src_name, dst_name
 | WHERE ports >= 20

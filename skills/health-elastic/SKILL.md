@@ -1,7 +1,7 @@
 ---
 name: health-elastic
-version: "1.1.4"
-description: "v1.1.4 — Health Elastic nurse: NetFlow visits run visit_netflow.py. The stamp lists port spreads; the board stays the short status."
+version: "1.1.5"
+description: "v1.1.5 — Health Elastic nurse: NetFlow visits run visit_netflow.py. A port spread counts service ports only, not return traffic."
 ---
 
 # Health Elastic skill
