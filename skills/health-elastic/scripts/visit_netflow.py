@@ -147,6 +147,31 @@ def substitute(query, measurement, window):
     return query.replace("<measurement>", measurement).replace("<window>", interval)
 
 
+def tool_body(label, tool, args):
+    started = time.monotonic()
+    envelope = visit_common.mcp_call(tool, args, retries=1)
+    elapsed = time.monotonic() - started
+    error = None
+    inner = None
+    if not isinstance(envelope, dict) or not envelope.get("success"):
+        error = (envelope or {}).get("error") if isinstance(envelope, dict) else "empty envelope"
+        error = error or "success false"
+    else:
+        outer = envelope.get("result")
+        raw = outer[0] if isinstance(outer, list) and outer else outer
+        try:
+            inner = json.loads(raw, strict=False) if isinstance(raw, str) else raw
+        except json.JSONDecodeError:
+            error = "result[0] not json"
+        if error is None and isinstance(inner, dict) and inner.get("ok") is False:
+            error = inner.get("error") or "ok false"
+        elif error is None and not isinstance(inner, dict):
+            error = "inner envelope not an object"
+    shown = "ok" if error is None else str(error)[:160]
+    print(f"netflow call={label} elapsed_s={elapsed:.3f} result={shown}", file=sys.stderr)
+    return inner, error
+
+
 def elastic_query(label, query, timerange):
     """elasticsearch_query body is {ok, rows, truncated}. Rows use the aliases in netflow.md."""
     inner, error = tool_body(label, "elasticsearch_query", {"query": query, "timerange": timerange, "limit": 50})

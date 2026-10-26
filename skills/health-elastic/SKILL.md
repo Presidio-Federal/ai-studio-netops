@@ -1,7 +1,7 @@
 ---
 name: health-elastic
-version: "1.1.1"
-description: "v1.1.1 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; stamp a surge, a loud new path, or an exporter change."
+version: "1.1.2"
+description: "v1.1.2 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; stamp a surge, a loud new path, or an exporter change."
 ---
 
 # Health Elastic skill
