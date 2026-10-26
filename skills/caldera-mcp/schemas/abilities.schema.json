@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "campaign-abilities/v1",
+  "title": "campaigns/abilities/relevant.json",
+  "description": "Abilities kept for this lab. No command text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "abilities"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "campaign-abilities/v1" },
+    "updated_at": { "type": "string" },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "abilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["ability_id", "name", "tactic", "technique_id", "why"],
+        "properties": {
+          "ability_id": { "type": "string" },
+          "name": { "type": "string" },
+          "tactic": { "type": "string" },
+          "technique_id": { "type": ["string", "null"] },
+          "why": { "type": "string", "enum": ["scan", "probe", "sweep", "port", "lab-adversary"] }
+        }
+      }
+    }
+  }
+}

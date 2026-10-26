@@ -1,7 +1,7 @@
 ---
 name: health-elastic
-version: "1.0.0"
-description: "v1.0.0 — Health Elastic nurse: NetFlow visits run visit_netflow.py through Elasticsearch. Board every visit; stamp only when a row moved."
+version: "1.1.0"
+description: "v1.1.0 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; stamp a surge, a loud new path, or an exporter change."
 ---
 
 # Health Elastic skill
@@ -27,19 +27,29 @@ written on the first visit, when an exporter or conversation moved,
 or when coverage is not complete. A quiet visit rewrites the board
 only.
 
+F2 collapses flows into named paths: source device, destination
+device, and service. A path that holds steady is not a finding.
+The first stamp is the baseline: reporting exporters and the five
+largest paths, each note `Baseline.` The rest of the profile stays
+on the board. A later stamp is a path whose bytes or flows moved
+by 4×, a new path with a bunch of flows, a deny that surged, or
+an exporter that went silent or returned. The note on a surge says
+to research that path. It does not paste flow records.
+
 F3 keeps rows whose `netflow.firewall_event` is `3` (Cisco NSEL
-denied). A new, changed, or cleared deny is material. A deny still
-in the window degrades the plane. Zero deny rows is a quiet firewall
-result, not a failed query. The stream does not carry the old
-Grafana `fw_event` text.
+denied). A deny that matches the board is quiet. A deny count that
+surges is material. Zero deny rows is a quiet firewall result, not
+a failed query. The stream does not carry the old Grafana
+`fw_event` text.
 
 An exporter going `silent` degrades the plane. That silence is a
-collection gap, not a forwarding failure. A conversation missing
-from the top-N query is `not_in_top_n`, not absent. A new top-N pair
-is traffic, including traffic a security test generated. It is not a
-forwarding failure. Device identity comes only from fresh
-exact-interface, access-host, or exporter-name evidence. This stream
-has no exporter hostname; `observer.ip` is the exporter address.
+collection gap, not a forwarding failure. A path missing from the
+query is `not_in_top_n`, not absent, and not a stamp. A new path
+is traffic, including traffic a security test generated. It is a
+stamp only when the flow count is a bunch for the window. Device
+identity comes only from fresh exact-interface, access-host, or
+exporter-name evidence. `observer.ip` is the exporter address.
+`observer.name` is the display name when the stream has one.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.

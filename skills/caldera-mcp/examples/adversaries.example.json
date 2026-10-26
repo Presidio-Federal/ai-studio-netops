@@ -1,0 +1,13 @@
+{
+  "keys": [],
+  "schema": "campaign-adversaries/v1",
+  "updated_at": "2026-10-26T01:30:00Z",
+  "source_agent": "caldera-mcp",
+  "adversaries": [
+    {
+      "adversary_id": "<adversary-id>",
+      "name": "lab-scan",
+      "ability_ids": ["<ability-id>"]
+    }
+  ]
+}

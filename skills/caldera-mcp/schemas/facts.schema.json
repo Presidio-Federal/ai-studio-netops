@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "campaign-facts/v1",
+  "title": "campaigns/facts/lab.json",
+  "description": "Facts whose values are addresses or URLs on the lab map.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "facts"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "campaign-facts/v1" },
+    "updated_at": { "type": "string" },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "trait", "value"],
+        "properties": {
+          "source": { "type": "string" },
+          "trait": { "type": "string", "enum": ["app.url", "remote.host.ip"] },
+          "value": { "type": "string" }
+        }
+      }
+    }
+  }
+}

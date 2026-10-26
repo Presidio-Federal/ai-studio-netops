@@ -43,27 +43,33 @@ the mapping above. `timerange` is the board window (`1h`, not
 
 **F1 — exporters. Always.** One row per `observer.ip` this window.
 `netflow.exporter.address` includes an ephemeral source port. Do
-not use it as the exporter identity.
+not use it as the exporter identity. `observer.name` is the name
+when the stream has one.
 
 `elasticsearch_query(timerange=<board window>, limit=50, query=`
 ```
 FROM <measurement>
 | WHERE @timestamp >= NOW() - <window>
-| STATS bytes = SUM(network.bytes), flows = COUNT(*), last_at = MAX(@timestamp) BY observer.ip
+| EVAL exporter_name = COALESCE(observer.name, "")
+| STATS bytes = SUM(network.bytes), flows = COUNT(*), last_at = MAX(@timestamp) BY observer.ip, exporter_name
 | EVAL source = TO_STRING(observer.ip)
-| KEEP source, bytes, flows, last_at
+| KEEP source, exporter_name, bytes, flows, last_at
 | SORT bytes DESC
 | LIMIT 50
 ```
 `)`
 
-Row columns: `source`, `bytes`, `flows`, `last_at` (RFC3339).
+Row columns: `source`, `exporter_name`, `bytes`, `flows`, `last_at` (RFC3339).
 
-**F2 — conversations. Always.** The 40 largest client → server
-conversations this window, per exporter. Telemetry toward the
-collectors (NetFlow 2055, syslog 1514, sFlow 6343) and reverse
-flows toward ephemeral ports (≥ 32768) are excluded **in the
-query**.
+**F2 — paths. Always.** The largest client → server paths this
+window, one row per exporter, source name, destination name, and
+service. A name is `lab.source.device` or `lab.destination.device`
+when the stream has it, otherwise the address. The service is
+`lab.destination.service`, else `lab.destination.application`, else
+the destination port. Telemetry toward the collectors (NetFlow
+2055, syslog 1514, sFlow 6343) and reverse flows toward ephemeral
+ports (≥ 32768) are excluded **in the query**. This is not one
+row per flow and not one row per ephemeral port.
 
 `elasticsearch_query(timerange=<board window>, limit=50, query=`
 ```
@@ -72,9 +78,10 @@ FROM <measurement>
   AND network.transport IN ("tcp", "udp")
   AND destination.port > 0 AND destination.port < 32768
   AND destination.port != 2055 AND destination.port != 1514 AND destination.port != 6343
-| STATS bytes = SUM(network.bytes), flows = COUNT(*), last_at = MAX(@timestamp) BY observer.ip, source.ip, destination.ip, destination.port, network.transport
-| EVAL source = TO_STRING(observer.ip), src = TO_STRING(source.ip), dst = TO_STRING(destination.ip), dst_port = TO_STRING(destination.port), protocol = network.transport
-| KEEP source, src, dst, dst_port, protocol, bytes, flows, last_at
+| EVAL exporter_name = COALESCE(observer.name, ""), src_name = COALESCE(lab.source.device, TO_STRING(source.ip)), dst_name = COALESCE(lab.destination.device, TO_STRING(destination.ip)), service = COALESCE(lab.destination.service, lab.destination.application, TO_STRING(destination.port))
+| STATS bytes = SUM(network.bytes), flows = COUNT(*), last_at = MAX(@timestamp) BY observer.ip, exporter_name, src_name, dst_name, service, network.transport
+| EVAL source = TO_STRING(observer.ip), src = src_name, dst = dst_name, dst_port = service, protocol = network.transport
+| KEEP source, exporter_name, src, dst, dst_port, protocol, bytes, flows, last_at
 | SORT bytes DESC
 | LIMIT 40
 ```
@@ -88,9 +95,10 @@ update events are not rows. Zero rows is a quiet result.
 ```
 FROM <measurement>
 | WHERE @timestamp >= NOW() - <window> AND netflow.firewall_event == 3
-| STATS flows = COUNT(*) BY observer.ip, source.ip, destination.ip, destination.port, network.transport
-| EVAL event = "denied", source = TO_STRING(observer.ip), src = TO_STRING(source.ip), dst = TO_STRING(destination.ip), dst_port = TO_STRING(destination.port), protocol = network.transport
-| KEEP source, src, dst, dst_port, protocol, event, flows
+| EVAL exporter_name = COALESCE(observer.name, ""), src_name = COALESCE(lab.source.device, TO_STRING(source.ip)), dst_name = COALESCE(lab.destination.device, TO_STRING(destination.ip))
+| STATS flows = COUNT(*) BY observer.ip, exporter_name, src_name, dst_name, destination.port, network.transport
+| EVAL event = "denied", source = TO_STRING(observer.ip), src = src_name, dst = dst_name, dst_port = TO_STRING(destination.port), protocol = network.transport
+| KEEP source, exporter_name, src, dst, dst_port, protocol, event, flows
 | SORT flows DESC
 | LIMIT 40
 ```
@@ -157,8 +165,9 @@ set only on an exact interface or access-host match.
 ## Build the rows
 
 **Exporter row** (kind `exporter`) — one per F1 row. `source` is
-`observer.ip`. `exporter_name` and `exporter_site` are null unless
-the board already stored them. `state` `reporting`. Keys:
+`observer.ip`. `exporter_name` is the F1 name when it is non-empty,
+else the name the board already stored. `exporter_site` stays as
+the board stored it. `state` `reporting`. Keys:
 `device:<device>` when resolved; `site:<exporter_site>` when that
 site is set; else `[]`.
 
@@ -167,19 +176,25 @@ A board exporter whose `source` has **no** F1 row is carried
 zero rows in total, carry nothing until the lookup check or the
 operator says the stream is right.
 
-**Conversation row** (kind `conversation`) — one per F2 row.
+**Conversation row** (kind `conversation`) — one per F2 path.
+`src` and `dst` are the names from F2. `dst_port` is the service
+token from F2, which may be a service name rather than a port.
 `scope` is `flow:<source>/<src>><dst>:<dst_port>/<protocol>`.
-`state` `present`. A board conversation missing from this top-N
-query is carried `not_in_top_n`. That is not absence and not a
-worse delta. A new pair, including one a security test opened, is
-traffic.
+`state` `present`. A board path missing from this query is carried
+`not_in_top_n`. That is not absence, not a stamp, and not a worse
+delta. A new path is traffic. It is a stamp only when its flow
+count is a bunch for the window (20 in 15m, 40 in 1h, 200 in 1d).
 
 **Firewall row** (kind `firewall`) — one per F3 row. `event` is
 `denied`. `state` `present`. A board deny missing from F3 is
 carried `absent`.
 
-`bytes_per_s` is bytes divided by the window. A 4× move counts only
-when both rows use the same window and both rates are above zero.
+`bytes_per_s` is bytes divided by the window. A 4× byte move counts
+only when both rows use the same window and both rates are above
+zero. A 4× flow move counts only when both rows use the same window
+and the larger count is a bunch for that window. A steady path is
+not a finding. A surge is the finding, and the note says to
+research that path. It is not a forwarding failure.
 
 Estate `bytes` and `flows` come from the reporting exporter with the
 largest byte total (`observation_source`). Matching five-tuples are
@@ -201,27 +216,36 @@ Match rows to `netflow.current[]` by `scope`.
 | exporter | `state` differs (`reporting` ↔ `silent`) | `state` |
 | exporter | scope not on the board | `row` |
 | exporter | `identity` differs | `identity` |
-| conversation | `state` differs, including `present` ↔ `not_in_top_n` | `state` |
-| conversation | scope not on the board | `row` |
+| conversation | `present` ↔ `absent` only. `present` ↔ `not_in_top_n` is not material | `state` |
+| conversation | scope not on the board, and `flows` is a bunch for the window | `row` |
 | conversation | same window, both `bytes_per_s` > 0, and the rate ≥ 4× or ≤ ¼ | `bytes_per_s` |
+| conversation | same window, both `flows` > 0, the count ≥ 4× or ≤ ¼, and the larger count is a bunch | `flows` |
 | firewall | `state` differs (`present` ↔ `absent`) | `state` |
-| firewall | scope not on the board | `row` |
-| firewall | deny count differs | `flows` |
+| firewall | scope not on the board, and `flows` is a bunch for the window | `row` |
+| firewall | same window, deny count ≥ 4× or ≤ ¼, and the larger count is a bunch | `flows` |
 
+A path that merely leaves the top query is not a reading.
 `not_in_top_n` is not worse. **Delta.** `first` on the baseline.
-`worse` when any exporter went `silent` or a resolved conversation
-went `absent`. `better` when something returned and nothing is
-worse. `changed` otherwise. `unchanged` when none.
+`worse` when any exporter went `silent` or a deny count surged.
+`better` when something returned and nothing is worse. `changed`
+when a path surged or a loud new path appeared. `unchanged` when
+none.
 
 ## Stamp or quiet
 
-- Baseline: stamp; `delta` `first`; `changed` `[]`.
-- `changed[]` non-empty, or coverage not `complete`: stamp.
+- Baseline: stamp; `delta` `first`; `changed` `[]`. Readings are
+  the reporting exporters and the five largest paths. Every note
+  is `Baseline.` The other paths stay on the board and are
+  `unchanged`. Do not copy every F2 row into the stamp.
+- A later visit: stamp when a row in the table above moved, or
+  coverage is not `complete`. The note on a surge names the path
+  and says to research it. Do not paste flow records.
 - Otherwise quiet: board only.
 
-Plane `status`: `degraded` when any exporter is `silent` or any
-firewall row is `present`; `unknown` when F1 failed or the lookup
-is suspect; else `ok`. Conversations do not vote. Coverage:
+Plane `status`: `degraded` when any exporter is `silent` or a deny
+count surged; `unknown` when F1 failed or the lookup is suspect;
+else `ok`. A deny that matches the board does not degrade the
+plane. A path surge does not degrade the plane. Coverage:
 `complete` when F1, F2, and F3 returned; `partial` when F1 returned
 and F2 or F3 failed; `unavailable` when F1 failed.
 

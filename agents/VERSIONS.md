@@ -20,7 +20,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
-| Health Telemetry | 1.2.0 | MiniMax |
+| Health Telemetry | 1.3.0 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
@@ -32,9 +32,11 @@ Deployed model is **MiniMax** unless noted.
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
 
+Health Telemetry 1.3.0 (skill health-elastic 1.1.0, workspace-handoff 1.70.31): the first NetFlow stamp is a baseline of named paths, not every flow. A later stamp is a 4× surge, a loud new path, a deny surge, or an exporter change. Names come from `observer.name` and `lab.*.device` when the stream has them. A steady path or a steady deny is not a finding. MiniMax.
+
 Health Telemetry 1.2.0 (skill health-elastic 1.0.0, workspace-handoff 1.70.30): the NetFlow plane reads Elasticsearch `logs-netflow.log-default` with ES|QL. Grafana Influx is not this visit. `observer.ip` is the exporter. A deny is `netflow.firewall_event` 3. MiniMax.
 
-Caldera skill 1.0.0: separate workspace. Reads `inventory/network.json`, then creates a traffic operation on an enrolled group. No agent prompt yet. MiniMax.
+Caldera skill 2.1.0: collect writes `campaigns/` from Caldera only. Network, CML, and IOS-XE stay on their own agents. A run starts one operation from the kept ability ids. Ability commands stay on the server. `next_test` is the following campaign. No agent prompt yet. MiniMax.
 
 Ops CMDB Sync skill 1.2.2: an address that already exists in NetBox is reused. The device primary is pointed at that object. A duplicate create is not a gap for the operator. MiniMax. Agent prompt stays 1.2.0.
 

@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "campaign-metadata/v1",
+  "title": "campaigns/metadata.json",
+  "description": "Campaign board. Rewritten every visit. Points at the boards and the next test. Not a Caldera dump.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "last_visit_id", "last_collected_at", "coverage", "counts", "current_operation", "next_test"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "campaign-metadata/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "last_visit_id": { "type": ["string", "null"] },
+    "last_collected_at": { "type": ["string", "null"] },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["caldera"],
+      "properties": {
+        "caldera": { "type": "string", "enum": ["complete", "partial", "unavailable"] }
+      }
+    },
+    "counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["agents", "abilities", "adversaries", "facts"],
+      "properties": {
+        "agents": { "type": "integer" },
+        "abilities": { "type": "integer" },
+        "adversaries": { "type": "integer" },
+        "facts": { "type": "integer" }
+      }
+    },
+    "current_operation": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["id", "name", "state", "group", "adversary"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "state": { "type": "string" },
+        "group": { "type": "string" },
+        "adversary": { "type": "string" }
+      }
+    },
+    "next_test": {
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["group", "adversary", "why"],
+      "properties": {
+        "group": { "type": "string" },
+        "adversary": { "type": "string" },
+        "why": { "type": "string" }
+      }
+    }
+  }
+}

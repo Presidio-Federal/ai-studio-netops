@@ -1,0 +1,15 @@
+{
+  "keys": [],
+  "schema": "campaign-abilities/v1",
+  "updated_at": "2026-10-26T01:30:00Z",
+  "source_agent": "caldera-mcp",
+  "abilities": [
+    {
+      "ability_id": "<ability-id>",
+      "name": "Lab cloud scan",
+      "tactic": "discovery",
+      "technique_id": "T1046",
+      "why": "scan"
+    }
+  ]
+}

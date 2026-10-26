@@ -1,0 +1,22 @@
+{
+  "keys": ["device:<hq-user>", "device:<branch-edge>"],
+  "schema": "campaign-metadata/v1",
+  "updated_at": "2026-10-26T01:30:00Z",
+  "source_agent": "caldera-mcp",
+  "last_visit_id": "2026-10-26T01-30-00Z",
+  "last_collected_at": "2026-10-26T01:30:00Z",
+  "coverage": { "caldera": "complete" },
+  "counts": { "agents": 3, "abilities": 4, "adversaries": 2, "facts": 4 },
+  "current_operation": {
+    "id": "<operation-id>",
+    "name": "lab-scan-branch-2",
+    "state": "finished",
+    "group": "<branch>",
+    "adversary": "lab-scan"
+  },
+  "next_test": {
+    "group": "<branch>",
+    "adversary": "lab-scan",
+    "why": "The cloud-subnet scan produced a wide port spread. The single-port probe did not."
+  }
+}

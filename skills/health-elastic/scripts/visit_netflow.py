@@ -592,7 +592,7 @@ def conversation_row(raw, at, window, device_by_source, by_lower, access, nets):
     }
 
 
-def firewall_row(raw, at, by_lower, access, nets):
+def firewall_row(raw, at, window, by_lower, access, nets):
     event = blank(raw.get("event"))
     src = blank(raw.get("src"))
     dst = blank(raw.get("dst"))
@@ -638,7 +638,7 @@ def firewall_row(raw, at, by_lower, access, nets):
         "bytes": None,
         "flows": count,
         "bytes_per_s": None,
-        "window": None,
+        "window": window,
         "last_flow_at": None,
         "last_seen_at": at,
         "referral": [],
@@ -683,6 +683,14 @@ def too_old(value, now):
     return now - moment > timedelta(days=7)
 
 
+def bunch_floor(window):
+    return {"15m": 20, "1h": 40, "1d": 200}.get(window or "", 40)
+
+
+def is_bunch(row):
+    return (coerce_int(row.get("flows")) or 0) >= bunch_floor(row.get("window"))
+
+
 def rate_move(prior, current):
     if prior.get("window") != current.get("window"):
         return False
@@ -695,17 +703,36 @@ def rate_move(prior, current):
     return new >= old * 4 or new <= old / 4
 
 
+def flow_move(prior, current):
+    if prior.get("window") != current.get("window"):
+        return False
+    old = coerce_int(prior.get("flows")) or 0
+    new = coerce_int(current.get("flows")) or 0
+    if old <= 0 or new <= 0:
+        return False
+    if max(old, new) < bunch_floor(current.get("window")):
+        return False
+    return new >= old * 4 or new <= old / 4
+
+
 def material(row, prior):
     if prior is None:
-        current = row["state"] if row["kind"] == "exporter" else row.get("state")
-        return "row", None, current
+        if row["kind"] in ("conversation", "firewall"):
+            if is_bunch(row):
+                return "row", None, row.get("state")
+            return None, None, None
+        return "row", None, row["state"]
     if row["state"] != prior.get("state"):
-        return "state", prior.get("state"), row["state"]
+        membership = {row["state"], prior.get("state")} <= {"present", "not_in_top_n"}
+        if not (row["kind"] == "conversation" and membership):
+            return "state", prior.get("state"), row["state"]
     if row.get("identity") in ("conflicted", "unverified", "resolved") and row.get("identity") != prior.get("identity"):
         return "identity", prior.get("identity"), row.get("identity")
     if row["kind"] == "conversation" and row["state"] == "present" and rate_move(prior, row):
         return "bytes_per_s", prior.get("bytes_per_s"), row.get("bytes_per_s")
-    if row["kind"] == "firewall" and (coerce_int(prior.get("flows")) or 0) != (coerce_int(row.get("flows")) or 0):
+    if row["kind"] == "conversation" and row["state"] == "present" and flow_move(prior, row):
+        return "flows", prior.get("flows"), row.get("flows")
+    if row["kind"] == "firewall" and flow_move(prior, row):
         return "flows", prior.get("flows"), row.get("flows")
     return None, None, None
 
@@ -747,6 +774,8 @@ def overall_delta(pairs, first):
 
 
 def note_for(row, prior, first, migration=False):
+    if first and not migration:
+        return "Baseline."
     if migration and (prior is None or row.get("identity") in ("conflicted", "unverified") or row.get("state") == "not_in_top_n"):
         return "Baseline migration. Identifier rules changed. Not an operational degradation."
     if row.get("identity") == "conflicted":
@@ -763,15 +792,25 @@ def note_for(row, prior, first, migration=False):
         return "Not in the top-N query. Last observation kept. Not absence."
     if row["state"] == "absent":
         return "Absent this window."
+    if prior is None and row["kind"] == "conversation":
+        return (
+            f"New path {row.get('src')} to {row.get('dst')} ({row.get('dst_port')}), "
+            f"{row.get('flows')} flows. Research who opened it. Not a forwarding failure."
+        )
     if prior is None:
         return "New row."
-    if row["kind"] == "conversation" and row.get("bytes_per_s") is not None:
+    if row["kind"] == "conversation" and rate_move(prior, row):
         return (
-            f"Observed {row['bytes_per_s']} B/s at {row.get('source')} over {row.get('window')}. "
-            "Not interface utilization. Delayed exports not measured."
+            f"{row.get('src')} to {row.get('dst')} ({row.get('dst_port')}) moved from "
+            f"{prior.get('bytes_per_s')} B/s to {row.get('bytes_per_s')} B/s. Research this path."
+        )
+    if row["kind"] == "conversation" and flow_move(prior, row):
+        return (
+            f"{row.get('src')} to {row.get('dst')} ({row.get('dst_port')}) flows "
+            f"{prior.get('flows')} -> {row.get('flows')}. Research this path."
         )
     if row["kind"] == "firewall":
-        return f"Denies {prior.get('flows') if prior else 0} -> {row.get('flows')}."
+        return f"Denies {prior.get('flows') if prior else 0} -> {row.get('flows')}. Research the deny."
     if prior:
         return f"{prior.get('state')} -> {row['state']}."
     return "Row updated."
@@ -1031,7 +1070,7 @@ def cmd_collect(args):
             truncated = truncated or bool(fw_payload.get("truncated"))
             for raw in fw_payload.get("rows") or []:
                 if isinstance(raw, dict):
-                    row = firewall_row(raw, at, by_lower, access, nets)
+                    row = firewall_row(raw, at, window, by_lower, access, nets)
                     if row:
                         firewalls.append(row)
     else:
@@ -1070,12 +1109,21 @@ def cmd_collect(args):
         field, _prior_value, _current_value = material(row, prior)
         if field:
             pairs.append((row, prior, field))
+    prior_paths = [row for row in prior_rows if row["kind"] == "conversation"]
+    fresh_paths = [row for row in conversations if row["state"] == "present"]
+    rebaseline = bool(prior_paths) and bool(fresh_paths) and not (
+        {row["scope"] for row in fresh_paths} & {row["scope"] for row in prior_paths}
+    )
+    if rebaseline:
+        pairs = [item for item in pairs if item[0]["kind"] != "conversation"]
 
     coverage = "partial" if f2_failed or fw_failed or truncated else "complete"
-    denies = any(row["kind"] == "firewall" and row["state"] == "present" for row in current_rows)
+    denies = any(row["kind"] == "firewall" and is_worse(row, prior) for row, prior, _field in pairs)
     silent = any(row["kind"] == "exporter" and row["state"] == "silent" for row in current_rows)
     status = "degraded" if silent or denies else "ok"
     delta = overall_delta(pairs, first)
+    if rebaseline and delta == "unchanged":
+        delta = "changed"
     if migration and delta == "worse":
         operational = any(
             (
@@ -1095,10 +1143,16 @@ def cmd_collect(args):
         )
         if not operational:
             delta = "changed"
-    write_stamp = first or bool(pairs) or coverage != "complete"
+    write_stamp = first or rebaseline or bool(pairs) or coverage != "complete"
     reading_rows = [row for row, _prior, _field in pairs]
     if first:
-        reading_rows = list(current_rows)
+        reporting = [row for row in current_rows if row["kind"] == "exporter" and row["state"] == "reporting"]
+        largest = sorted(
+            [row for row in current_rows if row["kind"] == "conversation" and row["state"] == "present"],
+            key=lambda row: row.get("bytes") or 0,
+            reverse=True,
+        )[:5]
+        reading_rows = reporting + largest
     readings_truncated = len(reading_rows) > READINGS_CAP
     if readings_truncated:
         reading_rows = sorted(
@@ -1109,10 +1163,10 @@ def cmd_collect(args):
     readings = []
     for row in reading_rows:
         item = {field: row.get(field) for field in ROW_FIELDS}
-        item["note"] = note_for(row, prior_for.get(row["scope"]), first, migration)
+        item["note"] = note_for(row, prior_for.get(row["scope"]), first or rebaseline, migration)
         readings.append(item)
     reading_scopes = {row["scope"] for row in readings}
-    unchanged = 0 if first else sum(1 for row in current_rows if row["scope"] not in reading_scopes)
+    unchanged = sum(1 for row in current_rows if row["scope"] not in reading_scopes)
 
     public_changed = []
     if not first:
@@ -1140,8 +1194,20 @@ def cmd_collect(args):
         watch, moment = fresh_stamp_id(ws, now)
         at = checked_at(moment)
         metric["at"] = at
-        headline = "Baseline." if first else f"{len(readings)} flow rows moved. {unchanged} board rows unchanged."
-        if migration:
+        if first:
+            lead = reporting[0] if reporting else None
+            path = largest[0] if largest else None
+            who = f"{len(reporting)} exporters reporting."
+            if path:
+                who += f" Largest path {path.get('src')} to {path.get('dst')} {path.get('dst_port')}."
+            elif lead:
+                who += f" Largest exporter {lead.get('exporter_name') or lead.get('source')}."
+            headline = f"Baseline. {who} {unchanged} other paths kept on the board."
+        else:
+            headline = f"{len(readings)} paths moved. {unchanged} board rows unchanged."
+        if rebaseline:
+            headline = "Baseline. Path names now come from the stream. Not an operational change. " + headline
+        elif migration:
             headline = "Baseline migration. Identifier rules changed. Not an operational degradation. " + headline
         if lookup_note:
             headline = f"{lookup_note}. {headline}"

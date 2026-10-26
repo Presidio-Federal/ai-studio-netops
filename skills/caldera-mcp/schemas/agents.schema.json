@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "campaign-agents/v1",
+  "title": "campaigns/agents/enrolled.json",
+  "description": "Trusted Caldera agents that match a node on the lab map.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "agents"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "campaign-agents/v1" },
+    "updated_at": { "type": "string" },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["paw", "host", "group", "addresses", "last_seen", "device"],
+        "properties": {
+          "paw": { "type": "string" },
+          "host": { "type": "string" },
+          "group": { "type": "string" },
+          "addresses": { "type": "array", "items": { "type": "string" } },
+          "last_seen": { "type": ["string", "null"] },
+          "device": { "type": "string" }
+        }
+      }
+    }
+  }
+}

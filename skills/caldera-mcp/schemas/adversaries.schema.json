@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "campaign-adversaries/v1",
+  "title": "campaigns/adversaries/relevant.json",
+  "description": "Adversaries whose abilities are in the relevant set, or whose name starts with lab-.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "adversaries"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "campaign-adversaries/v1" },
+    "updated_at": { "type": "string" },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "adversaries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["adversary_id", "name", "ability_ids"],
+        "properties": {
+          "adversary_id": { "type": "string" },
+          "name": { "type": "string" },
+          "ability_ids": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  }
+}

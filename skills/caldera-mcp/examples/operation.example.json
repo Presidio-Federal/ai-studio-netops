@@ -1,0 +1,26 @@
+{
+  "keys": ["device:<branch-user>"],
+  "schema": "campaign-operation/v1",
+  "updated_at": "2026-10-26T01:30:00Z",
+  "source_agent": "caldera-mcp",
+  "status": "finished",
+  "headline": "Cloud subnet scan from <branch> finished.",
+  "next_action": "Repeat lab-scan. Drop the single-port probe.",
+  "operation": {
+    "id": "<operation-id>",
+    "name": "lab-scan-branch-2",
+    "state": "finished",
+    "group": "<branch>",
+    "adversary": "lab-scan",
+    "started": "2026-10-26T01:28:00Z"
+  },
+  "links": [
+    {
+      "host": "<branch-user>",
+      "paw": "<paw>",
+      "ability": "Lab cloud scan",
+      "technique_id": "T1046",
+      "status": 0
+    }
+  ]
+}

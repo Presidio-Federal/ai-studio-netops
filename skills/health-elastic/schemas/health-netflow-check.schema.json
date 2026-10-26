@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-netflow-check/v1",
   "title": "health/netflow/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "NetFlow lab slip (Kind observation). Written on the first visit, when an exporter went silent or returned, when a conversation appeared, vanished, or moved by the fixed byte factor against the board on health/metadata-netflow.json, or when coverage is not complete. A quiet visit writes the board only. metrics: one estate row. readings: rows that moved, same shape as a board row plus note. The exporter and the resolved src_device / dst_device are the edge — there is no relations[] on this stamp. Do not store individual flow records.",
+  "description": "NetFlow lab slip (Kind observation). The first visit is a baseline: reporting exporters and the five largest named paths, notes Baseline, other paths counted as unchanged. A later visit is written when a path's bytes or flows move by 4x, a new path has a bunch of flows, a deny count surges, an exporter changes, or coverage is not complete. A quiet visit writes the board only. Do not store individual flow records.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
@@ -41,7 +41,7 @@
       "type": "array",
       "maxItems": 60,
       "items": { "$ref": "#/$defs/reading" },
-      "description": "Rows that moved materially this visit (every row on the first visit). Empty only when coverage is not complete."
+      "description": "Baseline: reporting exporters and the five largest paths. Later: rows that surged or a loud new path. Empty only when coverage is not complete and nothing else is due."
     },
     "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
     "baseline_ref": { "type": ["string", "null"], "description": "health/netflow/<baseline_visit_id>.json. Null on the first visit." },
@@ -156,7 +156,7 @@
         "last_flow_at": { "type": ["string", "null"] },
         "last_seen_at": { "type": ["string", "null"] },
         "referral": { "type": "array", "items": { "type": "string" } },
-        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion against the board row: silent since when, returned after how long, new or vanished pair, bytes up or down by how much. Not the columns again. No application name, cause, or device beyond exporter / src_device / dst_device." }
+        "note": { "type": "string", "minLength": 1, "description": "Baseline. on the first visit. Later, one sentence: the path, the prior rate or count, the current one, and that the path should be researched. Not a flow dump." }
       }
     }
   }

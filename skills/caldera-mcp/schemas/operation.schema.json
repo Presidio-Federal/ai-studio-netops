@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "campaign-operation/v1",
+  "title": "campaigns/operations/YYYY-MM-DDTHH-MM-SSZ.json",
+  "description": "One lab operation. Envelope plus link outcomes. No command text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "status", "headline", "next_action", "operation", "links"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "campaign-operation/v1" },
+    "updated_at": { "type": "string" },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "status": { "type": "string", "enum": ["running", "finished", "paused", "blocked"] },
+    "headline": { "type": "string" },
+    "next_action": { "type": "string" },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "state", "group", "adversary", "started"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "state": { "type": "string" },
+        "group": { "type": "string" },
+        "adversary": { "type": "string" },
+        "started": { "type": ["string", "null"] }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["host", "paw", "ability", "technique_id", "status"],
+        "properties": {
+          "host": { "type": ["string", "null"] },
+          "paw": { "type": ["string", "null"] },
+          "ability": { "type": "string" },
+          "technique_id": { "type": ["string", "null"] },
+          "status": { "type": ["integer", "null"] }
+        }
+      }
+    }
+  }
+}

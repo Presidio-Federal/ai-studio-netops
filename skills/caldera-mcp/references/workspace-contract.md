@@ -1,37 +1,33 @@
-# Workspace — Caldera
+# Workspace — campaigns
 
-This workspace belongs to the Caldera agent. The network-ops chart
-is a different workspace. Do not read or write its files.
+This agent's chart is `campaigns/`. Network topology, CML, and
+IOS-XE belong to other agents. Do not write `campaigns/network/`,
+`inventory/`, `health/`, or `state/`. Do not write
+`inventory/network.json` or `security/`.
 
-The skill owns these schemas. Do not invent a second tree.
-
-## Collect
-
-A line that says to read the network, or refresh the network, is
-the collect. Use the network read tools attached to this agent.
-Write one file, then stop.
-
-Keep a device only when a tool returned its name. Copy addresses
-the tool returned. `role` is `host` for a Linux agent host, `network`
-for a router or firewall, `service` for an application the traffic
-test should reach. `group` is set only when the tool or the operator
-named the Caldera group for that host. Leave it null otherwise.
-
-Do not call Caldera on a collect. Do not write `security/`.
-
-## Run
-
-Read `inventory/network.json` before any Caldera call. The run does
-not refresh the network unless the operator also said to refresh.
-A refresh and a run are two turns.
+The skill owns these schemas. One writer. A collect replaces each
+board. An operation stamp is append-only. Keep 10 stamps under
+`campaigns/operations/` and delete older after a write. Do not
+delete the boards.
 
 ## When to write
 
 | File | Kind | When |
 |------|------|------|
-| `inventory/network.json` | snapshot | Collect. Replaced in full. |
-| `security/metadata.json` | metadata | Every run. |
-| `security/<stamp>.json` | result | One new file per run. Never overwrite. |
+| `campaigns/metadata.json` | metadata | Every visit. |
+| `campaigns/agents/enrolled.json` | snapshot | Every collect. |
+| `campaigns/abilities/relevant.json` | snapshot | Every collect. |
+| `campaigns/adversaries/relevant.json` | snapshot | Every collect. |
+| `campaigns/facts/lab.json` | snapshot | Every collect. |
+| `campaigns/operations/<stamp>.json` | result | Material operation only. |
+
+A quiet collect rewrites the boards and does not add a stamp.
+
+## Relevant
+
+A row that is not a trusted enrolled agent, not a `lab-` adversary,
+and not a discovery scan, probe, sweep, or port ability does not
+get a file. Do not store the Caldera catalog.
 
 ## Canonical top-level keys
 
