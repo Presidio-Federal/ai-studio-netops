@@ -13,6 +13,7 @@ import base64
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -420,7 +421,7 @@ def scan(workspace):
             return degraded("crosswalk JSON")
         banking = compact_crosswalk(crosswalk, crosswalk_path, crosswalk_sha)
 
-    return build_packet(
+    packet = build_packet(
         catalog,
         bridge_text,
         catalog_sha,
@@ -433,6 +434,283 @@ def scan(workspace):
         load_optional(workspace, "compliance/intel.json"),
         banking_crosswalk=banking,
     )
+    if packet.get("result") == "scan":
+        packet["coverage_counts"] = apply_catalog_coverage(workspace, packet)
+    return packet
+
+
+KEY_RE = re.compile(r"^(device|interface|site|service|test|control|incident|change):[^ ]+$")
+BASE_RE = re.compile(r"^([A-Z]{2}-\d+)")
+STATUS_RANK = {"covered": 0, "partial": 1, "unwired": 2, "gap": 3, "not_applicable": 4}
+
+
+def utc_stamp():
+    return datetime.now(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def clean_keys(values):
+    found = []
+    for item in values or []:
+        if isinstance(item, str) and KEY_RE.match(item) and item not in found:
+            found.append(item)
+        if len(found) >= 32:
+            break
+    return found
+
+
+def control_key(nist_id):
+    return "control:%s" % nist_id
+
+
+def recount(rows):
+    counts = {name: 0 for name in STATUS_RANK}
+    for row in rows:
+        status = row.get("status")
+        if status in counts:
+            counts[status] += 1
+    return counts
+
+
+def union_keys(rows):
+    found = []
+    for row in rows:
+        for key in row.get("keys") or []:
+            if key not in found:
+                found.append(key)
+    return found
+
+
+def dedupe_rows(rows):
+    by_id = {}
+    order = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        nist_id = row.get("nist_id")
+        if not isinstance(nist_id, str) or not nist_id:
+            continue
+        keys = clean_keys(row.get("keys"))
+        ck = control_key(nist_id)
+        if ck not in keys:
+            keys.insert(0, ck)
+        row = dict(row)
+        row["keys"] = keys[:32]
+        current = by_id.get(nist_id)
+        if current is None:
+            by_id[nist_id] = row
+            order.append(nist_id)
+            continue
+        if STATUS_RANK.get(row.get("status"), 9) < STATUS_RANK.get(current.get("status"), 9):
+            kept, other = row, current
+        else:
+            kept, other = current, row
+        merged = clean_keys((kept.get("keys") or []) + (other.get("keys") or []))
+        kept = dict(kept)
+        kept["keys"] = merged
+        for field in ("live", "static", "net_comp"):
+            values = []
+            for source in (kept.get(field) or [], other.get(field) or []):
+                for item in source:
+                    if isinstance(item, str) and item not in values:
+                        values.append(item)
+            if values:
+                kept[field] = values
+        by_id[nist_id] = kept
+    return [by_id[nist_id] for nist_id in order]
+
+
+def covered_row(nist_id, checks):
+    keys = [control_key(nist_id)]
+    live, static, rules = [], [], []
+    for check in checks:
+        if nist_id not in (check.get("nist") or []):
+            continue
+        test_key = "test:%s" % check["id"]
+        if test_key not in keys:
+            keys.append(test_key)
+        if check.get("evidence") == "live":
+            if check["id"] not in live:
+                live.append(check["id"])
+        elif check["id"] not in static:
+            static.append(check["id"])
+        for rule in check.get("rules") or []:
+            rule_key = "test:%s" % rule
+            if rule_key not in keys:
+                keys.append(rule_key)
+            if rule not in rules:
+                rules.append(rule)
+    return {
+        "nist_id": nist_id,
+        "status": "covered",
+        "keys": clean_keys(keys),
+        "live": live,
+        "static": static,
+        "net_comp": rules,
+    }
+
+
+def write_json(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def apply_catalog_coverage(workspace, packet):
+    """Upsert one covered row per bridged NIST id. Keep prior gap and N/A rows."""
+    root = Path(workspace)
+    path = root / "compliance" / "coverage.json"
+    current = load_optional(workspace, "compliance/coverage.json")
+    checks = ((packet.get("catalog") or {}).get("published_checks") or [])
+    published = []
+    for check in checks:
+        for nist_id in check.get("nist") or []:
+            if isinstance(nist_id, str) and nist_id not in published:
+                published.append(nist_id)
+    rows = dedupe_rows(current.get("rows") or [])
+    by_id = {row["nist_id"]: row for row in rows}
+    for nist_id in published:
+        fresh = covered_row(nist_id, checks)
+        prior = by_id.get(nist_id)
+        if prior:
+            for field in ("family_id", "title", "platforms"):
+                if prior.get(field) and not fresh.get(field):
+                    fresh[field] = prior[field]
+            fresh["keys"] = clean_keys((fresh.get("keys") or []) + (prior.get("keys") or []))
+        by_id[nist_id] = fresh
+    ordered = []
+    seen = set()
+    for nist_id in published + [row["nist_id"] for row in rows]:
+        if nist_id in by_id and nist_id not in seen:
+            ordered.append(by_id[nist_id])
+            seen.add(nist_id)
+    payload = dict(current) if current else {}
+    payload.update({
+        "version": 1,
+        "updated_at": utc_stamp(),
+        "source_agent": "compliance-intel",
+        "oscal_release": packet.get("oscal_release") or payload.get("oscal_release") or "v1.5.0",
+        "git_ref": "main",
+        "rows": ordered,
+        "counts": recount(ordered),
+        "keys": union_keys(ordered),
+        "published_nist": published,
+    })
+    if not payload.get("estate_source"):
+        payload["estate_source"] = "inventory/prod.json"
+    write_json(path, payload)
+    return payload["counts"]
+
+
+def frameworks_for(nist_id, controls):
+    """Exact crosswalk row, otherwise the base control (AC-17(2) uses AC-17)."""
+    if not isinstance(controls, dict):
+        return None
+    row = controls.get(nist_id)
+    if not isinstance(row, dict):
+        match = BASE_RE.match(nist_id or "")
+        base = match.group(1) if match else None
+        if base and base != nist_id:
+            row = controls.get(base)
+    if not isinstance(row, dict):
+        return None
+    return {
+        "pci_dss_v4": [item for item in (row.get("pci_dss_v4") or []) if isinstance(item, str)],
+        "ffiec": [item for item in (row.get("ffiec") or []) if isinstance(item, str)],
+    }
+
+
+def candidate_nist_ids(candidate):
+    ids = []
+    for item in candidate.get("nist_sp_800_53") or []:
+        mapped = query_sources.nist_id_from_value(item)
+        if mapped and mapped not in ids:
+            ids.append(mapped)
+    source = query_sources.nist_id_from_value(candidate.get("source_control"))
+    if source and source not in ids:
+        ids.insert(0, source)
+    return ids
+
+
+def finalize(workspace):
+    """Recount coverage from its rows and fill PCI/FFIEC ids from the crosswalk."""
+    root = Path(workspace)
+    coverage_path = root / "compliance" / "coverage.json"
+    intel_path = root / "compliance" / "intel.json"
+    coverage = load_optional(workspace, "compliance/coverage.json")
+    intel = load_optional(workspace, "compliance/intel.json")
+    if not coverage or not intel:
+        return {"result": "failed", "error": "coverage.json and intel.json are both required"}
+    published = [item for item in (coverage.get("published_nist") or []) if isinstance(item, str)]
+    checks = []
+    rows = dedupe_rows(coverage.get("rows") or [])
+    by_id = {row["nist_id"]: row for row in rows}
+    controls = ((intel.get("banking_crosswalk") or {}).get("controls") or {})
+    candidates = []
+    for candidate in intel.get("candidates") or []:
+        if not isinstance(candidate, dict):
+            continue
+        nist_ids = candidate_nist_ids(candidate)
+        if published and nist_ids and all(item in published for item in nist_ids):
+            continue
+        mapped = None
+        for nist_id in nist_ids:
+            mapped = frameworks_for(nist_id, controls)
+            if mapped:
+                break
+        if mapped:
+            candidate = dict(candidate)
+            candidate["frameworks"] = mapped
+        if nist_ids and nist_ids[0] not in published:
+            gap = by_id.get(nist_ids[0])
+            if gap is None or gap.get("status") == "not_applicable":
+                by_id[nist_ids[0]] = {
+                    "nist_id": nist_ids[0],
+                    "status": "gap",
+                    "keys": clean_keys([control_key(nist_ids[0])]),
+                }
+        candidates.append(candidate)
+    ordered_ids = []
+    for row in rows:
+        if row["nist_id"] not in ordered_ids:
+            ordered_ids.append(row["nist_id"])
+    for nist_id in by_id:
+        if nist_id not in ordered_ids:
+            ordered_ids.append(nist_id)
+    ordered = [by_id[nist_id] for nist_id in ordered_ids if nist_id in by_id]
+    for nist_id in published:
+        if nist_id not in by_id:
+            ordered.append(covered_row(nist_id, checks))
+    ordered = dedupe_rows(ordered)
+    counts = recount(ordered)
+    coverage = dict(coverage)
+    coverage["rows"] = ordered
+    coverage["counts"] = counts
+    coverage["keys"] = union_keys(ordered)
+    coverage["updated_at"] = utc_stamp()
+    coverage["source_agent"] = "compliance-intel"
+    coverage["version"] = 1
+    skipped = intel.get("skipped_non_network") or []
+    na_ids = []
+    for line in skipped:
+        for match in query_sources.SKIPPED_ID_RE.finditer(str(line).upper()):
+            mapped = query_sources.nist_id_from_value(match.group(1))
+            if mapped and mapped not in na_ids:
+                na_ids.append(mapped)
+    intel = dict(intel)
+    intel["candidates"] = candidates[:10]
+    intel["delta"] = {
+        "catalog_covered": counts["covered"],
+        "relevant_missing": len(intel["candidates"]),
+        "not_applicable": counts["not_applicable"],
+    }
+    intel["updated_at"] = coverage["updated_at"]
+    write_json(coverage_path, coverage)
+    write_json(intel_path, intel)
+    return {
+        "result": "finalized",
+        "counts": counts,
+        "candidates": len(intel["candidates"]),
+        "delta": intel["delta"],
+    }
 
 
 def main(argv=None):
@@ -440,9 +718,13 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="cmd", required=True)
     scan_cmd = sub.add_parser("scan", help="Fetch the published catalog and unresolved NIST titles")
     scan_cmd.add_argument("--workspace", required=True, help="file_explorer directory")
+    done = sub.add_parser("finalize", help="Recount coverage and fill PCI/FFIEC ids")
+    done.add_argument("--workspace", required=True, help="file_explorer directory")
     args = parser.parse_args(argv)
     if args.cmd == "scan":
         emit(scan(args.workspace))
+    elif args.cmd == "finalize":
+        emit(finalize(args.workspace))
     return 0
 
 

@@ -1,7 +1,7 @@
 ---
 name: compliance-intel
-version: "1.21.0"
-description: "v1.21.0 — Compliance Intelligence: the scan returns the banking crosswalk so one NIST gap checks the PCI and FFIEC rows that cite it."
+version: "1.22.0"
+description: "v1.22.0 — The scan writes covered rows. finalize recounts coverage and fills PCI and FFIEC from the crosswalk."
 ---
 
 # Compliance intel
@@ -181,15 +181,15 @@ If the scan packet says `sources_degraded`: still write intel with
             keep untouched prior rows
 7. DRAFT   keep remaining candidates; add new ones up to cap 10;
             rank critical → high → medium → low
-8. WRITE   copy the packet's banking_crosswalk (path, version, join,
-            controls) onto intel.json. Then each file in full with
-            write_file. coverage.json has one
-            row per nist_id. A partial proof is status partial on that
-            row, not a second gap row. Recount counts from rows.
-            Do not search-replace a row with an empty block. If an edit
-            returns "Replace block cannot be empty", write the whole
-            file once and stop retrying. Then intel/<stamp>.json;
-            intel.json; metadata-intel.json.
+8. WRITE   Do not write coverage.json. scan already did.
+            Copy banking_crosswalk onto intel.json. Write
+            intel/<stamp>.json, intel.json, and metadata-intel.json.
+9. FINALIZE one execute_command, execution_type standard:
+            scan_catalog.py finalize --workspace <file_explorer>
+            It recounts coverage counts from the rows, restores a
+            missing covered row, and fills candidate frameworks.
+            AC-17(2) uses the AC-17 crosswalk row. Do not edit the
+            files after the last stdout line.
             The stamp and current intel carry the same candidates, including
             each `evidence` value. Set
             vs_prior.prior_visit_id from metadata, compare stable metrics and

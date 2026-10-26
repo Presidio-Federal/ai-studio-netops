@@ -1,11 +1,11 @@
 ---
 name: compliance-intel-agent
-version: "2.2.0"
+version: "2.2.1"
 ---
 
 # Compliance Intelligence
 
-Version 2.2.0.
+Version 2.2.1.
 
 ## Identity
 
@@ -121,34 +121,40 @@ Follow `compliance-intel`. Every scheduled / gaps / what’s-missing run:
    `evidence`, `nist`, `rules`). Those NIST ids are covered.
    `catalog.unwired` is not covered.
 4. Drop candidates listed in `now_covered`. Keep the rest. Cap 10.
-5. `backlog_full` true: do not add a candidate. Write coverage, then intel.
+5. `backlog_full` true: do not add a candidate. The scan already wrote
+   `compliance/coverage.json`. Write intel, then `finalize`.
 6. Else judge each `unresolved` title against **this** estate. No matching
    device here → coverage `not_applicable` and `skipped_non_network` with
    why. Do not propose it.
 7. Set `evidence` on every candidate you keep or add. `static` when
    committed config can answer (pytest). `live` when the device must be
-   asked. One plane. Do not leave it blank. Copy `frameworks` from
-   `banking_crosswalk.controls` for that NIST id (`pci_dss_v4` and
-   `ffiec` id lists). A PCI or FFIEC label whose NIST ids are already
-   on a bridged check is covered. Do not make it a new candidate.
+   asked. One plane. Do not leave it blank. A PCI or FFIEC label whose
+   NIST ids are already on a bridged check is covered. Do not make it a
+   new candidate. Do not write `compliance/coverage.json`. The scan
+   wrote the covered rows and `finalize` recounts them.
 8. Copy `banking_crosswalk` from the packet onto `compliance/intel.json`
-   (`path`, `version`, `join`, `controls`). That is how a later explain
-   ask answers which PCI or FFIEC id a NIST control checks. Write each
-   file in full with `write_file`. One coverage row per
-   `nist_id`. A check that only partly proves a control is one
-   `partial` row, not a second `gap` row for the same id. Recount
-   `counts` from those rows. Top-level `keys` is their deduplicated
-   union. Do not delete a row by search-replace with an empty block.
-   If an edit returns `Replace block cannot be empty`, stop that edit
-   and write the whole file once. Then the Intel visit, current intel,
-   and metadata. Link the
+   (`path`, `version`, `join`, `controls`). Write the Intel visit,
+   current intel, and metadata with `write_file`. Do not write
+   `compliance/coverage.json`. Link the
    visit to metadata's prior id, compare metrics/candidate ids in `vs_prior`,
    and add every source-supported `type:name` key
    required by the schemas; never infer a device relationship. Keep
    still-valid candidates. Add new
    ones up to cap 10. No duplicate themes. Sort `critical` → `high`
    → `medium` → `low`. Fill `delta`.
-9. **Stop.** Reply with the ranked list. Do **not** invoke another agent.
+9. One `execute_command`, `execution_type: standard`, same copied script
+   path, `timeout` 60:
+
+```text
+python3 <copied script path> finalize --workspace <copied file_explorer directory>
+```
+
+   The last stdout line is the corrected counts. `finalize` rewrites
+   `compliance/coverage.json` and `compliance/intel.json`. It fills
+   `frameworks` from the crosswalk. An enhancement with no row of its
+   own uses the base control (`AC-17(2)` uses `AC-17`). Do not edit
+   either file after this.
+10. **Stop.** Reply with the ranked list. Do **not** invoke another agent.
     Do not fake a commit, run, or posture assessment.
 
 GitHub is **read-only** inside the scan script. Never `github_run_action`.

@@ -1,0 +1,183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "health-metadata-netflow/v1",
+  "title": "health/metadata-netflow.json",
+  "description": "NetFlow plane board (Kind metadata). Health Elastic visit only. Rewritten every NetFlow visit, quiet or not. Carries the lookup (data_stream, window, exporters[]), last_visit_id (last stamp), last_collected_at (last completed collection), and the board: current[] last-known row per exporter and per conversation, series[] one estate metric row per visit, visits[]. Not the five-field envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "netflow"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$"},
+      "description": "Union of every key on current[]."
+    },
+    "schema": { "type": "string", "const": "health-metadata-netflow/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "health-elastic" },
+    "netflow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bucket", "measurement", "data_stream", "window", "exporters", "last_visit_id", "last_collected_at", "baseline_visit_id", "current", "series", "visits"],
+      "properties": {
+        "data_stream": { "type": "string", "minLength": 1, "description": "ES|QL FROM target. A logs-* stream whose name contains netflow. The same value is copied to measurement." },
+        "bucket": { "type": "string", "const": "elasticsearch", "description": "Marker that this board is the Elasticsearch plane. Not an Influx bucket." },
+        "measurement": { "type": "string", "minLength": 1, "description": "Same value as data_stream. Kept so a reader that still looks at measurement sees the stream name." },
+        "firewall_measurement": { "type": ["string", "null"], "description": "Unused. Denies are netflow.firewall_event on data_stream. Always null." },
+        "window": { "type": "string", "enum": ["15m", "1h", "1d"], "description": "timerange passed to elasticsearch_query every visit. Default 1h. An operator may set it; the nurse does not change it." },
+        "last_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$", "description": "watch_id of the last stamp written. Unchanged on a quiet visit." },
+        "last_collected_at": { "type": ["string", "null"], "description": "checked_at of the last completed collection, stamp or not." },
+        "baseline_visit_id": { "type": ["string", "null"], "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$" },
+        "identity_review": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Exporter addresses the operator marks conflicted even when one fresh candidate exists. The nurse writes 10.30.30.2 here when the list is empty."
+        },
+        "exporter_registry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["version", "entries"],
+          "properties": {
+            "version": { "type": "integer" },
+            "entries": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["source", "identity", "device", "candidates", "configured_export", "expected_activity", "collector_health", "observation_interface"],
+                "properties": {
+                  "source": { "type": "string" },
+                  "identity": { "type": ["string", "null"], "enum": ["resolved", "conflicted", "unverified", null] },
+                  "device": { "type": ["string", "null"] },
+                  "candidates": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": ["device", "evidence"],
+                      "properties": {
+                        "device": { "type": "string" },
+                        "evidence": { "type": "string" }
+                      }
+                    }
+                  },
+                  "configured_export": { "type": ["string", "null"], "enum": ["configured", "not_configured", null] },
+                  "expected_activity": { "type": ["string", "null"], "enum": ["expected", "idle_ok", null] },
+                  "collector_health": { "type": ["string", "null"], "enum": ["verified", "failing", null] },
+                  "observation_interface": { "type": ["string", "null"] }
+                }
+              }
+            }
+          }
+        },
+        "exporters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["source", "exporter_name", "device"],
+            "properties": {
+              "source": { "type": "string", "minLength": 1, "description": "Exporter address as tagged on the flow rows." },
+              "exporter_name": { "type": ["string", "null"], "description": "exporter_name tag as returned (unmapped is a value)." },
+              "exporter_site": { "type": ["string", "null"] },
+              "device": { "type": ["string", "null"], "description": "inventory/prod.json device name this exporter resolves to. Null when unresolved; the nurse does not guess." }
+            }
+          },
+          "description": "Every exporter address seen. observer.ip from F1. Resolved when that address matches inventory/prod.json or an exact topology interface."
+        },
+        "current": {
+          "type": "array",
+          "maxItems": 120,
+          "items": { "$ref": "#/$defs/row" },
+          "description": "Last-known row per exporter and per conversation. A visit replaces every row it measured. Exporters not seen are silent. Conversations missing from the top-N query are not_in_top_n."
+        },
+        "series": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/metric_row" },
+          "description": "One estate row per visit, oldest first."
+        },
+        "visits": {
+          "type": "array",
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/visit_row" }
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": { "netflow": { "type": "string", "enum": ["user", "discovered"] } }
+    }
+  },
+  "$defs": {
+    "row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "scope", "source", "exporter_name", "keys", "at", "state", "bytes", "flows"],
+      "description": "Same shape as a stamp reading, without note. Exporter rows and conversation rows share the shape; conversation-only columns are null on an exporter row.",
+      "properties": {
+        "kind": { "type": "string", "enum": ["exporter", "conversation", "firewall"] },
+        "scope": { "type": "string", "minLength": 1, "description": "exporter:<source> or flow:<source>/<src>><dst>:<dst_port>/<protocol>. Stable key for the board diff." },
+        "source": { "type": "string", "minLength": 1, "description": "Exporter address." },
+        "exporter_name": { "type": ["string", "null"] },
+        "exporter_site": { "type": ["string", "null"] },
+        "device": { "type": ["string", "null"], "description": "Exporter rows: the resolved device. Null on conversation rows (use exporter)." },
+        "exporter": { "type": ["string", "null"], "description": "Conversation rows: the exporter's resolved device, else null." },
+        "src": { "type": ["string", "null"] },
+        "dst": { "type": ["string", "null"] },
+        "dst_port": { "type": ["string", "null"] },
+        "protocol": { "type": ["string", "null"] },
+        "src_device": { "type": ["string", "null"], "description": "Not filled from a containing subnet." },
+        "dst_device": { "type": ["string", "null"], "description": "Not filled from a containing subnet." },
+        "src_gateway": { "type": ["string", "null"], "description": "Device whose interface address is exactly src." },
+        "dst_gateway": { "type": ["string", "null"], "description": "Device whose interface address is exactly dst." },
+        "identity": { "type": ["string", "null"], "enum": ["resolved", "conflicted", "unverified", null] },
+        "candidates": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["device", "evidence"], "properties": { "device": { "type": "string" }, "evidence": { "type": "string" } } } },
+        "bytes_per_s": { "type": ["number", "null"] },
+        "window": { "type": ["string", "null"] },
+        "referral": { "type": "array", "items": { "type": "string" } },
+        "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site):[^ ].*$" }, "description": "device:<device> / device:<exporter> / device:<src_device> / device:<dst_device> when resolved; site:<exporter_site> on exporter rows when tagged. Never an application or a port." },
+        "at": { "type": "string", "minLength": 1, "description": "checked_at of the visit that last measured or carried this row." },
+        "state": { "type": "string", "enum": ["reporting", "silent", "present", "absent", "not_in_top_n"], "description": "Exporter rows: reporting / silent. Conversation rows: present, not_in_top_n, or absent." },
+        "bytes": { "type": ["integer", "number", "null"] },
+        "flows": { "type": ["integer", "null"] },
+        "last_flow_at": { "type": ["string", "null"], "description": "Exporter rows: newest flow time seen from this source." },
+        "last_seen_at": { "type": ["string", "null"], "description": "Conversation rows: newest flow time for this pair." }
+      }
+    },
+    "metric_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["at", "scope", "exporters", "exporters_silent", "exporters_unresolved", "flows", "bytes", "conversations", "conversations_absent", "top_scope"],
+      "properties": {
+        "at": { "type": "string", "minLength": 1 },
+        "scope": { "type": "string", "const": "estate" },
+        "exporters": { "type": ["integer", "null"] },
+        "exporters_silent": { "type": ["integer", "null"] },
+        "exporters_unresolved": { "type": ["integer", "null"] },
+        "flows": { "type": ["integer", "null"] },
+        "bytes": { "type": ["integer", "number", "null"] },
+        "conversations": { "type": ["integer", "null"] },
+        "conversations_absent": { "type": ["integer", "null"] },
+        "top_scope": { "type": ["string", "null"] },
+        "observation_source": { "type": ["string", "null"] }
+      }
+    },
+    "visit_row": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "checked_at", "status", "coverage", "delta", "stamp_written", "window"],
+      "properties": {
+        "watch_id": { "type": ["string", "null"] },
+        "checked_at": { "type": "string", "minLength": 1 },
+        "status": { "type": "string", "enum": ["ok", "degraded", "unknown"] },
+        "coverage": { "type": "string", "enum": ["complete", "partial", "unavailable"] },
+        "delta": { "type": "string", "enum": ["first", "unchanged", "worse", "better", "changed"] },
+        "stamp_written": { "type": "boolean" },
+        "window": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

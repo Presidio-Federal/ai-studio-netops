@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "inventory-network/v1",
+  "title": "inventory/network.json",
+  "description": "Hosts and services the Caldera agent collected. Kind snapshot. Not the network-ops inventory/prod.json.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["keys", "schema", "updated_at", "source_agent", "devices", "services"],
+  "properties": {
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change|application):[^ ].*$" }
+    },
+    "schema": { "type": "string", "const": "inventory-network/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "caldera-mcp" },
+    "devices": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "site", "role", "group", "addresses"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "site": { "type": ["string", "null"] },
+          "role": { "type": "string", "enum": ["host", "network", "service"] },
+          "group": { "type": ["string", "null"], "description": "Caldera agent group when one is known. Null when the host has no agent." },
+          "addresses": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "services": {
+      "type": "array",
+      "description": "Destinations a traffic operation may open. url becomes an app.url fact. address becomes a remote.host.ip fact.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "url", "address", "port", "site"],
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "url": { "type": ["string", "null"] },
+          "address": { "type": ["string", "null"] },
+          "port": { "type": ["integer", "null"] },
+          "site": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

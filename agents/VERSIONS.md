@@ -15,12 +15,12 @@ Deployed model is **MiniMax** unless noted.
 | Modernization Analysis | 2.5.2 | MiniMax |
 | Modernization Lifecycle | 1.7.0 | MiniMax |
 | Compliance | 1.3.0 | MiniMax |
-| Compliance Intelligence | 2.2.0 | Frontier (operator-selected; catalog and NIST interpretation) |
+| Compliance Intelligence | 2.2.1 | Frontier (operator-selected; catalog and NIST interpretation) |
 | Compliance Author | 1.4.0 | MiniMax |
 | Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
-| Health Telemetry | 1.1.0 | MiniMax |
+| Health Telemetry | 1.2.0 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
@@ -32,6 +32,12 @@ Deployed model is **MiniMax** unless noted.
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
 
+Health Telemetry 1.2.0 (skill health-elastic 1.0.0, workspace-handoff 1.70.30): the NetFlow plane reads Elasticsearch `logs-netflow.log-default` with ES|QL. Grafana Influx is not this visit. `observer.ip` is the exporter. A deny is `netflow.firewall_event` 3. MiniMax.
+
+Caldera skill 1.0.0: separate workspace. Reads `inventory/network.json`, then creates a traffic operation on an enrolled group. No agent prompt yet. MiniMax.
+
+Ops CMDB Sync skill 1.2.2: an address that already exists in NetBox is reused. The device primary is pointed at that object. A duplicate create is not a gap for the operator. MiniMax. Agent prompt stays 1.2.0.
+
 Ops CMDB Sync skill 1.2.1: an address change looks up the interface by name before creating one. An existing `GigabitEthernet1` is reused. The IP on it is updated. MiniMax. Agent prompt stays 1.2.0.
 
 Ops CMDB Sync 1.2.0 (skill 1.2.0): the ServiceNow record is an `alm_hardware` asset. Serial and asset tag are the device name. `snow_get_asset` / `snow_upsert_asset`. The address is written in `comments` with the lab tenant, because the asset tools have no IP field. A missing NetBox device is created. MiniMax.
@@ -41,6 +47,8 @@ Ops CMDB Sync skill 1.1.1: the ServiceNow query also requires `comments` equal t
 Ops CMDB Sync 1.1.0 (skill 1.1.0, workspace-handoff 1.70.28): `scripts/sync_cmdb.py sync` runs under `mcp_orchestration`. Scope is `inventory/prod.json` `netbox.tenant` (else `source.name`) and one `devices[]` name. NetBox find sends that tenant and requires the `{tenant}-simulate` tag. ServiceNow is one exact-name query, limit 5, network CI classes only. `origin` `prod-twin` is not a separator. MiniMax.
 
 Ops CMDB Sync 1.0.0 (skill 1.0.0, workspace-handoff 1.70.27): a NetBox or ServiceNow webhook is the same job. `Sync <device>.` The signal is a label. IOS-XE hostname must match that name. Primary IPv4 is copied onto the existing NetBox address only. ServiceNow is read with `snow_query_table`; a mismatch is a gap because there is no network-CI write tool. Serial, asset tag, status, model, and site are reported and not copied. `state/cmdb-sync.json` is this invoke only. A second webhook that already matches writes nothing. MiniMax.
+
+Compliance Intelligence 2.2.1 (skill 1.22.0): `scan` writes the covered rows in `compliance/coverage.json`. `finalize` recounts `counts` from those rows, drops a key that has no row, and fills candidate `frameworks` from the banking crosswalk. `AC-17(2)` uses the `AC-17` row when the enhancement has none. The model does not write coverage.
 
 Compliance Test skill 1.13.1: the federal brief writes failing control rows. The id is in backticks in the log (`AC-11`, `8.2.8`). Skill 1.13.0 stored the counts and dropped those rows.
 

@@ -1,0 +1,27 @@
+{
+  "keys": ["device:<branch-user>", "site:<branch>"],
+  "schema": "security-metadata/v1",
+  "updated_at": "2026-10-25T23:45:00Z",
+  "source_agent": "caldera-mcp",
+  "last_operation_id": "<operation-id>",
+  "last_collected_at": "2026-10-25T23:45:00Z",
+  "agents": [
+    {
+      "paw": "<paw>",
+      "host": "<branch-user>",
+      "group": "<branch>",
+      "platform": "linux",
+      "last_seen": "2026-10-25T23:44:00Z",
+      "trusted": true,
+      "device": "<branch-user>"
+    }
+  ],
+  "operation": {
+    "id": "<operation-id>",
+    "name": "<branch>-traffic-20261025T2345Z",
+    "state": "running",
+    "group": "<branch>",
+    "adversary": "lab-probes",
+    "started": "2026-10-25T23:45:00Z"
+  }
+}

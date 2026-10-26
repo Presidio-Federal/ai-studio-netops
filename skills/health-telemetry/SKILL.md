@@ -1,10 +1,13 @@
 ---
 name: health-telemetry
-version: "1.1.0"
-description: "v1.1.0 — Health Telemetry nurse: NetFlow visits run visit_netflow.py through Grafana Influx. Board every visit; stamp only when a row moved."
+version: "1.1.1"
+description: "v1.1.1 — Retired Grafana NetFlow nurse. The plane is health-elastic, through Elasticsearch."
 ---
 
 # Health Telemetry skill
+
+This skill does not run. The NetFlow plane is `health-elastic`.
+Do not collect. Do not write `health/metadata-netflow.json`.
 
 One NetFlow visit per conversation. Tool is `grafana_query_influx`.
 Do not call Splunk, Prometheus, or a device MCP.

@@ -344,6 +344,33 @@ def primary_ip(record):
     return None, ""
 
 
+def find_address(host, cidr):
+    """The IP object that already has this host. None when NetBox has no such row."""
+    for query in (cidr, host):
+        if not query:
+            continue
+        inner, err = call_tool(
+            "netbox_find",
+            {"object_type": "ip_address", "address": query, "limit": 5},
+        )
+        rows = object_rows(inner) if err is None and inner else None
+        for row in rows or []:
+            if host_of(row.get("address")) == host and row.get("id") is not None:
+                return row
+    return None
+
+
+def point_primary(device_id, ip_id):
+    call_tool(
+        "netbox_manage",
+        {
+            "action": "update",
+            "object_type": "device",
+            "data": {"id": device_id, "primary_ip4": ip_id},
+        },
+    )
+
+
 def reported(netbox, snow):
     install = cell(snow.get("install_status")) if snow else ""
     operational = cell(snow.get("operational_status")) if snow else ""
@@ -512,7 +539,6 @@ def sync(workspace, device_name, signal):
         verdict = "match"
     else:
         cidr = f"{address}/{prefix or '32'}"
-        already = False
         if ip_id is None and isinstance(record.get("id"), int):
             fresh, fresh_err = call_tool(
                 "netbox_get",
@@ -522,12 +548,41 @@ def sync(workspace, device_name, signal):
             if fresh_rows:
                 ip_id, ip_address = primary_ip(fresh_rows[0])
                 netbox_host = host_of(ip_address) or netbox_host
-                if netbox_host == address:
-                    already = True
-                    verdict = "match"
-        if already:
-            pass
-        elif ip_id is None and isinstance(record.get("id"), int) and interface:
+        existing = find_address(address, cidr)
+        if existing and isinstance(record.get("id"), int):
+            if ip_id == existing.get("id") and netbox_host == address:
+                verdict = "match"
+            else:
+                point_primary(record["id"], existing["id"])
+                netbox_wrote = True
+                verdict = "updated"
+                netbox_host = address
+        elif ip_id is not None:
+            inner, err = call_tool(
+                "netbox_manage",
+                {
+                    "action": "update",
+                    "object_type": "ip_address",
+                    "data": {"id": ip_id, "address": cidr},
+                },
+            )
+            check, check_err = (None, err or "netbox update failed")
+            if err is None and inner is not None:
+                check, check_err = call_tool(
+                    "netbox_get",
+                    {"object_type": "ip_address", "object_id": ip_id},
+                )
+            checked = object_rows(check) if check_err is None and check else None
+            if not checked or host_of(checked[0].get("address")) != address:
+                gaps.append("netbox update failed")
+                verdict = "gap"
+            else:
+                netbox_wrote = True
+                verdict = "updated"
+                netbox_host = address
+                if isinstance(record.get("id"), int):
+                    point_primary(record["id"], ip_id)
+        elif isinstance(record.get("id"), int) and interface:
             found, found_err = call_tool(
                 "netbox_find",
                 {
@@ -562,7 +617,7 @@ def sync(workspace, device_name, signal):
                 face_rows = object_rows(face) if face_err is None and face else None
                 face_id = face_rows[0].get("id") if face_rows else None
             if face_id is None:
-                gaps.append(face_err or "netbox interface create failed")
+                gaps.append(face_err or found_err or "netbox interface create failed")
                 verdict = "gap"
             else:
                 made, made_err = call_tool(
@@ -580,59 +635,21 @@ def sync(workspace, device_name, signal):
                     },
                 )
                 made_rows = object_rows(made) if made_err is None and made else None
-                ip_id = made_rows[0].get("id") if made_rows else None
-                if ip_id is None:
+                new_id = made_rows[0].get("id") if made_rows else None
+                if new_id is None:
+                    again = find_address(address, cidr)
+                    new_id = again.get("id") if again else None
+                if new_id is None:
                     gaps.append(made_err or "netbox address create failed")
                     verdict = "gap"
                 else:
-                    call_tool(
-                        "netbox_manage",
-                        {
-                            "action": "update",
-                            "object_type": "device",
-                            "data": {"id": record["id"], "primary_ip4": ip_id},
-                        },
-                    )
+                    point_primary(record["id"], new_id)
                     netbox_wrote = True
                     verdict = "updated"
                     netbox_host = address
-        elif ip_id is None:
+        else:
             gaps.append("no netbox primary")
             verdict = "gap"
-        else:
-            inner, err = call_tool(
-                "netbox_manage",
-                {
-                    "action": "update",
-                    "object_type": "ip_address",
-                    "data": {"id": ip_id, "address": cidr},
-                },
-            )
-            check, check_err = (None, err or "netbox update failed")
-            if err is None and inner is not None:
-                check, check_err = call_tool(
-                    "netbox_get",
-                    {"object_type": "ip_address", "object_id": ip_id},
-                )
-            checked = object_rows(check) if check_err is None and check else None
-            if not checked or host_of(checked[0].get("address")) != address:
-                gaps.append("netbox update failed")
-                verdict = "gap"
-            else:
-                netbox_wrote = True
-                verdict = "updated"
-                netbox_host = address
-                pointer = record.get("primary_ip4")
-                pointer_id = pointer.get("id") if isinstance(pointer, dict) else pointer
-                if pointer_id != ip_id and isinstance(record.get("id"), int):
-                    call_tool(
-                        "netbox_manage",
-                        {
-                            "action": "update",
-                            "object_type": "device",
-                            "data": {"id": record["id"], "primary_ip4": ip_id},
-                        },
-                    )
     comment = f"{tenant} {address}".strip() if address else tenant
     asset_comment = cell(snow.get("comments")) if snow else ""
     asset_name = cell(snow.get("display_name")) if snow else ""

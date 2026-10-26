@@ -20,6 +20,11 @@
     "git_paths": {"type": "array", "items": {"type": "string"}},
     "catalog_version": {"type": "string"},
     "platforms": {"type": "array", "items": {"type": "string"}},
+    "published_nist": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Bridged NIST ids from the last scan. finalize restores a covered row if one of these is missing."
+    },
     "counts": {
       "type": "object",
       "properties": {

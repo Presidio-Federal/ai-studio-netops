@@ -1,0 +1,72 @@
+{
+  "keys": ["device:<hq-edge>", "device:<dc-edge>"],
+  "schema": "health-netflow-check/v1",
+  "source": "netflow",
+  "watch_id": "2026-09-30T21-20-00Z",
+  "checked_at": "2026-09-30T21:20:00Z",
+  "ok": false,
+  "status": "degraded",
+  "headline": "Exporter at <cloud-edge-ip> silent since 19:41 (unresolved to a device); <hq-edge>, <branch-edge>, <dc-edge> reporting. HQ client to web tier :80 via <hq-edge> vanished after 18:02. 36 rows unchanged.",
+  "window": "1h",
+  "window_start": "2026-09-30T20:20:00Z",
+  "window_end": "2026-09-30T21:20:00Z",
+  "coverage": { "state": "complete", "detail": "F1 and F2 returned; 3 exporters, 38 conversations." },
+  "metrics": [
+    { "at": "2026-09-30T21:20:00Z", "scope": "estate", "exporters": 3, "exporters_silent": 1, "exporters_unresolved": 0, "flows": 3011, "bytes": 51600000, "conversations": 38, "conversations_absent": 2, "top_scope": "flow:<dc-edge-wan-ip>/<probe-host-ip>><dc-app-host-ip>:8080/tcp" }
+  ],
+  "readings": [
+    {
+      "kind": "exporter",
+      "scope": "exporter:<cloud-edge-ip>",
+      "source": "<cloud-edge-ip>",
+      "exporter_name": "unmapped",
+      "exporter_site": "unknown",
+      "device": null,
+      "exporter": null,
+      "src": null, "dst": null, "dst_port": null, "protocol": null,
+      "src_device": null, "dst_device": null,
+      "keys": [],
+      "at": "2026-09-30T21:20:00Z",
+      "state": "silent",
+      "bytes": 0,
+      "flows": 0,
+      "last_flow_at": "2026-09-30T19:41:02Z",
+      "last_seen_at": null,
+      "note": "Reported on every visit since the baseline; no flow from this address in the last window. Its device is unresolved, so the concern cannot name one."
+    },
+    {
+      "kind": "conversation",
+      "scope": "flow:<hq-edge-ip>/<hq-client-ip>><web-tier-ip>:80/tcp",
+      "source": "<hq-edge-ip>",
+      "exporter_name": "<hq-edge>",
+      "exporter_site": null,
+      "device": null,
+      "exporter": "<hq-edge>",
+      "src": "<hq-client-ip>",
+      "dst": "<web-tier-ip>",
+      "dst_port": "80",
+      "protocol": "tcp",
+      "src_device": null,
+      "dst_device": null,
+      "keys": ["device:<hq-edge>"],
+      "at": "2026-09-30T21:20:00Z",
+      "state": "absent",
+      "bytes": 0,
+      "flows": 0,
+      "last_flow_at": null,
+      "last_seen_at": "2026-09-30T18:02:11Z",
+      "note": "Present on the baseline at about 17 kB per window; not seen by <hq-edge> for three hours while the same destination is still reached from the probe host via <dc-edge>."
+    }
+  ],
+  "unchanged": 36,
+  "baseline_ref": "health/netflow/2026-09-30T15-20-00Z.json",
+  "vs_prior": {
+    "prior_watch_id": "2026-09-30T15-20-00Z",
+    "delta": "worse",
+    "changed": [
+      { "keys": [], "field": "state", "prior": "reporting", "current": "silent", "at": "2026-09-30T21:20:00Z" },
+      { "keys": ["device:<hq-edge>"], "field": "state", "prior": "present", "current": "absent", "at": "2026-09-30T21:20:00Z" }
+    ]
+  },
+  "concerns": []
+}

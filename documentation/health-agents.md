@@ -19,7 +19,7 @@ chat recaps.
 | Shared case | Studio workspace (`workspace-handoff`) |
 | Specialist | One telemetry source per conversation |
 | Observation | Lab slip under `health/<source>/<stamp>.json` |
-| Authoritative source | Splunk, Grafana (InfluxDB NetFlow, Prometheus probes / containers / hosts), IOS-XE RESTCONF, ServiceNow |
+| Authoritative source | Splunk, Elasticsearch (NetFlow), Grafana (Prometheus probes / containers / hosts), IOS-XE RESTCONF, ServiceNow |
 | Material change | Required `vs_prior` (`delta`, `changed[]`) |
 | Evidence, not dump | `headline`, `coverage`, `metrics` — not MCP JSON |
 | Interpretation | Health Analyzer SOAP on `state/health.json` |
@@ -119,20 +119,21 @@ Hosts resolve to devices by parsed hostname, then by address against
 `health/metadata-splunk.json` holds the last state per device, kind,
 and subject; a window with no material event writes the board only.
 
-**NetFlow** — Grafana InfluxDB, measurement in metadata (default
-window `1h`). On the baseline, or when an exporter address is not
-already on the board, `grafana_influx_schema` fills `exporters[]`.
-Two Flux queries, `timerange` equal to that window: bytes, flows,
-and last seen per exporter, then the top 40 client-to-server
-conversations. Collector ports and ephemeral destination ports are
-excluded in the query. Rows are `exporter` (`reporting` or
-`silent`) and `conversation` (`present` or `absent`). An address
-becomes a device only through `exporters[].device`, then an
-`exporter_name` that matches `inventory/prod.json`, then a
-topology cidr, then an access host. A port is never an
-application. Material is a state flip, a new row, or bytes at
-least 4× or at most ¼ of the prior. The plane is `degraded` only
-when an exporter is silent. Columns `exporter`, `src_device`,
+**NetFlow** — Elasticsearch data stream in metadata (default
+window `1h`). The exporter is `observer.ip`. Two ES|QL queries,
+`timerange` equal to that window: bytes, flows, and last seen per
+exporter, then the top 40 client-to-server conversations. A third
+query keeps Cisco NSEL denies (`netflow.firewall_event` 3).
+Collector ports and ephemeral destination ports are excluded in
+the query. Rows are `exporter` (`reporting` or `silent`),
+`conversation` (`present` or `not_in_top_n`), and `firewall`
+(`present` or `absent`). An address becomes a device only through
+an exact interface, an access host, or a stored name that matches
+`inventory/prod.json`. A port is never an application. Material is
+a state flip, a new row, or bytes at least 4× or at most ¼ of the
+prior. The plane is `degraded` when an exporter is silent or a
+deny is still present. A new conversation, including one a
+security test opened, is traffic. Columns `exporter`, `src_device`,
 `dst_device`, `dst_port`, and `protocol` are the edge. No
 `relations[]`.
 
