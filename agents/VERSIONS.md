@@ -20,7 +20,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.1.0 | MiniMax |
-| Health Telemetry | 1.3.1 | MiniMax |
+| Health Telemetry | 1.3.2 | MiniMax |
 | Health Application | 1.3.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
@@ -31,6 +31,8 @@ Deployed model is **MiniMax** unless noted.
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Health Telemetry 1.3.2 (skill health-elastic 1.1.3): a pair that uses 20 or more destination ports is a port spread. It is a finding and it degrades the plane. Byte rank no longer hides it. MiniMax.
 
 Health Telemetry 1.3.1 (skill health-elastic 1.1.2): `visit_netflow.py` calls Elasticsearch through `visit_common.mcp_call`, the same wrapper the other nurses use. MiniMax.
 

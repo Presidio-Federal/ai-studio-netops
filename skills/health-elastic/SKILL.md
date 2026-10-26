@@ -1,7 +1,7 @@
 ---
 name: health-elastic
-version: "1.1.2"
-description: "v1.1.2 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; stamp a surge, a loud new path, or an exporter change."
+version: "1.1.3"
+description: "v1.1.3 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; a port spread or surge is a finding."
 ---
 
 # Health Elastic skill
@@ -35,6 +35,12 @@ on the board. A later stamp is a path whose bytes or flows moved
 by 4×, a new path with a bunch of flows, a deny that surged, or
 an exporter that went silent or returned. The note on a surge says
 to research that path. It does not paste flow records.
+
+F4 counts distinct destination ports for each source and destination.
+Twenty or more ports is a port spread. That row is a finding, the
+plane is degraded, and the trend is not `better`. The ports are not
+folded into a service name, and the row does not have to win the
+byte sort.
 
 F3 keeps rows whose `netflow.firewall_event` is `3` (Cisco NSEL
 denied). A deny that matches the board is quiet. A deny count that

@@ -104,7 +104,30 @@ FROM <measurement>
 ```
 `)`
 
-Nothing else. No third conversation query, no per-flow drill-down,
+**F4 — port spread. Always, on the same stream.** One row per
+exporter, source name, and destination name when that pair used
+at least 20 destination ports this window. Ports are not folded
+into a service name. A port scan is many ports and few bytes, so
+it does not have to win the F2 byte sort. `dst_port` in the result
+is the distinct port count. The script stores `protocol` `scan`.
+
+`elasticsearch_query(timerange=<board window>, limit=30, query=`
+```
+FROM <measurement>
+| WHERE @timestamp >= NOW() - <window>
+  AND network.transport IN ("tcp", "udp")
+  AND destination.port > 0
+| EVAL exporter_name = COALESCE(observer.name, ""), src_name = COALESCE(lab.source.device, TO_STRING(source.ip)), dst_name = COALESCE(lab.destination.device, TO_STRING(destination.ip))
+| STATS flows = COUNT(*), bytes = SUM(network.bytes), ports = COUNT_DISTINCT(destination.port), last_at = MAX(@timestamp) BY observer.ip, exporter_name, src_name, dst_name
+| WHERE ports >= 20
+| EVAL source = TO_STRING(observer.ip), src = src_name, dst = dst_name, dst_port = TO_STRING(ports), protocol = "scan"
+| KEEP source, exporter_name, src, dst, dst_port, protocol, bytes, flows, last_at
+| SORT ports DESC
+| LIMIT 20
+```
+`)`
+
+Nothing else. No per-flow drill-down,
 no host-metric stream, no syslog stream. `logs-system.syslog-default`
 on this cluster is the collector host, not the firewalls. Device
 syslog stays on the Splunk nurse.
@@ -216,6 +239,7 @@ Match rows to `netflow.current[]` by `scope`.
 | exporter | `state` differs (`reporting` ↔ `silent`) | `state` |
 | exporter | scope not on the board | `row` |
 | exporter | `identity` differs | `identity` |
+| conversation | protocol `scan`: new, or flows or port count at least 2× | `flows` |
 | conversation | `present` ↔ `absent` only. `present` ↔ `not_in_top_n` is not material | `state` |
 | conversation | scope not on the board, and `flows` is a bunch for the window | `row` |
 | conversation | same window, both `bytes_per_s` > 0, and the rate ≥ 4× or ≤ ¼ | `bytes_per_s` |
@@ -226,7 +250,8 @@ Match rows to `netflow.current[]` by `scope`.
 
 A path that merely leaves the top query is not a reading.
 `not_in_top_n` is not worse. **Delta.** `first` on the baseline.
-`worse` when any exporter went `silent` or a deny count surged.
+`worse` when any exporter went `silent`, a deny count surged, or a
+port spread is new or at least twice the prior window.
 `better` when something returned and nothing is worse. `changed`
 when a path surged or a loud new path appeared. `unchanged` when
 none.
@@ -242,10 +267,11 @@ none.
   and says to research it. Do not paste flow records.
 - Otherwise quiet: board only.
 
-Plane `status`: `degraded` when any exporter is `silent` or a deny
-count surged; `unknown` when F1 failed or the lookup is suspect;
-else `ok`. A deny that matches the board does not degrade the
-plane. A path surge does not degrade the plane. Coverage:
+Plane `status`: `degraded` when any exporter is `silent`, a deny
+count surged, or any port spread is in the window; `unknown` when
+F1 failed or the lookup is suspect; else `ok`. A deny that matches
+the board does not degrade the plane. A byte surge on one service
+does not degrade the plane. A port spread does. Coverage:
 `complete` when F1, F2, and F3 returned; `partial` when F1 returned
 and F2 or F3 failed; `unavailable` when F1 failed.
 
@@ -262,6 +288,7 @@ Wrote: health/netflow/<stamp>.json
 Trend: <delta>
 Collection: <the summary collection line>
 Traffic: <the summary traffic line>
+Scans: <the summary scans line>
 Referrals: <the summary referrals, or none>
 Next: none
 ```

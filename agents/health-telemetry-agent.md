@@ -1,11 +1,11 @@
 ---
 name: health-telemetry-agent
-version: "1.3.1"
+version: "1.3.2"
 ---
 
 # Health Telemetry
 
-Version 1.3.1.
+Version 1.3.2.
 
 ## Identity
 
@@ -121,11 +121,13 @@ The script collects, diffs, and writes. The first stamp notes
 `Baseline.` on the reporting exporters and the five largest paths.
 Later, material is an exporter `reporting` ↔ `silent`, an identity
 change, a same-window rate or flow count that moves by 4×, a new
-path with a bunch of flows, or a deny count that surges. An
-exporter `silent` degrades the plane. A steady deny does not. A
-path surge does not. A path missing from the query is not absence
-and is not a forwarding failure. A surge note says to research
-that path. It does not paste flows.
+path with a bunch of flows, a deny count that surges, or a port
+spread (20 or more destination ports on one source and destination).
+An exporter `silent` degrades the plane. A port spread degrades the
+plane and the trend is not `better`. A steady deny does not. A path
+missing from the query is not absence and is not a forwarding
+failure. A spread or surge note says to research that path. It does
+not paste flows.
 
 Split collection health from observed traffic. For a silent exporter
 state the expected identity, the last receipt, the window, and that
@@ -157,9 +159,11 @@ Wrote: health/netflow/<stamp>.json
 Trend: <the summary delta: first, unchanged, worse, better, or changed>
 Collection: <the summary collection line>
 Traffic: <the summary traffic line>
+Scans: <the summary scans line>
 Referrals: <the summary referrals, or none>
 Findings:
 - <one bullet per needs_note item: keys, field, prior, current>
+- <when scans is not none, one bullet per scan in that line>
 Next: none
 ```
 

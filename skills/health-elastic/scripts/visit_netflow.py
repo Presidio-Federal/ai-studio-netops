@@ -116,10 +116,10 @@ def esql_queries():
     text = REF_PATH.read_text(encoding="utf-8")
     blocks = re.findall(r"```\n(.*?)```", text, re.S)
     found = [block.strip() + "\n" for block in blocks if block.strip().startswith("FROM ")]
-    if len(found) < 3:
-        print('{"error": "netflow.md is missing F1, F2, and F3"}', file=sys.stderr)
-        return None, None, None
-    return found[0], found[1], found[2]
+    if len(found) < 4:
+        print('{"error": "netflow.md is missing F1, F2, F3, and F4"}', file=sys.stderr)
+        return None, None, None, None
+    return found[0], found[1], found[2], found[3]
 
 
 def esql_interval(window):
@@ -599,9 +599,11 @@ def conversation_row(raw, at, window, device_by_source, by_lower, access, nets):
         if key and key not in keys:
             keys.append(key)
     amount = coerce_int(raw.get("bytes")) or 0
+    protocol = blank(raw.get("protocol"))
+    scope = f"scan:{source}/{src}>{dst}" if protocol == "scan" else flow_scope(source, src, dst, dst_port, protocol)
     return {
         "kind": "conversation",
-        "scope": flow_scope(source, src, dst, dst_port, protocol),
+        "scope": scope,
         "source": source,
         "exporter_name": blank(raw.get("exporter_name")),
         "exporter_site": None,
@@ -753,13 +755,33 @@ def flow_move(prior, current):
     return new >= old * 4 or new <= old / 4
 
 
+def scan_move(prior, current):
+    if current.get("protocol") != "scan":
+        return False
+    if prior is None:
+        return True
+    old = coerce_int(prior.get("flows")) or 0
+    new = coerce_int(current.get("flows")) or 0
+    old_ports = coerce_int(prior.get("dst_port")) or 0
+    new_ports = coerce_int(current.get("dst_port")) or 0
+    if old <= 0:
+        return True
+    return new >= old * 2 or new_ports >= max(old_ports, 1) * 2
+
+
 def material(row, prior):
     if prior is None:
+        if row.get("protocol") == "scan":
+            return "flows", None, row.get("flows")
         if row["kind"] in ("conversation", "firewall"):
             if is_bunch(row):
                 return "row", None, row.get("state")
             return None, None, None
         return "row", None, row["state"]
+    if row.get("protocol") == "scan":
+        if scan_move(prior, row):
+            return "flows", None if prior is None else prior.get("flows"), row.get("flows")
+        return None, None, None
     if row["state"] != prior.get("state"):
         membership = {row["state"], prior.get("state")} <= {"present", "not_in_top_n"}
         if not (row["kind"] == "conversation" and membership):
@@ -776,6 +798,8 @@ def material(row, prior):
 
 
 def is_worse(row, prior):
+    if row.get("protocol") == "scan" and row.get("state") == "present" and scan_move(prior, row):
+        return True
     if row["kind"] == "exporter" and row["state"] == "silent" and (prior is None or prior.get("state") != "silent"):
         return prior is not None
     if row["kind"] == "conversation" and row["state"] == "absent" and prior and prior.get("state") == "present":
@@ -830,6 +854,12 @@ def note_for(row, prior, first, migration=False):
         return "Not in the top-N query. Last observation kept. Not absence."
     if row["state"] == "absent":
         return "Absent this window."
+    if prior is None and row.get("protocol") == "scan":
+        return (
+            f"{row.get('src')} to {row.get('dst')} used {row.get('dst_port')} destination ports "
+            f"and {row.get('flows')} flows, seen by {row.get('exporter_name') or row.get('source')}. "
+            "Research this path."
+        )
     if prior is None and row["kind"] == "conversation":
         return (
             f"New path {row.get('src')} to {row.get('dst')} ({row.get('dst_port')}), "
@@ -837,6 +867,11 @@ def note_for(row, prior, first, migration=False):
         )
     if prior is None:
         return "New row."
+    if row.get("protocol") == "scan" and prior and scan_move(prior, row):
+        return (
+            f"{row.get('src')} to {row.get('dst')} port spread {prior.get('dst_port')} -> {row.get('dst_port')}, "
+            f"flows {prior.get('flows')} -> {row.get('flows')}. Research this path."
+        )
     if row["kind"] == "conversation" and rate_move(prior, row):
         return (
             f"{row.get('src')} to {row.get('dst')} ({row.get('dst_port')}) moved from "
@@ -993,7 +1028,7 @@ def cmd_collect(args):
     prior_stream = as_stream(netflow.get("data_stream")) or as_stream(netflow.get("measurement"))
     measurement = as_stream(args.measurement) or prior_stream
     explicit = bool(as_stream(args.measurement))
-    f1_query, f2_query, f3_query = esql_queries()
+    f1_query, f2_query, f3_query, f4_query = esql_queries()
     if f1_query is None:
         return 1
 
@@ -1095,7 +1130,25 @@ def cmd_collect(args):
                 continue
             conversations.append(carry_conversation(prior, at, window))
     else:
-        conversations = [row for row in prior_rows if row["kind"] == "conversation"]
+        conversations = [row for row in prior_rows if row["kind"] == "conversation" and row.get("protocol") != "scan"]
+
+    if f4_query and not f2_failed and not budget.exhausted():
+        f4_text = substitute(f4_query, measurement, window)
+        f4_payload, f4_error = elastic_query("f4", f4_text, window) if f4_text else (None, "window")
+        if f4_error or f4_payload is None:
+            truncated = True
+        else:
+            truncated = truncated or bool(f4_payload.get("truncated"))
+            seen_scopes = {row["scope"] for row in conversations}
+            for raw in f4_payload.get("rows") or []:
+                if not isinstance(raw, dict):
+                    continue
+                raw = dict(raw)
+                raw["protocol"] = "scan"
+                row = conversation_row(raw, at, window, device_by_source, by_lower, access, nets)
+                if row and row["scope"] not in seen_scopes:
+                    conversations.append(row)
+                    seen_scopes.add(row["scope"])
 
     firewalls = []
     fw_failed = False
@@ -1153,12 +1206,17 @@ def cmd_collect(args):
         {row["scope"] for row in fresh_paths} & {row["scope"] for row in prior_paths}
     )
     if rebaseline:
-        pairs = [item for item in pairs if item[0]["kind"] != "conversation"]
+        pairs = [
+            item
+            for item in pairs
+            if item[0]["kind"] != "conversation" or item[0].get("protocol") == "scan"
+        ]
 
     coverage = "partial" if f2_failed or fw_failed or truncated else "complete"
     denies = any(row["kind"] == "firewall" and is_worse(row, prior) for row, prior, _field in pairs)
+    scans = any(row.get("protocol") == "scan" and row.get("state") == "present" for row in current_rows)
     silent = any(row["kind"] == "exporter" and row["state"] == "silent" for row in current_rows)
-    status = "degraded" if silent or denies else "ok"
+    status = "degraded" if silent or denies or scans else "ok"
     delta = overall_delta(pairs, first)
     if rebaseline and delta == "unchanged":
         delta = "changed"
@@ -1191,6 +1249,14 @@ def cmd_collect(args):
             reverse=True,
         )[:5]
         reading_rows = reporting + largest
+    scan_present = [
+        row for row in current_rows if row.get("protocol") == "scan" and row.get("state") == "present"
+    ]
+    seen_read = {row["scope"] for row in reading_rows}
+    for row in scan_present:
+        if row["scope"] not in seen_read:
+            reading_rows.append(row)
+            seen_read.add(row["scope"])
     readings_truncated = len(reading_rows) > READINGS_CAP
     if readings_truncated:
         reading_rows = sorted(
@@ -1243,6 +1309,15 @@ def cmd_collect(args):
             headline = f"Baseline. {who} {unchanged} other paths kept on the board."
         else:
             headline = f"{len(readings)} paths moved. {unchanged} board rows unchanged."
+        scan_rows = [row for row in readings if row.get("protocol") == "scan"]
+        if scan_rows:
+            worst = max(scan_rows, key=lambda row: coerce_int(row.get("dst_port")) or 0)
+            headline = (
+                f"Port spread: {worst.get('src')} to {worst.get('dst')}, "
+                f"{worst.get('dst_port')} ports, {worst.get('flows')} flows, "
+                f"seen by {worst.get('exporter_name') or worst.get('source')}. Research this path. "
+                + headline
+            )
         if rebaseline:
             headline = "Baseline. Path names now come from the stream. Not an operational change. " + headline
         elif migration:
@@ -1367,7 +1442,7 @@ def cmd_collect(args):
                 continue
             if row["kind"] == "firewall" and field == "flows" and row["state"] != "present":
                 continue
-            if not row["keys"]:
+            if not row["keys"] and row.get("protocol") != "scan":
                 continue
             _field, prior_value, current_value = material(row, prior)
             needs.append(
@@ -1385,6 +1460,13 @@ def cmd_collect(args):
         for item in row.get("referral") or []:
             if item not in referrals:
                 referrals.append(item)
+    scan_now = [
+        row for row in current_rows if row.get("protocol") == "scan" and row.get("state") == "present"
+    ]
+    scan_txt = "; ".join(
+        f"{row.get('src')} -> {row.get('dst')} {row.get('dst_port')} ports via {row.get('exporter_name') or row.get('source')}"
+        for row in sorted(scan_now, key=lambda row: coerce_int(row.get("dst_port")) or 0, reverse=True)[:6]
+    ) or "none"
     payload = {
         "plane": "netflow",
         "watch_id": watch if write_stamp else None,
@@ -1403,6 +1485,7 @@ def cmd_collect(args):
         "migration": migration,
         "collection": f"{exporters_n} exporters, {silent_n} silent, {conflict_n} identity conflicts. Collector health not measured.",
         "traffic": f"{present_n} conversations in view, {unobserved_n} not in top N, {deny_n} denies. Observation {observation or 'none'}.",
+        "scans": scan_txt,
         "referrals": referrals[:6],
         "board": f"{exporters_n} exporters ({silent_n} silent), {present_n} conversations, {unobserved_n} not in top N, {deny_n} denies",
     }
