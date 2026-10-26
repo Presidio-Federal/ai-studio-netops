@@ -127,6 +127,19 @@ def esql_interval(window):
     return {"15m": "15 minutes", "1h": "1 hour", "1d": "1 day"}.get(window or "")
 
 
+def window_delta(window):
+    match = re.fullmatch(r"(\d+)([mhd])", window or "1h")
+    if not match:
+        return timedelta(hours=1)
+    count = int(match.group(1))
+    unit = match.group(2)
+    if unit == "m":
+        return timedelta(minutes=count)
+    if unit == "d":
+        return timedelta(days=count)
+    return timedelta(hours=count)
+
+
 def substitute(query, measurement, window):
     interval = esql_interval(window)
     if not interval:

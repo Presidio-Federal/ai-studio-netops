@@ -1,7 +1,7 @@
 ---
 name: health-elastic
-version: "1.1.0"
-description: "v1.1.0 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; stamp a surge, a loud new path, or an exporter change."
+version: "1.1.1"
+description: "v1.1.1 — Health Elastic nurse: NetFlow visits run visit_netflow.py. Baseline is named paths; stamp a surge, a loud new path, or an exporter change."
 ---
 
 # Health Elastic skill
@@ -91,7 +91,8 @@ Do not search the workspace for them.
 **Health visit — first tool:** `read_file` `inventory/prod.json` to
 confirm the workspace is there. Then one `execute_command`,
 `execution_type: "mcp_orchestration"`, the collect command in
-`references/watch.md`. If the summary `needs_note` is non-empty, one
+`references/watch.md`. Do not set `timeout`. The call is the
+command and `execution_type` only. If the summary `needs_note` is non-empty, one
 `annotate` command under `execution_type: "standard"`. Reply from the
 summary line. If stderr says `hai_mcp unavailable`, follow the manual
 order in `references/netflow.md`.

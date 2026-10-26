@@ -24,7 +24,8 @@ One `execute_command`, `execution_type: "mcp_orchestration"`. Use the
 path Studio shows for the attached
 `health-elastic/scripts/visit_netflow.py`. Copy it. Do not retype a
 path from memory. The transcript may render it as `Internal
-directory`; that is the real path.
+directory`; that is the real path. Do not set `timeout`. The call
+is the command and `execution_type` only.
 
 Each `execute_command` is a new container. In that container the workspace is the `file_explorer` folder beside `skills` on the path Studio shows for `visit_netflow.py`. Copy that directory. Pass it as `--workspace`. Do not pass the relative name `file_explorer`, and do not `cd`.
 
