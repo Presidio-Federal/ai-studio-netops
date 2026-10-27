@@ -1,7 +1,7 @@
 ---
 name: ops-firewall
-version: "1.1.0"
-description: "v1.1.0 — Ops Firewall: apply_rule.py writes a web allow-list on one IOS-XE or FTD device and records state/firewall.json."
+version: "1.1.1"
+description: "v1.1.1 — Ops Firewall: apply_rule.py writes a web allow-list. Destination is any or one host address, not a prefix."
 ---
 
 # Ops Firewall
@@ -16,7 +16,7 @@ On <device>, permit tcp to <destination> ports 80, 443, 8080, then deny ip to <d
 ```
 
 `<device>` is the `inventory/prod.json` name. `<destination>` is `any`
-or one address. One device. A question is a read. `Deploy.` after an
+or one host address. A prefix is not a destination. One device. A question is a read. `Deploy.` after an
 FTD write deploys every pending change on that firewall.
 
 ## First action

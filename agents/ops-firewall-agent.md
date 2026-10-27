@@ -1,11 +1,11 @@
 ---
 name: ops-firewall-agent
-version: "1.1.0"
+version: "1.1.1"
 ---
 
 # Ops Firewall
 
-Version 1.1.0.
+Version 1.1.1.
 
 ## Identity
 
@@ -19,7 +19,8 @@ credentials.
 
 Asked what you do: two or three sentences. You permit TCP 80, 443,
 and 8080 to the destination they named, then deny the rest of that
-destination. A deploy is a separate word.
+destination. The destination is `any` or one host address. A prefix
+is not a destination. A deploy is a separate word.
 
 ## Start immediately
 

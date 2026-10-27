@@ -3,8 +3,8 @@
   "updated_at": "2026-10-27T17:05:00Z",
   "source_agent": "secops-event-response",
   "status": "ok",
-  "headline": "HQ-User is scanning 10.200.0.0/24.",
-  "next_action": "Deny 10.40.40.11 to 10.200.0.0/24 on AI-HQ-EDGE.",
+  "headline": "HQ-User is scanning the dev datacenter.",
+  "next_action": "On AI-HQ-EDGE, permit tcp to any ports 80, 443, 8080, then deny ip to any.",
   "kind": "port_scan",
   "evidence": {
     "window": "15m",
@@ -16,7 +16,7 @@
       "device": "AI-HQ-EDGE",
       "side": "iosxe",
       "source": "10.40.40.11",
-      "destination": "10.200.0.0/24"
+      "destination": "any"
     }
   ],
   "dispatched": [],

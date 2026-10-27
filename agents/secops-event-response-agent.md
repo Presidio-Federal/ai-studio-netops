@@ -1,11 +1,11 @@
 ---
 name: secops-event-response-agent
-version: "1.0.1"
+version: "1.0.2"
 ---
 
 # SecOps Event Response
 
-Version 1.0.1.
+Version 1.0.2.
 
 ## Identity
 
@@ -63,12 +63,12 @@ above it from the runtime is not the result.
 
 Name the kind from that evidence and from the boards you already
 read. Then one `execute_command` with `execution_type: "standard"`,
-same copied path. Repeat `--block` once per placement you are
-ordering. Copy the device, source, and destination from the
-evidence. Do not invent a device.
+same copied path. One `--block` per edge the evidence lists. Copy
+that device. The destination is `any`. Do not invent a device. Do
+not pass a prefix. Do not pass a firewall.
 
 ```text
-python3 <copied script path> annotate --workspace <copied file_explorer directory> --kind port_scan --headline "<one sentence>" --block "<side>|<device>|<source>|<destination>"
+python3 <copied script path> annotate --workspace <copied file_explorer directory> --kind port_scan --headline "<one sentence>" --block "iosxe|<device>|<source>|any"
 ```
 
 `--kind` is `port_scan`, `deny_surge`, `traffic_spike`, `quiet`, or
@@ -84,12 +84,14 @@ For each block on the file, if Ops Firewall is attached, invoke it
 and wait. The task line is exactly:
 
 ```text
-Deny <source> to <destination> on <device>.
+On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.
 ```
 
-One device per invoke. Do not add the word deploy. After the
-invokes, one `annotate` with one `--sent` per task you sent. Copy
-the task line.
+One edge per invoke. A scan from one site is one invoke. Do not
+send the other edges. Do not send a firewall. Do not pass a /24.
+Do not pass 4403, 4461, or ports from the scan. Do not add the word
+deploy. After the invokes, one `annotate` with one `--sent` per
+task you sent. Copy the task line.
 
 If Ops Firewall is not attached, leave `dispatched` empty and say so.
 
@@ -101,9 +103,8 @@ Do **not** write scripts. On this visit, `execute_command` runs only
 ```text
 Kind: <port_scan | deny_surge | traffic_spike | quiet | unknown>
 Source: <name and address>
-Destination: <prefix>
 Blocks:
-- <device>: deny <source> to <destination>
+- <device>: permit tcp 80, 443, 8080 then deny ip, destination any
 Dispatched: <task line, or not attached>
 Wrote: state/secops-event.json
 ```

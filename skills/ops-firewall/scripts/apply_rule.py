@@ -13,6 +13,7 @@ It does not take a username or password.
 pending change on that firewall.
 """
 import argparse
+import ipaddress
 import json
 import sys
 from datetime import datetime, timezone
@@ -319,6 +320,12 @@ def cmd_apply(args):
         return 1
     ports = [part.strip() for part in args.permit_ports.split(",") if part.strip()]
     destination = (args.destination or "any").strip() or "any"
+    if destination != "any":
+        try:
+            ipaddress.ip_address(destination)
+        except ValueError:
+            emit({"result": "blocked", "device": args.device, "gaps": ["destination must be any or one host address"]})
+            return 0
     inventory = visit_common.load_json(ws, "inventory/prod.json")
     device = find_device(inventory, args.device)
     if device is None:

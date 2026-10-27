@@ -14,7 +14,6 @@ The agent copies the path Studio shows for this file. Do not hardcode it.
       --kind port_scan --headline "..." --block "iosxe|<device>|<source>|<destination>"
 """
 import argparse
-import ipaddress
 import json
 import re
 import sys
@@ -147,13 +146,6 @@ def is_edge(device):
     return True
 
 
-def is_ftd(device):
-    meta = device.get("source_metadata") or {}
-    if device.get("platform") == "asa":
-        return False
-    return device.get("platform") in ("ftd", "ftdv") or meta.get("node_definition") == "ftdv"
-
-
 def closest(graph, by_name, start, accept):
     if start not in by_name:
         return None
@@ -172,62 +164,41 @@ def closest(graph, by_name, start, accept):
     return None
 
 
-def ftd_for_zone(by_name, zone):
-    token = (zone or "").strip().lower()
-    if token not in ("dev", "prod"):
-        return None
-    matches = []
-    for name, device in by_name.items():
-        if is_ftd(device) and token in name.lower():
-            matches.append(name)
-    if len(matches) == 1:
-        return matches[0]
-    return None
-
-
 def placements(prod, netflow_rows):
+    """One IOS-XE edge per scan source. Destination is any. No firewall, no prefix."""
     by_name = devices_by_name(prod)
     graph = graph_of(prod)
     blocks = []
     gaps = []
+    seen = set()
     for row in netflow_rows:
         source = blank(row.get("source.ip"))
-        prefix = blank(row.get("prefix"))
         src_name = blank(row.get("src_name"))
-        zone = blank(row.get("zone"))
         dests = row.get("dests") or 0
         ports = row.get("ports") or 0
-        if not source or not prefix:
+        if not source:
             continue
         if not (isinstance(dests, (int, float)) and isinstance(ports, (int, float))):
             continue
         if dests < SPREAD and ports < SPREAD:
             continue
-        try:
-            network = ipaddress.ip_network(f"{prefix}/24", strict=False)
-        except ValueError:
-            gaps.append(f"{prefix}: not a prefix")
-            continue
-        destination = str(network)
         edge = closest(graph, by_name, src_name, is_edge) if src_name else None
-        firewall = ftd_for_zone(by_name, zone)
-        if edge:
-            blocks.append({"device": edge, "side": "iosxe", "source": source, "destination": destination, "src_name": src_name})
-        else:
+        if not edge:
             gaps.append(f"{src_name or source}: no edge router")
-        if firewall:
-            blocks.append({"device": firewall, "side": "ftd", "source": source, "destination": destination, "src_name": src_name})
-        else:
-            gaps.append(f"{destination}: no datacenter firewall for zone {zone or 'missing'}")
-    unique = []
-    seen = set()
-    for block in blocks:
-        key = (block["device"], block["source"], block["destination"])
-        if key in seen:
             continue
-        seen.add(key)
-        unique.append(block)
-    return unique, gaps
+        if edge in seen:
+            continue
+        seen.add(edge)
+        blocks.append(
+            {
+                "device": edge,
+                "side": "iosxe",
+                "source": source,
+                "destination": "any",
+                "src_name": src_name,
+            }
+        )
+    return blocks, gaps
 
 
 def code_blocks(path, expect, label):
@@ -517,7 +488,7 @@ def cmd_annotate(args):
     payload["dispatched"] = dispatched
     if blocks:
         first = blocks[0]
-        payload["next_action"] = f"Deny {first['source']} to {first['destination']} on {first['device']}."
+        payload["next_action"] = f"On {first['device']}, permit tcp to any ports 80, 443, 8080, then deny ip to any."
     payload["status"] = "gaps" if payload.get("gaps") else "ok"
     payload["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     keys = []

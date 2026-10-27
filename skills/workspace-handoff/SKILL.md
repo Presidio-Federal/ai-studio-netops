@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.36 — Shared-workspace contract: catalog of paths and writers, including the security event response file."
-version: "1.70.36"
+description: "v1.70.37 — Shared-workspace contract: catalog of paths and writers, including the security event response file."
+version: "1.70.37"
 ---
 
 # Workspace handoff
@@ -96,9 +96,9 @@ with its `test:` / `control:` keys, the CMDB model's `service` /
 Reads `state/health.json`, `health/metadata-netflow.json`,
 `health/metadata-splunk.json`, and `inventory/prod.json`. Queries
 Elasticsearch and Splunk. Writes only `state/secops-event.json`.
-For each block, invoke Ops Firewall and wait. Task line
-`Deny <source> to <destination> on <device>.` One device per invoke.
-That task does not say deploy.
+For each scan edge, invoke Ops Firewall and wait. Task line
+`On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.`
+One edge per scan source. Destination is `any`. That task does not say deploy.
 
 **Ops CMDB Sync.** Task line `Sync <device-name>.` Optional `signal netbox` or `signal servicenow` is a label, not a direction. One device. Reads `inventory/prod.json` and, when present, `inventory/infra-sot.json`. Writes only `state/cmdb-sync.json`. IOS-XE is GET-only. It does not bootstrap NetBox and it does not write ServiceNow.
 
@@ -369,7 +369,7 @@ visits).
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/cmdb-sync.json` | state | Ops CMDB Sync | `ops-cmdb-sync` `schemas/cmdb-sync-state.schema.json` | envelope, `operation` `signal` (`netbox` `servicenow` `unknown` — label only) `result` `device.name` `device_values` (`hostname` `primary_ipv4` `interface`) `compared[]` `wrote` (`netbox` or `none`) `gaps` `keys` (`device:` plus `interface:<device>/<name>` when the address interface was cited). This invoke only. `relations` is `[]`. Scope is the lab tenant on `inventory/prod.json` and one device name. |
 | `state/firewall.json` | state | Ops Firewall | `ops-firewall` `schemas/firewall-state.schema.json` | envelope, `operation` (`read` `write` `deploy`) `device.name` `side` (`iosxe` `ftd`) `action` `result` `pending_count` (FTD; null on IOS-XE) `permit_ports` `destination` `list_name` (`SCAN-ALLOW-WEB`) `gaps` `keys` (`device:<name>` or `[]`). This invoke only. No rule bodies. |
-| `state/secops-event.json` | state | SecOps Event Response | `secops-event-response` `schemas/secops-event.schema.json` | envelope, `kind` (`port_scan` `deny_surge` `traffic_spike` `quiet` `unknown`) `evidence` (15m Elasticsearch spreads and Splunk denies) `blocks[]` (`device` `side` `source` `destination`) `dispatched[]`. This invoke only. Placements come from `inventory/prod.json` links. |
+| `state/secops-event.json` | state | SecOps Event Response | `secops-event-response` `schemas/secops-event.schema.json` | envelope, `kind` (`port_scan` `deny_surge` `traffic_spike` `quiet` `unknown`) `evidence` (15m Elasticsearch spreads and Splunk denies) `blocks[]` (`device` `side` `source` `destination` `any`) `dispatched[]`. This invoke only. One IOS-XE edge per scan source, from `inventory/prod.json` links. No firewall block. |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
 | `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
 | `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |

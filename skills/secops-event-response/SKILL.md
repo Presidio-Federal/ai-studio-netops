@@ -1,7 +1,7 @@
 ---
 name: secops-event-response
-version: "1.0.1"
-description: "v1.0.1 — SecOps event response: read the health boards, run the NetFlow and Splunk nurse queries, and order a block when the traffic is an attack."
+version: "1.0.2"
+description: "v1.0.2 — SecOps event response: read the health boards, run the NetFlow and Splunk nurse queries, and order one web allow-list per scan edge."
 ---
 
 # SecOps event response
@@ -14,8 +14,8 @@ calls `elasticsearch_query` with F1–F4 from `health-elastic` and
 port scan. F4 and S3 are that signal.
 
 A port scan is one source and many service ports, or one source and
-many destinations. Order a block only for a placement the script
-listed. Then invoke Ops Firewall once per block and wait.
+many destinations. One scan source is one IOS-XE edge, destination
+`any`. Invoke Ops Firewall once per edge and wait.
 
 Do not call Grafana. Do not write `state/health.json`, `state/firewall.json`,
-or a health board. Do not deploy an FTD.
+or a health board. Do not send a firewall task. Do not deploy.

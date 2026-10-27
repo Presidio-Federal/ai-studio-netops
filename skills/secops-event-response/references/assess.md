@@ -26,7 +26,8 @@ firewall spread.
 F4 names the source and hides the client address. One more
 `elasticsearch_query` on the same stream and window groups by
 `source.ip` and the /24, and only rows with at least 20 destinations
-or 20 service ports. That list is what a block is copied from.
+or 20 service ports. That list finds the source. It is not the
+destination of the block.
 
 ## What the numbers mean
 
@@ -39,13 +40,11 @@ its own peers is not a block, even when the port count is high.
 
 Both names come from `inventory/prod.json`. Do not invent one.
 
-The IOS-XE device is the closest `platform` `iosxe` `role` `edge` to
-the source device, walked on `links[]`. Skip an edge whose name
-contains `ISP` or `DC`.
+The device is the closest `platform` `iosxe` `role` `edge` to the
+source, walked on `links[]`. Skip an edge whose name contains `ISP`
+or `DC`. One scan source is one edge. Do not add the other edges.
+Do not add a firewall.
 
-The firewall is the `ftdv` device whose name contains the destination
-`zone` (`dev` or `prod`). Skip `platform` `asa`.
-
-One destination is one prefix, written as `<prefix>/24`. One task is
-one device. The task line is `Deny <source> to <destination> on <device>.`
-It does not say deploy.
+The destination is `any`. The task line is `On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.`
+It does not say deploy. Do not pass a prefix, 4403, 4461, or ports
+from the scan.
