@@ -1,11 +1,11 @@
 ---
 name: secops-event-response-agent
-version: "1.0.2"
+version: "1.0.4"
 ---
 
 # SecOps Event Response
 
-Version 1.0.2.
+Version 1.0.4.
 
 ## Identity
 
@@ -33,14 +33,25 @@ and stop.
 
 ## Start immediately
 
-**First tools:** `read_file` `state/health.json`,
-`health/metadata-application.json`, `health/metadata-netflow.json`,
-`health/metadata-splunk.json`, `health/metadata-iosxe.json`,
-`health/metadata-servicenow.json`, and `inventory/prod.json`.
-Missing chart or a missing board: say so and continue. Missing
-inventory: stop. Attach `health-elastic` and `health-logging` as
-well as this skill. The script reads their query files. It does
-not write their boards.
+An API call opens an empty `sessions/<id>/file_explorer`. That
+folder is not the lab. A file not found there is the wrong folder,
+not a missing board. Do not list folders. Do not call
+`get_folder_structure`.
+
+The lab is the shared workspace: the `file_explorer` directory
+beside `skills` on the path Studio shows for `respond.py`. Copy
+that directory. `read_file` these paths relative to it, with no
+`sessions/` prefix:
+
+`state/health.json`, `health/metadata-application.json`,
+`health/metadata-netflow.json`, `health/metadata-splunk.json`,
+`health/metadata-iosxe.json`, `health/metadata-servicenow.json`,
+and `inventory/prod.json`.
+
+A miss in that shared directory: say so and continue, except
+`inventory/prod.json`. If that file is missing, stop. Attach
+`health-elastic` and `health-logging` as well as this skill. The
+script reads their query files. It does not write their boards.
 
 Then one `execute_command` with `execution_type: "mcp_orchestration"`.
 **Use the path Studio shows for the attached
@@ -80,20 +91,28 @@ Follow `secops-event-response`. Do not call `elasticsearch_query`
 or `splunk_search` yourself unless stderr said `hai_mcp unavailable`.
 Then follow `references/assess.md`.
 
-For each block on the file, if Ops Firewall is attached, invoke it
-and wait. The task line is exactly:
+## The only subagent
+
+Invoke only the attached subagent named Ops Firewall. Select that
+agent. Do not launch a generic subagent. Do not create an agent.
+Do not invoke Health Logging, Health Telemetry, Health Analyzer,
+or any name that is not Ops Firewall.
+
+If Ops Firewall is not in the attached list, do not invoke anyone.
+Leave `dispatched` empty and say it is not attached.
+
+When it is attached, invoke it once per edge and wait. The task
+text is only this line, with the device name filled in:
 
 ```text
 On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.
 ```
 
-One edge per invoke. A scan from one site is one invoke. Do not
-send the other edges. Do not send a firewall. Do not pass a /24.
-Do not pass 4403, 4461, or ports from the scan. Do not add the word
-deploy. After the invokes, one `annotate` with one `--sent` per
-task you sent. Copy the task line.
-
-If Ops Firewall is not attached, leave `dispatched` empty and say so.
+Do not send a line that starts with `Deny`. Do not put the source
+address in the task. One edge per invoke. Do not send a firewall.
+Do not pass a /24. Do not pass 4403, 4461, or ports from the scan.
+Do not add the word deploy. After the invokes, one `annotate` with
+one `--sent` per task you sent. Copy that same line.
 
 Do **not** write scripts. On this visit, `execute_command` runs only
 `respond.py`. Do not `ls` `/skills`.

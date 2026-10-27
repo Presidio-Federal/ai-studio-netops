@@ -10,7 +10,7 @@ Deployed model is **MiniMax** unless noted.
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.6.0 | MiniMax |
 | Ops Firewall | 1.1.3 | MiniMax |
-| SecOps Event Response | 1.0.2 | MiniMax |
+| SecOps Event Response | 1.0.4 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
@@ -37,6 +37,10 @@ Deployed model is **MiniMax** unless noted.
 Relationship agent 1.5.1 (skill 1.5.1): a no-op prints the on-disk edge, drift, read, and lifecycle counts. The reply copies that JSON. It does not report 0 current because nothing was rewritten. MiniMax.
 
 Network Map 1.2.0 (skill 1.4.0) and Relationship agent 1.5.0 (skill 1.5.0, workspace-handoff 1.70.34): the telemetry board names a path by `src` and `dst`, not `src_device`. A device arc or `flows_to` edge is copied only when both names are in `inventory/prod.json`. Exporter state comes from the exporter row. Firewall denies stay on the map and off the graph. Syslog attaches to a device only when `name` resolved; an address stays unresolved. Health Analyzer skill 5.3.3 reads those columns the same way. MiniMax.
+
+SecOps Event Response 1.0.4: the only subagent is the attached Ops Firewall. A generic subagent is not used. The task is the web allow-list line, not a source deny. MiniMax.
+
+SecOps Event Response 1.0.3: an API call's `sessions/<id>/file_explorer` is empty. The boards are read from the shared workspace beside `skills`. A miss in the session folder is not a missing board. MiniMax.
 
 SecOps Event Response 1.0.2 (skill 1.0.2, workspace-handoff 1.70.37): one scan source is one IOS-XE edge. The task is `On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.` Destination is `any`. No prefix, no firewall, no deploy. MiniMax.
 
