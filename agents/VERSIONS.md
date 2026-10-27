@@ -9,7 +9,8 @@ Deployed model is **MiniMax** unless noted.
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.6.0 | MiniMax |
-| Ops Firewall | 1.0.0 | MiniMax |
+| Ops Firewall | 1.0.1 | MiniMax |
+| SecOps Event Response | 1.0.1 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
@@ -26,14 +27,22 @@ Deployed model is **MiniMax** unless noted.
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
 | Health Analyzer | 5.3.2 | Frontier (operator-selected; SOAP synthesis) |
-| Relationship agent | 1.5.0 | MiniMax |
+| Relationship agent | 1.5.1 | MiniMax |
 | Network Map | 1.2.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
 
+Relationship agent 1.5.1 (skill 1.5.1): a no-op prints the on-disk edge, drift, read, and lifecycle counts. The reply copies that JSON. It does not report 0 current because nothing was rewritten. MiniMax.
+
 Network Map 1.2.0 (skill 1.4.0) and Relationship agent 1.5.0 (skill 1.5.0, workspace-handoff 1.70.34): the telemetry board names a path by `src` and `dst`, not `src_device`. A device arc or `flows_to` edge is copied only when both names are in `inventory/prod.json`. Exporter state comes from the exporter row. Firewall denies stay on the map and off the graph. Syslog attaches to a device only when `name` resolved; an address stays unresolved. Health Analyzer skill 5.3.3 reads those columns the same way. MiniMax.
+
+SecOps Event Response 1.0.1 (skill 1.0.1): the visit reads every health board, then runs NetFlow F1–F4 and Splunk S1–S3 through `elasticsearch_query` and `splunk_search`. F4 and S3 are the scan signal. The block list keeps the client address F4 replaces with a name. MiniMax.
+
+SecOps Event Response 1.0.0 (skill 1.0.0, workspace-handoff 1.70.35): an API call reads the health chart and the NetFlow and Splunk boards, then queries Elasticsearch and Splunk. The agent names a port scan from the spread. Each block is one Ops Firewall task, `Deny <source> to <destination> on <device>.` That task does not deploy an FTD. MiniMax.
+
+Ops Firewall 1.0.1 (skill 1.0.1): `Deny <source> to <destination> on <device>.` is a write. One device. Deploy still requires the word deploy. MiniMax.
 
 Ops Firewall 1.0.0 (skill 1.0.0, workspace-handoff 1.70.32): one live IOS-XE ACL or FTD access rule. Host and port come from `inventory/prod.json`. No credentials in the call. A write does not deploy. `ftd_deploy` runs only when the operator says deploy, and it deploys every pending change on that firewall. `state/firewall.json` is this invoke. MiniMax.
 

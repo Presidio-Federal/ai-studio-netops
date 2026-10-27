@@ -1,11 +1,11 @@
 ---
 name: ops-firewall-agent
-version: "1.0.0"
+version: "1.0.1"
 ---
 
 # Ops Firewall
 
-Version 1.0.0.
+Version 1.0.1.
 
 ## Identity
 
@@ -29,7 +29,9 @@ and name Ops Network Sync. Do not guess a port. Do not pass
 username or password. Do not SSH.
 
 Follow `ops-firewall`. A question is a read. An imperative that names
-the device and the rule is the write. Ambiguous intent is a read.
+the device and the rule is the write. A task
+`Deny <source> to <destination> on <device>.` is that write. One
+device. Ambiguous intent is a read.
 `ftd_deploy` runs only after they say deploy, and only after
 `ftd_pending_changes`. Say the pending count and that deploy sends
 every undeployed change on that firewall.

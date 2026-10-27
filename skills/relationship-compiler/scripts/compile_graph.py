@@ -582,6 +582,26 @@ def empty_lifecycle():
     return {"updated_at": None, "cost": None, "timeline": [], "devices": []}
 
 
+def tally(edges, drift, lifecycle, read, missing, status, wrote, compiled_at, fresh, newly_stale):
+    current = sum(1 for edge in edges if isinstance(edge, dict) and edge.get("status") == "current")
+    stale = sum(1 for edge in edges if isinstance(edge, dict) and edge.get("status") == "stale")
+    devices = lifecycle.get("devices") if isinstance(lifecycle, dict) else None
+    return {
+        "result": status or "ok",
+        "wrote": wrote,
+        "compiled_at": compiled_at,
+        "edges": len(edges),
+        "current": current,
+        "stale": stale,
+        "new": fresh,
+        "newly_stale": newly_stale,
+        "drift": len(drift or []),
+        "lifecycle_devices": len(devices or []),
+        "read": len(read or []),
+        "absent": missing or [],
+    }
+
+
 def union_keys(edges):
     found = []
     for edge in edges:
@@ -683,13 +703,19 @@ def cmd_compile(args):
         watermarks[latest] = blank((sources.get("_test_run") or {}).get("updated_at"))
     prior_marks = prior.get("watermarks") if isinstance(prior.get("watermarks"), dict) else {}
     if prior and prior_marks and all(prior_marks.get(key) == value for key, value in watermarks.items()) and set(prior_marks) == set(watermarks):
-        print(visit_common.summary({
-            "result": "ok",
-            "wrote": None,
-            "compiled_at": prior.get("compiled_at"),
-            "edges": len(prior.get("edges") or []),
-            "noop": True,
-        }))
+        coverage = prior.get("coverage") if isinstance(prior.get("coverage"), dict) else {}
+        print(visit_common.summary(tally(
+            prior.get("edges") or [],
+            prior.get("drift") or [],
+            prior.get("lifecycle") or {},
+            coverage.get("read") or [],
+            coverage.get("missing") or [],
+            prior.get("status") or "ok",
+            None,
+            prior.get("compiled_at"),
+            0,
+            0,
+        )))
         return 0
     compiled_at = stamp_text(now_utc())
     produced = copy_edges(sources)
@@ -701,10 +727,9 @@ def cmd_compile(args):
         lifecycle = prior["lifecycle"]
     else:
         lifecycle = empty_lifecycle()
-    current = sum(1 for edge in edges if edge["status"] == "current")
-    stale = sum(1 for edge in edges if edge["status"] == "stale")
+    counts = tally(edges, drift, lifecycle, read, missing, "ok", "state/relationships.json", compiled_at, fresh, newly_stale)
     headline = "%s edges (%s current, %s stale) from %s sources; %s new, %s newly stale; drift %s." % (
-        len(edges), current, stale, len(read), fresh, newly_stale, len(drift)
+        counts["edges"], counts["current"], counts["stale"], len(read), fresh, newly_stale, counts["drift"]
     )
     chart = {
         "schema": "relationships-state/v1",
@@ -729,19 +754,8 @@ def cmd_compile(args):
     path = Path(ws) / "state" / "relationships.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(chart, indent=2) + "\n", encoding="utf-8")
-    print(visit_common.summary({
-        "result": chart["status"],
-        "wrote": "state/relationships.json",
-        "edges": len(edges),
-        "current": current,
-        "stale": stale,
-        "new": fresh,
-        "newly_stale": newly_stale,
-        "drift": len(drift),
-        "lifecycle_devices": len(lifecycle.get("devices") or []),
-        "read": len(read),
-        "absent": missing,
-    }))
+    counts["result"] = chart["status"]
+    print(visit_common.summary(counts))
     return 0
 
 

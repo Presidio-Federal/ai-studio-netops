@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "secops-event/v1",
+  "title": "state/secops-event.json",
+  "description": "This security-event invoke only. Evidence from Elasticsearch and Splunk, the kind the agent named, and the blocks sent to Ops Firewall.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema", "updated_at", "source_agent", "status", "headline", "next_action", "kind", "evidence", "blocks", "dispatched", "gaps", "relations", "keys"],
+  "properties": {
+    "schema": { "const": "secops-event/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "const": "secops-event-response" },
+    "status": { "enum": ["ok", "gaps", "failed"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"] },
+    "kind": { "enum": ["port_scan", "deny_surge", "traffic_spike", "quiet", "unknown", null] },
+    "evidence": { "type": "object" },
+    "blocks": { "type": "array" },
+    "dispatched": { "type": "array" },
+    "gaps": { "type": "array" },
+    "relations": { "type": "array" },
+    "keys": { "type": "array" }
+  }
+}

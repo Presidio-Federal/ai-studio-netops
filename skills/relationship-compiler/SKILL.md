@@ -1,7 +1,7 @@
 ---
 name: relationship-compiler
-version: "1.5.0"
-description: "v1.5.0 — Relationship compiler: flows_to copies NetFlow src and dst when both names are inventory devices; denies and unresolved syslog stay off the graph."
+version: "1.5.1"
+description: "v1.5.1 — Relationship compiler: a no-op stdout line carries the on-disk edge, drift, read, and lifecycle counts."
 ---
 
 # Relationship compiler skill
@@ -80,7 +80,10 @@ Do **not** call `get_folder_structure`. Do **not** list
 
 **First tool:** `compile` under `execution_type: standard`. The
 script reads the fixed list in `references/compile.md` and writes
-the file. Reply from its last stdout line.
+the file. Reply from its last stdout line. A no-op (`wrote`
+null) is `result` `ok` and still includes `current`, `stale`,
+`drift`, `read`, `absent`, and `lifecycle_devices` from the file
+already on disk. Do not turn those into zeros.
 
 ## Canonical top-level keys
 

@@ -1,11 +1,11 @@
 ---
 name: relationship-agent
-version: "1.5.0"
+version: "1.5.1"
 ---
 
 # Relationship agent
 
-Version 1.5.0.
+Version 1.5.1.
 
 ## Identity
 
@@ -55,10 +55,15 @@ Each `execute_command` is a new container. In that container the workspace is th
 python3 <skill>/scripts/compile_graph.py compile --workspace <file_explorer>
 ```
 
-The script does not call MCP. The last stdout line is the result.
-If `wrote` is null, nothing moved: reply the no-op line and stop.
-Do not open `state/relationships.json` to fill the reply. Do not
-add an edge the script did not copy.
+The script does not call MCP. The last stdout line is one JSON
+object. Every number in the reply is a field of that object. Do
+not open `state/relationships.json` to fill the reply. Do not
+replace a missing field with 0. Do not add an edge the script did
+not copy.
+
+`wrote` null means nothing moved. That is `Result: ok`. The edge,
+drift, read, and lifecycle counts are the file already on disk.
+`new` and `newly_stale` are 0.
 
 Follow `relationship-compiler`. Do **not** write scripts.
 `execute_command` runs only `compile_graph.py`. Do not `ls`
@@ -120,19 +125,21 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 Default to tight. Use this shape and put nothing before or after it:
 
 ```text
-Result: <ok | partial | unknown>
-Wrote: <state/relationships.json | none — no source moved since <compiled_at>>
-Edges: <total> (<current> current, <stale> stale); new <n>, newly stale <n>
-Drift: <n rows | none>
-Read: <k> of 16; absent: <paths | none>
-Lifecycle: <n devices | none>
+Result: <result>
+Wrote: <wrote, or none — no source moved since <compiled_at>>
+Edges: <edges> (<current> current, <stale> stale); new <new>, newly stale <newly_stale>
+Drift: <drift rows | none when drift is 0>
+Read: <read> of 16; absent: <absent joined | none when absent is empty>
+Lifecycle: <lifecycle_devices devices | none when lifecycle_devices is 0>
 Gaps:
 - <thing>: <why>
 ```
 
-`Edges:` and `Drift:` are counts from the file you wrote. Omit the
-whole `Gaps:` block when there are none. A source that existed but
-could not be used is a gap.
+Copy `result`, `edges`, `current`, `stale`, `new`, `newly_stale`,
+`drift`, `read`, `absent`, and `lifecycle_devices` from the JSON
+line. A no-op uses the same fields. Omit the whole `Gaps:` block
+when there are none. A source that existed but could not be used
+is a gap.
 
 - No preamble and no closing summary.
 - Do not narrate tool calls.
