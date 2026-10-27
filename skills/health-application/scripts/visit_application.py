@@ -927,6 +927,145 @@ def finding_lines(probes, containers, hosts, expected):
     return lines
 
 
+def es_rows(label, query, window):
+    inner, error = tool_body(
+        label,
+        "elasticsearch_query",
+        {"query": query, "timerange": window, "limit": 200},
+    )
+    if error or not isinstance(inner, dict):
+        return None, error or "empty"
+    rows = inner.get("rows")
+    return rows if isinstance(rows, list) else [], None
+
+
+def epoch_of(value):
+    text = blank(value)
+    if not text:
+        return None
+    try:
+        return int(datetime.fromisoformat(text.replace("Z", "+00:00")).timestamp())
+    except ValueError:
+        return None
+
+
+def pct_points(value):
+    number = decimal(value)
+    if number is None:
+        return None
+    if number <= 1:
+        number = number * 100
+    return round(number, 1)
+
+
+def elastic_rows(window, by_lower, failed):
+    containers, error = es_rows(
+        "containers",
+        "FROM metrics-docker.container-prod | STATS status = MAX(docker.container.status), "
+        "created = MAX(docker.container.created), image = MAX(container.image.name), "
+        "application = MAX(docker.container.labels.application), service = MAX(docker.container.labels.service), "
+        "site = MAX(lab.site) BY container.name, host.name",
+        window,
+    )
+    if error or containers is None:
+        failed.add("C1")
+        containers = []
+    cpu_rows, _cpu_error = es_rows(
+        "cpu",
+        "FROM metrics-docker.cpu-prod | STATS cpu = AVG(docker.cpu.total.pct) BY container.name, host.name",
+        window,
+    )
+    mem_rows, _mem_error = es_rows(
+        "memory",
+        "FROM metrics-docker.memory-prod | STATS used = MAX(docker.memory.usage.total) BY container.name, host.name",
+        window,
+    )
+    hosts, host_error = es_rows(
+        "hosts",
+        "FROM metrics-system.uptime-prod | STATS uptime_ms = MAX(system.uptime.duration.ms), "
+        "site = MAX(lab.site) BY host.name",
+        window,
+    )
+    if host_error or hosts is None:
+        failed.add("H1")
+        hosts = []
+    host_mem, _ = es_rows(
+        "host-memory",
+        "FROM metrics-system.memory-prod | STATS used_pct = AVG(system.memory.actual.used.pct) BY host.name",
+        window,
+    )
+    host_fs, _ = es_rows(
+        "host-filesystem",
+        'FROM metrics-system.filesystem-prod | WHERE system.filesystem.mount_point == "/" '
+        "| STATS avail = MAX(system.filesystem.available), total = MAX(system.filesystem.total) BY host.name",
+        window,
+    )
+    cpu = {(row.get("container.name"), row.get("host.name")): row.get("cpu") for row in cpu_rows or []}
+    mem = {(row.get("container.name"), row.get("host.name")): row.get("used") for row in mem_rows or []}
+    used = {row.get("host.name"): row.get("used_pct") for row in host_mem or []}
+    disks = {row.get("host.name"): row for row in host_fs or []}
+    built = []
+    now_epoch = int(datetime.now(timezone.utc).timestamp())
+    for row in containers:
+        name = blank(row.get("container.name"))
+        host = blank(row.get("host.name"))
+        if not name or not host:
+            continue
+        status = blank(row.get("status")) or ""
+        service = blank(row.get("service"))
+        application = blank(row.get("application"))
+        site = blank(row.get("site"))
+        device = device_for(host, by_lower)
+        cpu_pct = pct_points(cpu.get((name, host)))
+        built.append(
+            {
+                "kind": "container",
+                "scope": f"container:{host}/{name}",
+                "name": name,
+                "host": host,
+                "device": device,
+                "application": application or service,
+                "service": service,
+                "site": site,
+                "image": blank(row.get("image")),
+                "started_epoch": epoch_of(row.get("created")),
+                "cpu_pct": cpu_pct,
+                "mem_bytes": whole(mem.get((name, host))),
+                "missing": ["exit", "mem_limit", "cpu_limit", "throttle", "oom"],
+                "state": "running" if status.startswith("Up") else "down",
+                "keys": key_list(app_key(application or service), device_key(device), site_key(site)),
+            }
+        )
+    for row in hosts:
+        host = blank(row.get("host.name"))
+        if not host:
+            continue
+        site = blank(row.get("site"))
+        device = device_for(host, by_lower)
+        uptime_ms = whole(row.get("uptime_ms"))
+        disk = disks.get(host) or {}
+        total = whole(disk.get("total"))
+        avail = whole(disk.get("avail"))
+        fs_pct = round(100 * avail / total, 1) if total and avail is not None and total > 0 else None
+        used_pct = pct_points(used.get(host))
+        built.append(
+            {
+                "kind": "host",
+                "scope": f"host:{host}",
+                "host": host,
+                "device": device,
+                "site": site,
+                "boot_epoch": now_epoch - int(uptime_ms / 1000) if uptime_ms else None,
+                "mem_available_pct": round(100 - used_pct, 1) if used_pct is not None else None,
+                "fs_root_avail_pct": fs_pct,
+                "interfaces_down": None,
+                "state": "up",
+                "keys": key_list(device_key(device), site_key(site)),
+            }
+        )
+    return built
+
+
 def fit_summary(payload):
     while payload.get("findings"):
         line = json.dumps(payload, separators=(",", ":"), default=str)
@@ -945,9 +1084,6 @@ def cmd_collect(args):
     if prod is None:
         print('{"error": "inventory/prod.json missing"}', file=sys.stderr)
         return 1
-    exprs = load_exprs()
-    if exprs is None:
-        return 1
     board = visit_common.load_board(ws, "application") or {}
     app = plane_block(board)
     window = blank(app.get("window")) or "1h"
@@ -960,64 +1096,17 @@ def cmd_collect(args):
     budget = visit_common.Budget(240)
     failed = set()
 
-    targets_body, targets_error = tool_body(
-        "targets",
-        "grafana_prometheus_targets",
-        {"datasource_uid": datasource} if datasource else {},
-    )
-    targets = []
-    if targets_error or not targets_body:
-        failed.add("T")
-    else:
-        targets = targets_body.get("targets") or []
-
     threshold = latency_limit(app)
     vantages = expected_vantages(app)
     probe_job = blank(app.get("probe_job")) or ""
     discovered_job = False
-    if not probe_job and "T" not in failed:
-        jobs = probe_jobs(targets)
-        if len(jobs) == 1:
-            probe_job = jobs[0]
-            discovered_job = True
-        elif len(jobs) > 1:
-            print("Need: probe_job\nOptions: " + ", ".join(jobs), file=sys.stderr)
-            return 1
-
-    results = {}
-    for name in EXPR_ORDER:
-        if budget.exhausted():
-            failed.add(name)
-            continue
-        if name.startswith("P") and not probe_job:
-            continue
-        expr = exprs[name].replace("<probe_job>", probe_job).replace("<window>", window)
-        payload, error = prom_series(name, expr, window, datasource)
-        if error or payload is None:
-            if name in OPTIONAL_EXPR:
-                results[name] = {"series": []}
-            else:
-                failed.add(name)
-            continue
-        results[name] = payload
-
-    built = []
-    if "P1" in results:
-        built.extend(probe_rows(results, by_lower, window))
-    elif "P1" in failed:
-        built.extend(keep_kind(prior_rows, "probe"))
-    if "C1" in results:
-        built.extend(container_rows(results, by_lower))
-    elif "C1" in failed:
+    built = elastic_rows(window, by_lower, failed)
+    if "C1" in failed:
+        built = [row for row in built if row.get("kind") != "container"]
         built.extend(keep_kind(prior_rows, "container"))
-    if "H1" in results:
-        built.extend(host_rows(results, by_lower))
-    elif "H1" in failed:
+    if "H1" in failed:
+        built = [row for row in built if row.get("kind") != "host"]
         built.extend(keep_kind(prior_rows, "host"))
-    if "T" not in failed:
-        built.extend(target_rows(targets, by_lower))
-    else:
-        built.extend(keep_kind(prior_rows, "target"))
 
     seen = {row["scope"] for row in built}
     carried = []
@@ -1037,19 +1126,7 @@ def cmd_collect(args):
     current_rows = (built + carried)[:96]
 
     annotations = app.get("annotations") if isinstance(app.get("annotations"), list) else []
-    if not budget.exhausted():
-        ann_body, ann_error = tool_body("annotations", "grafana_annotations", {"action": "list", "timerange": window})
-        if not ann_error and ann_body:
-            annotations = change_annotations(ann_body.get("annotations"))
-
     lookup = fit_lookup(app.get("lookup"))
-    if lookup_empty(lookup) and not budget.exhausted():
-        lookup = {
-            "services": label_values(datasource, "service"),
-            "sites": label_values(datasource, "site"),
-            "vantage_points": label_values(datasource, "vantage_point"),
-            "hosts": label_values(datasource, "host_name"),
-        }
 
     anchors_down = {"P1", "C1", "H1"}.issubset(failed)
     coverage = "unavailable" if anchors_down else ("partial" if failed else "complete")
@@ -1154,7 +1231,7 @@ def cmd_collect(args):
             "status": status,
             "headline": headline[:500],
             "window": window,
-            "coverage": {"state": coverage, "detail": "failed " + ",".join(sorted(failed)) if failed else "T through H4"},
+            "coverage": {"state": coverage, "detail": "failed " + ",".join(sorted(failed)) if failed else "elasticsearch docker and system"},
             "metrics": [metric],
             "readings": readings,
             "unchanged": unchanged,

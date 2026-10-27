@@ -22,16 +22,18 @@ Deployed model is **MiniMax** unless noted.
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.2.0 | MiniMax |
 | Health Telemetry | 1.3.4 | MiniMax |
-| Health Application | 1.3.0 | MiniMax |
+| Health Application | 1.4.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
 | Health Analyzer | 5.3.2 | Frontier (operator-selected; SOAP synthesis) |
-| Relationship agent | 1.4.0 | MiniMax |
-| Network Map | 1.1.0 | MiniMax |
+| Relationship agent | 1.5.0 | MiniMax |
+| Network Map | 1.2.0 | MiniMax |
 | Application Map | 1.0.0 | MiniMax |
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Network Map 1.2.0 (skill 1.4.0) and Relationship agent 1.5.0 (skill 1.5.0, workspace-handoff 1.70.34): the telemetry board names a path by `src` and `dst`, not `src_device`. A device arc or `flows_to` edge is copied only when both names are in `inventory/prod.json`. Exporter state comes from the exporter row. Firewall denies stay on the map and off the graph. Syslog attaches to a device only when `name` resolved; an address stays unresolved. Health Analyzer skill 5.3.3 reads those columns the same way. MiniMax.
 
 Ops Firewall 1.0.0 (skill 1.0.0, workspace-handoff 1.70.32): one live IOS-XE ACL or FTD access rule. Host and port come from `inventory/prod.json`. No credentials in the call. A write does not deploy. `ftd_deploy` runs only when the operator says deploy, and it deploys every pending change on that firewall. `state/firewall.json` is this invoke. MiniMax.
 
@@ -228,6 +230,8 @@ workspace-handoff 1.70.8: the NetFlow catalog row names identity, the top-N carr
 workspace-handoff 1.70.7: the application catalog row names probe environment, content check, window latency, and container limit, throttle, and OOM columns.
 
 workspace-handoff 1.70.3: `unwrap_grafana` pivots Grafana 13 columnar frames. Live NetFlow for the last hour is bucket `network-v2`, measurement `netflow`, five exporters.
+
+Health Application 1.4.0 (skill 1.4.0, workspace-handoff 1.70.33): the visit reads Elasticsearch Docker container status, CPU, and memory, plus host uptime, memory, and root disk. Probe and scrape-target rows are not refreshed; those series are not in Elasticsearch. MiniMax.
 
 Health Application 1.3.0 (skill 1.3.0): a probe row is application, destination environment, target, and vantage. The visit reports window failure and latency, a body-check result when `probe_failed_due_to_regex` exists, and container limit, throttle, and OOM when those series exist. Missing series and missing vantage points (cloud, hq, branch unless the board sets `expected_vantages`) stay missing. `last_collected_at` and `last_visit_id` both appear in the reply.
 

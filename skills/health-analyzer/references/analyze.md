@@ -187,13 +187,15 @@ opened (if any):
 - **netflow** also: `exporter` rows say which edge devices still
   export (silent = the device or its export path is down, or
   nothing crossed it); `conversation` rows say which client →
-  server pairs the exporters saw, with `src_device` /
-  `dst_device` / `exporter` resolved to inventory names. A
-  conversation `absent` is not a symptom by itself; it is evidence
-  for a problem that already names one of its devices or the
-  application behind `dst`. A port is not an application: join a
-  conversation to an application only through `dst_device` and a
-  compiled `depends_on` edge.
+  server pairs the exporters saw. `src` and `dst` are endpoint
+  names from the stream. They are inventory devices only when the
+  compiled `flows_to` edge says so. `dst_port` may be a service
+  token. `protocol` `scan` is a port spread. `firewall` rows are
+  denies, not delivered paths. A conversation `absent` or
+  `not_in_top_n` is not a symptom by itself. A port or a service
+  token is not an application: join a conversation to an
+  application only through a compiled `flows_to` / `depends_on`
+  edge.
 - ServiceNow also: `collection_status` from the latest visit's
   `coverage`; `ticket_history` is your read of the board's
   `current[]` rows — `pattern` (what kind of tickets sit open and
@@ -206,8 +208,9 @@ opened (if any):
 
 Join planes that share a `type:name` key. A `device:` key on a
 ticket row is the same thread as that `device:` key on a Splunk,
-IOS-XE, or application host row; a NetFlow row's `src_device`,
-`dst_device`, and `exporter` are `device:` keys too; an
+IOS-XE, or application host row; a NetFlow `exporter` and a
+compiled `flows_to` end are `device:` keys; `src` and `dst` text
+are not keys by themselves; an
 `application:` key on a probe row and on a container row is the
 same tier seen from outside and inside. Each nurse's `note` is her
 opinion of what changed since her last stamp. Use those notes in

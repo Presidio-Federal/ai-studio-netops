@@ -1,7 +1,7 @@
 ---
 name: health-analyzer
-version: "5.3.2"
-description: "v5.3.2 — Health Analyzer: read boards and visit rings for a named problem; name the source plane; nurse if stale; assess_health.py only on rewrite."
+version: "5.3.3"
+description: "v5.3.3 — Health Analyzer: read boards and visit rings for a named problem; name the source plane; nurse if stale; assess_health.py only on rewrite."
 ---
 
 # Health Analyzer skill

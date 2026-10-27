@@ -18,8 +18,8 @@ Paths are `workspace-handoff` catalog rows. Nothing else.
 | `state/network-sync.json` | Ops Network Sync | no |
 | `state/lifecycle.json` | Modernization Lifecycle | no |
 | `health/metadata-application.json` | Health Application | no |
-| `health/metadata-netflow.json` | Health Monitor | no |
-| `health/metadata-splunk.json` | Health Monitor | no |
+| `health/metadata-netflow.json` | Health Telemetry | no |
+| `health/metadata-splunk.json` | Health Logging | no |
 | `health/metadata-iosxe.json` | Health Device | no |
 
 You, the agent, read at most one file yourself: `state/health.json`
@@ -40,4 +40,4 @@ No `state/`, no `health/`, no `inventory/` writes. No stamps. No
 The page is as fresh as the boards. The footer lists each board's
 own timestamp; `missing_boards` lists what was not there. If the
 operator wants newer telemetry, the nurse (Health Application,
-Health Monitor) runs first and the map is rebuilt after.
+Health Logging, Health Telemetry) runs first and the map is rebuilt after.

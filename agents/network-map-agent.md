@@ -1,11 +1,11 @@
 ---
 name: network-map-agent
-version: "1.1.0"
+version: "1.2.0"
 ---
 
 # Network Map
 
-Version 1.1.0.
+Version 1.2.0.
 
 ## Identity
 
@@ -78,9 +78,10 @@ card and a `Gaps:` line, not a failure.
 
 The map is as fresh as the boards. If the operator wants newer
 telemetry, say which nurse to run first (Health Application for
-probes / containers / hosts, Health Monitor for Splunk and NetFlow,
-Relationship agent for edges, Modernization Lifecycle for support
-dates and advisories) and offer to rebuild after. Do not
+probes / containers / hosts, Health Logging for Splunk, Health
+Telemetry for NetFlow, Relationship agent for edges, Modernization
+Lifecycle for support dates and advisories) and offer to rebuild
+after. Do not
 run them yourself.
 
 ## Reply
@@ -88,6 +89,8 @@ run them yourself.
 ```text
 Result: ok  Wrote: reports/network-map.html (<bytes> B, generated <generated>)
 Map: <nodes> devices · <links> cables (<link_source>) · <edges> edges · <problems> problems · <findings> findings · <review_rows> review rows
+Telemetry: <conversations> paths · <flow_arcs> device arcs · <denies> denies · <exporters_reporting>/<exporters> exporters reporting
+Syslog: <syslog_devices> devices · <syslog_unresolved> unresolved
 Lifecycle: <lifecycle_items> products · <psirts> advisories · list <lifecycle_cost_low>–<lifecycle_cost_high>
 Application: <services> on <hosts_mapped | no host resolved to an inventory device>
 Health: <state/health.json headline, or "no chart">

@@ -59,19 +59,24 @@ Both devices usually report the same cable or peering; that is one
 edge with `sides` 2. If only one reports it, `sides` 1.
 
 **Directed rels** keep the row's direction: `flows_to` is client →
-server (`src_device` → `dst_device`); `depends_on` is the thing
-that needs → the thing it needs.
+server. The client is `src_device`, else `src_gateway`, else `src`
+when that string is an `inventory/prod.json` device name. The
+server is the same three columns on the destination side. A label
+that is not an inventory device (`prod-api`, a service token, an
+address) is not an end. `depends_on` is the thing that needs → the
+thing it needs.
 
 | Source | Condition | from | rel | to | basis | source_time |
 |--------|-----------|------|-----|----|-------|-------------|
 | topology `devices[].neighbors[]` | `far` is not null | `local` | `connected_to` | `far` | observed | that device's `probed_at` |
 | topology `devices[].neighbors[]` | `far` is null | — no edge (name not in inventory) | | | | |
 | iosxe `current[]` `kind` `bgp` | `peer` is not null | `device:<name>` | `peers_with` | `peer` | observed | board `last_collected_at` |
-| splunk `current[]` `kind` `bgp` | `peer` is not null | `device:<name>` | `peers_with` | `peer` | observed | board `last_collected_at` |
-| netflow `current[]` `kind` `conversation` | `src_device` and `dst_device` both not null and differ | `device:<src_device>` | `flows_to` | `device:<dst_device>` | observed | board `last_collected_at` |
-| netflow `current[]` `kind` `conversation` | `exporter` not null and `src_device` not null and differs from `exporter` | `device:<src_device>` | `traverses` | `device:<exporter>` | observed | board `last_collected_at` |
-| netflow `current[]` `kind` `conversation` | `exporter` not null and `dst_device` not null and differs from `exporter` | `device:<dst_device>` | `traverses` | `device:<exporter>` | observed | board `last_collected_at` |
+| netflow `current[]` `kind` `conversation`, `state` not `absent` | both ends resolve to inventory devices and differ | `device:<src end>` | `flows_to` | `device:<dst end>` | observed | board `last_collected_at` |
+| netflow `current[]` `kind` `conversation`, `state` not `absent` | `exporter` (else `exporter_name`) is an inventory device and differs from the src end | `device:<src end>` | `traverses` | `device:<exporter>` | observed | board `last_collected_at` |
+| netflow `current[]` `kind` `conversation`, `state` not `absent` | exporter device differs from the dst end | `device:<dst end>` | `traverses` | `device:<exporter>` | observed | board `last_collected_at` |
 | netflow `current[]` `kind` `exporter` | — no edge (an exporter reporting is a state, not a relation) | | | | | |
+| netflow `current[]` `kind` `firewall` | — no edge (a deny is not a delivered path) | | | | | |
+| splunk `current[]` `kind` `bgp` | `name` and `peer` are both inventory device names | `device:<name>` | `peers_with` | `device:<peer>` | observed | board `last_collected_at` |
 | application `current[]` `kind` `probe` | `application` not null | `test:probe/<application>@<vantage_site>` (the row's `test:` key) | `tests` | `application:<application>` | observed | board `last_collected_at` |
 | application `current[]` `kind` `probe` | `application` and `site` not null | `application:<application>` | `located_at` | `site:<site>` | observed | board `last_collected_at` |
 | application `current[]` `kind` `container` | `application` and `device` not null | `application:<application>` | `depends_on` | `device:<device>` | observed | board `last_collected_at` |
@@ -105,20 +110,23 @@ evaluated, and the PASS / FAIL / SKIP stays on the run. A row in
 `results.not_applicable[]` produces nothing. Health is unchanged:
 only `relations[]` is copied. An empty `relations[]` is not a gap.
 
-A NetFlow conversation's `dst_port`, `protocol`, `bytes`,
-and `state` stay on the board; the edge says the pair was seen,
-not how much or whether it is still present. A probe's `success`
-and a container's `state` likewise stay on the board.
+A NetFlow conversation's `dst_port` (a service token or a port),
+`protocol` (`tcp`, `udp`, or `scan`), `bytes`, and `state` stay on
+the board. The edge says two inventory devices were the ends of a
+path, not how much moved. A firewall deny stays on the board. A
+probe's `success` and a container's `state` likewise stay on the
+board.
 
 Never: a `device:` key from a ticket whose typed `device` column is
 null (its title keys are prose); a hop with `device` null; a
-neighbor with `far` null; a Splunk `config`/`link`/`reload` row;
-a NetFlow row whose `src_device` / `dst_device` / `exporter` is
-null (an address is not a device); an `application:` key from a
-NetFlow row (it has none), from a container `name`, or from a
-container's `service` text; an edge from a note, headline, `issue`,
-or `detail` text; a `service:` key that is not already on the
-source row (ServiceNow) or in `applications.json` `service`; a
+neighbor with `far` null; a Splunk row that is not `bgp`, or a
+`bgp` row whose `name` or `peer` is not an inventory device (an
+address in `name` is not a device); a NetFlow `src` or `dst` that
+is not an inventory device name; a firewall row; an `application:`
+key from a NetFlow row (it has none), from a container `name`, or
+from a container's `service` text; an edge from a note, headline,
+`issue`, or `detail` text; a `service:` key that is not already on
+the source row (ServiceNow) or in `applications.json` `service`; a
 `control:` key from `compliance/intel.json` (no device end).
 
 ## 3. Upsert against the prior file

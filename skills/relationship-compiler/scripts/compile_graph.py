@@ -96,6 +96,45 @@ def device_key(value):
     return formed if key_ok(formed) else None
 
 
+def inventory_index(prod):
+    names = {}
+    if not isinstance(prod, dict):
+        return names
+    for device in prod.get("devices") or []:
+        if not isinstance(device, dict):
+            continue
+        name = blank(device.get("name"))
+        if name:
+            names[name.lower()] = name
+    return names
+
+
+def known_device(value, names):
+    """A device column is an edge end only when it is an inventory name."""
+    text = blank(value)
+    if not text:
+        return None
+    if text.startswith("device:"):
+        text = text.split(":", 1)[1].strip()
+    if not text:
+        return None
+    if names:
+        spelled = names.get(text.lower())
+        return device_key(spelled) if spelled else None
+    return device_key(text)
+
+
+def flow_device(row, side, names):
+    """Prefer the nurse's device column, then an exact gateway, then a src/dst label that is an inventory device."""
+    for column in ("%s_device" % side, "%s_gateway" % side):
+        found = known_device(row.get(column), names) if names else device_key(row.get(column))
+        if found:
+            return found
+    if not names:
+        return None
+    return known_device(row.get(side), names)
+
+
 def interface_key(device, interface):
     if not blank(device) or not blank(interface):
         return None
@@ -153,19 +192,24 @@ def copy_edges(sources):
     for row in ios.get("current") or []:
         if isinstance(row, dict) and row.get("kind") == "bgp" and device_key(row.get("name")) and device_key(row.get("peer")):
             add_edge(bag, device_key(row.get("name")), device_key(row.get("peer")), "peers_with", "observed", when, "health/metadata-iosxe.json", side=row.get("name"))
+    names = inventory_index(sources.get("inventory/prod.json"))
     splunk = plane(sources.get("health/metadata-splunk.json"), "splunk")
     when = blank(splunk.get("last_collected_at"))
     for row in splunk.get("current") or []:
-        if isinstance(row, dict) and row.get("kind") == "bgp" and device_key(row.get("name")) and device_key(row.get("peer")):
-            add_edge(bag, device_key(row.get("name")), device_key(row.get("peer")), "peers_with", "observed", when, "health/metadata-splunk.json", side=row.get("name"))
+        if not isinstance(row, dict) or row.get("kind") != "bgp":
+            continue
+        left = known_device(row.get("name"), names)
+        right = known_device(row.get("peer"), names)
+        if left and right:
+            add_edge(bag, left, right, "peers_with", "observed", when, "health/metadata-splunk.json", side=row.get("name"))
     net = plane(sources.get("health/metadata-netflow.json"), "netflow")
     when = blank(net.get("last_collected_at"))
     for row in net.get("current") or []:
-        if not isinstance(row, dict) or row.get("kind") != "conversation":
+        if not isinstance(row, dict) or row.get("kind") != "conversation" or row.get("state") == "absent":
             continue
-        src = device_key(row.get("src_device"))
-        dst = device_key(row.get("dst_device"))
-        exporter = device_key(row.get("exporter")) or device_key(row.get("device"))
+        src = flow_device(row, "src", names)
+        dst = flow_device(row, "dst", names)
+        exporter = known_device(row.get("exporter"), names) or known_device(row.get("exporter_name"), names)
         if src and dst and src != dst:
             add_edge(bag, src, dst, "flows_to", "observed", when, "health/metadata-netflow.json")
         if exporter and src and exporter != src:

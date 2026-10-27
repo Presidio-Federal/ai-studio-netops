@@ -1,23 +1,22 @@
 ---
 name: health-application
-version: "1.3.0"
-description: "v1.3.0 — Health Application nurse: probes, containers, and hosts run visit_application.py through Grafana Prometheus. Board every visit; stamp only when a row moved."
+version: "1.4.0"
+description: "v1.4.0 — Health Application nurse: containers and hosts run visit_application.py through Elasticsearch. Board every visit; stamp only when a row moved."
 ---
 
 # Health Application skill
 
 One visit type. Run `scripts/visit_application.py collect`. The
-script reads the Grafana Prometheus plane — blackbox probes per
-application, cAdvisor containers, node exporter hosts, and
-scrape-target health — and writes one row per probe, container,
-host, and target onto the board.
+script reads Elasticsearch — Docker containers and the host under
+them — and writes one row per container and host onto the board.
+Blackbox probes and Prometheus scrape targets are not in
+Elasticsearch, so this visit does not refresh those rows.
 
-Tools on a visit: `grafana_prometheus_targets` (once),
-`grafana_query_prometheus` (eighteen expressions, copied
-exactly), `grafana_annotations` (list, once),
-`grafana_prometheus_labels` (baseline only). Do not call
-`grafana_query_influx` or `grafana_influx_schema`; flows are Health
-Monitor's plane. Do not call `splunk_search` or a device MCP.
+Tools on a visit: `elasticsearch_query` against
+`metrics-docker.container-prod`, `metrics-docker.cpu-prod`,
+`metrics-docker.memory-prod`, `metrics-system.uptime-prod`,
+`metrics-system.memory-prod`, and `metrics-system.filesystem-prod`.
+Do not call Grafana. Do not call `splunk_search` or a device MCP.
 
 If they ask for a different health check: reply `That's not what I
 do.` and stop.
@@ -27,28 +26,23 @@ A **board visit**. `health/metadata-application.json` carries
 `visits[]`. The board is the prior; do not open the prior stamp.
 No material change = **quiet visit**: board only, no stamp.
 
-`references/prometheus.md` is the whole visit: read the board and
-`inventory/prod.json`; T for targets; P1–P4 for probes (job from
-metadata `probe_job`); C1–C8 for containers; H1–H4 for hosts; A for
-`change:` annotations inside the window. Every row is label values
-copied into columns: `application` ← `service` label, `host` ←
-`host_name`, `device` ← the `prod.json` spelling when `host_name`
-matches, `site` ← `site`. Carry unseen board containers as `gone`
-and unseen hosts as `unreachable`. Diff against `current[]` — only
-the material table in `references/prometheus.md` moves a row onto a
-stamp: a probe flip, HTTP-code change, content-check change, or window latency move, a container restart /
-appear / vanish / CPU crossing 80, a host reboot / interface down /
-memory or root disk crossing 10 % free, a target changing health.
+`references/elastic.md` is the manual order when the script cannot
+run. Every row copies `container.name`, `host.name`,
+`docker.container.labels.application`, `docker.container.labels.service`,
+and `lab.site`. `device` is the `prod.json` spelling when the host
+matches. Carry unseen board containers as `gone` and unseen hosts
+as `unreachable`. Diff against `current[]`. A stamp is a container
+restart, appear, vanish, or CPU crossing 80, or a host reboot or
+memory or root disk crossing 10 percent.
 The `host` / `device` / `application` / `site` columns are the edge;
 write no `relations[]`. Write no `service:` key; the registry owns
-service spellings. Do not write PromQL of your own.
+service spellings. Do not write a query of your own.
 
 Do not dump the MCP result. Do not write `state/`.
 
 ## Hard boundaries
 
-Only the expressions `references/prometheus.md` prints — no range
-queries, no per-label drill-down, no `grafana_get_dashboard`,
+Only the queries `references/elastic.md` prints. No Grafana, no `grafana_get_dashboard`,
 `grafana_search_dashboards`, or `grafana_alerts`, no
 `grafana_annotations(action="create")`. `window` and `probe_job`
 are always from metadata; never `7d` or `24h`. Do not read

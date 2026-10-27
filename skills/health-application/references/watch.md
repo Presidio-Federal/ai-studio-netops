@@ -7,12 +7,9 @@ config, remediation), reply `That's not what I do.` and stop.
 An invoke that names the application check, or a bare invoke from
 the Analyzer or a schedule, is authorization. Do not confirm.
 
-Tools: `grafana_prometheus_targets`, `grafana_query_prometheus`,
-`grafana_annotations` (list only), `grafana_prometheus_labels`
-(baseline). Never `grafana_query_influx`, `grafana_influx_schema`,
-`grafana_get_dashboard`, `grafana_search_dashboards`,
-`grafana_alerts`, `grafana_annotations(action="create")`,
-`splunk_search`, or a device MCP.
+Tools: `elasticsearch_query` on `metrics-docker.*-prod` and
+`metrics-system.*-prod`. Never Grafana, `splunk_search`, or a
+device MCP.
 
 ## This plane only
 

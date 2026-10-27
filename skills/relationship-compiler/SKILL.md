@@ -1,7 +1,7 @@
 ---
 name: relationship-compiler
-version: "1.4.0"
-description: "v1.4.0 — Relationship compiler: compile_graph.py copies nurse columns, lifecycle cost and order windows, and compliance failures into state/relationships.json."
+version: "1.5.0"
+description: "v1.5.0 — Relationship compiler: flows_to copies NetFlow src and dst when both names are inventory devices; denies and unresolved syslog stay off the graph."
 ---
 
 # Relationship compiler skill
@@ -19,7 +19,8 @@ Three layers, kept apart by `basis`:
   `depends_on[]`).
 - `observed` — a tool payload contained it and a writer recorded it
   as a column (CDP neighbor, BGP `peer`, a NetFlow conversation's
-  `src_device` / `dst_device` / `exporter`, an application probe
+  `src` / `dst` / `exporter` (an inventory device name, else no
+  edge), an application probe
   row's `application` and `site`, a container row's `application`
   and `device`, a host row's `device` and `site`, a ticket's typed
   columns and `rfc`, a run's `git.commit_sha` + `devices[]` /

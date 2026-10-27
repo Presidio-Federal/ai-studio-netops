@@ -1,7 +1,7 @@
 ---
 name: network-map
-version: "1.3.3"
-description: "v1.3.3 — Network Map: lifecycle scorecard of overdue, approaching, and refresh cost; advisories on their own card by severity."
+version: "1.4.0"
+description: "v1.4.0 — Network Map: NetFlow paths from src and dst names, exporter state, firewall denies, and syslog on the resolved device."
 ---
 
 # Network Map skill
@@ -55,8 +55,8 @@ the page and a `missing_boards` entry in the summary — not an error.
 | `state/network-sync.json` | inventory headline |
 | `state/lifecycle.json` | support dates, replacement offers, lead times, PSIRT advisories, list-price range |
 | `health/metadata-application.json` | probes, containers, hosts per tier |
-| `health/metadata-netflow.json` | conversations, exporter state |
-| `health/metadata-splunk.json` | per-device syslog buckets (`hosts` map resolves addresses) |
+| `health/metadata-netflow.json` | conversations (`src` / `dst` names, `exporter`), firewall denies, exporter state from `current[]` |
+| `health/metadata-splunk.json` | syslog buckets on the resolved device (`name` or a `device:` key). An unresolved address stays off the device |
 | `health/metadata-iosxe.json` | `series[]` for the IOS-XE trend line (clean when idle BGP and not-ready interfaces are both zero) |
 | `inventory/map-layout.json` | optional operator x/y overrides; otherwise auto layout |
 
@@ -74,6 +74,8 @@ by another agent. Overwrite every run. Do not write anywhere else.
 ```text
 Result: ok  Wrote: reports/network-map.html (<bytes> B, generated <ts>)
 Map: <nodes> devices · <links> cables (<link_source>) · <edges> edges · <problems> problems · <findings> findings · <review_rows> review rows
+Telemetry: <conversations> paths · <flow_arcs> device arcs · <denies> denies · <exporters_reporting>/<exporters> exporters reporting
+Syslog: <syslog_devices> devices · <syslog_unresolved> unresolved
 Lifecycle: <lifecycle_items> products · <psirts> advisories · list <lifecycle_cost_low>–<lifecycle_cost_high>
 Application: <services joined> on <hosts_mapped joined | no host resolved>
 Gaps: <one line per missing board, or "none">

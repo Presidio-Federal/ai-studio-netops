@@ -842,27 +842,113 @@ def build(ws, template_path):
                "score": _ratio(probe_up, probe_n)}
 
     # ---- syslog buckets per device
-    syslog = defaultdict(lambda: defaultdict(int))
-    addr_map = {str(k): v for k, v in (mds.get("hosts") or {}).items()}
-    for r in mds.get("current") or []:
-        dev = r.get("name") or r.get("subject")
-        dev = resolve(dev) or resolve(addr_map.get(str(r.get("source_ip")))) or dev
-        if not dev or r.get("kind") in (None, "visit"):
+    # The logging board's `name` is the inventory device when the
+    # visit resolved the hostname. An address left in `name` is not
+    # a device. `source_ip` on an ACL row is the client, not the logger.
+    access_hosts = {}
+    for device in inv.get("devices") or []:
+        if not isinstance(device, dict):
             continue
-        syslog[dev][r.get("kind")] += int(r.get("count") or 0)
+        access = device.get("access") or {}
+        if not isinstance(access, dict):
+            continue
+        owner = resolve(device.get("name"))
+        if not owner:
+            continue
+        for block in access.values():
+            if isinstance(block, dict) and block.get("host"):
+                access_hosts[str(block["host"])] = owner
+    hosts_map = {str(k): v for k, v in (mds.get("hosts") or {}).items()}
+
+    def syslog_device(row):
+        for key in row.get("keys") or []:
+            if isinstance(key, str) and key.startswith("device:"):
+                hit = resolve(key[7:])
+                if hit:
+                    return hit
+        for candidate in (row.get("name"), hosts_map.get(str(row.get("name") or ""))):
+            hit = resolve(candidate) or access_hosts.get(str(candidate or ""))
+            if hit:
+                return hit
+        return None
+
+    syslog = defaultdict(lambda: defaultdict(int))
+    syslog_unresolved = defaultdict(lambda: defaultdict(int))
+    for r in mds.get("current") or []:
+        if not isinstance(r, dict) or r.get("kind") in (None, "visit"):
+            continue
+        dev = syslog_device(r)
+        bucket = syslog if dev else syslog_unresolved
+        label = dev or r.get("name") or r.get("subject")
+        if not label:
+            continue
+        bucket[label][r.get("kind")] += int(r.get("count") or 0)
     syslog_out = {k: dict(v) for k, v in syslog.items()}
+    unresolved_out = [{"name": k, "kinds": dict(v)} for k, v in syslog_unresolved.items()]
 
     # ---- flows
-    flows = []
+    # Endpoint names come from the telemetry connector (`src` / `dst`).
+    # `src_device` is absent on the current board. An arc is drawn only
+    # when both ends are inventory devices. A service token such as
+    # `prod-api` stays on the path row and is not a device.
+    exporter_state = {}
     for r in mdn.get("current") or []:
-        if r.get("kind") != "conversation":
+        if isinstance(r, dict) and r.get("kind") == "exporter" and r.get("source"):
+            exporter_state[r["source"]] = r
+
+    def flow_end(row, side):
+        return (resolve(row.get("%s_device" % side)) or resolve(row.get("%s_gateway" % side))
+                or resolve(row.get(side)))
+
+    flows, denies, arcs, seen_arcs = [], [], [], set()
+    for r in mdn.get("current") or []:
+        if not isinstance(r, dict) or r.get("state") == "absent":
             continue
-        flows.append({"exp": r.get("exporter") or r.get("exporter_name"), "src": r.get("src_device") or r.get("src"),
-                      "dst": r.get("dst_device") or r.get("dst"), "port": r.get("dst_port"), "proto": r.get("protocol"),
-                      "bytes": r.get("bytes") or 0, "state": r.get("state")})
+        kind = r.get("kind")
+        if kind not in ("conversation", "firewall"):
+            continue
+        src_dev, dst_dev = flow_end(r, "src"), flow_end(r, "dst")
+        exp = resolve(r.get("exporter")) or r.get("exporter") or r.get("exporter_name")
+        item = {"exp": exp, "src": r.get("src_device") or r.get("src"), "dst": r.get("dst_device") or r.get("dst"),
+                "src_device": src_dev, "dst_device": dst_dev, "port": r.get("dst_port"),
+                "proto": r.get("protocol"), "bytes": r.get("bytes") or 0, "flows": r.get("flows") or 0,
+                "state": r.get("state")}
+        if kind == "firewall":
+            denies.append(item)
+            continue
+        flows.append(item)
+        if src_dev and dst_dev and src_dev != dst_dev and r.get("state") == "present":
+            pair = (src_dev, dst_dev, r.get("protocol") == "scan")
+            if pair not in seen_arcs:
+                seen_arcs.add(pair)
+                arcs.append({"src": src_dev, "dst": dst_dev, "scan": pair[2]})
     flows.sort(key=lambda f: -(f["bytes"] or 0))
-    flows = flows[:25]
-    exporters = [{"name": e.get("name") or e.get("exporter_name"), "state": e.get("state")} for e in mdn.get("exporters") or [] if isinstance(e, dict)]
+    denies.sort(key=lambda f: -(f["flows"] or 0))
+    telemetry = {"conversations": len(flows), "denies": len(denies), "arcs": len(arcs)}
+    flows_out, denies_out = flows[:25], denies[:15]
+    exporters = []
+    seen_sources = set()
+    for e in mdn.get("exporters") or []:
+        if not isinstance(e, dict):
+            continue
+        source = e.get("source")
+        seen_sources.add(source)
+        row = exporter_state.get(source) or {}
+        exporters.append({
+            "name": resolve(e.get("device")) or e.get("exporter_name") or e.get("device") or source,
+            "source": source,
+            "state": row.get("state"),
+            "device": resolve(e.get("device") or row.get("device")),
+        })
+    for source, row in exporter_state.items():
+        if source in seen_sources:
+            continue
+        exporters.append({
+            "name": resolve(row.get("device")) or row.get("exporter_name") or source,
+            "source": source,
+            "state": row.get("state"),
+            "device": resolve(row.get("device")),
+        })
 
     edges_out = [{k: e.get(k) for k in ("from", "to", "rel", "basis", "status", "sources", "last_seen")} for e in edges]
 
@@ -891,7 +977,11 @@ def build(ws, template_path):
         "lifecycle": lifecycle_out(life, datetime.now(timezone.utc)),
         "app": app_out,
         "syslog": syslog_out,
-        "flows": flows,
+        "syslog_unresolved": unresolved_out,
+        "flows": flows_out,
+        "flow_arcs": arcs,
+        "denies": denies_out,
+        "telemetry": telemetry,
         "exporters": exporters,
     }
     with open(template_path, encoding="utf-8") as fh:
@@ -946,6 +1036,13 @@ def main():
         "lifecycle_cost_high": bundle["lifecycle"]["cost_high"],
         "services": [s["service"] for s in bundle["app"]["services"]],
         "hosts_mapped": [s["host_node"] for s in bundle["app"]["services"] if s["host_node"]],
+        "conversations": bundle["telemetry"]["conversations"],
+        "flow_arcs": bundle["telemetry"]["arcs"],
+        "denies": bundle["telemetry"]["denies"],
+        "exporters": len(bundle["exporters"]),
+        "exporters_reporting": sum(1 for e in bundle["exporters"] if e.get("state") == "reporting"),
+        "syslog_devices": len(bundle["syslog"]),
+        "syslog_unresolved": len(bundle["syslog_unresolved"]),
         "missing_boards": bundle["missing"],
     }
     print(json.dumps(summary, ensure_ascii=False))
