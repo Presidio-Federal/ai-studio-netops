@@ -1,7 +1,7 @@
 ---
 name: health-logging
-version: "1.2.0"
-description: "v1.2.0 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. FTD denies and port spreads are findings; the board is this window."
+version: "1.2.1"
+description: "v1.2.1 — Health Logging nurse: Splunk syslog visits run visit_splunk.py. FTD denies and port spreads are findings; the board is this window."
 ---
 
 # Health Logging skill

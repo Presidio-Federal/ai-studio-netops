@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.31 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
-version: "1.70.31"
+description: "v1.70.32 — Shared-workspace contract for every Studio agent: catalog of paths and writers, envelope, canonical keys, quiet visits, task lines, and visit-script helpers."
+version: "1.70.32"
 ---
 
 # Workspace handoff
@@ -359,6 +359,7 @@ visits).
 | `state/network-sync.json` | state | Ops Network Sync | `ops-network-sync` `schemas/network-sync-state.schema.json` | envelope, `operation_id` `operation` `started_at` `completed_at` `inventories.*.latest_attempt` `inventories.*.current_snapshot` `gaps` `next_action` |
 | `state/netbox.json` | state | Ops NetBox SoT | `ops-netbox-mcp` `schemas/netbox-state.schema.json` | envelope, `kind` `mode` `seed_match` `counts` `links[]` `details` |
 | `state/cmdb-sync.json` | state | Ops CMDB Sync | `ops-cmdb-sync` `schemas/cmdb-sync-state.schema.json` | envelope, `operation` `signal` (`netbox` `servicenow` `unknown` — label only) `result` `device.name` `device_values` (`hostname` `primary_ipv4` `interface`) `compared[]` `wrote` (`netbox` or `none`) `gaps` `keys` (`device:` plus `interface:<device>/<name>` when the address interface was cited). This invoke only. `relations` is `[]`. Scope is the lab tenant on `inventory/prod.json` and one device name. |
+| `state/firewall.json` | state | Ops Firewall | `ops-firewall` `schemas/firewall-state.schema.json` | envelope, `operation` (`read` `write` `deploy`) `device.name` `side` (`iosxe` `ftd`) `action` `result` `pending_count` (FTD; null on IOS-XE) `gaps` `keys` (`device:<name>` or `[]`). This invoke only. No rule bodies. |
 | `state/workspace.json` | state | Onboard | `workspace-onboard` `schemas/workspace-control.schema.json` | envelope, `planes.inventory` `planes.config_sync` `planes.netbox` |
 | `test-request.json` | request | Network Design | `network-design` `schemas/test-request.schema.json` | envelope, scope |
 | `operational/testing/YYYY-MM-DDTHH-MM-SSZ.json` | result | Compliance Test | `compliance-test-runner` `schemas/testing-run.schema.json` | envelope, `risk` `results`, row `keys` |

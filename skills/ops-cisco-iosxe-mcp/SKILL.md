@@ -1,10 +1,10 @@
 ---
 name: cisco-iosxe-mcp
-version: "1.2"
-description: "v1.2 — Manage Cisco IOS-XE devices via RESTCONF MCP tools — read and modify configuration using YANG paths, save configuration, troubleshoot operational state (BGP, IS-IS, CDP, ARP, ACL). SoT/NetBox twin: GET only, then ops-netbox-mcp. Includes CML PAT/C8000V write recipes. Use when the user asks about IOS-XE configuration, RESTCONF, YANG, interfaces, routing, BGP/IS-IS, ACLs, hostname, telemetry, syslog, or live reads for a NetBox source of truth."
+version: "1.2.1"
+description: "v1.2.1 — IOS-XE RESTCONF read and write via YANG. NetBox SoT is GET only. Ops Firewall owns a requested ACL write. PAT ports come from inventory/prod.json."
 ---
 
-# Cisco IOS-XE MCP Server (v1.2)
+# Cisco IOS-XE MCP Server (v1.2.1)
 
 An MCP tool server for managing Cisco IOS-XE devices exclusively via the RESTCONF API.
 
@@ -41,7 +41,9 @@ Registered names and required args: [references/tools.md](references/tools.md).
 Day-two device config is **Network Ops** via git (`github_put_file`
 `ref=dev`), not RESTCONF write. `iosxe_restconf_put` / `patch` /
 `delete` and `iosxe_save_config` are not the change path for this
-fleet. Health Device and NetBox SoT stay GET-only as below.
+fleet, except an ACL change Ops Firewall was asked to make. That
+write lives in `ops-firewall`. Health Device and NetBox SoT stay
+GET-only as below.
 
 
 
@@ -119,9 +121,10 @@ RESTCONF and `ssh_port` only for the one permitted SSH case.
 
 Three ways to get it, in order of preference:
 
-1. **Workspace inventory** — `inventory/prod.yaml` or `inventory/dev.yaml`
-   (`access.host`, `access.restconf_port`) or the derived json. Paths in
-   `workspace-handoff`. Do not use `lab-access.json`.
+1. **Workspace inventory** — `inventory/prod.json` or `inventory/dev.json`
+   (`access.restconf.host`, `access.restconf.port`, `access.ssh.host`,
+   `access.ssh.port`). Paths in `workspace-handoff`. Do not use
+   `lab-access.json`. There is no `prod.yaml`.
 2. **CML MCP** — lab nodes and PAT ports when inventory is missing or stale.
    Confirm which lab: Prod and Dev have different ports for the same hostname.
 3. **GitHub MCP** — `get_file_contents` on a committed inventory file.

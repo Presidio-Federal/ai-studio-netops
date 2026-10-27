@@ -70,5 +70,6 @@ The read-back is the validation. Check: the file parses; `schema` is the
 skill's; `keys` is the deduplicated union of the entity keys in the file;
 no pre-existing or user-authored field was dropped by the merge; state and
 inventory agree on `snapshot_id`. A check that fails is one `Gaps:` line
-and no rewrite of last-known-good json. No `execute_command`, no script,
-no directory listing, never `find /`.
+and no rewrite of last-known-good json. A collect is
+`scripts/collect_inventory.py`. The agent does not parse the lab.
+No directory listing, never `find /`.

@@ -8,7 +8,8 @@ Deployed model is **MiniMax** unless noted.
 | GitHub GitOps Change | 1.4.3 | MiniMax |
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
-| Ops Network Sync | 2.5.4 | MiniMax |
+| Ops Network Sync | 2.6.0 | MiniMax |
+| Ops Firewall | 1.0.0 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
@@ -31,6 +32,12 @@ Deployed model is **MiniMax** unless noted.
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Ops Firewall 1.0.0 (skill 1.0.0, workspace-handoff 1.70.32): one live IOS-XE ACL or FTD access rule. Host and port come from `inventory/prod.json`. No credentials in the call. A write does not deploy. `ftd_deploy` runs only when the operator says deploy, and it deploys every pending change on that firewall. `state/firewall.json` is this invoke. MiniMax.
+
+Ops Network Sync 2.6.0 (skill 1.10.0): `collect_inventory.py` reads the CML lab under `mcp_orchestration` and writes `inventory/prod.json` or `dev.json`, then `state/network-sync.json`. The agent does not parse the lab. `ftdv` is platform `ftd`. A device that left the lab stays. MiniMax.
+
+Health Logging 1.2.1 (skill 1.2.1): an FTD hostname in the syslog text is used before the management IP. MiniMax.
 
 Health Logging 1.2.0 (skill 1.2.0): FTD syslog is included with ASA. A source denied or allowed across 20 destinations or ports, or denied 100 times, is a stamp reading. The board keeps this window only. MiniMax.
 

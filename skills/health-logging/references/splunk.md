@@ -62,8 +62,10 @@ index=<index> sourcetype=<sourcetype>
 | rex field=_raw "\d+: (?<ios_hostname>[A-Za-z][A-Za-z0-9._-]*): \*?[A-Z][a-z]{2} +\d"
 | rex field=_raw "\d{2}:\d{2}:\d{2} (?<asa_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
 | rex field=_raw " (?<nx_hostname>[A-Za-z][A-Za-z0-9._-]*): \d{4} [A-Z][a-z]{2} +\d"
+| rex field=_raw "(?<ftd_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
+| rex field=_raw "%(?:ASA|FTD)-\d+-\d+: \((?<device_id_host>[A-Za-z][A-Za-z0-9._-]*)\)"
 | eval bucket=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="106023" OR cisco_mn="106100")),"acl", cisco_mn="LOGIN_SUCCESS" OR cisco_mn="AUTH_PASSED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="605005" OR cisco_mn="611101")),"auth_ok", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", cisco_mn="NO_MATCH","ssh_no_match", isnull(cisco_mn),"unparsed", 1=1,"other")
-| eval dev=lower(coalesce(ios_hostname,asa_hostname,nx_hostname,host))
+| eval dev=lower(coalesce(ios_hostname,asa_hostname,ftd_hostname,device_id_host,nx_hostname,host))
 | eval ingest_delay_s=if(isnotnull(_indextime) AND isnotnull(_time), round(_indextime-_time), null())
 | stats count, max(_time) as last_at, max(ingest_delay_s) as ingest_delay_s by dev, bucket
 | eval last_at=strftime(last_at,"%Y-%m-%dT%H:%M:%SZ")
@@ -80,7 +82,9 @@ index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO"
 | rex field=_raw "\d+: (?<ios_hostname>[A-Za-z][A-Za-z0-9._-]*): \*?[A-Z][a-z]{2} +\d"
 | rex field=_raw "\d{2}:\d{2}:\d{2} (?<asa_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
 | rex field=_raw " (?<nx_hostname>[A-Za-z][A-Za-z0-9._-]*): \d{4} [A-Z][a-z]{2} +\d"
-| eval dev=lower(coalesce(ios_hostname,asa_hostname,nx_hostname,host))
+| rex field=_raw "(?<ftd_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
+| rex field=_raw "%(?:ASA|FTD)-\d+-\d+: \((?<device_id_host>[A-Za-z][A-Za-z0-9._-]*)\)"
+| eval dev=lower(coalesce(ios_hostname,asa_hostname,ftd_hostname,device_id_host,nx_hostname,host))
 | rex field=_raw "[Nn]eighbor (?<neighbor_ip>[0-9a-fA-F.:]+) (?<bgp_state>Up|Down|active reset|passive reset) ?(?<bgp_reason>.*)"
 | rex field=_raw "Interface (?<intf>[^,]+), changed state to (?<link_state>[a-z ]+)"
 | rex field=_raw "Interface (?<nx_intf>\S+) is (?<nx_link_state>up|down)"
@@ -125,11 +129,13 @@ is the interval, not the watermark.
 index=<index> sourcetype=<sourcetype> (%FTD-6-430003 OR %FTD-4-106023 OR %FTD-4-106100)
 | rex field=_raw "SrcIP: (?<src>[0-9.]+), DstIP: (?<dst>[0-9.]+), SrcPort: \d+, DstPort: (?<dst_port>\d+), Protocol: (?<proto>\S+),.*?AccessControlRuleAction: (?<action>\w+)"
 | rex field=_raw "Deny (?<deny_proto>\S+) src \S+:(?<deny_src>[0-9.]+)/\d+ dst \S+:(?<deny_dst>[0-9.]+)/(?<deny_port>\d+) by access-group \"(?<deny_acl>[^\"]+)\""
-| eval src=coalesce(src,deny_src), dst=coalesce(dst,deny_dst), dst_port=coalesce(dst_port,deny_port), protocol=coalesce(proto,deny_proto), action=coalesce(action,if(isnotnull(deny_src),"Block",null())), acl=coalesce(deny_acl,"connection")
+| rex field=_raw "(?<ftd_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
+| rex field=_raw "%(?:ASA|FTD)-\d+-\d+: \((?<device_id_host>[A-Za-z][A-Za-z0-9._-]*)\)"
+| eval src=coalesce(src,deny_src), dst=coalesce(dst,deny_dst), dst_port=coalesce(dst_port,deny_port), protocol=coalesce(proto,deny_proto), action=coalesce(action,if(isnotnull(deny_src),"Block",null())), acl=coalesce(deny_acl,"connection"), dev=lower(coalesce(ftd_hostname,device_id_host,host))
 | where isnotnull(src) AND isnotnull(dst)
-| stats count, dc(dst) as destinations, dc(dst_port) as ports, max(_time) as at, latest(protocol) as protocol, latest(acl) as acl by host, src, action
+| stats count, dc(dst) as destinations, dc(dst_port) as ports, max(_time) as at, latest(protocol) as protocol, latest(acl) as acl by dev, src, action
 | where destinations>=20 OR ports>=20 OR (action="Block" AND count>=100)
-| eval dev=host, kind="acl", subject=src, state=action, source_ip=src, detail=destinations." dests, ".ports." ports"
+| eval kind="acl", subject=src, state=action, source_ip=src, detail=destinations." dests, ".ports." ports"
 | eval at=strftime(at,"%Y-%m-%dT%H:%M:%SZ")
 | sort -count
 | head 20

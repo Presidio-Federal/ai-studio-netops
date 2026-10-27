@@ -108,6 +108,8 @@ record.
 
 ## CML — read only
 
+`scripts/collect_inventory.py` calls these. The agent does not.
+
 Allowed:
 
 - `cml_list_labs`
@@ -159,7 +161,11 @@ Skip `external_connector` and `unmanaged_switch`.
 | `cat8000v`, `iosv`, `csr1000v`, `iosvl2` | `iosxe` |
 | `nxosv`, `nxosv9000` | `nxos` |
 | `asav` | `asa` |
+| `ftdv` | `ftd` |
 | `ubuntu`, `alpine`, `server` | `linux` |
+
+Any other `node_definition` is the platform, lowercased (`Splunk` →
+`splunk`).
 
 Role: first of `wan`, `edge`, `branch`, `hq`, `cloud` found in tags, else
 `unknown`. Do not invent a role from the hostname.

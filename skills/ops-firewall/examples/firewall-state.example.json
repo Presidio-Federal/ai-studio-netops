@@ -1,0 +1,20 @@
+{
+  "schema": "firewall-state/v1",
+  "updated_at": "2026-10-26T23:00:00Z",
+  "source_agent": "ops-firewall",
+  "status": "ok",
+  "headline": "AI-DC-FW-PROD: access rule added; 1 change pending deploy",
+  "next_action": "Say deploy to push every pending change on AI-DC-FW-PROD",
+  "operation_id": "2026-10-26T23-00-00Z",
+  "operation": "write",
+  "started_at": "2026-10-26T22:59:00Z",
+  "completed_at": "2026-10-26T23:00:00Z",
+  "device": { "name": "AI-DC-FW-PROD" },
+  "side": "ftd",
+  "action": "write",
+  "result": "written",
+  "pending_count": 1,
+  "gaps": [],
+  "relations": [],
+  "keys": ["device:AI-DC-FW-PROD"]
+}

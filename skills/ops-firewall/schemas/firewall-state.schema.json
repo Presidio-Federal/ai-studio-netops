@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "firewall-state/v1",
+  "title": "state/firewall.json",
+  "description": "This firewall invoke only. No rule bodies and no credentials.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "updated_at",
+    "source_agent",
+    "status",
+    "headline",
+    "next_action",
+    "operation_id",
+    "operation",
+    "started_at",
+    "completed_at",
+    "device",
+    "side",
+    "action",
+    "result",
+    "pending_count",
+    "gaps",
+    "relations",
+    "keys"
+  ],
+  "properties": {
+    "schema": { "type": "string", "const": "firewall-state/v1" },
+    "updated_at": { "type": "string", "minLength": 1 },
+    "source_agent": { "type": "string", "const": "ops-firewall" },
+    "status": { "type": "string", "enum": ["ok", "gaps", "failed"] },
+    "headline": { "type": "string", "minLength": 1 },
+    "next_action": { "type": ["string", "null"], "not": { "const": "none" } },
+    "operation_id": { "type": "string", "minLength": 1 },
+    "operation": { "type": "string", "enum": ["read", "write", "deploy"] },
+    "started_at": { "type": "string", "minLength": 1 },
+    "completed_at": { "type": "string", "minLength": 1 },
+    "device": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 }
+      }
+    },
+    "side": { "type": "string", "enum": ["iosxe", "ftd"] },
+    "action": { "type": "string", "enum": ["read", "write", "deploy"] },
+    "result": {
+      "type": "string",
+      "enum": ["read", "written", "deployed", "blocked", "failed"]
+    },
+    "pending_count": { "type": ["integer", "null"], "minimum": 0 },
+    "gaps": { "type": "array", "items": { "type": "string" } },
+    "relations": { "type": "array", "maxItems": 0 },
+    "keys": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^device:[^ ].*$"
+      }
+    }
+  }
+}

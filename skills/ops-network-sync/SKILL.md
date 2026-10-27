@@ -1,7 +1,7 @@
 ---
 name: ops-network-sync
-version: "1.9.4"
-description: "v1.9.4 — Ops Network Sync: create or merge inventory/prod.json and dev.json from collect (devices, lab links[], CML canvas position), publish state/network-sync.json last; write_file + read-back only."
+version: "1.10.0"
+description: "v1.10.0 — Ops Network Sync: collect_inventory.py merges a CML lab into inventory/prod.json and dev.json and writes state/network-sync.json last."
 ---
 
 # Ops Network Sync skill
@@ -25,26 +25,41 @@ Every invocation records `operation_id`, `operation`, `started_at`,
 
 ## First action
 
-**Read workspace** (`inventory/prod.json`, `state/network-sync.json`). Then:
+**Read workspace** (`inventory/prod.json`) only to confirm it is there.
+A collect does not parse the lab. One `execute_command`,
+`execution_type: "mcp_orchestration"`, timeout 120. Use the path Studio
+shows for `ops-network-sync/scripts/collect_inventory.py`. The workspace
+is the `file_explorer` directory beside `skills` on that path. Pass it
+as `--workspace`. Do not `cd`.
+
+```text
+python3 <skill>/scripts/collect_inventory.py collect --workspace <file_explorer> --environment prod
+```
+
+Dev is `--environment dev`. The last stdout line is the result. Do not
+call `cml_list_labs`, `cml_get_lab_details`, `cml_get_node_info`, or
+`cml_find_nodes_by_tags` unless stderr says `hai_mcp unavailable`.
 
 | Workspace | Do |
 |-----------|----|
-| No prod.json | Create path — [references/inventory.md](references/inventory.md). Interview only here. |
-| prod.json exists | Merge path — collect from `source`, update `devices[]` **and `links[]`** in place ([Links](references/inventory.md#links-links)). |
+| No prod.json | Interview only — [references/inventory.md](references/inventory.md). Then the same command with `--lab-title`, `--tenant`, `--site`, `--infra-sot`, and `--controller-host` when the operator named them, plus `--onboard`. |
+| prod.json exists | The command above. No interview. The script merges. |
+
+A named Actions workflow is not this command. Follow `github-actions-mcp`.
 
 ## Publication order
+
+The script does this. You do not `write_file` the inventory on a collect.
 
 1. Read canonical inventory and current state.
 2. Collect source evidence: nodes (CML canvas `position` into
    `source_metadata`), **and** the lab links (`links[]`).
-3. Merge without discarding unknown or user-authored fields.
-4. `write_file`, then `read_file` back the inventory JSON and check it
-   against `schemas/network-access-inventory.schema.json` by eye:
-   parses, `schema` right, `keys` is the union, no field dropped.
+3. Merge without discarding unknown or user-authored fields. A device
+   that left the lab stays, with a gap. Its fields are not deleted.
+4. Validate the inventory, then write it.
 5. Publish `state/network-sync.json` last (`current_snapshot.snapshot_id`
    equals the file).
-6. `read_file` back the state and check `snapshot_id` matches the
-   inventory you just read.
+6. The last stdout line is that check. Do not read the lab body back.
 
 Collection or validation failure: do not rewrite last-known-good inventory.
 Record only `latest_attempt` (coverage `unavailable`, counts **null**).
@@ -133,9 +148,10 @@ Failed collect → skip the gate. Do not invent a snap.
 
 ## Hard boundaries
 
-CML collect: only `cml_list_labs`, `cml_get_lab_details`, `cml_get_node_info`,
-`cml_find_nodes_by_tags`. No topology/config writes. No guessed ports. No
-credentials in files. Do not write `lab-access.json` or `runs/`.
+CML collect: the script calls only `cml_list_labs`, `cml_get_lab_details`,
+`cml_get_node_info`, `cml_find_nodes_by_tags`. No topology/config writes.
+`include_configurations=false`. No guessed ports. No credentials in files.
+Do not write `lab-access.json` or `runs/`.
 Do not write `inventory/infra-sot.json` or `state/netbox.json` (Ops NetBox SoT).
 
 ## Tenant
@@ -166,16 +182,18 @@ Skill resources — use exactly:
 - `examples/inventory-dev.example.json`
 - `examples/network-sync-state.example.json`
 - `examples/network-sync-state-failed-collect.example.json`
+- `scripts/collect_inventory.py`
 
-No `execute_command`. Validation is the read-back in steps 4 and 6.
 `scripts/validate_network_sync.py` is an authoring-time check for the
-repo examples; the agent never runs it.
+repo examples; the agent never runs it. If stderr says `hai_mcp
+unavailable`, follow `references/inventory.md` by hand and `write_file`.
+Any other failure: one line from stderr, then stop.
 
 ## State machine
 
-**Empty:** DISCOVER → INTERVIEW → WRITE_JSON → VALIDATE_JSON → WRITE_STATE → VALIDATE_STATE → STOP
+**Empty:** DISCOVER → INTERVIEW → collect_inventory.py → STOP
 
-**Merge:** DISCOVER → READ_JSON+STATE → COLLECT → MERGE_JSON → WRITE_JSON → VALIDATE_JSON → WRITE_STATE → VALIDATE_STATE → SEED GATE → STOP
+**Merge:** READ prod.json → collect_inventory.py → SEED GATE → STOP
 
 **Actions job:** ROUTE → TRIGGER → POLL → READ MARKER → WRITE_STATE → VALIDATE_STATE → STOP
 

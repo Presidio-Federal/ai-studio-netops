@@ -33,10 +33,10 @@ action they asked about.
 2. Collect source evidence.
 3. Merge into the inventory object without discarding unknown or
    user-authored fields.
-4. Build, `write_file`, `read_file` back the inventory JSON.
-5. Publish `state/network-sync.json` **last**.
-6. `read_file` back the state and confirm `current_snapshot.snapshot_id`
-   equals the inventory file's `snapshot_id`. No script runs.
+4. The collect script validates, then writes the inventory JSON.
+5. It publishes `state/network-sync.json` **last**.
+6. `current_snapshot.snapshot_id` equals the inventory file's
+   `snapshot_id`. The agent does not re-parse the lab.
 
 If collection or inventory validation fails: do **not** write an
 incomplete inventory as current. Preserve last-known-good json. Write
