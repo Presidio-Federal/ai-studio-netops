@@ -2,8 +2,8 @@
   "schema": "firewall-state/v1",
   "updated_at": "2026-10-26T23:00:00Z",
   "source_agent": "ops-firewall",
-  "status": "gaps",
-  "headline": "AI-BRANCH-01: SCAN-ALLOW-WEB write ports 80,443,8080 to any",
+  "status": "ok",
+  "headline": "AI-BRANCH-01: SCAN-ALLOW-WEB write ports 80,443,8080 to any inbound on GigabitEthernet2",
   "next_action": null,
   "operation_id": "2026-10-26T23-00-00Z",
   "operation": "write",
@@ -17,7 +17,8 @@
   "permit_ports": ["80", "443", "8080"],
   "destination": "any",
   "list_name": "SCAN-ALLOW-WEB",
-  "gaps": ["SCAN-ALLOW-WEB is not applied to an interface"],
+  "interface": "GigabitEthernet2",
+  "gaps": [],
   "relations": [],
   "keys": ["device:AI-BRANCH-01"]
 }

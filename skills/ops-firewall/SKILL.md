@@ -1,7 +1,7 @@
 ---
 name: ops-firewall
-version: "1.1.1"
-description: "v1.1.1 — Ops Firewall: apply_rule.py writes a web allow-list. Destination is any or one host address, not a prefix."
+version: "1.1.3"
+description: "v1.1.3 — Ops Firewall: apply_rule.py adds the web allow-list inbound on the LAN. It does not delete that list."
 ---
 
 # Ops Firewall
@@ -31,11 +31,11 @@ timeout 120. Use the path Studio shows for
 python3 <skill>/scripts/apply_rule.py apply --workspace <file_explorer> --device <device> --destination <destination> --permit-ports 80,443,8080
 ```
 
-Add `--deploy` only when the task says deploy. Add `--remove` when
-the task says remove the allow-list. The last stdout line is the
-result. The script writes `state/firewall.json`. Do not call
-`iosxe_restconf_patch` or `ftd_post` yourself unless stderr says
-`hai_mcp unavailable`.
+Add `--deploy` only when the task says deploy. Do not pass
+`--remove`. You add the list. A request to delete it is not this
+job. The last stdout line is the result. The script writes
+`state/firewall.json`. Do not call `iosxe_restconf_patch` or
+`ftd_post` yourself unless stderr says `hai_mcp unavailable`.
 
 Host and port come from that device's `access.restconf`. The script
 does not take a username or password.
@@ -46,7 +46,10 @@ Checked 2026-10-27 on branch RESTCONF port 4403 and FTD port 4461.
 The list is named `SCAN-ALLOW-WEB`.
 
 IOS-XE: permit tcp to the destination on 80, 443, and 8080, then deny
-ip to that destination. The list is not attached to an interface.
+ip to that destination. The list is applied inbound on the LAN
+interface, the addressed port that is not the WAN. The WAN is a /30
+or an address in 100.64.0.0/10. An interface that already has a
+different inbound ACL is left alone.
 FTD: one permit rule for those three TCP port objects. The policy
 default action is the deny for everything else. A permit that names
 no destination ports is left in place and reported as a gap.

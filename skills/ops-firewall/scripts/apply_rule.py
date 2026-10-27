@@ -137,14 +137,115 @@ def ios_has_list(body):
     return False
 
 
+def interface_rows(body):
+    data = body.get("data") if isinstance(body.get("data"), dict) else body
+    native = data.get("Cisco-IOS-XE-native:interface") if isinstance(data, dict) else None
+    if not isinstance(native, dict):
+        return []
+    rows = native.get("GigabitEthernet") or []
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def ipv4_of(row):
+    primary = (((row.get("ip") or {}).get("address") or {}).get("primary") or {})
+    addr = primary.get("address")
+    mask = primary.get("mask")
+    if not addr or not mask:
+        return None
+    try:
+        return ipaddress.ip_interface(f"{addr}/{mask}")
+    except ValueError:
+        return None
+
+
+def is_wan(iface):
+    return iface.network.prefixlen >= 30 or iface.ip in ipaddress.ip_network("100.64.0.0/10")
+
+
+def acl_in_name(row):
+    group = ((row.get("ip") or {}).get("access-group") or {}).get("in") or {}
+    return (group.get("acl") or {}).get("acl-name")
+
+
+def lan_row(rows):
+    candidates = []
+    for row in rows:
+        addr = ipv4_of(row)
+        if addr is None or is_wan(addr):
+            continue
+        current = acl_in_name(row)
+        if current and current != LIST_NAME:
+            continue
+        candidates.append(row)
+    for row in candidates:
+        if "LAN" in str(row.get("description") or "").upper():
+            return row
+    return candidates[0] if candidates else None
+
+
+def bind_ios(host, port, name):
+    return tool("iosxe_restconf_patch", {
+        "path": "Cisco-IOS-XE-native:native/interface",
+        "host": host,
+        "port": port,
+        "payload": {
+            "Cisco-IOS-XE-native:interface": {
+                "GigabitEthernet": [{
+                    "name": str(name),
+                    "ip": {"access-group": {"in": {"acl": {"acl-name": LIST_NAME, "in": [None]}}}},
+                }]
+            }
+        },
+    })
+
+
+def unbind_ios(host, port, rows):
+    for row in rows:
+        if acl_in_name(row) != LIST_NAME or row.get("name") is None:
+            continue
+        _, err = tool("iosxe_restconf_delete", {
+            "path": f"Cisco-IOS-XE-native:native/interface/GigabitEthernet={row['name']}/ip/access-group/in",
+            "host": host,
+            "port": port,
+        })
+        if err:
+            return err
+    return None
+
+
+def one_interface(body):
+    data = body.get("data") if isinstance(body.get("data"), dict) else body
+    if isinstance(data, dict) and "Cisco-IOS-XE-native:GigabitEthernet" in data:
+        data = data["Cisco-IOS-XE-native:GigabitEthernet"]
+    if isinstance(data, list):
+        data = data[0] if data else {}
+    return data if isinstance(data, dict) else {}
+
+
 def apply_ios(host, port, ports, destination, remove):
     target = {"host": host, "port": port}
+    interfaces, err = tool("iosxe_restconf_get", {
+        "path": "Cisco-IOS-XE-native:native/interface",
+        **target,
+    })
+    if err:
+        return None, err
+    rows = interface_rows(interfaces)
     if remove:
-        deleted, err = tool("iosxe_restconf_delete", {"path": ACL_DELETE, **target})
+        err = unbind_ios(host, port, rows)
+        if err:
+            return None, err
+        _, err = tool("iosxe_restconf_delete", {"path": ACL_DELETE, **target})
         if err:
             return None, err
         tool("iosxe_save_config", target)
-        return {"removed": True, "verified": True}, None
+        return {"removed": True, "verified": True, "interface": None}, None
+    chosen = lan_row(rows)
+    if chosen is None:
+        return None, "no LAN interface for the allow-list"
+    err = unbind_ios(host, port, rows)
+    if err:
+        return None, err
     current, err = tool("iosxe_restconf_get", {"path": ACL_PATH, **target})
     if err:
         return None, err
@@ -159,11 +260,17 @@ def apply_ios(host, port, ports, destination, remove):
     })
     if err:
         return None, err
-    checked, err = tool("iosxe_restconf_get", {"path": ACL_PATH, **target})
-    if err or not ios_has_list(checked or {}):
-        return None, err or "allow-list missing after write"
+    _, err = bind_ios(host, port, chosen.get("name"))
+    if err:
+        return None, err
+    checked, err = tool("iosxe_restconf_get", {
+        "path": f"Cisco-IOS-XE-native:native/interface/GigabitEthernet={chosen.get('name')}",
+        **target,
+    })
+    if err or acl_in_name(one_interface(checked or {})) != LIST_NAME:
+        return None, err or "allow-list not inbound on the LAN interface"
     tool("iosxe_save_config", target)
-    return {"removed": False, "verified": True}, None
+    return {"removed": False, "verified": True, "interface": f"GigabitEthernet{chosen.get('name')}"}, None
 
 
 def ftd_items(body):
@@ -277,7 +384,7 @@ def apply_ftd(host, port, ports, remove, deploy):
     }, None
 
 
-def write_state(ws, started, device, side, result, pending, gaps, headline, ports, destination, next_action):
+def write_state(ws, started, device, side, result, pending, gaps, headline, ports, destination, next_action, interface_name=None):
     finished = datetime.now(timezone.utc)
     body = {
         "schema": "firewall-state/v1",
@@ -298,6 +405,7 @@ def write_state(ws, started, device, side, result, pending, gaps, headline, port
         "permit_ports": [str(port) for port in ports],
         "destination": destination,
         "list_name": LIST_NAME,
+        "interface": interface_name,
         "gaps": gaps,
         "relations": [],
         "keys": [f"device:{device}"] if device else [],
@@ -352,8 +460,7 @@ def cmd_apply(args):
         emit({"result": "failed", "device": args.device, "side": side, "wrote": ["state/firewall.json"], "gaps": [err]})
         return 0
     gaps = []
-    if side == "iosxe" and not args.remove:
-        gaps.append(f"{LIST_NAME} is not applied to an interface")
+    interface = None if side != "iosxe" else (outcome or {}).get("interface")
     if side == "ftd" and not args.remove:
         for name in outcome.get("open_permits") or []:
             gaps.append(f"{name}: permit with no destination ports")
@@ -365,10 +472,12 @@ def cmd_apply(args):
         result = "deployed"
     action = "remove" if args.remove else "write"
     headline = f"{args.device}: {LIST_NAME} {action} ports {','.join(ports)} to {destination}"
+    if interface:
+        headline = f"{headline} inbound on {interface}"
     next_action = None
     if side == "ftd" and not args.deploy and not args.remove:
         next_action = f"Deploy. sends every pending change on {args.device}"
-    write_state(ws, started, args.device, side, result if result != "deployed" else "deployed", pending, gaps, headline, ports, destination, next_action)
+    write_state(ws, started, args.device, side, result if result != "deployed" else "deployed", pending, gaps, headline, ports, destination, next_action, interface)
     emit({
         "result": result,
         "device": args.device,
@@ -376,6 +485,7 @@ def cmd_apply(args):
         "list": LIST_NAME,
         "ports": ports,
         "destination": destination,
+        "interface": interface,
         "pending": pending,
         "wrote": ["state/firewall.json"],
         "gaps": gaps,

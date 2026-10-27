@@ -23,12 +23,14 @@ A destination other than `any` uses `dst-host` instead of `dst-any`.
 Verify with `iosxe_restconf_get` on that same path. Then
 `iosxe_save_config` with the same host and port.
 
-Remove:
+Remove: delete the inbound access-group first, then
 
 ```text
 iosxe_restconf_delete
   path=Cisco-IOS-XE-native:native/ip/access-list/Cisco-IOS-XE-acl:extended=SCAN-ALLOW-WEB
 ```
 
-That delete returned 204 and left the other extended lists in place.
-The list is not applied to an interface.
+Checked on branch 01, 2026-10-27. Inbound on GigabitEthernet2
+(`ip access-group SCAN-ALLOW-WEB in`) returned 204 and left
+10.50.50.1 in place. Deleting that access-group returned 204.
+The list is applied on the LAN interface, not left unused.

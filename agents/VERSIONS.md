@@ -9,7 +9,7 @@ Deployed model is **MiniMax** unless noted.
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.6.0 | MiniMax |
-| Ops Firewall | 1.1.1 | MiniMax |
+| Ops Firewall | 1.1.3 | MiniMax |
 | SecOps Event Response | 1.0.2 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
@@ -46,7 +46,11 @@ SecOps Event Response 1.0.1 (skill 1.0.1): the visit reads every health board, t
 
 SecOps Event Response 1.0.0 (skill 1.0.0, workspace-handoff 1.70.35): an API call reads the health chart and the NetFlow and Splunk boards, then queries Elasticsearch and Splunk. The agent names a port scan from the spread. Each block is one Ops Firewall task, `Deny <source> to <destination> on <device>.` That task does not deploy an FTD. MiniMax.
 
-Ops Firewall 1.1.0 (skill 1.1.0, workspace-handoff 1.70.36): `apply_rule.py` writes `SCAN-ALLOW-WEB` under `mcp_orchestration`. IOS-XE permits TCP 80, 443, and 8080, then denies ip. FTD posts one permit for those port objects. The script writes `state/firewall.json`. A task is `On <device>, permit tcp to <destination> ports 80, 443, 8080, then deny ip to <destination>.` MiniMax.
+Ops Firewall 1.1.3 (skill 1.1.3): the agent only adds the allow-list. A delete or reset is not this job. MiniMax.
+
+Ops Firewall 1.1.2 (skill 1.1.2): the IOS allow-list is applied inbound on the LAN interface. The WAN is a /30 or 100.64.0.0/10 and is left alone. An interface that already has a different inbound ACL is left alone. Remove takes the access-group off before deleting the list. MiniMax.
+
+ `apply_rule.py` writes `SCAN-ALLOW-WEB` under `mcp_orchestration`. IOS-XE permits TCP 80, 443, and 8080, then denies ip. FTD posts one permit for those port objects. The script writes `state/firewall.json`. A task is `On <device>, permit tcp to <destination> ports 80, 443, 8080, then deny ip to <destination>.` MiniMax.
 
 Ops Firewall 1.0.1 (skill 1.0.1): `Deny <source> to <destination> on <device>.` is a write. One device. Deploy still requires the word deploy. MiniMax.
 
