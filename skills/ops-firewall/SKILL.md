@@ -1,7 +1,7 @@
 ---
 name: ops-firewall
-version: "1.1.3"
-description: "v1.1.3 — Ops Firewall: apply_rule.py adds the web allow-list inbound on the LAN. It does not delete that list."
+version: "1.1.4"
+description: "v1.1.4 — Ops Firewall: apply_rule.py reads the device first. An existing SCAN-ALLOW-WEB list is left as it is."
 ---
 
 # Ops Firewall
@@ -38,7 +38,9 @@ job. The last stdout line is the result. The script writes
 `ftd_post` yourself unless stderr says `hai_mcp unavailable`.
 
 Host and port come from that device's `access.restconf`. The script
-does not take a username or password.
+reads the live list before it writes. `state/firewall.json` does not
+decide that. `SCAN-ALLOW-WEB` already inbound on the LAN, or already
+an access rule, is result `present`. The box is not changed.
 
 ## What the list is
 

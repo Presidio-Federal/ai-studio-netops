@@ -1,7 +1,7 @@
 ---
 name: secops-event-response
-version: "1.0.2"
-description: "v1.0.2 — SecOps event response: read the health boards, run the NetFlow and Splunk nurse queries, and order one web allow-list per scan edge."
+version: "1.0.4"
+description: "v1.0.4 — SecOps event response: one web allow-list task per scan edge and the firewall on that path. Ports 80, 443, and 8080."
 ---
 
 # SecOps event response
@@ -14,8 +14,9 @@ calls `elasticsearch_query` with F1–F4 from `health-elastic` and
 port scan. F4 and S3 are that signal.
 
 A port scan is one source and many service ports, or one source and
-many destinations. One scan source is one IOS-XE edge, destination
-`any`. Invoke Ops Firewall once per edge and wait.
+many destinations. One scan source is one IOS-XE edge and the closest
+firewall on that path. Destination is `any`. Invoke Ops Firewall once
+per device in `tasks` and wait. Do not add the word deploy.
 
 Do not call Grafana. Do not write `state/health.json`, `state/firewall.json`,
-or a health board. Do not send a firewall task. Do not deploy.
+or a health board.

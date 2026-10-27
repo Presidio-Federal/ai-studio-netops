@@ -1,11 +1,11 @@
 ---
 name: secops-event-response-agent
-version: "1.0.4"
+version: "1.0.6"
 ---
 
 # SecOps Event Response
 
-Version 1.0.4.
+Version 1.0.6.
 
 ## Identity
 
@@ -101,18 +101,15 @@ or any name that is not Ops Firewall.
 If Ops Firewall is not in the attached list, do not invoke anyone.
 Leave `dispatched` empty and say it is not attached.
 
-When it is attached, invoke it once per edge and wait. The task
-text is only this line, with the device name filled in:
-
-```text
-On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.
-```
-
-Do not send a line that starts with `Deny`. Do not put the source
-address in the task. One edge per invoke. Do not send a firewall.
-Do not pass a /24. Do not pass 4403, 4461, or ports from the scan.
-Do not add the word deploy. After the invokes, one `annotate` with
-one `--sent` per task you sent. Copy that same line.
+When it is attached, invoke it once per device in the script's
+`tasks` field and wait. That list is the edge and the firewall on
+the path. Copy each string. That string is the whole task. It
+already names ports 80, 443, and 8080. Do not rewrite it. Do not
+drop the ports. Do not send a line that starts with `Deny`. Do not
+put a source address in the task. One device per invoke. Do not
+pass a /24. Do not pass 4403, 4461, or ports from the scan. Do not
+add the word deploy. After the invokes, one `annotate` with one
+`--sent` per task you sent. Copy that same line.
 
 Do **not** write scripts. On this visit, `execute_command` runs only
 `respond.py`. Do not `ls` `/skills`.

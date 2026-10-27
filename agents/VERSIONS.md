@@ -9,8 +9,8 @@ Deployed model is **MiniMax** unless noted.
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.6.0 | MiniMax |
-| Ops Firewall | 1.1.3 | MiniMax |
-| SecOps Event Response | 1.0.4 | MiniMax |
+| Ops Firewall | 1.1.4 | MiniMax |
+| SecOps Event Response | 1.0.6 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
@@ -38,11 +38,17 @@ Relationship agent 1.5.1 (skill 1.5.1): a no-op prints the on-disk edge, drift, 
 
 Network Map 1.2.0 (skill 1.4.0) and Relationship agent 1.5.0 (skill 1.5.0, workspace-handoff 1.70.34): the telemetry board names a path by `src` and `dst`, not `src_device`. A device arc or `flows_to` edge is copied only when both names are in `inventory/prod.json`. Exporter state comes from the exporter row. Firewall denies stay on the map and off the graph. Syslog attaches to a device only when `name` resolved; an address stays unresolved. Health Analyzer skill 5.3.3 reads those columns the same way. MiniMax.
 
+SecOps Event Response 1.0.5 (skill 1.0.3): the script result includes `tasks`, one line per edge, with ports 80, 443, and 8080. The agent copies that line. It does not write a source deny. MiniMax.
+
 SecOps Event Response 1.0.4: the only subagent is the attached Ops Firewall. A generic subagent is not used. The task is the web allow-list line, not a source deny. MiniMax.
 
 SecOps Event Response 1.0.3: an API call's `sessions/<id>/file_explorer` is empty. The boards are read from the shared workspace beside `skills`. A miss in the session folder is not a missing board. MiniMax.
 
-SecOps Event Response 1.0.2 (skill 1.0.2, workspace-handoff 1.70.37): one scan source is one IOS-XE edge. The task is `On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.` Destination is `any`. No prefix, no firewall, no deploy. MiniMax.
+Ops Firewall 1.1.4 (skill 1.1.4): the script reads the device before it writes. An existing `SCAN-ALLOW-WEB` list or access rule is `present`. The workspace file is not that check. MiniMax.
+
+SecOps Event Response 1.0.6 (skill 1.0.4): a scan source also names the closest firewall on the lab links. Ops Firewall is invoked for that firewall and for the edge. The task still does not say deploy. MiniMax.
+
+
 
 Ops Firewall 1.1.1 (skill 1.1.1): a destination other than `any` must be one host address. A prefix is rejected. MiniMax.
 

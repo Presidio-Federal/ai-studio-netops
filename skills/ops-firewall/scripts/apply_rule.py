@@ -243,12 +243,12 @@ def apply_ios(host, port, ports, destination, remove):
     chosen = lan_row(rows)
     if chosen is None:
         return None, "no LAN interface for the allow-list"
-    err = unbind_ios(host, port, rows)
-    if err:
-        return None, err
     current, err = tool("iosxe_restconf_get", {"path": ACL_PATH, **target})
     if err:
         return None, err
+    iface = f"GigabitEthernet{chosen.get('name')}"
+    if ios_has_list(current) and acl_in_name(chosen) == LIST_NAME:
+        return {"present": True, "verified": True, "interface": iface}, None
     if ios_has_list(current):
         _, err = tool("iosxe_restconf_delete", {"path": ACL_DELETE, **target})
         if err:
@@ -260,17 +260,18 @@ def apply_ios(host, port, ports, destination, remove):
     })
     if err:
         return None, err
-    _, err = bind_ios(host, port, chosen.get("name"))
-    if err:
-        return None, err
-    checked, err = tool("iosxe_restconf_get", {
-        "path": f"Cisco-IOS-XE-native:native/interface/GigabitEthernet={chosen.get('name')}",
-        **target,
-    })
-    if err or acl_in_name(one_interface(checked or {})) != LIST_NAME:
-        return None, err or "allow-list not inbound on the LAN interface"
+    if acl_in_name(chosen) != LIST_NAME:
+        _, err = bind_ios(host, port, chosen.get("name"))
+        if err:
+            return None, err
+        checked, err = tool("iosxe_restconf_get", {
+            "path": f"Cisco-IOS-XE-native:native/interface/GigabitEthernet={chosen.get('name')}",
+            **target,
+        })
+        if err or acl_in_name(one_interface(checked or {})) != LIST_NAME:
+            return None, err or "allow-list not inbound on the LAN interface"
     tool("iosxe_save_config", target)
-    return {"removed": False, "verified": True, "interface": f"GigabitEthernet{chosen.get('name')}"}, None
+    return {"removed": False, "verified": True, "interface": iface}, None
 
 
 def ftd_items(body):
@@ -331,6 +332,8 @@ def apply_ftd(host, port, ports, remove, deploy):
         return None, err
     rules = ftd_items(rules_body)
     existing = next((rule for rule in rules if isinstance(rule, dict) and rule.get("name") == LIST_NAME), None)
+    pending, _ = tool("ftd_pending_changes", target)
+    count = None if not isinstance(pending, dict) else pending.get("count")
     if remove:
         if not existing:
             return {"removed": True, "verified": True, "pending": None, "open_permits": []}, None
@@ -341,9 +344,13 @@ def apply_ftd(host, port, ports, remove, deploy):
         count = None if not isinstance(pending, dict) else pending.get("count")
         return {"removed": True, "verified": True, "pending": count, "open_permits": []}, None
     if existing:
-        _, err = tool("ftd_delete", {"path": f"{rules_path}/{existing['id']}", **target})
-        if err:
-            return None, err
+        return {
+            "present": True,
+            "verified": True,
+            "pending": count,
+            "deployed": False,
+            "open_permits": ftd_open_permits(rules),
+        }, None
     refs, err = ftd_ports(host, port, [str(port_no) for port_no in ports])
     if err:
         return None, err
@@ -394,12 +401,12 @@ def write_state(ws, started, device, side, result, pending, gaps, headline, port
         "headline": headline,
         "next_action": next_action,
         "operation_id": stamp(started),
-        "operation": "write" if result != "read" else "read",
+        "operation": "read" if result == "present" else ("deploy" if result == "deployed" else "write"),
         "started_at": iso(started),
         "completed_at": iso(finished),
         "device": {"name": device},
         "side": side or "iosxe",
-        "action": "write",
+        "action": "read" if result == "present" else ("deploy" if result == "deployed" else "write"),
         "result": result,
         "pending_count": pending,
         "permit_ports": [str(port) for port in ports],
@@ -461,21 +468,30 @@ def cmd_apply(args):
         return 0
     gaps = []
     interface = None if side != "iosxe" else (outcome or {}).get("interface")
-    if side == "ftd" and not args.remove:
+    if side == "ftd" and not args.remove and not outcome.get("present"):
         for name in outcome.get("open_permits") or []:
             gaps.append(f"{name}: permit with no destination ports")
         if not args.deploy:
             gaps.append("not deployed")
+    if side == "ftd" and outcome.get("present") and not args.deploy:
+        gaps.append("not deployed")
     pending = None if side == "iosxe" else outcome.get("pending")
-    result = "written" if not args.remove else "written"
-    if args.deploy and side == "ftd" and not args.remove:
+    if outcome.get("present"):
+        result = "present"
+    elif args.deploy and side == "ftd" and not args.remove:
         result = "deployed"
-    action = "remove" if args.remove else "write"
+    else:
+        result = "written"
+    action = "present" if result == "present" else ("remove" if args.remove else "write")
     headline = f"{args.device}: {LIST_NAME} {action} ports {','.join(ports)} to {destination}"
     if interface:
         headline = f"{headline} inbound on {interface}"
+    if result == "present":
+        headline = f"{args.device}: {LIST_NAME} already on the device"
+        if interface:
+            headline = f"{headline}, inbound on {interface}"
     next_action = None
-    if side == "ftd" and not args.deploy and not args.remove:
+    if side == "ftd" and not args.deploy and not args.remove and result != "present":
         next_action = f"Deploy. sends every pending change on {args.device}"
     write_state(ws, started, args.device, side, result if result != "deployed" else "deployed", pending, gaps, headline, ports, destination, next_action, interface)
     emit({

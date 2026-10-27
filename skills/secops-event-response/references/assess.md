@@ -43,7 +43,9 @@ Both names come from `inventory/prod.json`. Do not invent one.
 The device is the closest `platform` `iosxe` `role` `edge` to the
 source, walked on `links[]`. Skip an edge whose name contains `ISP`
 or `DC`. One scan source is one edge. Do not add the other edges.
-Do not add a firewall.
+Also the closest `platform` `ftd` or `node_definition` `ftdv` on that
+same walk. One firewall for that source. A source with no firewall
+on the path is a gap. The edge is still a block.
 
 The destination is `any`. The task line is `On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.`
 It does not say deploy. Do not pass a prefix, 4403, 4461, or ports

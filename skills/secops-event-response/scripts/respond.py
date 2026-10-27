@@ -146,6 +146,12 @@ def is_edge(device):
     return True
 
 
+def is_firewall(device):
+    platform = (device.get("platform") or "").lower()
+    node = ((device.get("source_metadata") or {}).get("node_definition") or "").lower()
+    return platform == "ftd" or node == "ftdv"
+
+
 def closest(graph, by_name, start, accept):
     if start not in by_name:
         return None
@@ -165,7 +171,7 @@ def closest(graph, by_name, start, accept):
 
 
 def placements(prod, netflow_rows):
-    """One IOS-XE edge per scan source. Destination is any. No firewall, no prefix."""
+    """One IOS-XE edge and the closest firewall per scan source. Destination is any."""
     by_name = devices_by_name(prod)
     graph = graph_of(prod)
     blocks = []
@@ -193,6 +199,22 @@ def placements(prod, netflow_rows):
             {
                 "device": edge,
                 "side": "iosxe",
+                "source": source,
+                "destination": "any",
+                "src_name": src_name,
+            }
+        )
+        firewall = closest(graph, by_name, src_name, is_firewall)
+        if not firewall:
+            gaps.append(f"{src_name or source}: no firewall on the path")
+            continue
+        if firewall in seen:
+            continue
+        seen.add(firewall)
+        blocks.append(
+            {
+                "device": firewall,
+                "side": "ftd",
                 "source": source,
                 "destination": "any",
                 "src_name": src_name,
@@ -433,6 +455,7 @@ def cmd_collect(args):
             {"device": item["device"], "side": item["side"], "source": item["source"], "destination": item["destination"], "src_name": item.get("src_name")}
             for item in blocks
         ],
+        "tasks": [f"On {item['device']}, permit tcp to any ports 80, 443, 8080, then deny ip to any." for item in blocks],
         "gaps": gaps[:8],
     }
     print(json.dumps(summary, separators=(",", ":")))
@@ -498,7 +521,8 @@ def cmd_annotate(args):
             keys.append(key)
     payload["keys"] = keys
     write_state(ws, payload)
-    print(json.dumps({"wrote": STATE_NAME, "kind": payload.get("kind"), "blocks": len(blocks), "dispatched": len(dispatched)}, separators=(",", ":")))
+    tasks = [f"On {block['device']}, permit tcp to any ports 80, 443, 8080, then deny ip to any." for block in blocks]
+    print(json.dumps({"wrote": STATE_NAME, "kind": payload.get("kind"), "blocks": len(blocks), "tasks": tasks, "dispatched": dispatched}, separators=(",", ":")))
     return 0
 
 
