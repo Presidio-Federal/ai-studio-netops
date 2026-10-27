@@ -1,35 +1,34 @@
 # IOS-XE ACL
 
-Host and port from this device's `access.restconf`. Omit username
-and password.
+The script owns the write. These are the calls it makes if
+`hai_mcp` is unavailable.
 
-Read first:
+Host and port from this device's `access.restconf`. Omit username
+and password. List name `SCAN-ALLOW-WEB`.
+
+Read, then patch. Checked on a branch C8000V, RESTCONF port 4403,
+2026-10-27. Patch returned 204. The list then had permit tcp
+`dst-eq` 80, 443, and 8080, then deny ip.
 
 ```text
-iosxe_restconf_get
+iosxe_restconf_patch
   path=Cisco-IOS-XE-native:native/ip/access-list
   host=<access.restconf.host>
   port=<access.restconf.port>
+  payload=<SCAN-ALLOW-WEB with those four sequences>
 ```
 
-Checked on a lab C8000V, 2026-10-26. The body is
-`Cisco-IOS-XE-native:access-list` /
-`Cisco-IOS-XE-acl:extended[]`. Each list has `name` and
-`access-list-seq-rule[]`. A rule has `sequence` and `ace-rule`
-(`action`, `protocol`, and the match leaves, such as `any` and
-`dst-any`).
+A destination other than `any` uses `dst-host` instead of `dst-any`.
 
-Add: `iosxe_restconf_patch` the same path. Payload is that object
-with the named list and the new sequence only. Copy `ace-rule` from
-a rule the GET returned, and change only the fields the operator
-named.
+Verify with `iosxe_restconf_get` on that same path. Then
+`iosxe_save_config` with the same host and port.
 
-Replace: `iosxe_restconf_put` of the GET object with those fields
-changed. PUT overwrites the resource you send.
+Remove:
 
-Remove: `iosxe_restconf_delete` the named list. Do not delete a list
-the operator did not name.
+```text
+iosxe_restconf_delete
+  path=Cisco-IOS-XE-native:native/ip/access-list/Cisco-IOS-XE-acl:extended=SCAN-ALLOW-WEB
+```
 
-Verify with the same GET. Then `iosxe_save_config` with the same
-host and port. A write that does not verify is `failed`. Do not save
-it.
+That delete returned 204 and left the other extended lists in place.
+The list is not applied to an interface.

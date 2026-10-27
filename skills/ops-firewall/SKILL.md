@@ -1,44 +1,59 @@
 ---
 name: ops-firewall
-version: "1.0.1"
-description: "v1.0.1 — Ops Firewall: live IOS-XE ACL and FTD access-rule changes. A deny task that names the device is the write. Deploy only when the task says deploy."
+version: "1.1.0"
+description: "v1.1.0 — Ops Firewall: apply_rule.py writes a web allow-list on one IOS-XE or FTD device and records state/firewall.json."
 ---
 
 # Ops Firewall
 
-You change one live ACL on IOS-XE or one live access rule on FTD.
-You do not commit git, open a PR, or run a pipeline. Network Ops owns
-that path. You do not collect inventory.
+You change one live allow-list. IOS-XE gets a named ACL. FTD gets one
+access rule. You do not commit git. Network Ops owns that path.
 
-A question is a read. An imperative that names the device and the
-rule is the write. `Deny <source> to <destination> on <device>.` is
-that write. One device. The source and the destination are the
-addresses in the task. Anything ambiguous is a read. `ftd_deploy` runs
-only when the task says deploy, after `ftd_pending_changes`.
-Deploy sends every undeployed change on that firewall.
+The write is one task:
+
+```text
+On <device>, permit tcp to <destination> ports 80, 443, 8080, then deny ip to <destination>.
+```
+
+`<device>` is the `inventory/prod.json` name. `<destination>` is `any`
+or one address. One device. A question is a read. `Deploy.` after an
+FTD write deploys every pending change on that firewall.
 
 ## First action
 
-`read_file` `inventory/prod.json`. Find the one device. `platform`
-`iosxe` uses [references/acl.md](references/acl.md). `platform` `ftd`
-or `source_metadata.node_definition` `ftdv` uses
-[references/ftd.md](references/ftd.md). Any other platform: stop.
+`read_file` `inventory/prod.json` only to confirm the workspace.
+Then one `execute_command`, `execution_type: "mcp_orchestration"`,
+timeout 120. Use the path Studio shows for
+`ops-firewall/scripts/apply_rule.py`. The workspace is the
+`file_explorer` directory beside `skills` on that path.
 
-Host and port are `access.restconf.host` and `access.restconf.port`.
-If either is null, or `now >= expires_at`, stop and name Ops Network
-Sync. Do not guess a port. Do not pass `username` or `password`.
-Do not SSH.
+```text
+python3 <skill>/scripts/apply_rule.py apply --workspace <file_explorer> --device <device> --destination <destination> --permit-ports 80,443,8080
+```
 
-One device. Read before every write. Then `write_file`
-`state/firewall.json` and read it back.
+Add `--deploy` only when the task says deploy. Add `--remove` when
+the task says remove the allow-list. The last stdout line is the
+result. The script writes `state/firewall.json`. Do not call
+`iosxe_restconf_patch` or `ftd_post` yourself unless stderr says
+`hai_mcp unavailable`.
 
-## Tools
+Host and port come from that device's `access.restconf`. The script
+does not take a username or password.
 
-Names and envelopes: [references/tools.md](references/tools.md).
-Do not invent a tool or a path.
+## What the list is
+
+Checked 2026-10-27 on branch RESTCONF port 4403 and FTD port 4461.
+The list is named `SCAN-ALLOW-WEB`.
+
+IOS-XE: permit tcp to the destination on 80, 443, and 8080, then deny
+ip to that destination. The list is not attached to an interface.
+FTD: one permit rule for those three TCP port objects. The policy
+default action is the deny for everything else. A permit that names
+no destination ports is left in place and reported as a gap.
 
 ## Files
 
+- `scripts/apply_rule.py`
 - `references/tools.md`
 - `references/acl.md`
 - `references/ftd.md`
