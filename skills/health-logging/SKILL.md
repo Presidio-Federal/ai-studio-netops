@@ -1,7 +1,7 @@
 ---
 name: health-logging
-version: "1.3.0"
-description: "v1.3.0 — Splunk visit: the stamp holds the rows, the delta, and the tags. Metadata is the SOAP summary and the proof path."
+version: "1.3.2"
+description: "v1.3.2 — Splunk visit: a missing index lists Splunk indexes and sourcetypes; later visits use the pair the operator names."
 ---
 
 # Health Logging skill
@@ -16,7 +16,12 @@ authorization. Do not confirm.
 **Health.** Run `scripts/visit_splunk.py collect` (see
 `references/watch.md`). The script reads `splunk.index`,
 `splunk.sourcetype`, and `splunk.window` from
-`health/metadata-splunk.json`, runs S1, S2, and S3 from
+`health/metadata-splunk.json`. When either name is missing it
+lists the indexes and sourcetypes that have events and writes
+nothing. The operator names the pair. `pin` stores it with
+`provenance.splunk` `user`. The next collect uses that pair and
+does not ask again. With the lookup set, the script runs S1, S2,
+and S3 from
 `references/splunk.md` exactly, resolves each `dev` to a
 `prod.json` device, diffs against the previous stamp's `readings[]`,
 and writes that stamp first. The stamp holds every row from this
@@ -82,7 +87,7 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 
 ## State machines
 
-Health: READ_PROD → COLLECT_SCRIPT → ANNOTATE → STOP. Collect writes the stamp, then the SOAP file. Annotate replaces the four SOAP sentences. Manual fallback, only when hai_mcp is unavailable: the order in `references/splunk.md`.
+Health: READ_PROD → COLLECT_SCRIPT → ANNOTATE → STOP. When the lookup is missing: COLLECT_SCRIPT → ASK → PIN → COLLECT_SCRIPT → ANNOTATE → STOP. Collect writes the stamp, then the SOAP file. Annotate replaces the four SOAP sentences. Manual fallback, only when hai_mcp is unavailable: the order in `references/splunk.md`.
 
 On collection failure the script still writes the check (`unavailable`, null facts) and leaves the watermark where it was.
 

@@ -20,7 +20,11 @@ or reorder pipes. Do not write new SPL.
 1. `read_file` `health/metadata-splunk.json` — lookup and watermark
    (`index`, `sourcetype`, `window`, `collected_through`, `proof`).
    Then `read_file` the `proof` stamp. Its `readings[]` are the prior
-   rows. Missing proof → first visit.
+   rows. Missing proof → first visit. Missing `index` or
+   `sourcetype` → the script lists indexes and sourcetypes that
+   have events (`| tstats count where index=* by index sourcetype`
+   over 7d, skipping `_` indexes). It writes nothing. The operator
+   names the pair. `pin` stores it. Do not guess one.
 2. `read_file` `inventory/prod.json` — device names and `platform`.
    The **expected set** is every device whose `platform` is not
    `linux` (`iosxe`, `nxos`, `asa`); hosts do not syslog here.
@@ -47,9 +51,12 @@ with `logging origin-id hostname` (`HOST: YYYY Mon DD`). An NX-OS
 box without origin-id logs no hostname and shows up as its address.
 Buckets and kinds cover IOS-XE (`SYS`, `LINEPROTO`, `LINK`,
 `IPACCESSLOG*`), NX-OS (`ETHPORT`, `VSHD_SYSLOG_CONFIG_I`,
-`PFM_SYSTEM_RESET`, `BGP ADJCHANGE`), and ASA (`411001/2` link,
-`111005` end-of-configuration, `106023/106100` ACL, `605004/5`,
-`611101/2`, `113005` auth, `199001` reload). ASA `111008/111010`
+`PFM_SYSTEM_RESET`, `BGP ADJCHANGE`), and ASA/FTD. Firewall ACL
+denies are `106023`, `106100`, and `106015`. Access-control actions
+are `430003`. Connection built and teardown are `302013/4`,
+`302015/6`, and `302020/1`. A scanning drop is `733100`. Link,
+config, auth, and reload use `411001/2`, `111005`, `605004/5`,
+`611101/2`, `113005`, and `199001`. ASA/FTD `111008/111010`
 (every exec command) are deliberately **not** config events. Splunk
 does the collapse of one device logging from two addresses; you do
 not.
@@ -65,7 +72,7 @@ index=<index> sourcetype=<sourcetype>
 | rex field=_raw " (?<nx_hostname>[A-Za-z][A-Za-z0-9._-]*): \d{4} [A-Z][a-z]{2} +\d"
 | rex field=_raw "(?<ftd_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
 | rex field=_raw "%(?:ASA|FTD)-\d+-\d+: \((?<device_id_host>[A-Za-z][A-Za-z0-9._-]*)\)"
-| eval bucket=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="106023" OR cisco_mn="106100")),"acl", cisco_mn="LOGIN_SUCCESS" OR cisco_mn="AUTH_PASSED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="605005" OR cisco_mn="611101")),"auth_ok", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", cisco_mn="NO_MATCH","ssh_no_match", isnull(cisco_mn),"unparsed", 1=1,"other")
+| eval bucket=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="106023" OR cisco_mn="106100" OR cisco_mn="106015" OR cisco_mn="733100" OR cisco_mn="430003" OR cisco_mn="302010" OR cisco_mn="302013" OR cisco_mn="302014" OR cisco_mn="302015" OR cisco_mn="302016" OR cisco_mn="302020" OR cisco_mn="302021")),"acl", cisco_mn="LOGIN_SUCCESS" OR cisco_mn="AUTH_PASSED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="605005" OR cisco_mn="611101")),"auth_ok", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", cisco_mn="NO_MATCH","ssh_no_match", isnull(cisco_mn),"unparsed", 1=1,"other")
 | eval dev=lower(coalesce(ios_hostname,asa_hostname,ftd_hostname,device_id_host,nx_hostname,host))
 | eval ingest_delay_s=if(isnotnull(_indextime) AND isnotnull(_time), round(_indextime-_time), null())
 | stats count, max(_time) as last_at, max(ingest_delay_s) as ingest_delay_s by dev, bucket
@@ -78,7 +85,7 @@ subject. This is a `readings` row. Zero rows on a quiet window is
 normal. The visit still writes the stamp.
 
 ```
-index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO" OR "%LINK-" OR "SYS-5-CONFIG_I" OR "SYS-5-RELOAD" OR "SYS-5-RESTART" OR IPACCESSLOG* OR "LOGIN_FAILED" OR "AUTH_FAILED" OR "%ETHPORT-" OR "VSHD_SYSLOG_CONFIG_I" OR "PFM_SYSTEM_RESET" OR "%ASA-4-411001" OR "%ASA-4-411002" OR "%ASA-5-111005" OR "%ASA-4-106023" OR "%ASA-6-106100" OR "%ASA-6-113005" OR "%ASA-6-605004" OR "%ASA-6-611102" OR "%ASA-5-199001" OR "%FTD-4-106023" OR "%FTD-4-106100" OR "%FTD-4-411001" OR "%FTD-4-411002" OR "%FTD-5-111005" OR "%FTD-6-113005" OR "%FTD-6-605004" OR "%FTD-6-611102" OR "%FTD-5-199001")
+index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO" OR "%LINK-" OR "SYS-5-CONFIG_I" OR "SYS-5-RELOAD" OR "SYS-5-RESTART" OR IPACCESSLOG* OR "LOGIN_FAILED" OR "AUTH_FAILED" OR "%ETHPORT-" OR "VSHD_SYSLOG_CONFIG_I" OR "PFM_SYSTEM_RESET" OR "%ASA-4-411001" OR "%ASA-4-411002" OR "%ASA-5-111005" OR "%ASA-4-106023" OR "%ASA-6-106015" OR "%ASA-6-106100" OR "%ASA-4-733100" OR "%ASA-6-113005" OR "%ASA-6-605004" OR "%ASA-6-611102" OR "%ASA-5-199001" OR "%FTD-4-106023" OR "%FTD-6-106015" OR "%FTD-4-106100" OR "%FTD-4-733100" OR "%FTD-4-411001" OR "%FTD-4-411002" OR "%FTD-5-111005" OR "%FTD-6-113005" OR "%FTD-6-605004" OR "%FTD-6-611102" OR "%FTD-5-199001")
 | rex field=_raw "%(?<facility>[A-Z0-9_]+)-(?<sev>\d+)-(?<cisco_mn>[A-Z0-9_]+)"
 | rex field=_raw "\d+: (?<ios_hostname>[A-Za-z][A-Za-z0-9._-]*): \*?[A-Z][a-z]{2} +\d"
 | rex field=_raw "\d{2}:\d{2}:\d{2} (?<asa_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
@@ -94,18 +101,20 @@ index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO"
 | rex field=_raw "\[user: (?<auth_user>[^\]]+)\] \[Source: (?<auth_ip>[^\]]+)\]"
 | rex field=_raw "list (?<acl>\S+) (?<acl_action>denied|permitted) (?<ios_proto>\S+) (?<ios_src>[0-9a-fA-F.:]+)\((?<ios_src_port>\d+)\) -> (?<ios_dst>[0-9a-fA-F.:]+)\((?<ios_dst_port>\d+)\)"
 | rex field=_raw "(?i)(?<asa_acl_action>Deny|Permit) (?<asa_proto>\S+) src (?<asa_src_if>[^:]+):(?<asa_src>[0-9a-fA-F.:]+)(?:/(?<asa_src_port>\d+))? dst (?<asa_dst_if>[^:]+):(?<asa_dst>[0-9a-fA-F.:]+)(?:/(?<asa_dst_port>\d+))?.*by access-group \"(?<asa_acl>[^\"]+)\""
+| rex field=_raw "Deny (?<nocon_proto>TCP|UDP|ICMP) \(no connection\) from (?<nocon_src>[0-9.]+)/(?<nocon_src_port>\d+) to (?<nocon_dst>[0-9.]+)/(?<nocon_dst_port>\d+).*interface (?<nocon_if>\S+)"
+| rex field=_raw "\[ (?<scan_class>Scanning)\] drop"
 | rex field=_raw "access-list (?<asa_acl2>\S+) (?<asa_acl_action2>permitted|denied)"
 | rex field=_raw "user = (?<asa_auth_user>\S+)"
 | rex field=_raw "Reload Reason: (?<reload_reason>[^.]+)"
-| eval kind=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="106023" OR cisco_mn="106100")),"acl", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", 1=1,null())
+| eval kind=case(cisco_mn="ADJCHANGE" OR cisco_mn="NBR_RESET","bgp", facility="LINEPROTO" OR facility="LINK" OR facility="ETHPORT" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="411001" OR cisco_mn="411002")),"link", (facility="SYS" AND cisco_mn="CONFIG_I") OR cisco_mn="VSHD_SYSLOG_CONFIG_I" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="111005"),"config", (facility="SYS" AND (cisco_mn="RELOAD" OR cisco_mn="RESTART")) OR cisco_mn="PFM_SYSTEM_RESET" OR ((facility="ASA" OR facility="FTD") AND cisco_mn="199001"),"reload", match(cisco_mn,"^IPACCESSLOG") OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="106023" OR cisco_mn="106100" OR cisco_mn="106015" OR cisco_mn="733100")),"acl", cisco_mn="LOGIN_FAILED" OR cisco_mn="AUTH_FAILED" OR ((facility="ASA" OR facility="FTD") AND (cisco_mn="113005" OR cisco_mn="605004" OR cisco_mn="611102")),"auth_failed", 1=1,null())
 | where isnotnull(kind)
-| eval subject=case(kind="bgp",neighbor_ip, kind="link",coalesce(intf,nx_intf), kind="config",coalesce(user,asa_cfg_line,"unknown"), kind="reload",cisco_mn, kind="acl",coalesce(asa_acl,acl,asa_acl2,"unknown"), kind="auth_failed",coalesce(auth_user,asa_auth_user,"unknown"))
-| eval state=case(kind="bgp",coalesce(bgp_state,"reset"), kind="link",coalesce(link_state,nx_link_state), kind="acl",lower(coalesce(acl_action,asa_acl_action2,asa_acl_action)), 1=1,null())
-| eval src=coalesce(asa_src,ios_src,source_ip,auth_ip)
-| eval dst=coalesce(asa_dst,ios_dst)
-| eval src_port=coalesce(asa_src_port,ios_src_port)
-| eval dst_port=coalesce(asa_dst_port,ios_dst_port)
-| eval protocol=coalesce(asa_proto,ios_proto)
+| eval subject=case(kind="bgp",neighbor_ip, kind="link",coalesce(intf,nx_intf), kind="config",coalesce(user,asa_cfg_line,"unknown"), kind="reload",cisco_mn, kind="acl",coalesce(asa_acl,acl,asa_acl2,if(cisco_mn="733100","Scanning",if(cisco_mn="106015","no-connection",null())),"unknown"), kind="auth_failed",coalesce(auth_user,asa_auth_user,"unknown"))
+| eval state=case(kind="bgp",coalesce(bgp_state,"reset"), kind="link",coalesce(link_state,nx_link_state), kind="acl",lower(coalesce(acl_action,asa_acl_action2,asa_acl_action,if(isnotnull(nocon_src) OR cisco_mn="733100","Deny",null()))), 1=1,null())
+| eval src=coalesce(asa_src,ios_src,nocon_src,source_ip,auth_ip)
+| eval dst=coalesce(asa_dst,ios_dst,nocon_dst)
+| eval src_port=coalesce(asa_src_port,ios_src_port,nocon_src_port)
+| eval dst_port=coalesce(asa_dst_port,ios_dst_port,nocon_dst_port)
+| eval protocol=coalesce(asa_proto,ios_proto,nocon_proto)
 | eval acl_name=if(kind="acl",subject,null())
 | eval iface=coalesce(asa_src_if,asa_dst_if)
 | eval actor=if(kind="config",coalesce(user,asa_cfg_line),null())
@@ -119,20 +128,24 @@ index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO"
 | sort dev kind subject
 ```
 
-**S3 — firewall spreads. Always.** FTD connection and deny lines.
-One row per source when that source was denied or allowed across
-20 or more destinations or ports, or was denied at least 100 times.
-This is the port scan and the deny surge. It is not one row per
-packet. Zero rows is a quiet firewall window. The bounded `window`
-is the interval, not the watermark.
+**S3 — firewall spreads. Always.** ASA and FTD access-control
+actions (`430003`), ACL denies (`106023`, `106015`), and connection
+builds (`302013`, `302015`, `302020`). One row per source when that
+source was denied or allowed across 20 or more destinations or
+ports, or was denied at least 100 times. This is the port scan and
+the deny surge. It is not one row per packet. A steady allow stays
+in the S1 count. Zero rows is a quiet firewall window. The bounded
+`window` is the interval, not the watermark.
 
 ```
-index=<index> sourcetype=<sourcetype> (%FTD-6-430003 OR %FTD-4-106023 OR %FTD-4-106100)
-| rex field=_raw "SrcIP: (?<src>[0-9.]+), DstIP: (?<dst>[0-9.]+), SrcPort: \d+, DstPort: (?<dst_port>\d+), Protocol: (?<proto>\S+),.*?AccessControlRuleAction: (?<action>\w+)"
+index=<index> sourcetype=<sourcetype> (%FTD-6-430003 OR %FTD-4-106023 OR %FTD-6-106015 OR %FTD-4-106100 OR %FTD-6-302013 OR %FTD-6-302015 OR %FTD-6-302020 OR %ASA-4-106023 OR %ASA-6-106015 OR %ASA-6-302013 OR %ASA-6-302015 OR %ASA-6-302020)
+| rex field=_raw "AccessControlRuleAction: (?<action>\w+).*?SrcIP: (?<src>[0-9.]+), DstIP: (?<dst>[0-9.]+), SrcPort: \d+, DstPort: (?<dst_port>\d+), Protocol: (?<proto>\S+)"
 | rex field=_raw "Deny (?<deny_proto>\S+) src \S+:(?<deny_src>[0-9.]+)/\d+ dst \S+:(?<deny_dst>[0-9.]+)/(?<deny_port>\d+) by access-group \"(?<deny_acl>[^\"]+)\""
+| rex field=_raw "Built \S+ \S+ connection \d+ for \S+:(?<b_src>[0-9.]+)/\d+ .* to \S+:(?<b_dst>[0-9.]+)/(?<b_port>\d+)"
+| rex field=_raw "Deny (?<nocon_proto>TCP|UDP|ICMP) \(no connection\) from (?<nocon_src>[0-9.]+)/\d+ to (?<nocon_dst>[0-9.]+)/(?<nocon_port>\d+)"
 | rex field=_raw "(?<ftd_hostname>[A-Za-z][A-Za-z0-9._-]*) : %(?:ASA|FTD)-"
 | rex field=_raw "%(?:ASA|FTD)-\d+-\d+: \((?<device_id_host>[A-Za-z][A-Za-z0-9._-]*)\)"
-| eval src=coalesce(src,deny_src), dst=coalesce(dst,deny_dst), dst_port=coalesce(dst_port,deny_port), protocol=coalesce(proto,deny_proto), action=coalesce(action,if(isnotnull(deny_src),"Block",null())), acl=coalesce(deny_acl,"connection"), dev=lower(coalesce(ftd_hostname,device_id_host,host))
+| eval src=coalesce(src,deny_src,b_src,nocon_src), dst=coalesce(dst,deny_dst,b_dst,nocon_dst), dst_port=coalesce(dst_port,deny_port,b_port,nocon_port), protocol=coalesce(proto,deny_proto,nocon_proto), action=coalesce(action,if(isnotnull(deny_src) OR isnotnull(nocon_src),"Block",if(isnotnull(b_src),"Allow",null()))), acl=coalesce(deny_acl,"connection"), dev=lower(coalesce(ftd_hostname,device_id_host,host))
 | where isnotnull(src) AND isnotnull(dst)
 | stats count, dc(dst) as destinations, dc(dst_port) as ports, max(_time) as at, latest(protocol) as protocol, latest(acl) as acl by dev, src, action
 | where destinations>=20 OR ports>=20 OR (action="Block" AND count>=100)

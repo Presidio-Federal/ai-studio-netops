@@ -21,7 +21,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Author | 1.4.0 | MiniMax |
 | Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
-| Health Logging | 1.3.0 | MiniMax |
+| Health Logging | 1.3.1 | MiniMax |
 | Health Telemetry | 1.4.0 | MiniMax |
 | Health Application | 1.4.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
@@ -33,6 +33,10 @@ Deployed model is **MiniMax** unless noted.
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Health Logging 1.3.1 (skill 1.3.2): a missing `index` or `sourcetype` lists the Splunk pairs that have events and writes nothing. The operator names the pair. `pin` stores it. Later visits use that lookup and do not ask again. MiniMax.
+
+Health Logging skill 1.3.1 (agent prompt stays 1.3.0): the visit counts ASA and FTD ACL denies (`106023`, `106015`, `106100`), scanning drops (`733100`), access-control actions (`430003`), and connection builds with the router and switch syslog. IOS `IPACCESSLOG` stays in the search. A steady allow stays in the count. A spread or a deny surge is still the stamp reading. MiniMax.
 
 Health Logging 1.3.0 (skill health-logging 1.3.0, workspace-handoff 1.70.39): every visit writes the stamp first. `readings[]` is the row set for this window, `vs_prior` is the delta from the prior stamp, and row `keys` are the tags. A row that did not move stays, with note `Unchanged.` The first visit is delta `first` and notes `Baseline.` Metadata is the SOAP summary and `proof`. `keys` is `[]`. Annotate replaces the four SOAP sentences and does not edit the stamp. A quiet window still writes both files. MiniMax.
 

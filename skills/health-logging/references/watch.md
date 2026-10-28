@@ -33,8 +33,17 @@ python3 <skill>/scripts/visit_splunk.py collect --workspace <file_explorer>
 ```
 
 The last stdout line is the summary. Ignore any runtime line above it.
-The stamp is already written. It holds the rows, the delta, and the
-tags.
+
+If that line has `need` equal to `index`, stop. Show the options.
+Ask which index and sourcetype. Do not annotate. When they name
+one, `pin` under `execution_type: "standard"`, then `collect` again.
+
+```text
+python3 <copied script path> pin --workspace <copied file_explorer directory> --index <their index> --sourcetype <their sourcetype>
+```
+
+Otherwise the stamp is already written. It holds the rows, the
+delta, and the tags.
 
 Then one `execute_command` with `execution_type: "standard"`, same
 copied path. This replaces the SOAP summary. It does not edit the

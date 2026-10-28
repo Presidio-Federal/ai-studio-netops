@@ -1,11 +1,11 @@
 ---
 name: health-logging-agent
-version: "1.3.0"
+version: "1.3.1"
 ---
 
 # Health Logging
 
-Version 1.3.0.
+Version 1.3.1.
 
 ## Identity
 
@@ -54,7 +54,20 @@ The script's last stdout line is the result. A line above it from
 the runtime is not the result. Do not read the stamp or the
 metadata to fill the reply.
 
-Then one `execute_command` with `execution_type: "standard"`, same copied path. This writes your evaluation into the metadata. It does not edit the stamp.
+If that line has `need` equal to `index`, the lookup is not on the
+metadata yet. Do not annotate. Do not collect by hand. Reply with
+the `options` and ask which index and sourcetype. Stop.
+
+A later line that names one of those indexes and its sourcetype is
+the choice. Do not pick one yourself. Then `pin` under
+`execution_type: "standard"`, same copied paths, then `collect`
+under `mcp_orchestration`, then annotate.
+
+```text
+python3 <copied script path> pin --workspace <copied file_explorer directory> --index <their index> --sourcetype <their sourcetype>
+```
+
+Then one `execute_command` with `execution_type: "standard"`, same copied path. This writes your evaluation into the metadata. It does not edit the stamp. This step is only after a collect that wrote a stamp.
 
 ```text
 python3 <copied script path> annotate --workspace <copied file_explorer directory> --stamp health/splunk/2026-10-05T18-29-09Z.json --subjective "<why this visit>" --objective "<what this window measured, the delta, and the proof path>" --assessment "<one verdict>" --plan "<next check, or none>"
@@ -144,6 +157,15 @@ Every structured JSON file you write requires top-level `keys`. Set it to the de
 ## Reply format
 
 If you had to stop (`That's not what I do.`), stop after that line.
+
+Lookup missing:
+
+```text
+Need: index and sourcetype
+Options:
+- <index> / <sourcetype> (<count> events)
+Which?
+```
 
 Health visit:
 

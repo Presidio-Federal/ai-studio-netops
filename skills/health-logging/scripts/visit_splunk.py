@@ -92,6 +92,11 @@ METRIC_FIELDS = (
 CHANGED_CAP = 120
 READINGS_CAP = 120
 KEY_RE = re.compile(r"^(device|interface|site|service|test|control|incident|change):[^ ]+$")
+LOOKUP_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]*$")
+DISCOVERY = (
+    "| tstats count where index=* by index sourcetype "
+    "| where count>0 | sort -count"
+)
 
 
 def stamp_name(moment):
@@ -795,6 +800,109 @@ def build_registry(previous, names, observed):
     return {"version": 1, "entries": entries}
 
 
+def lookup_name(value):
+    text = strip_arg(value)
+    if not text or text.startswith("<") or "*" in text or not LOOKUP_RE.match(text):
+        return None
+    if text.startswith("_"):
+        return None
+    return text
+
+
+def list_sources():
+    """Indexes and sourcetypes that have events. Not a health search."""
+    payload, error = splunk_search("indexes", DISCOVERY, "-7d", "now")
+    if error or payload is None:
+        return None, error or "index list failed"
+    options = []
+    seen = set()
+    for row in payload.get("results") or []:
+        if not isinstance(row, dict):
+            continue
+        index = blank(row.get("index"))
+        sourcetype = blank(row.get("sourcetype"))
+        if not index or not sourcetype or index.startswith("_"):
+            continue
+        pair = (index, sourcetype)
+        if pair in seen:
+            continue
+        seen.add(pair)
+        options.append(
+            {
+                "index": index,
+                "sourcetype": sourcetype,
+                "count": coerce_int(row.get("count")) or 0,
+            }
+        )
+    options.sort(key=lambda item: item["count"], reverse=True)
+    return options[:20], None
+
+
+def ask_lookup():
+    options, error = list_sources()
+    if error:
+        print(f"splunk indexes: {error}", file=sys.stderr)
+        return 1
+    if not options:
+        print('{"error": "splunk returned no index"}', file=sys.stderr)
+        return 1
+    print(
+        visit_common.summary(
+            {
+                "plane": "splunk",
+                "need": "index",
+                "options": options,
+                "wrote": False,
+            }
+        )
+    )
+    return 0
+
+
+def cmd_pin(args):
+    ws = resolve_workspace(args.workspace)
+    if ws is None:
+        return 1
+    index = lookup_name(args.index)
+    sourcetype = lookup_name(args.sourcetype)
+    if index is None or sourcetype is None:
+        print('{"error": "index and sourcetype must be the names from the list"}', file=sys.stderr)
+        return 1
+    board = visit_common.load_board(ws, "splunk") or {}
+    if not isinstance(board, dict):
+        board = {}
+    splunk = board.get("splunk") if isinstance(board.get("splunk"), dict) else {}
+    splunk["index"] = index
+    splunk["sourcetype"] = sourcetype
+    if not blank(splunk.get("window")):
+        splunk["window"] = blank(splunk.get("window"))
+    else:
+        splunk["window"] = "1h"
+    board["keys"] = board.get("keys") if isinstance(board.get("keys"), list) else []
+    board["schema"] = "health-metadata-splunk/v3"
+    board["source_agent"] = "health-logging"
+    board["updated_at"] = checked_at(datetime.now(timezone.utc))
+    board["splunk"] = splunk
+    board["provenance"] = {"splunk": "user"}
+    try:
+        visit_common.save_board(ws, "splunk", board)
+    except OSError as exc:
+        print(f"board write: {exc}", file=sys.stderr)
+        return 1
+    print(
+        visit_common.summary(
+            {
+                "plane": "splunk",
+                "pinned": True,
+                "index": index,
+                "sourcetype": sourcetype,
+                "metadata": "health/metadata-splunk.json",
+            }
+        )
+    )
+    return 0
+
+
 def cmd_collect(args):
     ws = resolve_workspace(args.workspace)
     if ws is None:
@@ -808,8 +916,7 @@ def cmd_collect(args):
     index = blank(splunk.get("index"))
     sourcetype = blank(splunk.get("sourcetype"))
     if not index or not sourcetype or index.startswith("<") or sourcetype.startswith("<"):
-        print('{"error": "splunk.index or splunk.sourcetype missing on the metadata"}', file=sys.stderr)
-        return 1
+        return ask_lookup()
     s1, s2, s3 = searches()
     if s1 is None:
         return 1
@@ -1248,6 +1355,11 @@ def main(argv):
     collect = sub.add_parser("collect")
     collect.add_argument("--workspace", required=True)
     collect.set_defaults(func=cmd_collect)
+    pin = sub.add_parser("pin")
+    pin.add_argument("--workspace", required=True)
+    pin.add_argument("--index", required=True)
+    pin.add_argument("--sourcetype", required=True)
+    pin.set_defaults(func=cmd_pin)
     note = sub.add_parser("annotate")
     note.add_argument("--workspace", required=True)
     note.add_argument("--stamp", required=True)
