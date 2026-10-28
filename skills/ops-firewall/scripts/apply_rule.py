@@ -57,16 +57,6 @@ def save_json(path, obj):
     path.write_text(json.dumps(obj, indent=2) + "\n", encoding="utf-8")
 
 
-def parse_time(value):
-    if not isinstance(value, str) or not value:
-        return None
-    text = value.replace("Z", "+00:00")
-    try:
-        return datetime.fromisoformat(text)
-    except ValueError:
-        return None
-
-
 def find_device(inventory, name):
     for device in (inventory or {}).get("devices") or []:
         if isinstance(device, dict) and device.get("name") == name:
@@ -445,11 +435,6 @@ def cmd_apply(args):
     device = find_device(inventory, args.device)
     if device is None:
         emit({"result": "blocked", "device": args.device, "gaps": ["device not in inventory/prod.json"]})
-        return 0
-    expires = parse_time(inventory.get("expires_at"))
-    if expires is not None and datetime.now(timezone.utc) >= expires:
-        write_state(ws, started, args.device, side_of(device), "blocked", None, ["inventory stale"], f"{args.device}: inventory stale", ports, destination, "Refresh the prod inventory.")
-        emit({"result": "blocked", "device": args.device, "wrote": ["state/firewall.json"], "gaps": ["inventory stale"]})
         return 0
     side = side_of(device)
     host, port = access_of(device)

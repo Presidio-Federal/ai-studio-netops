@@ -34,6 +34,8 @@ Deployed model is **MiniMax** unless noted.
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
 
+Ops Firewall 1.1.6: `inventory/prod.json` is access ports. `expires_at` does not block a write. A missing device or missing RESTCONF port still blocks. MiniMax.
+
 SecOps Event Response 1.0.8: the firewall write goes to the configured subagent attached on that parent. The display name is not checked. A renamed attachment is still the writer. MiniMax.
 
 Ops Firewall 1.1.5 (skill 1.1.5, secops 1.0.7, skill 1.0.5, workspace-handoff 1.70.40): `SCAN-ALLOW-WEB` permits TCP 80, 443, 8080, and 8443, then denies ip. No host address is in the list. 8443 is the Caldera session port. MiniMax.

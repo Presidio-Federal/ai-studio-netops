@@ -1,7 +1,7 @@
 ---
 name: ops-firewall
-version: "1.1.5"
-description: "v1.1.5 — Ops Firewall: SCAN-ALLOW-WEB permits TCP 80, 443, 8080, and 8443, then denies ip."
+version: "1.1.6"
+description: "v1.1.6 — Ops Firewall: a listed device is written from its access ports. expires_at does not block."
 ---
 
 # Ops Firewall
