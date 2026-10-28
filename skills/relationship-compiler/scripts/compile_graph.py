@@ -726,6 +726,14 @@ def cmd_compile(args):
         if isinstance(proof_doc, dict):
             net_plane["current"] = proof_doc.get("readings") or []
             read.append(proof)
+    splunk_board = sources.get("health/metadata-splunk.json")
+    splunk_plane = plane(splunk_board, "splunk") if isinstance(splunk_board, dict) else {}
+    splunk_proof = blank(splunk_plane.get("proof"))
+    if not (splunk_plane.get("current") or []) and splunk_proof:
+        splunk_doc = load(ws, splunk_proof)
+        if isinstance(splunk_doc, dict):
+            splunk_plane["current"] = splunk_doc.get("readings") or []
+            read.append(splunk_proof)
     compiled_at = stamp_text(now_utc())
     produced = copy_edges(sources)
     edges, fresh, newly_stale = upsert(produced, prior.get("edges") or [], compiled_at)

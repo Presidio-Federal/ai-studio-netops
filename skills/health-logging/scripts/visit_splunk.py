@@ -1,15 +1,18 @@
 #!/usr/bin/env python3
-"""Splunk health visit. One command collects, diffs, and writes the board.
+"""Splunk health visit. One command collects, diffs, and writes the stamp.
 
-collect runs under execution_type mcp_orchestration. annotate runs under
-standard and only edits headline and notes. The searches and the material
-rules are references/splunk.md. NetFlow is not this script.
+collect runs under execution_type mcp_orchestration. It writes the stamp
+first, then a SOAP draft on the metadata. annotate runs under standard
+and replaces only those four sentences. It does not edit the stamp.
+The searches and the material rules are references/splunk.md.
+NetFlow is not this script.
 
 The agent copies the path Studio shows for this file. Do not hardcode it.
 
   python3 <skill>/scripts/visit_splunk.py collect --workspace <file_explorer>
   python3 <skill>/scripts/visit_splunk.py annotate --workspace <file_explorer> \\
-      --stamp health/splunk/<stamp>.json --headline "..." --note "device:NAME=..."
+      --stamp health/splunk/<stamp>.json --subjective "..." --objective "..." \\
+      --assessment "..." --plan "..."
 """
 import argparse
 import ipaddress
@@ -86,8 +89,8 @@ METRIC_FIELDS = (
     "auth_failed",
     "ssh_no_match",
 )
-CHANGED_CAP = 32
-READINGS_CAP = 64
+CHANGED_CAP = 120
+READINGS_CAP = 120
 KEY_RE = re.compile(r"^(device|interface|site|service|test|control|incident|change):[^ ]+$")
 
 
@@ -642,7 +645,7 @@ def group_s2(rows, by_lower, hosts_map, access, nets):
     return list(grouped.values())
 
 
-def note_for(row, first):
+def note_for(row):
     kind = row["kind"]
     if kind == "acl" and "ports" in (row.get("detail") or ""):
         text = (
@@ -683,9 +686,78 @@ def note_for(row, first):
         )
     else:
         text = f"{kind} at {row['at']}."
-    if first:
-        return "Baseline. " + text
     return text
+
+
+def row_moved(row, prior):
+    if prior is None:
+        return True
+    if (row.get("at") or "") != (prior.get("at") or ""):
+        return True
+    if (row.get("count") or 0) != (prior.get("count") or 0):
+        return True
+    return (row.get("state") or None) != (prior.get("state") or None)
+
+
+def prior_rows_from(ws, splunk):
+    """Rows to diff against. An old board still has current[]. The record now lives on the prior stamp."""
+    proof = blank(splunk.get("proof"))
+    watch = blank(splunk.get("last_visit_id"))
+    rel = proof or (f"health/splunk/{watch}.json" if watch else "")
+    if rel:
+        doc = visit_common.load_json(ws, rel)
+        if isinstance(doc, dict) and isinstance(doc.get("readings"), list):
+            return keep(doc.get("readings") or [], fit_row)
+    return keep(splunk.get("current") or [], fit_row)
+
+
+def cap_readings(rows):
+    if len(rows) <= READINGS_CAP:
+        return rows, False
+    print(f"splunk readings {len(rows)} capped at {READINGS_CAP}", file=sys.stderr)
+    moved = [row for row in rows if row.get("note") != "Unchanged."]
+    still = [row for row in rows if row.get("note") == "Unchanged."]
+    if len(moved) >= READINGS_CAP:
+        return moved[:READINGS_CAP], True
+    still.sort(key=lambda row: row.get("at") or "")
+    room = READINGS_CAP - len(moved)
+    return moved + still[-room:], True
+
+
+def soap_text(text):
+    return str(text or "").strip()[:400] or "none"
+
+
+def metadata_doc(board, splunk, at, index, sourcetype, window, collected_through, watch, baseline, proof, status, coverage, delta, soap, registry):
+    nested = {
+        "index": index,
+        "sourcetype": sourcetype,
+        "window": window,
+        "collected_through": collected_through,
+        "last_visit_id": watch,
+        "last_collected_at": at,
+        "baseline_visit_id": baseline,
+        "proof": proof,
+        "status": status,
+        "coverage": coverage,
+        "delta": delta,
+        "soap": soap,
+    }
+    if isinstance(registry, dict):
+        nested["source_registry"] = registry
+    if isinstance(splunk.get("hosts"), dict):
+        nested["hosts"] = splunk["hosts"]
+    doc = {
+        "keys": [],
+        "schema": "health-metadata-splunk/v3",
+        "updated_at": at,
+        "source_agent": "health-logging",
+        "splunk": nested,
+    }
+    provenance = board.get("provenance") if isinstance(board.get("provenance"), dict) else {}
+    if provenance.get("splunk") in ("user", "discovered"):
+        doc["provenance"] = {"splunk": provenance["splunk"]}
+    return doc
 
 
 def bounded_window(splunk):
@@ -736,7 +808,7 @@ def cmd_collect(args):
     index = blank(splunk.get("index"))
     sourcetype = blank(splunk.get("sourcetype"))
     if not index or not sourcetype or index.startswith("<") or sourcetype.startswith("<"):
-        print('{"error": "splunk.index or splunk.sourcetype missing on the board"}', file=sys.stderr)
+        print('{"error": "splunk.index or splunk.sourcetype missing on the metadata"}', file=sys.stderr)
         return 1
     s1, s2, s3 = searches()
     if s1 is None:
@@ -748,8 +820,8 @@ def cmd_collect(args):
     earliest = watermark or "-7d"
     rate_window = bounded_window(splunk)
     window_label = rate_window
-    first = not keep(splunk.get("current") or [], fit_row)
-    prior_rows = keep(splunk.get("current") or [], fit_row)
+    first = not blank(splunk.get("baseline_visit_id"))
+    prior_rows = [] if first else prior_rows_from(ws, splunk)
     prior_by_id = {row_key(row["name"], row["kind"], row["subject"]): row for row in prior_rows}
 
     budget = visit_common.Budget(240)
@@ -810,101 +882,94 @@ def cmd_collect(args):
     no_expectation = [name for name in silent if policy.get(name) != "expected"]
     coverage = "partial" if s2_failed or s3_failed or s1_truncated or s2_truncated else "complete"
 
-    current_map = {row_key(row["name"], row["kind"], row["subject"]): row for row in prior_rows}
-    changed_rows = []
+    readings = []
     for row in s2_rows:
         row["window_start"] = earliest
         row["window_end"] = "now"
-        key = row_key(row["name"], row["kind"], row["subject"])
-        prior = prior_by_id.get(key)
+        prior = prior_by_id.get(row_key(row["name"], row["kind"], row["subject"]))
         stored = {field: row[field] for field in ROW_FIELDS}
-        changed_rows.append((stored, prior))
-    current_rows = [row for row, _prior in changed_rows]
-    current_rows.sort(key=lambda row: row.get("at") or "")
-    if len(current_rows) > 120:
-        print(f"splunk board rows {len(current_rows)} capped at 120", file=sys.stderr)
-        current_rows = current_rows[-120:]
-
-    status = "degraded" if any(degrades(row) for row, _prior in changed_rows) else "ok"
-    delta = overall_delta([row for row, _prior in changed_rows], first)
-    write_stamp = first or bool(changed_rows) or coverage != "complete"
-    reading_source = [row for row, _prior in changed_rows]
-    readings_truncated = len(reading_source) > READINGS_CAP
-    if readings_truncated:
-        reading_source = sorted(reading_source, key=lambda row: (0 if concerns_kind(row) else 1, row["name"]))[:READINGS_CAP]
-    readings = []
-    for row in reading_source:
-        item = dict(row)
-        item["note"] = note_for(row, first)
-        readings.append(item)
-    reading_ids = {row_key(row["name"], row["kind"], row["subject"]) for row in readings}
-    unchanged = 0 if first else sum(1 for row in current_rows if row_key(row["name"], row["kind"], row["subject"]) not in reading_ids)
-
+        if first:
+            stored["note"] = "Baseline."
+        elif row_moved(stored, prior):
+            stored["note"] = note_for(stored)
+        else:
+            stored["note"] = "Unchanged."
+        readings.append(stored)
+    readings.sort(key=lambda row: row.get("at") or "")
+    readings, readings_truncated = cap_readings(readings)
+    unchanged = sum(1 for row in readings if row.get("note") == "Unchanged.")
+    moved = [row for row in readings if row.get("note") not in ("Unchanged.", "Baseline.")]
+    status = "degraded" if any(degrades(row) for row in readings) else "ok"
+    delta = "first" if first else overall_delta(moved, False)
     public_changed = []
-    for row, prior in changed_rows:
-        if row_key(row["name"], row["kind"], row["subject"]) not in reading_ids:
-            continue
-        public_changed.append(change_item(row, prior))
-    public_changed = public_changed[:CHANGED_CAP]
+    if not first:
+        for row in moved:
+            prior = prior_by_id.get(row_key(row["name"], row["kind"], row["subject"]))
+            public_changed.append(change_item(row, prior))
+        public_changed = public_changed[:CHANGED_CAP]
 
     prior_watch = blank(splunk.get("last_visit_id"))
     baseline = blank(splunk.get("baseline_visit_id"))
-    watch = None
-    stamp_rel = None
-    if write_stamp:
-        watch, moment = fresh_stamp_id(ws, now)
-        at = checked_at(moment)
-        for row in metrics:
-            row["at"] = at
-        for row in readings:
-            if row["note"] == "Baseline." or first:
-                pass
-        headline = "Baseline." if first else f"{len(readings)} syslog rows. {unchanged} board rows unchanged."
-        stamp = {
-            "keys": union_keys(readings) or union_keys(current_rows),
-            "schema": "health-splunk-check/v3",
-            "source": "splunk",
-            "watch_id": watch,
-            "checked_at": at,
-            "ok": status == "ok",
-            "status": status,
-            "headline": headline[:500],
-            "window": window_label,
-            "window_start": earliest,
-            "window_end": "now",
-            "coverage": {"state": coverage, "detail": _detail(s2_failed, s1_truncated or s2_truncated)},
-            "metrics": metrics,
-            "readings": readings,
-            "unchanged": unchanged,
-            "baseline_ref": None if first or not baseline else f"health/splunk/{baseline}.json",
-            "vs_prior": {
-                "prior_watch_id": None if first else prior_watch,
-                "delta": "first" if first else delta,
-                "changed": [] if first else public_changed,
-            },
-        }
-        concern_names = []
-        for row, _prior in changed_rows:
-            if concerns_kind(row) and row["name"] not in concern_names and row.get("keys"):
-                concern_names.append(row["name"])
-        concerns = [
-            {"type": "device", "name": name, "source_ref": "inventory/prod.json"}
-            for name in concern_names[:8]
-        ]
-        if concerns:
-            stamp["concerns"] = concerns
-        try:
-            visit_common.validate(stamp, CHECK_SCHEMA)
-        except ValueError as exc:
-            print(f"stamp schema: {exc}", file=sys.stderr)
-            return 1
-        stamp_rel = f"health/splunk/{watch}.json"
-        path = Path(ws) / stamp_rel
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
-        prune_stamps(ws)
-        if first:
-            baseline = watch
+    watch, moment = fresh_stamp_id(ws, now)
+    at = checked_at(moment)
+    for row in metrics:
+        row["at"] = at
+    quiet = not readings and not s2_failed and not s3_failed
+    if first and quiet:
+        headline = "Baseline. No syslog this window."
+    elif quiet:
+        headline = "No syslog this window."
+    elif first and readings:
+        headline = f"Baseline. {len(readings)} syslog rows."
+    elif not readings:
+        headline = "Search incomplete. No syslog rows from the failed search."
+    else:
+        headline = f"{len(readings)} syslog rows. Delta {delta}. {unchanged} unchanged versus the prior stamp."
+    stamp = {
+        "keys": [key for key in union_keys(readings) if isinstance(key, str) and KEY_RE.match(key)],
+        "schema": "health-splunk-check/v3",
+        "source": "splunk",
+        "watch_id": watch,
+        "checked_at": at,
+        "ok": status == "ok",
+        "status": status,
+        "headline": headline[:500],
+        "window": window_label,
+        "window_start": earliest,
+        "window_end": "now",
+        "coverage": {"state": coverage, "detail": _detail(s2_failed, s1_truncated or s2_truncated)},
+        "metrics": metrics,
+        "readings": readings,
+        "unchanged": unchanged,
+        "baseline_ref": None if first or not baseline else f"health/splunk/{baseline}.json",
+        "vs_prior": {
+            "prior_watch_id": None if first else prior_watch,
+            "delta": delta,
+            "changed": [] if first else public_changed,
+        },
+    }
+    concern_names = []
+    for row in readings:
+        if concerns_kind(row) and row["name"] not in concern_names and row.get("keys"):
+            concern_names.append(row["name"])
+    concerns = [
+        {"type": "device", "name": name, "source_ref": "inventory/prod.json"}
+        for name in concern_names[:8]
+    ]
+    if concerns:
+        stamp["concerns"] = concerns
+    try:
+        visit_common.validate(stamp, CHECK_SCHEMA)
+    except ValueError as exc:
+        print(f"stamp schema: {exc}", file=sys.stderr)
+        return 1
+    stamp_rel = f"health/splunk/{watch}.json"
+    path = Path(ws) / stamp_rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    prune_stamps(ws)
+    if first:
+        baseline = watch
 
     advance = coverage == "complete" and not s2_failed
     new_through = splunk.get("collected_through")
@@ -915,52 +980,49 @@ def cmd_collect(args):
         if old is None or (new is not None and new >= old) or new is None:
             new_through = candidate
 
-    series = keep(splunk.get("series") or [], fit_metric)
-    estate = estate_metric(metrics, at)
-    estate["window"] = rate_window
-    estate["unparsed"] = unparsed
-    delays = [row.get("ingest_delay_s") for row in metrics if isinstance(row.get("ingest_delay_s"), int)]
-    estate["ingest_delay_s"] = max(delays) if delays else None
-    series.append(estate)
-    visit = {
-        "watch_id": watch if write_stamp else None,
-        "checked_at": at,
-        "status": status,
-        "coverage": coverage,
-        "delta": "first" if first and write_stamp else (delta if delta != "first" else "changed"),
-        "stamp_written": bool(write_stamp),
-        "window_start": earliest,
-        "window_end": "now",
-        "silent": silent[:100],
-        "unresolved": unresolved[:100],
+    if first and quiet:
+        objective = f"Baseline. No syslog this window. Proof: {stamp_rel}."
+    elif quiet:
+        objective = f"No syslog this window. Proof: {stamp_rel}."
+    elif first and readings:
+        objective = f"Baseline. {len(readings)} syslog rows in this window. Proof: {stamp_rel}."
+    elif not readings:
+        objective = f"Search incomplete. No syslog rows from the failed search. Proof: {stamp_rel}."
+    else:
+        objective = (
+            f"{len(moved)} rows moved and {unchanged} unchanged versus the prior stamp. "
+            f"Proof: {stamp_rel}."
+        )
+    if quiet:
+        assessment = "No syslog this window is not a forwarding failure."
+    elif not readings:
+        assessment = f"Status {status}. Coverage {coverage}. A failed search is not a forwarding failure."
+    else:
+        assessment = f"Status {status}. Coverage {coverage}. Delta {delta}."
+    plan = "Next check: the devices named on the proof stamp." if status == "degraded" else "none"
+    soap = {
+        "subjective": "Splunk syslog health check.",
+        "objective": soap_text(objective),
+        "assessment": soap_text(assessment),
+        "plan": soap_text(plan),
     }
-    visits = keep(splunk.get("visits") or [], fit_visit)
-    visits.append(visit)
-    new_board = {
-        "keys": union_keys(current_rows),
-        "schema": "health-metadata-splunk/v2",
-        "updated_at": at,
-        "source_agent": "health-logging",
-        "splunk": {
-            "index": index,
-            "sourcetype": sourcetype,
-            "window": rate_window,
-            "source_registry": build_registry(splunk.get("source_registry"), expected, seen_names),
-            "collected_through": new_through,
-            "last_visit_id": watch if write_stamp else prior_watch,
-            "last_collected_at": at,
-            "baseline_visit_id": baseline if baseline else (watch if first and write_stamp else None),
-            "current": current_rows,
-            "series": ring(series),
-            "visits": ring(visits),
-        },
-    }
-    if isinstance(splunk.get("dashboard_id"), str) or splunk.get("dashboard_id") is None and "dashboard_id" in splunk:
-        new_board["splunk"]["dashboard_id"] = splunk.get("dashboard_id")
-    if isinstance(splunk.get("hosts"), dict):
-        new_board["splunk"]["hosts"] = splunk.get("hosts")
-    if isinstance(board.get("provenance"), dict):
-        new_board["provenance"] = board["provenance"]
+    new_board = metadata_doc(
+        board,
+        splunk,
+        at,
+        index,
+        sourcetype,
+        rate_window,
+        new_through,
+        watch,
+        baseline,
+        stamp_rel,
+        status,
+        coverage,
+        delta,
+        soap,
+        build_registry(splunk.get("source_registry"), expected, seen_names),
+    )
     try:
         visit_common.validate(new_board, BOARD_SCHEMA)
     except ValueError as exc:
@@ -972,21 +1034,6 @@ def cmd_collect(args):
         print(f"board write: {exc}", file=sys.stderr)
         return 1
 
-    needs = []
-    if write_stamp and not first:
-        ordered = sorted(changed_rows, key=lambda pair: (0 if concerns_kind(pair[0]) else 1, pair[0]["name"]))
-        for row, prior in ordered:
-            item = change_item(row, prior)
-            if not item["keys"]:
-                continue
-            needs.append(
-                {
-                    "keys": item["keys"],
-                    "field": item["field"],
-                    "prior": item["prior"],
-                    "current": item["current"],
-                }
-            )
     devices_line = (
         f"{len(seen_names)} of {len(expected)} logged in {rate_window}; "
         f"expected-silent: {', '.join(silent_expected) if silent_expected else 'none'}; "
@@ -994,7 +1041,9 @@ def cmd_collect(args):
         f"Unresolved: {', '.join(unresolved) if unresolved else 'none'}"
     )
     findings = []
-    for row, _prior in changed_rows:
+    for row in readings:
+        if row.get("note") == "Unchanged.":
+            continue
         if row["kind"] not in ("acl", "auth_failed", "bgp", "link", "config", "reload"):
             continue
         findings.append(
@@ -1006,19 +1055,18 @@ def cmd_collect(args):
         findings.append(f"{name} expected to report in {rate_window} and did not. Not device health.")
     payload = {
         "plane": "splunk",
-        "watch_id": watch if write_stamp else None,
+        "watch_id": watch,
         "stamp": stamp_rel,
         "status": status,
         "coverage": coverage,
-        "delta": "first" if first and write_stamp else delta,
+        "delta": delta,
         "changed_count": 0 if first else len(public_changed),
         "unchanged": unchanged,
         "degraded": status == "degraded",
-        "needs_note": needs[:8],
         "unresolved": unresolved[:20],
         "partial": coverage == "partial",
-        "board_rows": len(current_rows),
-        "last_visit_id": new_board["splunk"]["last_visit_id"],
+        "board_rows": len(readings),
+        "last_visit_id": watch,
         "devices": devices_line,
         "search": {
             "ok": not s2_failed,
@@ -1088,45 +1136,32 @@ def write_unavailable(ws, board, splunk, at, earliest, reason):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
     prune_stamps(ws)
-    prior_rows = keep(splunk.get("current") or [], fit_row)
     index = blank(splunk.get("index")) or "missing"
     sourcetype = blank(splunk.get("sourcetype")) or "missing"
-    visit = {
-        "watch_id": watch,
-        "checked_at": at,
-        "status": "unknown",
-        "coverage": "unavailable",
-        "delta": "unchanged",
-        "stamp_written": True,
-        "window_start": earliest,
-        "window_end": "now",
+    soap = {
+        "subjective": "Splunk syslog health check.",
+        "objective": soap_text(f"Query failed. Prior rows were left on the previous stamp. Proof: {stamp_rel}."),
+        "assessment": "Status unknown. Coverage unavailable. This is not a forwarding failure.",
+        "plan": "none",
     }
-    visits = keep(splunk.get("visits") or [], fit_visit)
-    visits.append(visit)
-    series = keep(splunk.get("series") or [], fit_metric)
-    series.append(metric)
-    new_board = {
-        "keys": union_keys(prior_rows),
-        "schema": "health-metadata-splunk/v2",
-        "updated_at": at,
-        "source_agent": "health-logging",
-        "splunk": {
-            "index": index,
-            "sourcetype": sourcetype,
-            "window": bounded_window(splunk),
-            "collected_through": splunk.get("collected_through"),
-            "last_visit_id": watch,
-            "last_collected_at": at,
-            "baseline_visit_id": splunk.get("baseline_visit_id"),
-            "current": prior_rows[:120],
-            "series": ring(series),
-            "visits": ring(visits),
-        },
-    }
-    if isinstance(splunk.get("hosts"), dict):
-        new_board["splunk"]["hosts"] = splunk["hosts"]
-    if isinstance(splunk.get("source_registry"), dict):
-        new_board["splunk"]["source_registry"] = splunk["source_registry"]
+    registry = splunk.get("source_registry") if isinstance(splunk.get("source_registry"), dict) else None
+    new_board = metadata_doc(
+        board,
+        splunk,
+        at,
+        index,
+        sourcetype,
+        bounded_window(splunk),
+        splunk.get("collected_through"),
+        watch,
+        blank(splunk.get("baseline_visit_id")),
+        stamp_rel,
+        "unknown",
+        "unavailable",
+        "unchanged",
+        soap,
+        registry,
+    )
     try:
         visit_common.validate(new_board, BOARD_SCHEMA)
         visit_common.save_board(ws, "splunk", new_board)
@@ -1145,10 +1180,9 @@ def write_unavailable(ws, board, splunk, at, earliest, reason):
                 "changed_count": 0,
                 "unchanged": None,
                 "degraded": False,
-                "needs_note": [],
                 "unresolved": [],
                 "partial": False,
-                "board_rows": len(prior_rows),
+                "board_rows": 0,
                 "last_visit_id": watch,
                 "search": {"ok": False, "truncated": False, "parse_incomplete": False, "detail": str(reason)[:160]},
             }
@@ -1157,29 +1191,54 @@ def write_unavailable(ws, board, splunk, at, earliest, reason):
     return 0
 
 
+def soap_sentence(value, label):
+    text = strip_arg(value)
+    if not text or len(text) > 400 or "{" in text or '"kind"' in text:
+        print(f"{label} must be one sentence under 400 characters", file=sys.stderr)
+        return None
+    return text
+
+
 def cmd_annotate(args):
     ws = resolve_workspace(args.workspace)
     if ws is None:
         return 1
-    notes = {}
-    for item in args.note or []:
-        item = strip_arg(item)
-        if "=" not in item:
-            print("note must be <keys joined by +>=<text>", file=sys.stderr)
-            return 1
-        key, text = item.split("=", 1)
-        notes[strip_arg(key).rstrip(">")] = strip_arg(text)
     stamp_path = locate_stamp(ws, args.stamp)
     if not stamp_path.is_file():
         print(f"stamp not found: {args.stamp}", file=sys.stderr)
         return 1
+    board = visit_common.load_board(ws, "splunk") or {}
+    splunk = board.get("splunk") if isinstance(board.get("splunk"), dict) else {}
+    proof = blank(splunk.get("proof"))
+    stamp_rel = str(stamp_path.relative_to(ws)) if stamp_path.is_relative_to(ws) else strip_arg(args.stamp)
+    if proof and stamp_rel != proof:
+        print(f"stamp does not match proof {proof}", file=sys.stderr)
+        return 1
+    soap = {
+        "subjective": soap_sentence(args.subjective, "subjective"),
+        "objective": soap_sentence(args.objective, "objective"),
+        "assessment": soap_sentence(args.assessment, "assessment"),
+        "plan": soap_sentence(args.plan, "plan"),
+    }
+    if any(value is None for value in soap.values()):
+        return 1
+    lowered = soap["assessment"].lower()
+    if "forwarding failure" in lowered and "not a forwarding failure" not in lowered:
+        print("silence is not a forwarding failure", file=sys.stderr)
+        return 1
+    splunk["soap"] = soap
+    board["keys"] = []
+    board["splunk"] = splunk
+    board["schema"] = "health-metadata-splunk/v3"
+    board["source_agent"] = "health-logging"
+    board["updated_at"] = blank(splunk.get("last_collected_at")) or board.get("updated_at")
     try:
-        visit_common.annotate(stamp_path, strip_arg(args.headline), notes, CHECK_SCHEMA)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        visit_common.validate(board, BOARD_SCHEMA)
+        visit_common.save_board(ws, "splunk", board)
+    except (OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    rel = stamp_path.relative_to(ws) if stamp_path.is_relative_to(ws) else stamp_path
-    print(visit_common.summary({"plane": "splunk", "stamp": str(rel), "annotated": True}))
+    print(visit_common.summary({"plane": "splunk", "stamp": stamp_rel, "metadata": "health/metadata-splunk.json", "annotated": True}))
     return 0
 
 
@@ -1192,8 +1251,10 @@ def main(argv):
     note = sub.add_parser("annotate")
     note.add_argument("--workspace", required=True)
     note.add_argument("--stamp", required=True)
-    note.add_argument("--headline", required=True)
-    note.add_argument("--note", action="append", default=[])
+    note.add_argument("--subjective", required=True)
+    note.add_argument("--objective", required=True)
+    note.add_argument("--assessment", required=True)
+    note.add_argument("--plan", required=True)
     note.set_defaults(func=cmd_annotate)
     args = parser.parse_args(argv)
     return args.func(args)

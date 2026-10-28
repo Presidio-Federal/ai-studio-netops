@@ -1,4 +1,4 @@
-# Splunk visit — syslog board
+# Splunk visit — syslog record
 
 The health check runs `scripts/visit_splunk.py`. This file is the
 rules that script implements. Use the manual order below only when
@@ -17,9 +17,10 @@ or reorder pipes. Do not write new SPL.
 
 ## Setup (reads, before any search)
 
-1. `read_file` `health/metadata-splunk.json` — lookup, watermark, and
-   the **board** (`splunk.current[]`, `series[]`, `visits[]`).
-   Missing ids → `references/metadata.md` (resolve), then continue.
+1. `read_file` `health/metadata-splunk.json` — lookup and watermark
+   (`index`, `sourcetype`, `window`, `collected_through`, `proof`).
+   Then `read_file` the `proof` stamp. Its `readings[]` are the prior
+   rows. Missing proof → first visit.
 2. `read_file` `inventory/prod.json` — device names and `platform`.
    The **expected set** is every device whose `platform` is not
    `linux` (`iosxe`, `nxos`, `asa`); hosts do not syslog here.
@@ -28,13 +29,13 @@ or reorder pipes. Do not write new SPL.
    address or a BGP neighbor address to a device. Missing is fine:
    then only the parsed hostname resolves.
 
-Do not open the prior stamp; the board is the prior state.
+The prior state is the proof stamp's `readings[]`. Metadata has no rows.
 
 **Window.** `collected_through` set → `earliest_time` =
 `collected_through`, `latest_time` = `now`. Not set → baseline:
-`earliest_time` = `-7d`, `latest_time` = `now`. The board is state,
-not history; a week is enough to seed it. Never a rolling `-24h` on
-a later visit.
+`earliest_time` = `-7d`, `latest_time` = `now`. The first visit
+seeds the stamp. A week is enough. Never a rolling `-24h` on a
+later visit.
 
 ## Searches
 
@@ -54,7 +55,7 @@ does the collapse of one device logging from two addresses; you do
 not.
 
 **S1 — per-device bucket counts. Always.** One row per `dev` and
-bucket. This is the `metrics` row and the `series[]` row.
+bucket. This is the stamp `metrics` row.
 
 ```
 index=<index> sourcetype=<sourcetype>
@@ -73,8 +74,8 @@ index=<index> sourcetype=<sourcetype>
 ```
 
 **S2 — material subjects. Always.** One row per `dev`, kind,
-subject. This is the `readings` row and the board row. Zero rows on
-a quiet window is normal.
+subject. This is a `readings` row. Zero rows on a quiet window is
+normal. The visit still writes the stamp.
 
 ```
 index=<index> sourcetype=<sourcetype> ("ADJCHANGE" OR "NBR_RESET" OR "LINEPROTO" OR "%LINK-" OR "SYS-5-CONFIG_I" OR "SYS-5-RELOAD" OR "SYS-5-RESTART" OR IPACCESSLOG* OR "LOGIN_FAILED" OR "AUTH_FAILED" OR "%ETHPORT-" OR "VSHD_SYSLOG_CONFIG_I" OR "PFM_SYSTEM_RESET" OR "%ASA-4-411001" OR "%ASA-4-411002" OR "%ASA-5-111005" OR "%ASA-4-106023" OR "%ASA-6-106100" OR "%ASA-6-113005" OR "%ASA-6-605004" OR "%ASA-6-611102" OR "%ASA-5-199001" OR "%FTD-4-106023" OR "%FTD-4-106100" OR "%FTD-4-411001" OR "%FTD-4-411002" OR "%FTD-5-111005" OR "%FTD-6-113005" OR "%FTD-6-605004" OR "%FTD-6-611102" OR "%FTD-5-199001")
@@ -154,7 +155,7 @@ beats metadata: confirm it with S1, write it
 (`provenance.splunk` `user`), finish the visit. Do not re-run the
 old search; do not defend the empty result.
 
-S1 uses the board `window` (default `1h`). That bounded window is the
+S1 uses the metadata `window` (default `1h`). That bounded window is the
 only interval whose bucket counts are comparable to the previous
 visit. S2 uses `collected_through` (or `-7d` on the first visit) so
 collection is incremental. An S2 count is not a rate and is not
@@ -178,7 +179,7 @@ For each distinct `dev`, in this order; stop at the first hit:
 2. `dev` is an address equal to the address part of any
    `topology-observed.json` `devices[].interfaces[].cidr` → that
    device's name.
-3. `dev` is a key in `splunk.hosts` on the board (an operator-pinned
+3. `dev` is a key in `splunk.hosts` on the metadata (an operator-pinned
    `address → prod.json name` map, `references/metadata.md`) → that
    name.
 4. `dev` equals `access.restconf.host` or `access.ssh.host` on a
@@ -217,7 +218,7 @@ S1. Has `scope`, no `keys`.
 | `events` | sum of that device's bucket counts |
 | `bgp_events` `link_events` `config_events` `reload_events` `acl_events` `auth_ok` `auth_failed` `ssh_no_match` | that bucket's `count`, or 0 when the bucket is absent |
 
-**Reading / board row** — one per S2 row. Has `keys`, no `scope`.
+**Reading** — one per S2 row. Has `keys`, no `scope`.
 
 | Column | From |
 |--------|------|
@@ -226,39 +227,41 @@ S1. Has `scope`, no `keys`.
 | `peer` | bgp only: the device whose `topology-observed.json` interface address equals `subject`, else null |
 | `keys` | `device:<name>`; a link row adds `interface:<name>/<subject>`; a bgp row with `peer` adds `device:<peer>`; `[]` when unresolved |
 
-## Diff against the board
+## Diff against the prior stamp
 
-Match an S2 row to `splunk.current[]` by `name` + `kind` + `subject`.
-Every S2 row is a `vs_prior.changed[]` item (syslog is events; an
-event is a change):
+Match an S2 row to the previous stamp's `readings[]` by `name` +
+`kind` + `subject`. A row moved when there is no prior row, or when
+`at`, `count`, or `state` differs. A row that did not move stays in
+this stamp with note `Unchanged.` and is not a `vs_prior.changed[]`
+item. The first visit has no prior stamp: delta `first`, every note
+`Baseline.`, `changed` is `[]`.
 
 | kind | `field` | `prior` | `current` |
 |------|---------|---------|-----------|
-| bgp | `bgp_state` | board `state` or null | `state`, or `<state> x<count>` when `count` ≥ 2 |
-| link | `link_state` | board `state` or null | `state`, or `<state> x<count>` when `count` ≥ 2 |
-| config | `config` | board `at` or null | `<subject> via <detail> from <source_ip>` |
-| reload | `reload` | board `at` or null | `detail` |
-| acl | `acl` | board `at` or null | `<state> x<count>` |
-| auth_failed | `auth_failed` | board `at` or null | `<subject> from <source_ip> x<count>` |
+| bgp | `bgp_state` | prior `state` or null | `state`, or `<state> x<count>` when `count` ≥ 2 |
+| link | `link_state` | prior `state` or null | `state`, or `<state> x<count>` when `count` ≥ 2 |
+| config | `config` | prior `at` or null | `<subject> via <detail> from <source_ip>` |
+| reload | `reload` | prior `at` or null | `detail` |
+| acl | `acl` | prior `at` or null | `<state> x<count>` |
+| auth_failed | `auth_failed` | prior `at` or null | `<subject> from <source_ip> x<count>` |
 
-`at` = the row's `at`.
+`at` on the change item is the row's `at`.
 
 **Flap.** S2 keeps `latest(state)`, so a session or link that went
 down and came back inside one window reads `Up` with `count` ≥ 2.
 That is a **flap**: treat a bgp or link row with `count` ≥ 2 exactly
 like a `Down`/reset for `delta`, plane status, and `concerns`, even
-though `state` says `Up`. Say "flapped" in the note.
+though `state` says `Up`. Say "Flap." in the note.
 
-`delta`: `worse` when any item is a bgp `Down`/reset, a link `down`
-(not `administratively down`), a bgp or link flap (`count` ≥ 2), a
-reload, or an auth_failed; `better` when items are only `Up`/`up`
-with `count` 1 and nothing worse; `changed` when only config, acl,
-or administratively down; `unchanged` when S2 was empty; `first`
-when there is no board.
+`delta`: `worse` when any moved row is a bgp `Down`/reset, a link
+`down` (not `administratively down`), a bgp or link flap (`count` ≥
+2), a reload, or an auth_failed; `better` when moved rows are only
+`Up`/`up` with `count` 1; `changed` when only config, acl, or
+administratively down; `unchanged` when nothing moved; `first` on
+the first visit.
 
-**Stamp or quiet.** Write a stamp when: no board (first visit), S2
-returned at least one row, or coverage ≠ `complete`. Otherwise the
-visit is **quiet**: no stamp; board only.
+A quiet window still writes the stamp. `readings` is `[]`. The fact
+is "No syslog this window." Do not infer a forwarding failure.
 
 ## Plane status
 
@@ -271,78 +274,57 @@ failed.
 
 ## Write
 
-Order: **board first, then stamp.** The board is a copy of the rows
-you already built; write it as soon as the rows exist so a visit
-that dies while composing notes still leaves the board for the
-next visit to diff against. Then the stamp (when due), `read_file`
-it, prune to 10, and rewrite the board once more with
-`last_visit_id` set.
+Order: **stamp first, then metadata.** Never overwrite a stamp.
+Keep at most 10. The script writes both. The nurse does not
+`write_file` them. `annotate` replaces only the four SOAP sentences
+and does not edit the stamp.
 
-**Stamp** (schema `health-splunk-check`): `readings` = every S2 row +
-`note`. `note` is one sentence against the board row: new subject
-vs flap vs recovered (compare `state` and `count` to the board
-row), who committed from where and whether it looks interactive
-(`vty`, an operator address) or pipeline (`console`), why it
-reloaded. Not the columns again. **On the baseline** there is no
-board to compare to: `note` is `"Baseline."` unless the row is a
-bgp Down/reset, a link `down`, a flap, a reload, or an auth_failed —
-those get the one sentence. `unchanged` = board rows not replaced.
-`baseline_ref` = `health/splunk/<baseline_visit_id>.json`.
-`headline`: device, subject, state or user, when; then devices
-logged and unchanged count. `concerns`: devices with a bgp
-Down/reset, a flap, non-admin link down, reload, or auth_failed.
+**Stamp** (schema `health-splunk-check`): `readings` = every S2 row
+this window, not only the rows that moved. `note` is `Baseline.` on
+the first visit. Later it is the delta sentence, or `Unchanged.`
+when `at`, `count`, and `state` match the prior stamp. Tags live
+here: top-level `keys` and each row's `keys`. Same key pattern. A
+Splunk row does not gain new key types. `unchanged` = readings
+whose note is `Unchanged.` `baseline_ref` =
+`health/splunk/<baseline_visit_id>.json`. `concerns`: devices with
+a bgp Down/reset, a flap, non-admin link down, reload, or
+auth_failed.
 
-**Board** (schema `health-metadata-splunk`) — every visit:
-- `current[]` ← S2 rows replace rows with the same
-  `name`+`kind`+`subject`; others kept (cap 120, drop oldest `at`).
-- `series[]` ← append one `estate` row (sums over S1); keep 10.
-- `visits[]` ← append `{watch_id (null when quiet), checked_at,
-  status, coverage, delta, stamp_written, window_start,
-  window_end, silent[] (expected names with no S1 row),
-  unresolved[] (dev values that resolved to nothing)}`; keep 10.
+**Metadata** (schema `health-metadata-splunk`) — every visit, second:
+- `proof` ← `health/splunk/<stamp>.json`.
+- `soap` ← one sentence each for subjective, objective, assessment,
+  plan, under 400 characters. `objective` names the proof path and
+  how this window differs from the prior stamp.
+- `index`, `sourcetype`, `window`, `collected_through` stay. So do
+  `source_registry` and `hosts`.
 - `collected_through` ← the latest S1 `last_at` when events exist,
   else `checked_at`. Never backward. Not on `unavailable`.
 - `last_collected_at` ← `checked_at`. `last_visit_id` ← this
-  `watch_id` only when a stamp was written. `baseline_visit_id` ←
-  this `watch_id` on the first visit.
-- `keys` ← union of keys on `current[]`.
+  `watch_id`. `baseline_visit_id` ← this `watch_id` on the first visit.
+- `keys` is `[]`. Do not copy `readings[]`, `series[]`, `visits[]`,
+  or tags onto this file.
 
 ## Budget
 
 | Item | Max |
 |------|----:|
 | Workspace reads | 4 |
-| Workspace writes | 4 (board, stamp, prune, board) |
+| Workspace writes | 3 (stamp, prune, metadata) |
 | `splunk_search` | 2 (plus one retry each); +1 S1 for an operator-named index |
 | `splunk_get_indexes` | 1 (S1 zero rows, or resolve) |
 
 ## Reply
 
-Stamp written:
-
 ```text
 Visit: splunk
-Search: <ok|failed>; truncated <yes|no>; parse <complete|incomplete>
-Reporting: <observed> of <expected> logged in <window>; expected-silent: <names | none>; no-events with no expectation: <count>
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
-Wrote: health/splunk/<stamp>.json
+Proof: health/splunk/<stamp>.json
+Summary: health/metadata-splunk.json
 Trend: <delta>
-Findings:
-- <event time> <device> <kind> x<count> window <window_start>..<window_end>; evidence on the stamp
-Next: <the note's next check, or none>
-```
-
-Quiet:
-
-```text
-Visit: splunk
-Search: ok; truncated no; parse <complete|incomplete>
+Search: <ok|failed>; truncated <yes|no>; parse <complete|incomplete>
 Reporting: <observed> of <expected> logged in <window>; expected-silent: <names | none>; no-events with no expectation: <count>
-Result: ok
-Coverage: complete
-Wrote: health/metadata-splunk.json (no material event)
-Trend: unchanged
-Board: <n> rows, last stamp <last_visit_id>
-Next: none
+Findings:
+- <event time> <device> <kind> x<count> window <window_start>..<window_end>; or none>
+Next: <the SOAP plan>
 ```

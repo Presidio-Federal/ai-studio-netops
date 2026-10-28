@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.38 — NetFlow metadata is the SOAP summary and proof path. The stamp holds the rows, delta, and tags."
-version: "1.70.38"
+description: "v1.70.39 — Splunk metadata is the SOAP summary and proof path. The stamp holds the syslog rows, the delta, and the tags."
+version: "1.70.39"
 ---
 
 # Workspace handoff
@@ -259,9 +259,11 @@ No stamp. A stamp is written only when `vs_prior.changed[]` is
 non-empty, on the first visit, or when coverage is not `complete`.
 Freshness readers use `last_collected_at`.
 
-NetFlow does not follow this. Every visit writes
-`health/netflow/<stamp>.json` first (rows, delta, tags), then
-`health/metadata-netflow.json` (SOAP summary and `proof`, `keys` `[]`).
+NetFlow and Splunk do not follow this. Every visit writes the stamp
+first (`health/netflow/<stamp>.json` or `health/splunk/<stamp>.json`:
+rows, delta, tags), then the metadata (SOAP summary and `proof`,
+`keys` `[]`). A reader that needs the rows opens `proof` when
+metadata has no `current[]`.
 
 Nurse metadata carries the board for that plane (writer schema owns
 the fields):
@@ -331,11 +333,13 @@ calls MCP. The relationship compile runs `relationship-compiler`
 `scripts/compile_graph.py` the same way.
 
 `collect` runs under `execution_type: "mcp_orchestration"`. It calls
-the plane's MCP tool with `hai_mcp.call_mcp`, diffs the board, writes
-that plane's metadata, writes the stamp only when due, and prints one
-JSON summary as the last stdout line. `annotate` runs under
-`standard` and sets `headline` and the row notes (`readings` or
-`threads`). `unwrap_splunk` parses the 2026-10-05 `splunk_search`
+the plane's MCP tool with `hai_mcp.call_mcp`, diffs, writes that
+plane's metadata, and prints one JSON summary as the last stdout
+line. Splunk and NetFlow write the stamp every visit, then the SOAP
+metadata. Other planes write the stamp only when due. `annotate`
+runs under `standard`. Splunk and NetFlow replace the four SOAP
+sentences and do not edit the stamp. Other planes set `headline`
+and the row notes (`readings` or `threads`). `unwrap_splunk` parses the 2026-10-05 `splunk_search`
 probe: `result[0]` is `{ok, results, result_count, truncated}`.
 `unwrap_grafana` pivots Grafana 13 frames (`schema.fields` plus
 `data.values`) into rows. `unwrap_snow` parses `snow_query_table`:
@@ -392,14 +396,14 @@ visits).
 | `state/network-ops.json` | state | Network Ops | `network-ops` `schemas/network-ops-state.schema.json` | envelope, `mode` `problem_ref` (the `state/health.json` problem this treats; null when none matched) `finding` (`verified_in_git`) `change` (`devices` `interfaces` `blast_radius` — `hosts[]` `applications[]` `services[]` `basis`, walked from `state/relationships.json`, never keys — `annotation_ref` `operational_ref` `monitoring_ref`) `git` `ci` `pr` `relations[]` (asserted: `depends_on` / `caused` with the git path as evidence, `resolved_by` to `change:<sha>` and `change:<sha> impacted application:<a>` on merge) `keys`. The Analyzer joins on `problem_ref` for `treatment_ref` / `outcome`. After a merge Network Ops creates one Grafana annotation tagged `change:<sha>`; the Health Application nurse copies it onto `annotations[]`. |
 | `state/recommendations.json` | state | Network Ops | `network-ops` `schemas/recommendations.schema.json` | envelope, `fingerprint` `sync` (`completed_at` `operation` `newer`) `rows[]` (open only: `source` `feature` `devices` `peer` `problem_ref` `evidence_ref`) `resolved[]` (feature and devices closed by a later `feature <id>:` config commit) `keys`. `scripts/recommend.py` rewrites it. The same fingerprint writes nothing. |
 | `reports/network-map.html` | derived | Network Map | `network-map` `references/data-bundle.md` | Self-contained interactive HTML compiled by the skill script from `inventory/prod.json` (`devices[]`, `links[]`), `inventory/applications.json`, `state/relationships.json`, `state/health.json`, `state/compliance.json` (`scores.tested_posture`, `series.testing.points`), `state/testing.json`, `state/network-ops.json`, `state/servicenow.json`, `state/network-sync.json`, `state/lifecycle.json` (support date, replacement offers, lead time, PSIRT advisories), and the application / netflow / splunk / iosxe boards (`series[]` for the trend). No envelope, no `keys`, no `relations[]`. Overwritten every run. No agent reads it. `inventory/map-layout.json` is an optional operator-authored x/y override. |
-| `health/metadata-splunk.json` | metadata | Health Logging | `health-logging` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `window` (bounded S1 interval) `collected_through` (S2 watermark) `source_registry` (`reporting` expected or idle_ok only when the operator set it) `current[]` (deny source, destination, ports, protocol, ACL, interface; config actor and access method; `at` event time; `ingested_at`; `evidence`) `series[]` `visits[]` |
+| `health/metadata-splunk.json` | metadata | Health Logging | `health-logging` `schemas/health-metadata-splunk.schema.json` | `index` `sourcetype` `window` (bounded S1 interval) `collected_through` (S2 watermark) `proof` (the stamp path) `status` `coverage` `delta` `soap` (`subjective` `objective` `assessment` `plan`) `source_registry` (`reporting` expected or idle_ok only when the operator set it) `hosts` (operator pin). `keys` is `[]`. No row set. |
 | `health/metadata-netflow.json` | metadata | Health Telemetry | `health-elastic` `schemas/health-metadata-netflow.schema.json` | `data_stream` `window` (`bucket` is the marker `elasticsearch`) `proof` (the stamp path) `status` `coverage` `delta` `soap` (`subjective` `objective` `assessment` `plan`) `identity_review` `exporter_registry` (policy slots null unless the operator set them). `keys` is `[]`. No row set. |
 | `health/metadata-application.json` | metadata | Health Application | `health-application` `schemas/health-metadata-application.schema.json` | `datasource_uid` `probe_job` `window` `lookup` (`services[]` `sites[]` `vantage_points[]` `hosts[]` — label spellings discovered once) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `probe` — `application` `environment` `vantage_site` `target` `success` `http_code` `content_ok` `duration_ms` `latency_ms_window` `fail_pct_window` `state`; kind `container` — `name` `host` `device` `application` `site` `started_epoch` `cpu_pct` `cpu_limit` `cpu_throttled_s` `mem_bytes` `mem_limit_bytes` `oom_events` `rx_bytes_s` `missing` `state`; kind `host` — `host` `device` `site` `role` `boot_epoch` `mem_available_pct` `fs_root_avail_pct` `interfaces_down[]` `state`; kind `target` — `scrape_pool` `instance` `health` `last_error`) `annotations[]` (`time` `tags[]` `text` — Grafana annotations tagged `change:*` in the window, copied) `series[]` `visits[]` |
 | `health/metadata-servicenow.json` | metadata | Health ServiceNow | `health-servicenow` `schemas/health-metadata-servicenow.schema.json` | `marker` `match_terms` `lookback_days` `entity_fields` (`device` `interface` `ip` `service` — the instance's typed ticket columns, null when the platform has none) `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (one row per in-scope ticket: `scope` `type` `number` `state` `active` `urgency` `priority` `opened_at` `updated_at` `resolved_at` `issue` `close_code` `rfc` `ci` `service` `device` `interface` `ip` — the typed columns and `rfc` are the ticket's edges) `series[]` `visits[]` |
 | `health/metadata-iosxe.json` | metadata | Health Device | `health-device` `schemas/health-metadata-iosxe.schema.json` | `last_visit_id` `last_collected_at` `baseline_visit_id` `current[]` (rows of kind `device` — boot time, version, cpu, memory, unsaved_config; `interface` with `admin_status` `intent`; `bgp` with `up_time` `prefixes_received` `reset_reason`, whose `peer` is the adjacency) `series[]` `visits[]`. RESTCONF port stays on `inventory/prod.json`. |
 | `health/netflow/<stamp>.json` | observation | Health Telemetry | `health-elastic` `schemas/health-netflow-check.schema.json` | Written every visit, before metadata. `headline` `window` `coverage` `metrics` (estate bytes from one observation point) `readings` (the row set; each row has `keys`; `note` is `Baseline.`, the delta, or `Unchanged.`) `unchanged` `baseline_ref` `keys` `vs_prior` (delta from the prior stamp; `field` in `state` `bytes_per_s` `identity` `flows` `row`) `concerns`. |
 | `health/application/<stamp>.json` | observation | Health Application | `health-application` `schemas/health-application-check.schema.json` | `headline` `window` `coverage` `metrics` (one estate row) `readings` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `state success http_code started_epoch boot_epoch interfaces_down cpu_pct mem_available_pct fs_root_avail_pct health row`) `concerns`. No `relations`. The visit reads Elasticsearch Docker and system metrics. Probe and scrape-target rows are not refreshed. Written only when a container restarted or appeared / vanished, a host rebooted, or memory, disk, or CPU crossed a threshold. |
-| `health/splunk/<stamp>.json` | observation | Health Logging | `health-logging` `schemas/health-splunk-check.schema.json` | `headline` `window` (bounded counts) `window_start` `window_end` (S2 collection span) `coverage` `metrics` `readings` (extracted fields plus one trimmed evidence line) `unchanged` `baseline_ref` `keys` `vs_prior` `concerns`. Written when a material syslog subject arrived or coverage is not complete. |
+| `health/splunk/<stamp>.json` | observation | Health Logging | `health-logging` `schemas/health-splunk-check.schema.json` | Written every visit, before metadata. `headline` `window` (bounded counts) `window_start` `window_end` (S2 collection span) `coverage` `metrics` `readings` (the row set for this window; each row has `keys`; `note` is `Baseline.`, the delta, or `Unchanged.`) `unchanged` `baseline_ref` `keys` `vs_prior` (delta from the prior stamp) `concerns`. A quiet window still writes this file. |
 | `health/iosxe/<stamp>.json` | observation | Health Device | `health-device` `schemas/health-iosxe-check.schema.json` | `headline` `scope` `coverage` `metrics` `readings` (changed or abnormal rows only) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`) `concerns` |
 | `health/servicenow/<stamp>.json` | observation | Health ServiceNow | `health-servicenow` `schemas/health-servicenow-check.schema.json` | `headline` `window` (the `since` used) `coverage` `metrics` (one `lab` row) `threads` (rows that moved: same shape as a board row + `note`) `unchanged` `baseline_ref` `keys` `vs_prior` (structured `changed[]`, `field` in `row state urgency device interface ip service rfc issue updated`) `concerns`. Written only when a ticket moved. `status` is `ok`/`unknown`; tickets do not vote on vitals. |
 | `state/health.json` | state | Health Analyzer | `health-analyzer` `schemas/health-state.schema.json` | envelope, `soap` `consults` `freshness` (iosxe `stale_devices[]`) `series` (`series_ref` to each board; no points) `coverage` `mode` `problems[]` (`id` `status` `keys` `symptom_refs` `evidence_refs` `hypothesis` `impact` — `applications[]` `services[]` `hosts[]` `basis`, walked from `state/relationships.json` — `order` `treatment_ref` `outcome` — carried forward by `id`) `orders[]` (`agent` `task` `problem_ref` `dispatched`) `relations[]` (asserted, `evidence_ref`) `dispatched` `read`. `next_action` is `soap.plan`, the prose of `orders[0]`. Network Ops starts from `problems[]` and sets `problem_ref`. |

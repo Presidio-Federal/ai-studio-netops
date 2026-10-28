@@ -515,6 +515,11 @@ def build(ws, template_path):
             mdn = dict(mdn)
             mdn["current"] = proof.get("readings") or []
     mds = (board("md_splunk") or {}).get("splunk") or {}
+    if not (mds.get("current") or []) and isinstance(mds.get("proof"), str):
+        proof = load(ws, mds["proof"])
+        if isinstance(proof, dict):
+            mds = dict(mds)
+            mds["current"] = proof.get("readings") or []
     mdi = (board("md_iosxe") or {}).get("iosxe") or {}
     override = load(ws, BOARDS["layout"])
     if mda:

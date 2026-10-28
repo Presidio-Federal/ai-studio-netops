@@ -445,7 +445,7 @@ def cmd_collect(args):
                 },
                 "boards": {name: clock(board if isinstance(board, dict) else {}) for name, board in boards.items()},
                 "netflow_scans": prior_rows(netflow_record(ws, netflow if isinstance(netflow, dict) else {})),
-                "splunk_rows": prior_rows((splunk.get("current") or []) if isinstance(splunk, dict) else []),
+                "splunk_rows": prior_rows(netflow_record(ws, splunk if isinstance(splunk, dict) else {})),
             },
             "live": {key: live.get(key) or [] for key in ("f1", "f2", "f3", "f4", "s1", "s2", "s3")},
             "addresses": addresses,

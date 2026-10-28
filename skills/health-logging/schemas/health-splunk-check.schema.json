@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-splunk-check/v3",
   "title": "health/splunk/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "Splunk lab slip (Kind observation). Written on the first visit, when the window held at least one material syslog event (BGP, link, config, reload, ACL log, failed auth), or when coverage is not complete. A quiet window writes the board only. metrics are the bounded window. readings carry extracted fields and one trimmed evidence line. vs_prior.changed: one structured item per reading.",
+  "description": "Splunk record (Kind observation). Written on every visit, before metadata. readings[] is the row set for this window. Each row carries its tags. vs_prior is the delta from the previous stamp. A row that did not move stays, with note Unchanged. The first visit is delta first and notes Baseline. A quiet window still writes this file. Do not store raw syslog.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "window_start", "window_end", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
@@ -38,11 +38,11 @@
     },
     "readings": {
       "type": "array",
-      "maxItems": 64,
+      "maxItems": 120,
       "items": { "$ref": "#/$defs/reading" },
-      "description": "One row per S2 result row this window. Empty only when coverage is not complete (a quiet window writes no stamp)."
+      "description": "The row set for this window. Each row has keys. note is Baseline. on the first visit, the delta when the row moved, or Unchanged. Empty when this window had no syslog rows."
     },
-    "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
+    "unchanged": { "type": ["integer", "null"], "description": "Readings whose note is Unchanged. 0 on the first visit. null when unavailable." },
     "baseline_ref": { "type": ["string", "null"], "description": "health/splunk/<baseline_visit_id>.json. Null on the first visit." },
     "skipped_reason": { "type": ["string", "null"] }
   },
@@ -69,7 +69,7 @@
           "enum": ["first", "unchanged", "worse", "better", "changed"],
           "description": "worse: any BGP Down/reset, non-admin link down, reload, or failed auth. better: only Up/up and nothing worse. changed: config, ACL log, admin-down only. first on the baseline."
         },
-        "changed": { "type": "array", "maxItems": 32, "items": { "$ref": "#/$defs/change" } }
+        "changed": { "type": "array", "maxItems": 120, "items": { "$ref": "#/$defs/change" } }
       }
     },
     "change": {
@@ -79,7 +79,7 @@
       "properties": {
         "keys": { "type": "array", "uniqueItems": true, "items": { "type": "string", "pattern": "^(device|interface|site|service|test|control|incident|change):[^ ].*$" }, "description": "The reading's keys." },
         "field": { "type": "string", "enum": ["bgp_state", "link_state", "config", "reload", "acl", "auth_failed", "row"] },
-        "prior": { "description": "bgp_state / link_state: the board row's state, null when the subject is new. config / reload / acl / auth_failed: the board row's at, null when new." },
+        "prior": { "description": "bgp_state / link_state: the prior stamp row's state, null when the subject is new. config / reload / acl / auth_failed: the prior stamp row's at, null when new." },
         "current": { "description": "bgp_state / link_state: this state. config: '<subject> via <detail> from <source_ip>'. reload: detail. acl: '<state> x<count>'. auth_failed: '<subject> from <source_ip> x<count>'." },
         "at": { "type": "string", "minLength": 1, "description": "The reading's at (last event time)." }
       }
@@ -119,7 +119,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "kind", "subject", "keys", "count", "at", "note"],
-      "description": "A board row (health-metadata-splunk row, identical field names) plus note.",
+      "description": "One syslog subject from this window, plus note.",
       "properties": {
         "name": { "type": "string", "minLength": 1, "description": "Inventory name, or the host as logged when unresolved." },
         "kind": { "type": "string", "enum": ["bgp", "link", "config", "reload", "acl", "auth_failed"] },
@@ -145,7 +145,7 @@
         "evidence": { "type": ["string", "null"] },
         "window_start": { "type": ["string", "null"] },
         "window_end": { "type": ["string", "null"] },
-        "note": { "type": "string", "minLength": 1, "description": "The nurse's opinion: what this means against the board (new subject, flap, recovered, who changed config and from where, why it reloaded). Not the columns again." }
+        "note": { "type": "string", "minLength": 1, "description": "Baseline. on the first visit. Later, the delta against the prior stamp, or Unchanged. when event time, count, and state did not move." }
       }
     }
   }

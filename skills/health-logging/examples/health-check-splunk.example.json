@@ -6,8 +6,8 @@
   "checked_at": "2026-08-31T16:00:00Z",
   "ok": false,
   "status": "degraded",
-  "headline": "<wan-device> reloaded at 15:40:12Z (Reload Command, from console); its <wan-interface> went down then up at 15:41Z and BGP to <edge-device> (<neighbor-address>) is Up again after a Down at 15:40Z. <operator> committed config on <edge-device> from <source-ip> at 15:55Z. 9 devices logged; 41 board rows unchanged.",
-  "window": "watermark",
+  "headline": "5 syslog rows. Delta worse. 1 unchanged versus the prior stamp.",
+  "window": "1h",
   "window_start": "2026-08-31T10:00:00Z",
   "window_end": "2026-08-31T16:00:00Z",
   "coverage": { "state": "complete", "detail": "S1 buckets + S2 subjects on index/sourcetype from metadata" },
@@ -44,10 +44,15 @@
     {
       "name": "<edge-device>", "kind": "config", "subject": "<operator>", "keys": ["device:<edge-device>"],
       "count": 1, "at": "2026-08-31T15:55:02Z", "state": null, "source_ip": "<source-ip>", "peer": null, "detail": "vty0",
-      "note": "One interactive commit over SSH fifteen minutes after the WAN reload; the same operator address as prior commits on this device. Not the pipeline (pipeline commits show 'console')."
+      "note": "<operator> via vty0 on <edge-device>. Change reference not in the syslog. Next check: the device running configuration. Nearby timestamps are not a cause."
+    },
+    {
+      "name": "<wan-device>", "kind": "config", "subject": "console", "keys": ["device:<wan-device>"],
+      "count": 3, "at": "2026-08-29T21:27:16Z", "state": null, "source_ip": null, "peer": null, "detail": "console",
+      "note": "Unchanged."
     }
   ],
-  "unchanged": 41,
+  "unchanged": 1,
   "baseline_ref": "health/splunk/2026-08-30T09-00-00Z.json",
   "concerns": [
     { "type": "device", "name": "<wan-device>", "source_ref": "inventory/prod.json" }
