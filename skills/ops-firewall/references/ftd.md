@@ -8,14 +8,14 @@ and password. List name `SCAN-ALLOW-WEB`.
 
 Checked on the prod firewall, HTTPS port 4461, 2026-10-27. One
 policy, default action `DENY`. Port objects `HTTP` (80), `HTTPS`
-(443), and `TCP-8080` (8080) already exist.
+(443), `TCP-8080` (8080), and `TCP-8443` (8443) already exist.
 
 1. `ftd_get` `policy/accesspolicies`. Use the first policy id.
 2. `ftd_get` `object/tcpports` with `params` `limit` `100`. Match
-   `port` 80, 443, and 8080.
+   `port` 80, 443, 8080, and 8443.
 3. `ftd_post` `policy/accesspolicies/{id}/accessrules`. Payload
    `type` `accessrule`, `ruleAction` `PERMIT`, `name`
-   `SCAN-ALLOW-WEB`, `destinationPorts` the three objects
+   `SCAN-ALLOW-WEB`, `destinationPorts` the four objects
    (`id`, `type` `tcpportobject`, `name`).
 4. `ftd_pending_changes`. Do not deploy unless the task says deploy.
 

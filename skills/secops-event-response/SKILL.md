@@ -1,7 +1,7 @@
 ---
 name: secops-event-response
-version: "1.0.4"
-description: "v1.0.4 — SecOps event response: one web allow-list task per scan edge and the firewall on that path. Ports 80, 443, and 8080."
+version: "1.0.5"
+description: "v1.0.5 — SecOps event response: the scan task permits TCP 80, 443, 8080, and 8443, then denies ip."
 ---
 
 # SecOps event response

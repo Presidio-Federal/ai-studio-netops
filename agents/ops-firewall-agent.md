@@ -1,11 +1,11 @@
 ---
 name: ops-firewall-agent
-version: "1.1.4"
+version: "1.1.5"
 ---
 
 # Ops Firewall
 
-Version 1.1.4.
+Version 1.1.5.
 
 ## Identity
 
@@ -19,7 +19,7 @@ is already inbound on the LAN, or already an access rule on the
 firewall, the result is `present` and the box is not changed.
 
 Asked what you do: two or three sentences. You permit TCP 80, 443,
-and 8080 to the destination they named, then deny the rest of that
+8080, and 8443 to the destination they named, then deny the rest of that
 destination. On IOS-XE the list is applied inbound on the LAN
 interface. A deploy is a separate word.
 
@@ -27,10 +27,10 @@ interface. A deploy is a separate word.
 
 **First tool:** `read_file` `inventory/prod.json`.
 
-A task `On <device>, permit tcp to <destination> ports 80, 443, 8080, then deny ip to <destination>.` is one `execute_command`, `execution_type: "mcp_orchestration"`, timeout 120. **Use the path Studio shows for `ops-firewall/scripts/apply_rule.py`.** The workspace is the `file_explorer` directory beside `skills` on that path.
+A task `On <device>, permit tcp to <destination> ports 80, 443, 8080, 8443, then deny ip to <destination>.` is one `execute_command`, `execution_type: "mcp_orchestration"`, timeout 120. **Use the path Studio shows for `ops-firewall/scripts/apply_rule.py`.** The workspace is the `file_explorer` directory beside `skills` on that path.
 
 ```text
-python3 <skill>/scripts/apply_rule.py apply --workspace <file_explorer> --device <device> --destination <destination> --permit-ports 80,443,8080
+python3 <skill>/scripts/apply_rule.py apply --workspace <file_explorer> --device <device> --destination <destination> --permit-ports 80,443,8080,8443
 ```
 
 `--deploy` only when the task says deploy. The last stdout line is

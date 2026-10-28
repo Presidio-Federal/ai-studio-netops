@@ -9,8 +9,8 @@ Deployed model is **MiniMax** unless noted.
 | Pipeline Monitor | 2.0.1 | MiniMax |
 | Network Design | 3.2.2 | MiniMax |
 | Ops Network Sync | 2.6.0 | MiniMax |
-| Ops Firewall | 1.1.4 | MiniMax |
-| SecOps Event Response | 1.0.6 | MiniMax |
+| Ops Firewall | 1.1.5 | MiniMax |
+| SecOps Event Response | 1.0.7 | MiniMax |
 | Ops NetBox SoT | 1.5.2 | MiniMax |
 | Ops ServiceNow | 1.5.1 | MiniMax |
 | Ops ServiceNow Trends | 1.3.0 | MiniMax |
@@ -33,6 +33,8 @@ Deployed model is **MiniMax** unless noted.
 | Presentation | 1.2.6 | MiniMax |
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
+
+Ops Firewall 1.1.5 (skill 1.1.5, secops 1.0.7, skill 1.0.5, workspace-handoff 1.70.40): `SCAN-ALLOW-WEB` permits TCP 80, 443, 8080, and 8443, then denies ip. No host address is in the list. 8443 is the Caldera session port. MiniMax.
 
 Health Logging 1.3.1 (skill 1.3.2): a missing `index` or `sourcetype` lists the Splunk pairs that have events and writes nothing. The operator names the pair. `pin` stores it. Later visits use that lookup and do not ask again. MiniMax.
 

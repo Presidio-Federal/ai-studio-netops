@@ -7,7 +7,7 @@ inventory/prod.json, pushes the list, and writes state/firewall.json.
 It does not take a username or password.
 
   python3 <skill>/scripts/apply_rule.py apply --workspace <file_explorer> \\
-      --device <name> --destination any --permit-ports 80,443,8080
+      --device <name> --destination any --permit-ports 80,443,8080,8443
 
 --remove deletes that same list. --deploy is FTD only and deploys every
 pending change on that firewall.
@@ -516,7 +516,7 @@ def main():
     apply.add_argument("--workspace", required=True)
     apply.add_argument("--device", required=True)
     apply.add_argument("--destination", default="any")
-    apply.add_argument("--permit-ports", default="80,443,8080")
+    apply.add_argument("--permit-ports", default="80,443,8080,8443")
     apply.add_argument("--remove", action="store_true")
     apply.add_argument("--deploy", action="store_true")
     args = parser.parse_args()

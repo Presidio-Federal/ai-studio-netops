@@ -16,6 +16,6 @@ for a placement the script listed.
 
 After the blocks are on the file, invoke Ops Firewall once per
 device in `tasks` and wait. That list includes the edge and the
-firewall. Task line `On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.`
+firewall. Task line `On <device>, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any.`
 Do not add the word deploy. If Ops Firewall is not attached, the
 blocks stay on the file and the reply says the writer is not attached.

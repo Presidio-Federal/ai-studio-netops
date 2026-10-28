@@ -1,7 +1,7 @@
 ---
 name: workspace-handoff
-description: "v1.70.39 — Splunk metadata is the SOAP summary and proof path. The stamp holds the syslog rows, the delta, and the tags."
-version: "1.70.39"
+description: "v1.70.40 — Scan allow-list permits TCP 80, 443, 8080, and 8443, then denies ip."
+version: "1.70.40"
 ---
 
 # Workspace handoff
@@ -97,7 +97,7 @@ Reads `state/health.json`, `health/metadata-netflow.json`,
 `health/metadata-splunk.json`, and `inventory/prod.json`. Queries
 Elasticsearch and Splunk. Writes only `state/secops-event.json`.
 For each scan edge, invoke Ops Firewall and wait. Task line
-`On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.`
+`On <device>, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any.`
 One edge per scan source. Destination is `any`. That task does not say deploy.
 
 **Ops CMDB Sync.** Task line `Sync <device-name>.` Optional `signal netbox` or `signal servicenow` is a label, not a direction. One device. Reads `inventory/prod.json` and, when present, `inventory/infra-sot.json`. Writes only `state/cmdb-sync.json`. IOS-XE is GET-only. It does not bootstrap NetBox and it does not write ServiceNow.

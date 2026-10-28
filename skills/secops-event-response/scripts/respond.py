@@ -468,7 +468,7 @@ def cmd_collect(args):
             {"device": item["device"], "side": item["side"], "source": item["source"], "destination": item["destination"], "src_name": item.get("src_name")}
             for item in blocks
         ],
-        "tasks": [f"On {item['device']}, permit tcp to any ports 80, 443, 8080, then deny ip to any." for item in blocks],
+        "tasks": [f"On {item['device']}, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any." for item in blocks],
         "gaps": gaps[:8],
     }
     print(json.dumps(summary, separators=(",", ":")))
@@ -524,7 +524,7 @@ def cmd_annotate(args):
     payload["dispatched"] = dispatched
     if blocks:
         first = blocks[0]
-        payload["next_action"] = f"On {first['device']}, permit tcp to any ports 80, 443, 8080, then deny ip to any."
+        payload["next_action"] = f"On {first['device']}, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any."
     payload["status"] = "gaps" if payload.get("gaps") else "ok"
     payload["updated_at"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     keys = []
@@ -534,7 +534,7 @@ def cmd_annotate(args):
             keys.append(key)
     payload["keys"] = keys
     write_state(ws, payload)
-    tasks = [f"On {block['device']}, permit tcp to any ports 80, 443, 8080, then deny ip to any." for block in blocks]
+    tasks = [f"On {block['device']}, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any." for block in blocks]
     print(json.dumps({"wrote": STATE_NAME, "kind": payload.get("kind"), "blocks": len(blocks), "tasks": tasks, "dispatched": dispatched}, separators=(",", ":")))
     return 0
 

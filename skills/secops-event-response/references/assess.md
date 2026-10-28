@@ -47,6 +47,6 @@ Also the closest `platform` `ftd` or `node_definition` `ftdv` on that
 same walk. One firewall for that source. A source with no firewall
 on the path is a gap. The edge is still a block.
 
-The destination is `any`. The task line is `On <device>, permit tcp to any ports 80, 443, 8080, then deny ip to any.`
+The destination is `any`. The task line is `On <device>, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any.`
 It does not say deploy. Do not pass a prefix, 4403, 4461, or ports
 from the scan.

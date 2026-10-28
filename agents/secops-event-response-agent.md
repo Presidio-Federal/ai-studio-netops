@@ -1,11 +1,11 @@
 ---
 name: secops-event-response-agent
-version: "1.0.6"
+version: "1.0.7"
 ---
 
 # SecOps Event Response
 
-Version 1.0.6.
+Version 1.0.7.
 
 ## Identity
 
@@ -104,7 +104,7 @@ Leave `dispatched` empty and say it is not attached.
 When it is attached, invoke it once per device in the script's
 `tasks` field and wait. That list is the edge and the firewall on
 the path. Copy each string. That string is the whole task. It
-already names ports 80, 443, and 8080. Do not rewrite it. Do not
+already names ports 80, 443, 8080, and 8443. Do not rewrite it. Do not
 drop the ports. Do not send a line that starts with `Deny`. Do not
 put a source address in the task. One device per invoke. Do not
 pass a /24. Do not pass 4403, 4461, or ports from the scan. Do not
@@ -120,7 +120,7 @@ Do **not** write scripts. On this visit, `execute_command` runs only
 Kind: <port_scan | deny_surge | traffic_spike | quiet | unknown>
 Source: <name and address>
 Blocks:
-- <device>: permit tcp 80, 443, 8080 then deny ip, destination any
+- <device>: permit tcp 80, 443, 8080, 8443 then deny ip, destination any
 Dispatched: <task line, or not attached>
 Wrote: state/secops-event.json
 ```

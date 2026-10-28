@@ -8,7 +8,7 @@ and password. List name `SCAN-ALLOW-WEB`.
 
 Read, then patch. Checked on a branch C8000V, RESTCONF port 4403,
 2026-10-27. Patch returned 204. The list then had permit tcp
-`dst-eq` 80, 443, and 8080, then deny ip.
+`dst-eq` 80, 443, 8080, and 8443, then deny ip.
 
 ```text
 iosxe_restconf_patch
