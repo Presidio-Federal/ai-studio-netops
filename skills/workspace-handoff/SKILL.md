@@ -96,7 +96,7 @@ with its `test:` / `control:` keys, the CMDB model's `service` /
 Reads `state/health.json`, `health/metadata-netflow.json`,
 `health/metadata-splunk.json`, and `inventory/prod.json`. Queries
 Elasticsearch and Splunk. Writes only `state/secops-event.json`.
-For each scan edge, invoke Ops Firewall and wait. Task line
+For each scan edge, invoke the configured subagent attached to SecOps Event Response and wait. The display name does not matter. Task line
 `On <device>, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any.`
 One edge per scan source. Destination is `any`. That task does not say deploy.
 

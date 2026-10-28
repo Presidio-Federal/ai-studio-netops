@@ -1,7 +1,7 @@
 ---
 name: secops-event-response
-version: "1.0.5"
-description: "v1.0.5 — SecOps event response: the scan task permits TCP 80, 443, 8080, and 8443, then denies ip."
+version: "1.0.6"
+description: "v1.0.6 — SecOps event response: the firewall write goes to the configured subagent attached on the parent."
 ---
 
 # SecOps event response
@@ -15,8 +15,9 @@ port scan. F4 and S3 are that signal.
 
 A port scan is one source and many service ports, or one source and
 many destinations. One scan source is one IOS-XE edge and the closest
-firewall on that path. Destination is `any`. Invoke Ops Firewall once
-per device in `tasks` and wait. Do not add the word deploy.
+firewall on that path. Destination is `any`. Invoke the configured
+subagent attached to this parent once per device in `tasks` and
+wait. Its display name does not matter. Do not add the word deploy.
 
 Do not call Grafana. Do not write `state/health.json`, `state/firewall.json`,
 or a health board.

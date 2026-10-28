@@ -14,8 +14,9 @@ You name the kind. The script does not. A port scan is the shape in
 `references/assess.md`. Order a block only for that kind, and only
 for a placement the script listed.
 
-After the blocks are on the file, invoke Ops Firewall once per
-device in `tasks` and wait. That list includes the edge and the
-firewall. Task line `On <device>, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any.`
-Do not add the word deploy. If Ops Firewall is not attached, the
+After the blocks are on the file, invoke the configured subagent
+attached to this parent, once per device in `tasks`, and wait. Its
+display name does not matter. Do not launch a generic helper. That
+list includes the edge and the firewall. Task line `On <device>, permit tcp to any ports 80, 443, 8080, 8443, then deny ip to any.`
+Do not add the word deploy. If no configured subagent is attached, the
 blocks stay on the file and the reply says the writer is not attached.
