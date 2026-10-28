@@ -17,10 +17,11 @@ retried once; a second failure is coverage `unavailable` (F1) or
 
 ## Setup (reads, before any Elasticsearch call)
 
-1. `read_file` `health/metadata-netflow.json` — lookup and the
-   **board** (`netflow.current[]`, `series[]`, `visits[]`). Missing
-   `data_stream` → discover, then continue. A `measurement` that
-   does not start with `logs-` or `metrics-` is not a stream.
+1. `read_file` `health/metadata-netflow.json` — lookup
+   (`data_stream`, `window`, `proof`). Missing `data_stream` →
+   discover, then continue. A `measurement` that does not start
+   with `logs-` or `metrics-` is not a stream. Then `read_file`
+   the `proof` stamp. Its `readings[]` are the prior rows.
 2. `read_file` `inventory/prod.json` — `devices[].name` and
    `access.*.host`. An exporter `source` or a flow address that
    equals a device's access host resolves to that device.
@@ -28,7 +29,7 @@ retried once; a second failure is coverage `unavailable` (F1) or
    `devices[].name` + `interfaces[].cidr` resolve an exporter
    `source` or a flow `src` / `dst` to a device. Missing is fine.
 
-Do not open the prior stamp; the board is the prior state.
+The prior state is the proof stamp's `readings[]`. Metadata has no rows.
 
 **Window.** Always `netflow.window` from metadata (default `1h`).
 Pass it as `timerange`. The query text uses the same window:
@@ -205,10 +206,11 @@ operator says the stream is right.
 `src` and `dst` are the names from F2. `dst_port` is the service
 token from F2, which may be a service name rather than a port.
 `scope` is `flow:<source>/<src>><dst>:<dst_port>/<protocol>`.
-`state` `present`. A board path missing from this query is carried
-`not_in_top_n`. That is not absence, not a stamp, and not a worse
-delta. A new path is traffic. It is a stamp only when its flow
-count is a bunch for the window (20 in 15m, 40 in 1h, 200 in 1d).
+`state` `present`. A path missing from this query is carried
+`not_in_top_n`. That is not absence and not a worse delta. A new
+path is traffic. It is a finding only when its flow count is a
+bunch for the window (20 in 15m, 40 in 1h, 200 in 1d). The stamp
+is still written.
 
 **Firewall row** (kind `firewall`) — one per F3 row. `event` is
 `denied`. `state` `present`. A board deny missing from F3 is
@@ -232,9 +234,9 @@ templates, and decode; Inventory for a conflicted address.
 Rows carry no `application:` key. Do not name an application from a
 port number.
 
-## Diff against the board
+## Diff against the prior stamp
 
-Match rows to `netflow.current[]` by `scope`.
+Match rows to the proof stamp's `readings[]` by `scope`.
 
 | Kind | Material when | `changed[].field` |
 |------|---------------|-------------------|
@@ -258,16 +260,16 @@ port spread is new or at least twice the prior window.
 when a path surged or a loud new path appeared. `unchanged` when
 none.
 
-## Stamp or quiet
+## Stamp, then SOAP
 
-- Baseline: stamp; `delta` `first`; `changed` `[]`. Readings are
-  the reporting exporters and the five largest paths. Every note
-  is `Baseline.` The other paths stay on the board and are
-  `unchanged`. Do not copy every F2 row into the stamp.
-- A later visit: stamp when a row in the table above moved, or
-  coverage is not `complete`. The note on a surge names the path
-  and says to research it. Do not paste flow records.
-- Otherwise quiet: board only.
+Every visit writes the stamp first, then the metadata.
+
+- The stamp `readings[]` is the row set. Each row keeps its `keys`.
+  `vs_prior` is the delta from the prior stamp. A row that did not
+  move has note `Unchanged.` The first visit notes `Baseline.`
+  Do not paste flow records.
+- Metadata is the SOAP summary and `proof`. `keys` is `[]`. Do not
+  copy `readings[]` onto it.
 
 Plane `status`: `degraded` when any exporter is `silent`, a deny
 count surged, or any port spread is in the window; `unknown` when
@@ -279,30 +281,17 @@ and F2 or F3 failed; `unavailable` when F1 failed.
 
 ## Reply
 
-Stamp written:
-
 ```text
 Visit: netflow
 Result: <ok | degraded | unknown>
 Coverage: <complete|partial|unavailable>
 Window: <window> (<window_start> -> <window_end>)
-Wrote: health/netflow/<stamp>.json
+Proof: health/netflow/<stamp>.json
+Summary: health/metadata-netflow.json
 Trend: <delta>
 Collection: <the summary collection line>
 Traffic: <the summary traffic line>
 Scans: <the summary scans line>
 Referrals: <the summary referrals, or none>
-Next: none
-```
-
-Quiet:
-
-```text
-Visit: netflow
-Result: <ok | degraded>
-Coverage: complete
-Wrote: health/metadata-netflow.json (no material change)
-Trend: unchanged
-Board: <the summary board line>
-Next: none
+Next: <the SOAP plan>
 ```

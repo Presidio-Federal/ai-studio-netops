@@ -294,6 +294,19 @@ def splunk_rows(label, query, earliest, latest):
     return [row for row in payload.get("results") or [] if isinstance(row, dict)], None
 
 
+def netflow_record(ws, plane):
+    rows = plane.get("current") or []
+    if rows:
+        return rows
+    proof = plane.get("proof")
+    if not isinstance(proof, str) or not proof.startswith("health/"):
+        return []
+    doc = visit_common.load_json(ws, proof)
+    if not isinstance(doc, dict):
+        return []
+    return doc.get("readings") or []
+
+
 def prior_rows(rows):
     found = []
     for row in rows or []:
@@ -431,7 +444,7 @@ def cmd_collect(args):
                     "problems": problems,
                 },
                 "boards": {name: clock(board if isinstance(board, dict) else {}) for name, board in boards.items()},
-                "netflow_scans": prior_rows((netflow.get("current") or []) if isinstance(netflow, dict) else []),
+                "netflow_scans": prior_rows(netflow_record(ws, netflow if isinstance(netflow, dict) else {})),
                 "splunk_rows": prior_rows((splunk.get("current") or []) if isinstance(splunk, dict) else []),
             },
             "live": {key: live.get(key) or [] for key in ("f1", "f2", "f3", "f4", "s1", "s2", "s3")},

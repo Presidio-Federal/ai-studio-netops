@@ -125,13 +125,32 @@ def prefix_name(key, prefix):
     return None
 
 
-def rows_of(block):
-    return [row for row in (block.get("current") or []) if isinstance(row, dict)]
+def rows_of(block, ws=None):
+    rows = [row for row in (block.get("current") or []) if isinstance(row, dict)]
+    if rows or ws is None:
+        return rows
+    proof = block.get("proof")
+    if not isinstance(proof, str) or not proof.startswith("health/"):
+        return rows
+    doc = load(ws, proof)
+    if not isinstance(doc, dict):
+        return rows
+    return [row for row in (doc.get("readings") or []) if isinstance(row, dict)]
 
 
 def latest_visit(block):
     visits = [row for row in (block.get("visits") or []) if isinstance(row, dict)]
-    return visits[-1] if visits else {}
+    if visits:
+        return visits[-1]
+    if block.get("status") in ("ok", "degraded", "unknown") and block.get("delta"):
+        return {
+            "watch_id": block.get("last_visit_id"),
+            "checked_at": block.get("last_collected_at"),
+            "status": block.get("status"),
+            "coverage": block.get("coverage"),
+            "delta": block.get("delta"),
+        }
+    return {}
 
 
 def freshness_row(block, moment, iosxe=False):
@@ -724,7 +743,7 @@ def cmd_assess(args):
     coverage = {plane: coverage_of(blocks[plane] if boards[plane] else {}) for plane in PLANES}
     symptoms = []
     symptoms.extend(application_symptoms(rows_of(blocks["application"])))
-    symptoms.extend(netflow_symptoms(rows_of(blocks["netflow"])))
+    symptoms.extend(netflow_symptoms(rows_of(blocks["netflow"], ws)))
     symptoms.extend(splunk_symptoms(rows_of(blocks["splunk"])))
     symptoms.extend(iosxe_symptoms(rows_of(blocks["iosxe"])))
     tickets = ticket_rows(rows_of(blocks["servicenow"]))

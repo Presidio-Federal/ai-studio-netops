@@ -204,6 +204,7 @@ def copy_edges(sources):
             add_edge(bag, left, right, "peers_with", "observed", when, "health/metadata-splunk.json", side=row.get("name"))
     net = plane(sources.get("health/metadata-netflow.json"), "netflow")
     when = blank(net.get("last_collected_at"))
+    net_evidence = blank(net.get("proof")) or "health/metadata-netflow.json"
     for row in net.get("current") or []:
         if not isinstance(row, dict) or row.get("kind") != "conversation" or row.get("state") == "absent":
             continue
@@ -211,11 +212,11 @@ def copy_edges(sources):
         dst = flow_device(row, "dst", names)
         exporter = known_device(row.get("exporter"), names) or known_device(row.get("exporter_name"), names)
         if src and dst and src != dst:
-            add_edge(bag, src, dst, "flows_to", "observed", when, "health/metadata-netflow.json")
+            add_edge(bag, src, dst, "flows_to", "observed", when, net_evidence)
         if exporter and src and exporter != src:
-            add_edge(bag, src, exporter, "traverses", "observed", when, "health/metadata-netflow.json")
+            add_edge(bag, src, exporter, "traverses", "observed", when, net_evidence)
         if exporter and dst and exporter != dst:
-            add_edge(bag, dst, exporter, "traverses", "observed", when, "health/metadata-netflow.json")
+            add_edge(bag, dst, exporter, "traverses", "observed", when, net_evidence)
     app = plane(sources.get("health/metadata-application.json"), "application")
     when = blank(app.get("last_collected_at"))
     for row in app.get("current") or []:
@@ -717,6 +718,14 @@ def cmd_compile(args):
             0,
         )))
         return 0
+    net_board = sources.get("health/metadata-netflow.json")
+    net_plane = plane(net_board, "netflow") if isinstance(net_board, dict) else {}
+    proof = blank(net_plane.get("proof"))
+    if not (net_plane.get("current") or []) and proof:
+        proof_doc = load(ws, proof)
+        if isinstance(proof_doc, dict):
+            net_plane["current"] = proof_doc.get("readings") or []
+            read.append(proof)
     compiled_at = stamp_text(now_utc())
     produced = copy_edges(sources)
     edges, fresh, newly_stale = upsert(produced, prior.get("edges") or [], compiled_at)

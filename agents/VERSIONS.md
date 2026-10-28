@@ -22,7 +22,7 @@ Deployed model is **MiniMax** unless noted.
 | Compliance Test | 1.9.0 | MiniMax |
 | Health Monitor | 2.2.0 | MiniMax |
 | Health Logging | 1.2.0 | MiniMax |
-| Health Telemetry | 1.3.4 | MiniMax |
+| Health Telemetry | 1.4.0 | MiniMax |
 | Health Application | 1.4.0 | MiniMax |
 | Health Device | 1.13.0 | MiniMax |
 | Health ServiceNow | 1.9.0 | MiniMax |
@@ -34,7 +34,9 @@ Deployed model is **MiniMax** unless noted.
 | Presentation Builder | 1.2.1 | MiniMax |
 | Ops CMDB Sync | 1.2.0 | MiniMax |
 
-Relationship agent 1.5.1 (skill 1.5.1): a no-op prints the on-disk edge, drift, read, and lifecycle counts. The reply copies that JSON. It does not report 0 current because nothing was rewritten. MiniMax.
+Health Telemetry 1.4.0 (skill health-elastic 1.2.0, workspace-handoff 1.70.38): every visit writes the stamp first. `readings[]` is the row set, `vs_prior` is the delta from the prior stamp, and row `keys` are the tags. Metadata is the SOAP summary and `proof`. `keys` is `[]`. Annotate replaces the four SOAP sentences and does not edit the stamp. The health-telemetry skill stays 1.1.1. MiniMax.
+
+Relationship agent 1.5.1 (skill 1.5.1): a no-op prints the on-disk edge, drift, read, and lifecycle counts. The reply copies that JSON. It does not report 0 current because nothing was rewritten. Readers of NetFlow rows follow `proof` when metadata has no `current[]`. MiniMax.
 
 Network Map 1.2.0 (skill 1.4.0) and Relationship agent 1.5.0 (skill 1.5.0, workspace-handoff 1.70.34): the telemetry board names a path by `src` and `dst`, not `src_device`. A device arc or `flows_to` edge is copied only when both names are in `inventory/prod.json`. Exporter state comes from the exporter row. Firewall denies stay on the map and off the graph. Syslog attaches to a device only when `name` resolved; an address stays unresolved. Health Analyzer skill 5.3.3 reads those columns the same way. MiniMax.
 

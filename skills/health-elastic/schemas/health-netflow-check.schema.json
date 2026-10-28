@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "health-netflow-check/v1",
   "title": "health/netflow/YYYY-MM-DDTHH-MM-SSZ.json",
-  "description": "NetFlow lab slip (Kind observation). The first visit is a baseline: reporting exporters and the five largest named paths, notes Baseline, other paths counted as unchanged. A later visit is written when a path's bytes or flows move by 4x, a new path has a bunch of flows, a deny count surges, an exporter changes, or coverage is not complete. A quiet visit writes the board only. Do not store individual flow records.",
+  "description": "NetFlow record (Kind observation). Written on every visit, before metadata. readings[] is the row set for this window. Each row carries its tags. vs_prior is the delta from the previous stamp. A quiet visit still writes this file; unchanged rows say Unchanged. Do not store individual flow records.",
   "type": "object",
   "additionalProperties": false,
   "required": ["keys", "schema", "source", "watch_id", "checked_at", "ok", "status", "headline", "window", "coverage", "metrics", "readings", "unchanged", "baseline_ref", "vs_prior"],
@@ -39,9 +39,9 @@
     },
     "readings": {
       "type": "array",
-      "maxItems": 60,
+      "maxItems": 120,
       "items": { "$ref": "#/$defs/reading" },
-      "description": "Baseline: reporting exporters and the five largest paths. Later: rows that surged or a loud new path. Empty only when coverage is not complete and nothing else is due."
+      "description": "The row set for this window: exporters, named paths, denies, and port spreads. Each row has keys. note is Baseline., the delta, or Unchanged. Empty only when the query failed."
     },
     "unchanged": { "type": ["integer", "null"], "description": "Board rows not replaced by a reading this visit. 0 on the first visit. null when unavailable." },
     "baseline_ref": { "type": ["string", "null"], "description": "health/netflow/<baseline_visit_id>.json. Null on the first visit." },
@@ -70,7 +70,7 @@
           "enum": ["first", "unchanged", "worse", "better", "changed"],
           "description": "worse: an exporter went silent or a resolved conversation vanished. better: only returns. changed: new rows, byte moves, unresolved pairs vanishing. first on the baseline."
         },
-        "changed": { "type": "array", "maxItems": 60, "items": { "$ref": "#/$defs/change" } }
+        "changed": { "type": "array", "maxItems": 120, "items": { "$ref": "#/$defs/change" } }
       }
     },
     "change": {

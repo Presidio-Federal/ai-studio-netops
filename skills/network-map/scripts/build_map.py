@@ -509,6 +509,11 @@ def build(ws, template_path):
     life = board("lifecycle") or {}
     mda = (board("md_application") or {}).get("application") or {}
     mdn = (board("md_netflow") or {}).get("netflow") or {}
+    if not (mdn.get("current") or []) and isinstance(mdn.get("proof"), str):
+        proof = load(ws, mdn["proof"])
+        if isinstance(proof, dict):
+            mdn = dict(mdn)
+            mdn["current"] = proof.get("readings") or []
     mds = (board("md_splunk") or {}).get("splunk") or {}
     mdi = (board("md_iosxe") or {}).get("iosxe") or {}
     override = load(ws, BOARDS["layout"])

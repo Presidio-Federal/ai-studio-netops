@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""NetFlow health visit through Elasticsearch. One command collects, diffs, and writes the board.
+"""NetFlow health visit through Elasticsearch.
 
-collect runs under execution_type mcp_orchestration. annotate runs under
-standard and only edits headline and notes. The ES|QL and the material
-rules are references/netflow.md. Splunk and Grafana are not this script.
+collect runs under execution_type mcp_orchestration. It writes the stamp
+first: every row, the delta from the prior stamp, and the tags. It then
+writes metadata as a SOAP summary whose proof path is that stamp.
+annotate runs under standard and replaces only the four SOAP sentences.
 
 The agent copies the path Studio shows for this file. Do not hardcode it.
 
   python3 <skill>/scripts/visit_netflow.py collect --workspace <file_explorer>
   python3 <skill>/scripts/visit_netflow.py annotate --workspace <file_explorer> \\
-      --stamp health/netflow/<stamp>.json --headline "..." --note "device:NAME=..."
+      --stamp health/netflow/<stamp>.json --subjective "..." --objective "..." \\
+      --assessment "..." --plan "..."
 """
 import argparse
 import ipaddress
@@ -65,7 +67,7 @@ ROW_FIELDS = (
     "last_seen_at",
     "referral",
 )
-READINGS_CAP = 60
+READINGS_CAP = 120
 
 
 def stamp_name(moment):
@@ -950,10 +952,32 @@ def user_pinned(board):
     return raw.get("netflow") == "user" or raw.get("bucket") == "user" or raw.get("measurement") == "user"
 
 
+def prior_rows_from(ws, netflow):
+    """Rows to diff against. An old board still has current[]. The record now lives on the prior stamp."""
+    current = keep(netflow.get("current") or [], fit_row)
+    if current:
+        return current
+    proof = blank(netflow.get("proof"))
+    watch = blank(netflow.get("last_visit_id"))
+    rel = proof or (f"health/netflow/{watch}.json" if watch else "")
+    if not rel:
+        return []
+    doc = visit_common.load_json(ws, rel)
+    if not isinstance(doc, dict):
+        return []
+    return keep(doc.get("readings") or [], fit_row)
+
+
 def plane_block(board):
-    """The lookup and rows. A nested netflow object, or the flat board already in the workspace."""
+    """The lookup. A nested netflow object, or the flat board already in the workspace."""
     nested = board.get("netflow")
-    if isinstance(nested, dict) and (blank(nested.get("bucket")) or nested.get("current") or nested.get("exporters")):
+    if isinstance(nested, dict) and (
+        blank(nested.get("bucket"))
+        or nested.get("current")
+        or nested.get("proof")
+        or nested.get("data_stream")
+        or nested.get("exporters")
+    ):
         return nested
     flat_keys = (
         "bucket",
@@ -1046,7 +1070,7 @@ def cmd_collect(args):
     at = checked_at(now)
     started = now - window_delta(window)
     first = not blank(netflow.get("baseline_visit_id"))
-    prior_rows = keep(netflow.get("current") or [], fit_row)
+    prior_rows = prior_rows_from(ws, netflow)
     prior_by_scope = {row["scope"]: row for row in prior_rows}
     exporters = []
     for row in netflow.get("exporters") or []:
@@ -1060,6 +1084,18 @@ def cmd_collect(args):
         if row.get("exporter_site") is not None:
             item["exporter_site"] = blank(row.get("exporter_site"))
         exporters.append(item)
+    if not exporters:
+        for row in prior_rows:
+            if row.get("kind") != "exporter":
+                continue
+            exporters.append(
+                {
+                    "source": row["source"],
+                    "exporter_name": blank(row.get("exporter_name")),
+                    "device": blank(row.get("device")),
+                    "exporter_site": blank(row.get("exporter_site")),
+                }
+            )
 
     budget = visit_common.Budget(240)
     if budget.exhausted():
@@ -1252,44 +1288,24 @@ def cmd_collect(args):
         )
         if not operational:
             delta = "changed"
-    write_stamp = first or rebaseline or bool(pairs) or coverage != "complete"
-    reading_rows = [row for row, _prior, _field in pairs]
-    if first:
-        reporting = [row for row in current_rows if row["kind"] == "exporter" and row["state"] == "reporting"]
-        largest = sorted(
-            [row for row in current_rows if row["kind"] == "conversation" and row["state"] == "present"],
-            key=lambda row: row.get("bytes") or 0,
-            reverse=True,
-        )[:5]
-        reading_rows = reporting + largest
-    scan_present = [
-        row for row in current_rows if row.get("protocol") == "scan" and row.get("state") == "present"
-    ]
-    seen_read = {row["scope"] for row in reading_rows}
-    for row in scan_present:
-        if row["scope"] not in seen_read:
-            reading_rows.append(row)
-            seen_read.add(row["scope"])
-    readings_truncated = len(reading_rows) > READINGS_CAP
-    if readings_truncated:
-        reading_rows = sorted(
-            reading_rows,
-            key=lambda row: (0 if row["kind"] == "exporter" and row["state"] == "silent" else 1, row["scope"]),
-        )[:READINGS_CAP]
-    prior_for = {row["scope"]: prior for row, prior, _field in pairs}
+    material_scopes = {row["scope"] for row, _prior, _field in pairs}
     readings = []
-    for row in reading_rows:
+    for row in current_rows:
         item = {field: row.get(field) for field in ROW_FIELDS}
-        item["note"] = note_for(row, prior_for.get(row["scope"]), first or rebaseline, migration)
+        prior = prior_by_scope.get(row["scope"])
+        if first or prior is None or row["scope"] in material_scopes:
+            item["note"] = note_for(row, prior, first or rebaseline, migration)
+        else:
+            item["note"] = "Unchanged."
         readings.append(item)
-    reading_scopes = {row["scope"] for row in readings}
-    unchanged = sum(1 for row in current_rows if row["scope"] not in reading_scopes)
+    readings_truncated = len(readings) > READINGS_CAP
+    if readings_truncated:
+        readings = readings[:READINGS_CAP]
+    unchanged = sum(1 for item in readings if item["note"] == "Unchanged.")
 
     public_changed = []
     if not first:
         for row, prior, field in pairs:
-            if row["scope"] not in reading_scopes:
-                continue
             _field, prior_value, current_value = material(row, prior)
             public_changed.append(
                 {
@@ -1305,84 +1321,79 @@ def cmd_collect(args):
     metric = estate(current_rows, at, top)
     prior_watch = blank(netflow.get("last_visit_id"))
     baseline = blank(netflow.get("baseline_visit_id"))
-    watch = None
-    stamp_rel = None
-    if write_stamp:
-        watch, moment = fresh_stamp_id(ws, now)
-        at = checked_at(moment)
-        metric["at"] = at
-        if first:
-            lead = reporting[0] if reporting else None
-            path = largest[0] if largest else None
-            who = f"{len(reporting)} exporters reporting."
-            if path:
-                who += f" Largest path {path.get('src')} to {path.get('dst')} {path.get('dst_port')}."
-            elif lead:
-                who += f" Largest exporter {lead.get('exporter_name') or lead.get('source')}."
-            headline = f"Baseline. {who} {unchanged} other paths kept on the board."
-        else:
-            headline = f"{len(readings)} paths moved. {unchanged} board rows unchanged."
-        scan_rows = [row for row in readings if row.get("protocol") == "scan"]
-        if scan_rows:
-            worst = max(scan_rows, key=lambda row: coerce_int(row.get("dst_port")) or 0)
-            headline = (
-                f"Port spread: {worst.get('src')} to {worst.get('dst')}, "
-                f"{worst.get('dst_port')} ports, {worst.get('flows')} flows, "
-                f"seen by {worst.get('exporter_name') or worst.get('source')}. Research this path. "
-                + headline
-            )
-        if rebaseline:
-            headline = "Baseline. Path names now come from the stream. Not an operational change. " + headline
-        elif migration:
-            headline = "Baseline migration. Identifier rules changed. Not an operational degradation. " + headline
-        if lookup_note:
-            headline = f"{lookup_note}. {headline}"
-        stamp = {
-            "keys": union_keys(readings) or union_keys(current_rows),
-            "schema": "health-netflow-check/v1",
-            "source": "netflow",
-            "watch_id": watch,
-            "checked_at": at,
-            "ok": status == "ok",
-            "status": status,
-            "headline": headline[:500],
-            "window": window,
-            "window_start": checked_at(moment - window_delta(window)),
-            "window_end": at,
-            "coverage": {
-                "state": coverage,
-                "detail": (
-                    (lookup_note + "; " if lookup_note else "")
-                    + ("F2 failed" if f2_failed else ("truncated" if truncated else "F1 and F2"))
-                )[:500],
-            },
-            "metrics": [metric],
-            "readings": readings,
-            "unchanged": unchanged,
-            "baseline_ref": None if first or not baseline else f"health/netflow/{baseline}.json",
-            "vs_prior": {
-                "prior_watch_id": None if first else prior_watch,
-                "delta": "first" if first else delta,
-                "changed": [] if first else public_changed,
-            },
-        }
-        concerns = []
-        for row in current_rows:
-            if row["kind"] == "exporter" and row["state"] == "silent" and row.get("device"):
-                concerns.append({"type": "device", "name": row["device"], "source_ref": "inventory/prod.json"})
-        if concerns:
-            stamp["concerns"] = concerns[:8]
-        try:
-            visit_common.validate(stamp, CHECK_SCHEMA)
-        except ValueError as exc:
-            print(f"stamp schema: {exc}", file=sys.stderr)
-            return 1
-        stamp_rel = f"health/netflow/{watch}.json"
-        path = Path(ws) / stamp_rel
-        path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
-        prune_stamps(ws)
-        if first:
-            baseline = watch
+    watch, moment = fresh_stamp_id(ws, now)
+    at = checked_at(moment)
+    metric["at"] = at
+    present_paths = [row for row in readings if row.get("kind") == "conversation" and row.get("state") == "present"]
+    largest = max(present_paths, key=lambda row: row.get("bytes") or 0) if present_paths else None
+    if first:
+        headline = f"Baseline. {len(readings)} rows in this stamp."
+    else:
+        headline = f"{len(readings)} rows. Delta {delta}. {unchanged} unchanged versus the prior stamp."
+    if largest:
+        headline += f" Largest path {largest.get('src')} to {largest.get('dst')} {largest.get('dst_port')}."
+    scan_rows = [row for row in readings if row.get("protocol") == "scan" and row.get("note") != "Unchanged."]
+    if scan_rows:
+        worst = max(scan_rows, key=lambda row: coerce_int(row.get("dst_port")) or 0)
+        headline = (
+            f"Port spread: {worst.get('src')} to {worst.get('dst')}, "
+            f"{worst.get('dst_port')} ports, {worst.get('flows')} flows, "
+            f"seen by {worst.get('exporter_name') or worst.get('source')}. Research this path. "
+            + headline
+        )
+    if rebaseline:
+        headline = "Baseline. Path names now come from the stream. Not an operational change. " + headline
+    elif migration:
+        headline = "Baseline migration. Identifier rules changed. Not an operational degradation. " + headline
+    if lookup_note:
+        headline = f"{lookup_note}. {headline}"
+    stamp = {
+        "keys": union_keys(readings),
+        "schema": "health-netflow-check/v1",
+        "source": "netflow",
+        "watch_id": watch,
+        "checked_at": at,
+        "ok": status == "ok",
+        "status": status,
+        "headline": headline[:500],
+        "window": window,
+        "window_start": checked_at(moment - window_delta(window)),
+        "window_end": at,
+        "coverage": {
+            "state": coverage,
+            "detail": (
+                (lookup_note + "; " if lookup_note else "")
+                + ("F2 failed" if f2_failed else ("truncated" if truncated else "F1 and F2"))
+            )[:500],
+        },
+        "metrics": [metric],
+        "readings": readings,
+        "unchanged": unchanged,
+        "baseline_ref": None if first or not baseline else f"health/netflow/{baseline}.json",
+        "vs_prior": {
+            "prior_watch_id": None if first else prior_watch,
+            "delta": "first" if first else delta,
+            "changed": [] if first else public_changed,
+        },
+    }
+    concerns = []
+    for row in current_rows:
+        if row["kind"] == "exporter" and row["state"] == "silent" and row.get("device"):
+            concerns.append({"type": "device", "name": row["device"], "source_ref": "inventory/prod.json"})
+    if concerns:
+        stamp["concerns"] = concerns[:8]
+    try:
+        visit_common.validate(stamp, CHECK_SCHEMA)
+    except ValueError as exc:
+        print(f"stamp schema: {exc}", file=sys.stderr)
+        return 1
+    stamp_rel = f"health/netflow/{watch}.json"
+    path = Path(ws) / stamp_rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(stamp, indent=2) + "\n", encoding="utf-8")
+    prune_stamps(ws)
+    if first:
+        baseline = watch
 
     for row in built_exporters:
         known = next((item for item in exporters if item.get("source") == row["source"]), None)
@@ -1400,21 +1411,8 @@ def cmd_collect(args):
             if row.get("exporter_name"):
                 known["exporter_name"] = row.get("exporter_name")
 
-    series = keep(netflow.get("series") or [], fit_metric)
-    series.append(metric)
-    visit = {
-        "watch_id": watch if write_stamp else None,
-        "checked_at": at,
-        "status": status,
-        "coverage": coverage,
-        "delta": "first" if first and write_stamp else delta,
-        "stamp_written": bool(write_stamp),
-        "window": window,
-    }
-    visits = keep(netflow.get("visits") or [], fit_visit)
-    visits.append(visit)
     new_board = {
-        "keys": union_keys(current_rows),
+        "keys": [],
         "schema": "health-metadata-netflow/v1",
         "updated_at": at,
         "source_agent": "health-elastic",
@@ -1424,28 +1422,29 @@ def cmd_collect(args):
             "data_stream": measurement,
             "window": window,
             "firewall_measurement": None,
-            "exporters": exporters,
             "exporter_registry": build_registry(netflow.get("exporter_registry"), current_rows),
             "identity_review": list(review),
-            "last_visit_id": watch if write_stamp else prior_watch,
+            "last_visit_id": watch,
             "last_collected_at": at,
-            "baseline_visit_id": baseline if baseline else (watch if first and write_stamp else None),
-            "current": [slim_board(row) for row in current_rows],
-            "series": ring(series),
-            "visits": ring(visits),
+            "baseline_visit_id": baseline,
+            "proof": stamp_rel,
+            "status": status,
+            "coverage": coverage,
+            "delta": "first" if first else delta,
+            "soap": {
+                "subjective": "NetFlow health check.",
+                "objective": f"Proof: {stamp_rel}.",
+                "assessment": f"Status {status}. Coverage {coverage}. Delta {'first' if first else delta}.",
+                "plan": "none",
+            },
         },
     }
     provenance = schema_provenance(board, discovered)
     if provenance:
         new_board["provenance"] = provenance
-    try:
-        save_board(ws, new_board)
-    except (ValueError, OSError) as exc:
-        print(f"board: {exc}", file=sys.stderr)
-        return 1
 
     needs = []
-    if write_stamp and not first:
+    if not first:
         for row, prior, field in pairs:
             if row["kind"] == "exporter" and row["state"] != "silent" and field == "row":
                 continue
@@ -1480,13 +1479,23 @@ def cmd_collect(args):
         f"{row.get('src')} -> {row.get('dst')} {row.get('dst_port')} ports via {row.get('exporter_name') or row.get('source')}"
         for row in sorted(scan_now, key=lambda row: coerce_int(row.get("dst_port")) or 0, reverse=True)[:6]
     ) or "none"
+    collection = f"{exporters_n} exporters, {silent_n} silent, {conflict_n} identity conflicts. Collector health not measured."
+    traffic = f"{present_n} conversations in view, {unobserved_n} not in top N, {deny_n} denies. Observation {observation or 'none'}."
+    new_board["netflow"]["soap"]["objective"] = f"{collection} {traffic} Proof: {stamp_rel}."[:400]
+    plan = "none" if not referrals else "Next: " + "; ".join(referrals[:4])
+    new_board["netflow"]["soap"]["plan"] = plan[:400]
+    try:
+        save_board(ws, new_board)
+    except (ValueError, OSError) as exc:
+        print(f"board: {exc}", file=sys.stderr)
+        return 1
     payload = {
         "plane": "netflow",
-        "watch_id": watch if write_stamp else None,
+        "watch_id": watch,
         "stamp": stamp_rel,
         "status": status,
         "coverage": coverage,
-        "delta": "first" if first and write_stamp else delta,
+        "delta": "first" if first else delta,
         "changed_count": 0 if first else len(public_changed),
         "unchanged": unchanged,
         "degraded": status == "degraded",
@@ -1496,8 +1505,8 @@ def cmd_collect(args):
         "board_rows": len(current_rows),
         "last_visit_id": new_board["netflow"]["last_visit_id"],
         "migration": migration,
-        "collection": f"{exporters_n} exporters, {silent_n} silent, {conflict_n} identity conflicts. Collector health not measured.",
-        "traffic": f"{present_n} conversations in view, {unobserved_n} not in top N, {deny_n} denies. Observation {observation or 'none'}.",
+        "collection": collection,
+        "traffic": traffic,
         "scans": scan_txt,
         "referrals": referrals[:6],
         "board": f"{exporters_n} exporters ({silent_n} silent), {present_n} conversations, {unobserved_n} not in top N, {deny_n} denies",
@@ -1514,9 +1523,9 @@ def write_unavailable(ws, board, netflow, at, window, reason):
     watch, moment = fresh_stamp_id(ws, now)
     at = checked_at(moment)
     metric = null_metric(at)
-    prior_rows = keep(netflow.get("current") or [], fit_row)
+    prior_rows = prior_rows_from(ws, netflow)
     stamp = {
-        "keys": union_keys(prior_rows),
+        "keys": [],
         "schema": "health-netflow-check/v1",
         "source": "netflow",
         "watch_id": watch,
@@ -1547,48 +1556,36 @@ def write_unavailable(ws, board, netflow, at, window, reason):
     stream = blank(netflow.get("data_stream")) or blank(netflow.get("measurement")) or "missing"
     if not (stream.startswith("logs-") or stream.startswith("metrics-")):
         stream = "missing"
-    visit = {
-        "watch_id": watch,
-        "checked_at": at,
+    nested = {
+        "bucket": "elasticsearch",
+        "measurement": stream,
+        "data_stream": stream,
+        "window": window,
+        "firewall_measurement": None,
+        "last_visit_id": watch,
+        "last_collected_at": at,
+        "baseline_visit_id": blank(netflow.get("baseline_visit_id")),
+        "proof": stamp_rel,
         "status": "unknown",
         "coverage": "unavailable",
         "delta": "unchanged",
-        "stamp_written": True,
-        "window": window,
+        "soap": {
+            "subjective": "NetFlow health check.",
+            "objective": f"Query failed. Prior rows were left on the previous stamp. Proof: {stamp_rel}.",
+            "assessment": "Status unknown. Coverage unavailable. Delta unchanged.",
+            "plan": "none",
+        },
     }
-    visits = keep(netflow.get("visits") or [], fit_visit)
-    visits.append(visit)
-    series = keep(netflow.get("series") or [], fit_metric)
-    series.append(metric)
-    exporters = []
-    for row in netflow.get("exporters") or []:
-        if isinstance(row, dict) and blank(row.get("source")):
-            exporters.append(
-                {
-                    "source": row["source"],
-                    "exporter_name": blank(row.get("exporter_name")),
-                    "device": blank(row.get("device")),
-                }
-            )
+    if isinstance(netflow.get("exporter_registry"), dict):
+        nested["exporter_registry"] = netflow["exporter_registry"]
+    if isinstance(netflow.get("identity_review"), list):
+        nested["identity_review"] = netflow["identity_review"]
     new_board = {
-        "keys": union_keys(prior_rows),
+        "keys": [],
         "schema": "health-metadata-netflow/v1",
         "updated_at": at,
         "source_agent": "health-elastic",
-        "netflow": {
-            "bucket": "elasticsearch",
-            "measurement": stream,
-            "data_stream": stream,
-            "window": window,
-            "firewall_measurement": None,
-            "exporters": exporters,
-            "last_visit_id": watch,
-            "last_collected_at": at,
-            "baseline_visit_id": netflow.get("baseline_visit_id"),
-            "current": prior_rows[:120],
-            "series": ring(series),
-            "visits": ring(visits),
-        },
+        "netflow": nested,
     }
     provenance = schema_provenance(board, False)
     if provenance:
@@ -1621,43 +1618,52 @@ def write_unavailable(ws, board, netflow, at, window, reason):
     return 0
 
 
+def soap_sentence(value, label):
+    text = strip_arg(value)
+    if not text or len(text) > 400 or "{" in text or '"kind"' in text:
+        print(f"{label} must be one sentence under 400 characters", file=sys.stderr)
+        return None
+    return text
+
+
 def cmd_annotate(args):
     ws = resolve_workspace(args.workspace)
     if ws is None:
         return 1
-    notes = {}
-    for item in args.note or []:
-        item = strip_arg(item)
-        if "=" not in item:
-            print("note must be <keys joined by +>=<text>", file=sys.stderr)
-            return 1
-        key, text = item.split("=", 1)
-        notes[strip_arg(key).rstrip(">")] = strip_arg(text)
     stamp_path = locate_stamp(ws, args.stamp)
     if not stamp_path.is_file():
         print(f"stamp not found: {args.stamp}", file=sys.stderr)
         return 1
+    board = visit_common.load_board(ws, "netflow") or {}
+    netflow = plane_block(board)
+    proof = blank(netflow.get("proof"))
+    stamp_rel = str(stamp_path.relative_to(ws)) if stamp_path.is_relative_to(ws) else strip_arg(args.stamp)
+    if proof and stamp_rel != proof:
+        print(f"stamp does not match proof {proof}", file=sys.stderr)
+        return 1
+    soap = {
+        "subjective": soap_sentence(args.subjective, "subjective"),
+        "objective": soap_sentence(args.objective, "objective"),
+        "assessment": soap_sentence(args.assessment, "assessment"),
+        "plan": soap_sentence(args.plan, "plan"),
+    }
+    if any(value is None for value in soap.values()):
+        return 1
+    if "forwarding failure" in soap["assessment"].lower() and "not a forwarding failure" not in soap["assessment"].lower():
+        print("silence is not a forwarding failure", file=sys.stderr)
+        return 1
+    netflow["soap"] = soap
+    board["keys"] = []
+    board["netflow"] = netflow
+    board["schema"] = "health-metadata-netflow/v1"
+    board["source_agent"] = "health-elastic"
+    board["updated_at"] = blank(netflow.get("last_collected_at")) or board.get("updated_at")
     try:
-        stamp_body = json.loads(stamp_path.read_text(encoding="utf-8"))
-        by_keys = {"+".join(reading.get("keys") or []): reading for reading in stamp_body.get("readings") or [] if isinstance(reading, dict)}
-        for key, text in notes.items():
-            reading = by_keys.get(key)
-            if not isinstance(reading, dict):
-                continue
-            low = text.lower()
-            state = reading.get("state")
-            if re.search(r"\babsent\b", low) and state != "absent":
-                raise ValueError(f"note says absent for state {state}")
-            if re.search(r"\bsilent\b", low) and state != "silent":
-                raise ValueError(f"note says silent for state {state}")
-            if "forwarding failure" in low and state == "silent":
-                raise ValueError("silence is not a forwarding failure")
-        visit_common.annotate(stamp_path, strip_arg(args.headline), notes, CHECK_SCHEMA)
-    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        save_board(ws, board)
+    except (OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
-    rel = stamp_path.relative_to(ws) if stamp_path.is_relative_to(ws) else stamp_path
-    print(visit_common.summary({"plane": "netflow", "stamp": str(rel), "annotated": True}))
+    print(visit_common.summary({"plane": "netflow", "stamp": stamp_rel, "metadata": "health/metadata-netflow.json", "annotated": True}))
     return 0
 
 
@@ -1673,8 +1679,10 @@ def main(argv):
     note = sub.add_parser("annotate")
     note.add_argument("--workspace", required=True)
     note.add_argument("--stamp", required=True)
-    note.add_argument("--headline", required=True)
-    note.add_argument("--note", action="append", default=[])
+    note.add_argument("--subjective", required=True)
+    note.add_argument("--objective", required=True)
+    note.add_argument("--assessment", required=True)
+    note.add_argument("--plan", required=True)
     note.set_defaults(func=cmd_annotate)
     args = parser.parse_args(argv)
     return args.func(args)
