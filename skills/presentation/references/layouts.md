@@ -1,5 +1,7 @@
 # Layout catalog
 
+An attached pptx is not one of the layouts below. It is `mirror`. The builder decompiles every shape (position, text, geometry) into `<customer>/deck.json` and draws those shapes on the Presidio canvas. The logo and footer stay. Colors snap to navy, orange, ink, card, and tint. Type is Arial. Do not map that deck onto `cover`, `two-column`, or `title-content`.
+
 These are the Presidio layouts on the template's first master.
 Arial and the point sizes live on the layout. Do not set a font,
 a size, or a color. Do not use the second master's generic

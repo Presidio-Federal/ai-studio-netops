@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Edit and compile a presentation deck.
+"""Edit, decompile, and compile a presentation deck.
 
-The parent writes <customer>/deck.json at the workspace root.
-This script rebuilds <customer>/<customer>.pptx from the bundled
-Disney-Presidio template.
+The parent writes <customer>/deck.json at the workspace root, or
+`restyle` decompiles an attached pptx into that file. Compile
+rebuilds <customer>/<customer>.pptx from the bundled Disney-Presidio
+template.
 
 Stdout is one JSON object. Exit 1 on a hard failure.
 """
@@ -12,7 +13,9 @@ import json
 import os
 import re
 import sys
+import zipfile
 from datetime import datetime, timezone
+from xml.etree import ElementTree as ET
 
 from pptx import Presentation
 from pptx.dml.color import RGBColor
@@ -31,6 +34,45 @@ ORANGE = RGBColor(0xFF, 0x99, 0x01)
 INK = RGBColor(0x33, 0x33, 0x33)
 WHITE = RGBColor(0xFF, 0xFF, 0xFF)
 CARD = RGBColor(0xF4, 0xF7, 0xF8)
+TINT = RGBColor(0xFF, 0xF4, 0xE5)
+
+P_NS = "{http://schemas.openxmlformats.org/presentationml/2006/main}"
+A_NS = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
+
+# Fit a decompiled slide inside the Presidio canvas. The left rail is the
+# template logo. The footer line sits at about 7.03in.
+MIRROR_PART = ("slideLayout28.xml", "1_Two Content")
+SAFE = (0.78, 0.16, 12.05, 6.62)
+ROLE = {
+    "navy": NAVY,
+    "ink": INK,
+    "accent": ORANGE,
+    "white": WHITE,
+    "card": CARD,
+    "tint": TINT,
+}
+FILL_HEX = {
+    "FBF8F3": "card",
+    "F1E1DE": "tint",
+    "A63032": "accent",
+    "242321": "navy",
+    "00447A": "navy",
+    "FF9901": "accent",
+    "F4F7F8": "card",
+    "FFFFFF": "white",
+    "FFF4E5": "tint",
+}
+INK_HEX = {
+    "A63032": "accent",
+    "282625": "navy",
+    "68615B": "ink",
+    "FFFFFF": "white",
+    "333333": "ink",
+    "00447A": "navy",
+    "FF9901": "accent",
+    "000000": "navy",
+}
+SHAPE_KINDS = ("text", "roundRect", "rect", "chevron", "line")
 
 PROMPTS = (
     "click to add",
@@ -207,13 +249,19 @@ def cell_value(value, label):
 def check_slide(slide, allow_blank_slots):
     if not isinstance(slide, dict):
         fail("a slide must be an object")
-    extra = set(slide) - {"n", "layout", "slots", "blocks"}
+    extra = set(slide) - {"n", "layout", "slots", "blocks", "shapes"}
     if extra:
         fail("slide has " + ", ".join(sorted(extra)))
     n = slide.get("n")
     if not isinstance(n, int) or isinstance(n, bool) or n < 1:
         fail("slide n must be a positive integer")
     layout_id = slide.get("layout")
+    if layout_id == "mirror":
+        if slide.get("blocks"):
+            fail("slide " + str(n) + " is mirror and does not take blocks")
+        return {"n": n, "layout": "mirror", "slots": {}, "shapes": check_shapes(slide.get("shapes"), n)}
+    if "shapes" in slide:
+        fail("slide " + str(n) + " is not a mirror slide")
     if layout_id not in LAYOUTS:
         fail("unknown layout " + repr(layout_id))
     _part, _name, bodies, slot_names, _allows = LAYOUTS[layout_id]
@@ -613,33 +661,433 @@ def check_variety(slides):
             fail("slides " + str(n) + " and " + str(n + 1) + " are the same Disney layout. Use a different one: title-content, two-column, section, chapter, quote, table")
 
 
-def cmd_compile(args):
-    slug = check_slug(args.slug)
-    paths = deck_paths(args.workspace, slug)
-    if not os.path.isfile(TEMPLATE):
-        fail("skill template is missing")
-    deck = load_json(paths["deck"], "deck.json")
+def inches(emu):
+    return round(int(emu) / 914400.0, 2)
+
+
+def luminance(hex_color):
+    r = int(hex_color[0:2], 16)
+    g = int(hex_color[2:4], 16)
+    b = int(hex_color[4:6], 16)
+    return 0.299 * r + 0.587 * g + 0.114 * b
+
+
+def snap_fill(hex_color):
+    if hex_color and hex_color.upper() in FILL_HEX:
+        return FILL_HEX[hex_color.upper()]
+    if not hex_color:
+        return "card"
+    return "card" if luminance(hex_color) > 160 else "navy"
+
+
+def snap_ink(hex_color):
+    if hex_color and hex_color.upper() in INK_HEX:
+        return INK_HEX[hex_color.upper()]
+    if not hex_color:
+        return "ink"
+    lum = luminance(hex_color)
+    if lum > 200:
+        return "white"
+    if lum < 80:
+        return "navy"
+    return "ink"
+
+
+def first_srgb(node):
+    for color in node.iter(A_NS + "srgbClr"):
+        value = color.attrib.get("val")
+        if value and len(value) == 6:
+            return value.upper()
+    return ""
+
+
+def shape_fill(sp_pr):
+    for child in list(sp_pr):
+        if child.tag == A_NS + "noFill":
+            return None
+        if child.tag == A_NS + "solidFill":
+            return snap_fill(first_srgb(child))
+    return None
+
+
+def shape_box(el):
+    sp_pr = None
+    for child in list(el):
+        if child.tag == P_NS + "spPr":
+            sp_pr = child
+            break
+    if sp_pr is None:
+        return None
+    off = ext = None
+    for child in list(sp_pr):
+        if child.tag != A_NS + "xfrm":
+            continue
+        for part in list(child):
+            if part.tag == A_NS + "off":
+                off = (inches(part.attrib["x"]), inches(part.attrib["y"]))
+            elif part.tag == A_NS + "ext" and "cx" in part.attrib:
+                ext = (inches(part.attrib["cx"]), inches(part.attrib["cy"]))
+    if off is None or ext is None:
+        return None
+    return off, ext, sp_pr
+
+
+def shape_text(el):
+    body = None
+    for child in el.iter(P_NS + "txBody"):
+        body = child
+        break
+    if body is None:
+        return "", 14, False, "left", "ink"
+    lines = []
+    for paragraph in body.findall(A_NS + "p"):
+        parts = []
+        for run in paragraph.findall(A_NS + "r"):
+            node = run.find(A_NS + "t")
+            if node is not None and node.text:
+                parts.append(node.text)
+        line = "".join(parts).strip()
+        if line:
+            lines.append(line)
+    text = "\n".join(lines).strip()
+    size, bold, align, ink = 14, False, "left", "ink"
+    for run_pr in body.iter(A_NS + "rPr"):
+        if "sz" in run_pr.attrib:
+            size = int(round(int(run_pr.attrib["sz"]) / 100.0))
+        bold = run_pr.attrib.get("b") in ("1", "true")
+        ink = snap_ink(first_srgb(run_pr))
+        break
+    for paragraph_pr in body.iter(A_NS + "pPr"):
+        align = {"ctr": "center", "r": "right"}.get(paragraph_pr.attrib.get("algn"), "left")
+        break
+    return text, size, bold, align, ink
+
+
+def placeholder_type(el):
+    for ph in el.iter(P_NS + "ph"):
+        return ph.attrib.get("type", "body")
+    return ""
+
+
+def geometry(el):
+    for geom in el.iter(A_NS + "prstGeom"):
+        return geom.attrib.get("prst", "")
+    return ""
+
+
+def read_shape(el):
+    if placeholder_type(el) == "sldNum":
+        return None
+    box = shape_box(el)
+    if box is None:
+        return None
+    (x, y), (w, h), sp_pr = box
+    if w <= 0:
+        return None
+    text, size, bold, align, ink = shape_text(el)
+    size = max(8, min(80, size))
+    kind_name = geometry(el)
+    fill = shape_fill(sp_pr)
+    if kind_name == "line" or el.tag == P_NS + "cxnSp":
+        stroke = ""
+        for line in sp_pr.iter(A_NS + "ln"):
+            stroke = first_srgb(line)
+            break
+        return {
+            "kind": "line",
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": max(h, 0.0),
+            "fill": snap_fill(stroke) if stroke else "accent",
+        }
+    if kind_name == "chevron":
+        item = {"kind": "chevron", "x": x, "y": y, "w": w, "h": h, "fill": fill or "accent"}
+    elif kind_name == "roundRect":
+        item = {"kind": "roundRect", "x": x, "y": y, "w": w, "h": h, "fill": fill or "card"}
+    elif text and fill is None:
+        item = {
+            "kind": "text",
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "text": text,
+            "size": size,
+            "bold": bold,
+            "align": align,
+            "ink": ink,
+        }
+    elif fill is not None:
+        item = {"kind": "rect", "x": x, "y": y, "w": w, "h": h, "fill": fill}
+    else:
+        return None
+    if text and item["kind"] != "text":
+        item["text"] = text
+        item["size"] = size
+        item["bold"] = bold
+        item["align"] = align
+        item["ink"] = ink
+    return item
+
+
+def decompile_pptx(path):
+    try:
+        package = zipfile.ZipFile(path)
+    except zipfile.BadZipFile:
+        fail("source is not a pptx")
+    slides = sorted(
+        (name for name in package.namelist() if re.match(r"ppt/slides/slide\d+\.xml$", name)),
+        key=lambda name: int(re.search(r"(\d+)", os.path.basename(name)).group(1)),
+    )
+    if not slides:
+        fail("source has no slides")
+    if len(slides) > 40:
+        fail("source has more than 40 slides")
+    out = []
+    for number, name in enumerate(slides, 1):
+        root = ET.fromstring(package.read(name))
+        canvas = root.find(P_NS + "cSld")
+        tree = canvas.find(P_NS + "spTree") if canvas is not None else None
+        if tree is None:
+            fail("slide " + str(number) + " has no shapes")
+        shapes = []
+        for el in list(tree):
+            tag = el.tag.split("}")[-1]
+            if tag == "grpSp":
+                fail("slide " + str(number) + " has grouped shapes")
+            if tag not in ("sp", "cxnSp"):
+                continue
+            item = read_shape(el)
+            if item:
+                shapes.append(item)
+        if not shapes:
+            fail("slide " + str(number) + " has no drawn shapes")
+        out.append({
+            "n": number,
+            "layout": "mirror",
+            "slots": {},
+            "shapes": check_shapes(shapes, number),
+        })
+    return out
+
+
+def deck_title(slides):
+    best = ""
+    best_size = 0
+    for shape in slides[0]["shapes"]:
+        if shape.get("kind") != "text":
+            continue
+        size = shape.get("size") or 0
+        text = shape.get("text") or ""
+        if size >= best_size and text:
+            best = text.split("\n")[0]
+            best_size = size
+    if len(best) > 120:
+        best = best[:120].rstrip()
+    return best or "Deck"
+
+
+def check_shapes(shapes, n):
+    label = "slide " + str(n)
+    if not isinstance(shapes, list) or not shapes:
+        fail(label + " has no shapes")
+    if len(shapes) > 80:
+        fail(label + " has too many shapes")
+    clean = []
+    for index, shape in enumerate(shapes, 1):
+        where = label + " shape " + str(index)
+        if not isinstance(shape, dict):
+            fail(where + " must be an object")
+        kind = shape.get("kind")
+        if kind not in SHAPE_KINDS:
+            fail(where + " has unknown kind " + repr(kind))
+        try:
+            x = float(shape["x"])
+            y = float(shape["y"])
+            w = float(shape["w"])
+            h = float(shape["h"])
+        except (KeyError, TypeError, ValueError):
+            fail(where + " needs x, y, w, and h")
+        if w <= 0 or h < 0 or (kind != "line" and h <= 0):
+            fail(where + " has an empty box")
+        item = {"kind": kind, "x": round(x, 2), "y": round(y, 2), "w": round(w, 2), "h": round(h, 2)}
+        fill = shape.get("fill")
+        if kind == "text":
+            item["text"] = as_text(shape.get("text"), where)
+            item["size"] = shape_size(shape.get("size"), where)
+            item["bold"] = bool(shape.get("bold"))
+            item["align"] = shape_align(shape.get("align"))
+            item["ink"] = shape_role(shape.get("ink"), "ink", where)
+        else:
+            if fill not in ROLE:
+                fail(where + " has unknown fill " + repr(fill))
+            item["fill"] = fill
+            if shape.get("text"):
+                item["text"] = as_text(shape.get("text"), where)
+                item["size"] = shape_size(shape.get("size"), where)
+                item["bold"] = bool(shape.get("bold"))
+                item["align"] = shape_align(shape.get("align"))
+                item["ink"] = shape_role(shape.get("ink"), "ink", where)
+        clean.append(item)
+    return clean
+
+
+def shape_size(value, where):
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        fail(where + " needs a font size")
+    size = int(round(value))
+    if size < 8 or size > 80:
+        fail(where + " font size is out of range")
+    return size
+
+
+def shape_align(value):
+    if value in (None, "left"):
+        return "left"
+    if value in ("center", "right"):
+        return value
+    fail("align must be left, center, or right")
+
+
+def shape_role(value, fallback, where):
+    if value in (None, ""):
+        return fallback
+    if value not in ("navy", "ink", "accent", "white"):
+        fail(where + " has unknown ink " + repr(value))
+    return value
+
+
+def fit_shapes(shapes):
+    min_x = min(shape["x"] for shape in shapes)
+    min_y = min(shape["y"] for shape in shapes)
+    max_x = max(shape["x"] + shape["w"] for shape in shapes)
+    max_y = max(shape["y"] + max(shape["h"], 0.05) for shape in shapes)
+    width = max(max_x - min_x, 0.1)
+    height = max(max_y - min_y, 0.1)
+    left, top, area_w, area_h = SAFE
+    scale = min(area_w / width, area_h / height)
+    offset_x = left + (area_w - width * scale) / 2.0
+    offset_y = top + (area_h - height * scale) / 2.0
+    fitted = []
+    for shape in shapes:
+        item = dict(shape)
+        item["x"] = offset_x + (shape["x"] - min_x) * scale
+        item["y"] = offset_y + (shape["y"] - min_y) * scale
+        item["w"] = shape["w"] * scale
+        item["h"] = shape["h"] * scale
+        if shape["kind"] == "line":
+            item["h"] = max(item["h"], 0.035)
+        if "size" in item:
+            item["size"] = max(9, int(round(item["size"] * scale)))
+        fitted.append(item)
+    return fitted
+
+
+def paint_text(shape, text, size, bold, color, align):
+    frame = shape.text_frame
+    frame.word_wrap = True
+    frame.auto_size = None
+    frame.margin_left = Inches(0.04)
+    frame.margin_right = Inches(0.04)
+    frame.margin_top = Inches(0.02)
+    frame.margin_bottom = Inches(0.02)
+    frame.clear()
+    alignment = {"left": PP_ALIGN.LEFT, "center": PP_ALIGN.CENTER, "right": PP_ALIGN.RIGHT}[align]
+    lines = text.split("\n")
+    first = frame.paragraphs[0]
+    first.alignment = alignment
+    run = first.add_run()
+    run.text = lines[0]
+    style_run(run, size, bold, color)
+    for line in lines[1:]:
+        paragraph = frame.add_paragraph()
+        paragraph.alignment = alignment
+        run = paragraph.add_run()
+        run.text = line
+        style_run(run, size, bold, color)
+    try:
+        frame._txBody.bodyPr.set("anchor", "t")
+    except Exception:
+        pass
+
+
+def add_drawn_shape(slide, kind, x, y, w, h, fill):
+    preset = {
+        "roundRect": MSO_SHAPE.ROUNDED_RECTANGLE,
+        "rect": MSO_SHAPE.RECTANGLE,
+        "chevron": MSO_SHAPE.CHEVRON,
+        "line": MSO_SHAPE.RECTANGLE,
+    }[kind]
+    drawn = slide.shapes.add_shape(preset, Inches(x), Inches(y), Inches(w), Inches(h))
+    drawn.fill.solid()
+    drawn.fill.fore_color.rgb = ROLE[fill]
+    drawn.line.fill.background()
+    if kind == "roundRect":
+        try:
+            drawn.adjustments[0] = 0.15
+        except Exception:
+            pass
+    return drawn
+
+
+def paint_mirror(prs, shapes, warnings, n):
+    layout = find_layout(prs, MIRROR_PART[0], MIRROR_PART[1])
+    slide = prs.slides.add_slide(layout)
+    for shape in list(slide.shapes):
+        if not shape.is_placeholder:
+            continue
+        kind = shape.placeholder_format.type
+        if kind in (PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE, PP_PLACEHOLDER.BODY, PP_PLACEHOLDER.OBJECT):
+            drop_shape(shape)
+    for spec in fit_shapes(shapes):
+        kind = spec["kind"]
+        if kind == "text":
+            box = slide.shapes.add_textbox(Inches(spec["x"]), Inches(spec["y"]), Inches(spec["w"]), Inches(spec["h"]))
+            paint_text(box, spec["text"], spec["size"], spec["bold"], ROLE[spec["ink"]], spec["align"])
+            continue
+        drawn = add_drawn_shape(slide, kind, spec["x"], spec["y"], spec["w"], spec["h"], spec["fill"])
+        if spec.get("text"):
+            paint_text(drawn, spec["text"], spec["size"], spec["bold"], ROLE[spec["ink"]], spec["align"])
+    if len(shapes) > 60:
+        warnings.append("slide " + str(n) + ": " + str(len(shapes)) + " shapes")
+
+
+def render_deck(paths, deck):
     slides = deck.get("slides") or []
     if not slides:
         fail("deck has no slides")
-    check_variety(slides)
+    if not os.path.isfile(TEMPLATE):
+        fail("skill template is missing")
     try:
         prs = Presentation(TEMPLATE)
     except Exception:
         fail("could not open the template")
     drop_existing_slides(prs)
     warnings = []
-    for spec in slides:
-        if spec.get("layout") not in LAYOUTS:
-            fail("deck has unknown layout " + repr(spec.get("layout")))
-        fill_slide(prs, spec, warnings)
-    write_json_dir = os.path.dirname(paths["pptx"])
-    os.makedirs(write_json_dir, exist_ok=True)
+    mirror = [slide.get("layout") == "mirror" for slide in slides]
+    if any(mirror):
+        if not all(mirror):
+            fail("a restyled deck is all mirror slides")
+        for spec in slides:
+            shapes = check_shapes(spec.get("shapes"), spec.get("n"))
+            paint_mirror(prs, shapes, warnings, spec.get("n"))
+    else:
+        check_variety(slides)
+        for spec in slides:
+            if spec.get("layout") not in LAYOUTS:
+                fail("deck has unknown layout " + repr(spec.get("layout")))
+            fill_slide(prs, spec, warnings)
+    os.makedirs(os.path.dirname(paths["pptx"]), exist_ok=True)
     prs.save(paths["pptx"])
-    size = os.path.getsize(paths["pptx"])
+    return os.path.getsize(paths["pptx"]), warnings
+
+
+def emit_built(op, slug, deck, size, warnings):
+    slides = deck.get("slides") or []
     emit({
         "ok": True,
-        "op": "compile",
+        "op": op,
         "slug": slug,
         "title": deck.get("title"),
         "path": slug + "/" + slug + ".pptx",
@@ -647,6 +1095,35 @@ def cmd_compile(args):
         "slides": len(slides),
         "warnings": warnings,
     })
+
+
+def cmd_compile(args):
+    slug = check_slug(args.slug)
+    paths = deck_paths(args.workspace, slug)
+    deck = load_json(paths["deck"], "deck.json")
+    size, warnings = render_deck(paths, deck)
+    emit_built("compile", slug, deck, size, warnings)
+
+
+def cmd_restyle(args):
+    slug = check_slug(args.slug)
+    source = args.source
+    if not source or not os.path.isfile(source):
+        fail("source pptx is missing")
+    paths = deck_paths(args.workspace, slug)
+    slides = decompile_pptx(source)
+    deck = {
+        "schema": "presentation-deck/v1",
+        "keys": [],
+        "updated_at": now(),
+        "source_agent": "presentation",
+        "slug": slug,
+        "title": deck_title(slides),
+        "slides": slides,
+    }
+    save_deck(paths, deck)
+    size, warnings = render_deck(paths, deck)
+    emit_built("restyle", slug, deck, size, warnings)
 
 
 def main():
@@ -670,9 +1147,15 @@ def main():
     compile_cmd.add_argument("--slug", required=True)
     compile_cmd.set_defaults(func=cmd_compile)
 
+    restyle = sub.add_parser("restyle")
+    restyle.add_argument("--workspace", required=True)
+    restyle.add_argument("--slug", required=True)
+    restyle.add_argument("--source", required=True)
+    restyle.set_defaults(func=cmd_restyle)
+
     args = parser.parse_args()
     if not getattr(args, "func", None):
-        fail("use edit, show, or compile")
+        fail("use edit, show, compile, or restyle")
     if not os.path.isdir(args.workspace):
         fail("workspace is not a directory")
     try:

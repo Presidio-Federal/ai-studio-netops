@@ -1,7 +1,7 @@
 ---
 name: presentation
-version: "1.2.6"
-description: "v1.2.6 — Use when drafting a Presidio deck: read and write <customer>/deck.json with no file_explorer prefix, then hand it to Presentation Builder."
+version: "1.3.0"
+description: "v1.3.0 — Use when drafting a Presidio deck, or when an attached pptx should be decompiled and rebuilt on the Disney template."
 ---
 
 # Presentation skill
@@ -20,8 +20,8 @@ hyphens. Do not drop a word and do not add one. "Acme" is
 Do not put `file_explorer/` on a filePath. That string is
 resolved as `/app/file_explorer/...` and Access denied. File
 not found on `acme-corp/deck.json` means there is no deck yet.
-Write it at that same path. Do not retry with a
-`file_explorer/` prefix.
+An attached pptx is the Restyle section. Otherwise write it at
+that same path. Do not retry with a `file_explorer/` prefix.
 
 | Tool | Argument |
 |------|----------|
@@ -30,6 +30,20 @@ Write it at that same path. Do not retry with a
 
 `write_file` creates `<customer>/`. Do not `mkdir`. Do not
 `execute_command` to make a folder or to edit JSON.
+
+## Restyle an attached pptx
+
+An attached pptx is already a deck. They asked to add it or rebuild it on the Disney template. Do not read it and propose an outline. Do not ask New or Existing. Do not pick `cover`, `two-column`, or `title-content`. Follow `references/layouts.md` for what `mirror` means.
+
+The folder is the customer they named. "the disney workspace" is `disney`. A word that only names the workspace or the template is not part of the folder. If they did not name a customer, ask who it is for and stop.
+
+Do not write `deck.json` yourself. The builder decompiles the file. Invoke **Presentation Builder** and end the turn.
+
+```text
+Restyle the deck only. Slug: <customer> Source: <path Studio showed for the pptx>
+```
+
+Copy that path. Do not invent a directory. If the result says the source pptx is missing, copy the path Studio showed and invoke again. When the result arrives, quote it. A later change to one string already in the file is `update_text_block_in_file`, then the Compile task. Do not restyle again.
 
 ## Choose the deck
 

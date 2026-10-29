@@ -124,6 +124,8 @@ Compliance Intelligence 2.1.1 (skill 1.20.1): coverage.json is one row per NIST 
 
 Compliance Intelligence 2.1.0 (skill 1.20.0, workspace-handoff 1.70.26, Compliance Author 1.3.2, authoring skill 1.7.3): `scripts/scan_catalog.py scan` runs under `mcp_orchestration`. It lists `catalog` and `tests/compliance` on `main`, reads the job catalog and the bridge, and returns unresolved NIST titles plus the estate. A NIST id is covered only when its check is on the bridge. The model ranks at most ten and sets `evidence` `static` (pytest on committed config) or `live` (ask the device). Frontier, because the operator selected it for this interpretation.
 
+Presentation 1.3.0 (skill 1.3.0, presentation-build 1.3.0): an attached pptx is decompiled to `mirror` shapes in `<customer>/deck.json` and rebuilt on the Disney template. The model does not redraw it as cover, two-column, or title-content. MiniMax.
+
 Presentation 1.2.6 (skill 1.2.6): file tools use `<customer>/deck.json`. `file_explorer/acme/deck.json` is `/app/file_explorer/acme/deck.json` and Access denied. "Acme Corp" is `acme-corp`. File not found on the customer path means there is no deck yet. MiniMax.
 
 Presentation 1.2.5 (skill 1.2.5, presentation-build 1.2.1): every write of `deck.json` invokes Presentation Builder. The Disney template's Title Slide 2 Blue is slide 1 only. Neighboring slides may not share a layout. MiniMax.

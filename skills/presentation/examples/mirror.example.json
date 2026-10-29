@@ -1,0 +1,49 @@
+{
+  "schema": "presentation-deck/v1",
+  "keys": [],
+  "updated_at": "2026-10-29T18:00:00Z",
+  "source_agent": "presentation",
+  "slug": "disney",
+  "title": "Evolving to deliver more for Disney",
+  "slides": [
+    {
+      "n": 1,
+      "layout": "mirror",
+      "slots": {},
+      "shapes": [
+        {
+          "kind": "text",
+          "x": 0.42,
+          "y": 0.48,
+          "w": 4.4,
+          "h": 0.22,
+          "text": "EXECUTIVE SUMMARY",
+          "size": 10,
+          "bold": true,
+          "align": "left",
+          "ink": "accent"
+        },
+        {
+          "kind": "roundRect",
+          "x": 0.48,
+          "y": 2.55,
+          "w": 2.05,
+          "h": 2.95,
+          "fill": "card"
+        },
+        {
+          "kind": "text",
+          "x": 0.64,
+          "y": 3.18,
+          "w": 1.72,
+          "h": 0.33,
+          "text": "INTEGRATE",
+          "size": 15,
+          "bold": true,
+          "align": "left",
+          "ink": "navy"
+        }
+      ]
+    }
+  ]
+}

@@ -16,5 +16,5 @@ and Access denied. Do not send that. File not found on
 `<customer>/deck.json` means the deck is not there yet.
 
 The compile script writes `<customer>/<customer>.pptx` beside the
-JSON. No agent reads the pptx. No index file. No envelope.
+JSON. A restyle decompiles an attached pptx into that same JSON, then compiles it. No agent reads the pptx. No index file. No envelope.
 `keys` is `[]`.

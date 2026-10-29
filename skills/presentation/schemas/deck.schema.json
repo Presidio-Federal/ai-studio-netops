@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "presentation-deck/v1",
   "title": "<customer>/deck.json",
-  "description": "The deck the presentation agent writes with write_file or update_text_block_in_file. Presentation Builder compiles it and does not edit it. keys is always empty; a deck joins nothing in the relationship graph.",
+  "description": "The deck the presentation agent writes, or that restyle decompiles from an attached pptx. A mirror slide stores shapes. Presentation Builder compiles it. keys is always empty.",
   "type": "object",
   "additionalProperties": false,
   "required": ["schema", "keys", "updated_at", "source_agent", "slug", "title", "slides"],
@@ -29,7 +29,30 @@
         "n": { "type": "integer", "minimum": 1 },
         "layout": { "type": "string", "minLength": 1 },
         "slots": { "type": "object" },
-        "blocks": { "type": "array" }
+        "blocks": { "type": "array" },
+        "shapes": {
+          "type": "array",
+          "maxItems": 80,
+          "items": { "$ref": "#/$defs/shape" }
+        }
+      }
+    },
+    "shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "x", "y", "w", "h"],
+      "properties": {
+        "kind": { "enum": ["text", "roundRect", "rect", "chevron", "line"] },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "w": { "type": "number" },
+        "h": { "type": "number" },
+        "fill": { "enum": ["card", "tint", "accent", "navy", "white"] },
+        "text": { "type": "string" },
+        "size": { "type": "number" },
+        "bold": { "type": "boolean" },
+        "align": { "enum": ["left", "center", "right"] },
+        "ink": { "enum": ["navy", "ink", "accent", "white"] }
       }
     }
   }
