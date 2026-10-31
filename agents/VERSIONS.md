@@ -276,6 +276,8 @@ workspace-handoff 1.70.7: the application catalog row names probe environment, c
 
 workspace-handoff 1.70.3: `unwrap_grafana` pivots Grafana 13 columnar frames. Live NetFlow for the last hour is bucket `network-v2`, measurement `netflow`, five exporters.
 
+Health Application 1.5.0 (skill 1.5.0): the application row is the tier. `lab.service` is that name; `lab.application` stays text. A container with no tier is not a row. Host rows are only the hosts those containers run on. MiniMax.
+
 Health Application 1.4.0 (skill 1.4.0, workspace-handoff 1.70.33): the visit reads Elasticsearch Docker container status, CPU, and memory, plus host uptime, memory, and root disk. Probe and scrape-target rows are not refreshed; those series are not in Elasticsearch. MiniMax.
 
 Health Application 1.3.0 (skill 1.3.0): a probe row is application, destination environment, target, and vantage. The visit reports window failure and latency, a body-check result when `probe_failed_due_to_regex` exists, and container limit, throttle, and OOM when those series exist. Missing series and missing vantage points (cloud, hq, branch unless the board sets `expected_vantages`) stay missing. `last_collected_at` and `last_visit_id` both appear in the reply.

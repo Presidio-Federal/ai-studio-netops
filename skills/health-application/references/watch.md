@@ -7,9 +7,11 @@ config, remediation), reply `That's not what I do.` and stop.
 An invoke that names the application check, or a bare invoke from
 the Analyzer or a schedule, is authorization. Do not confirm.
 
-Tools: `elasticsearch_query` on `metrics-docker.*-prod` and
-`metrics-system.*-prod`. Never Grafana, `splunk_search`, or a
-device MCP.
+Tools: `elasticsearch_query` on `metrics-docker.container-prod`,
+`metrics-docker.cpu-prod`, `metrics-docker.memory-prod`, and
+`metrics-system.uptime-prod`, `metrics-system.memory-prod`,
+`metrics-system.filesystem-prod`. The application is `lab.service`.
+Never Grafana, `splunk_search`, or a device MCP.
 
 ## This plane only
 
@@ -48,10 +50,10 @@ The last stdout line is the summary. If `needs_note` is non-empty,
 one `execute_command` with `execution_type: "standard"` runs
 `annotate` on the summary `stamp`. `--stamp` is that path exactly.
 The separator on a note is `=`. If stderr says `hai_mcp unavailable`,
-follow `references/prometheus.md` by hand. Any other failure: report
+follow `references/elastic.md` by hand. Any other failure: report
 that line and stop.
 
-The script copies the expressions in `references/prometheus.md`,
+The script copies the queries in `references/elastic.md`,
 builds rows from label values, carries unseen containers as `gone`
 and unseen hosts as `unreachable`, diffs the board, and writes the
 board every visit. A stamp is written only when a row moved, on the

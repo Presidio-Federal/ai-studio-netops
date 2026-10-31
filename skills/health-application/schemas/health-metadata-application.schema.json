@@ -84,7 +84,7 @@
         "keys": { "type": "array", "uniqueItems": true, "maxItems": 8, "items": { "type": "string", "pattern": "^(device|site|application|test):[^ ].*$" }, "description": "application:<service label> on probe and container rows; device:<device> only when host_name matched inventory/prod.json; site:<site label>; test:probe/<application>@<environment>@<target>@<vantage> on probe rows. Never a service: key." },
         "at": { "type": "string", "minLength": 1, "description": "checked_at of the visit that last measured or carried this row." },
         "state": { "type": "string", "enum": ["up", "down", "unknown", "unvalidated", "running", "gone", "unreachable"], "description": "probe: up when success and content check pass; unvalidated when success is 1 and the body check was not measured; down when the probe or the body check failed. container: running/gone. host: up/unreachable. target: up/down/unknown (= health)." },
-        "application": { "type": ["string", "null"], "description": "service label copied as-is." },
+        "application": { "type": ["string", "null"], "description": "The tier: lab.service, else the docker service label, else the container name after the first hyphen." },
         "environment": { "type": ["string", "null"], "description": "Probe rows: environment or env label, else the site label. Destination of the probe, not the vantage point." },
         "service": { "type": ["string", "null"], "description": "Container rows: the application label text (business name) copied as-is. Not a key." },
         "vantage_site": { "type": ["string", "null"], "description": "Probe rows: vantage_point label." },

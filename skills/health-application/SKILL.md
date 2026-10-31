@@ -1,16 +1,19 @@
 ---
 name: health-application
-version: "1.4.0"
-description: "v1.4.0 — Health Application nurse: containers and hosts run visit_application.py through Elasticsearch. Board every visit; stamp only when a row moved."
+version: "1.5.0"
+description: "v1.5.0 — Health Application nurse: Elasticsearch tiers from lab.service, plus the hosts those containers run on."
 ---
 
 # Health Application skill
 
 One visit type. Run `scripts/visit_application.py collect`. The
-script reads Elasticsearch — Docker containers and the host under
-them — and writes one row per container and host onto the board.
-Blackbox probes and Prometheus scrape targets are not in
-Elasticsearch, so this visit does not refresh those rows.
+script reads Elasticsearch. An application row is a container tier:
+`lab.service`, else the docker service label, else the name after
+the first hyphen (`prod-api`, `dc-api`). `lab.application` is the
+business name and stays text, not a `service:` key. A container
+with no tier is not a row. Host rows are only the hosts those
+containers run on. Blackbox probes and Prometheus scrape targets
+are not in Elasticsearch, so this visit does not refresh those rows.
 
 Tools on a visit: `elasticsearch_query` against
 `metrics-docker.container-prod`, `metrics-docker.cpu-prod`,
@@ -27,13 +30,13 @@ A **board visit**. `health/metadata-application.json` carries
 No material change = **quiet visit**: board only, no stamp.
 
 `references/elastic.md` is the manual order when the script cannot
-run. Every row copies `container.name`, `host.name`,
-`docker.container.labels.application`, `docker.container.labels.service`,
-and `lab.site`. `device` is the `prod.json` spelling when the host
-matches. Carry unseen board containers as `gone` and unseen hosts
-as `unreachable`. Diff against `current[]`. A stamp is a container
-restart, appear, vanish, or CPU crossing 80, or a host reboot or
-memory or root disk crossing 10 percent.
+run. Every application row copies `container.name`, `host.name`,
+`lab.service`, `lab.application`, and `lab.site`. `device` is the
+`prod.json` spelling when the host matches. Carry unseen board
+containers as `gone` and unseen hosts as `unreachable`. Diff
+against `current[]`. A stamp is a container restart, appear,
+vanish, or CPU crossing 80, or a host reboot or memory or root
+disk crossing 10 percent.
 The `host` / `device` / `application` / `site` columns are the edge;
 write no `relations[]`. Write no `service:` key; the registry owns
 service spellings. Do not write a query of your own.
@@ -82,9 +85,8 @@ Do not search the workspace for them.
 Do **not** call `get_folder_structure`. Do **not** list
 `automations/schedules`.
 
-**First tools:** `read_file` `health/metadata-application.json`
-(the board), then `inventory/prod.json`. Then
-`grafana_prometheus_targets()`.
+**First tools:** `read_file` `inventory/prod.json`, then one
+`execute_command` of `scripts/visit_application.py collect`.
 
 Do not open the prior stamp. Never overwrite a timestamped file.
 
@@ -100,7 +102,7 @@ DIFF → WRITE_BOARD → DECIDE → [WRITE_STAMP → READ_BACK → PRUNE →
 WRITE_BOARD] → STOP
 
 On collection failure of one call: retry once, then keep that
-kind's board rows and set coverage `partial`. If P1, C1, and H1 all
+kind's board rows and set coverage `partial`. If C1 and H1 both
 fail: `unavailable`, null counts, stamp written, board rows
 untouched.
 

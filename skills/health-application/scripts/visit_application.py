@@ -184,6 +184,20 @@ def app_key(service):
     return f"application:{service}"
 
 
+def tier_name(name, lab_service, label_service):
+    """The application is the tier. lab.service is that name; the docker
+    service label is the same field when the lab copy is empty. A name
+    like prod-api or dc-api still carries the tier after the hyphen.
+    A container with no tier (cadvisor) is not an application."""
+    tier = blank(lab_service) or blank(label_service)
+    if tier:
+        return tier
+    text = blank(name)
+    if not text or "-" not in text:
+        return ""
+    return text.split("-", 1)[1]
+
+
 def site_key(site):
     if not site:
         return None
@@ -963,7 +977,9 @@ def elastic_rows(window, by_lower, failed):
         "containers",
         "FROM metrics-docker.container-prod | STATS status = MAX(docker.container.status), "
         "created = MAX(docker.container.created), image = MAX(container.image.name), "
-        "application = MAX(docker.container.labels.application), service = MAX(docker.container.labels.service), "
+        "lab_application = MAX(lab.application), lab_service = MAX(lab.service), "
+        "label_application = MAX(docker.container.labels.application), "
+        "label_service = MAX(docker.container.labels.service), "
         "site = MAX(lab.site) BY container.name, host.name",
         window,
     )
@@ -1012,8 +1028,10 @@ def elastic_rows(window, by_lower, failed):
         if not name or not host:
             continue
         status = blank(row.get("status")) or ""
-        service = blank(row.get("service"))
-        application = blank(row.get("application"))
+        tier = tier_name(name, row.get("lab_service"), row.get("label_service"))
+        if not tier:
+            continue
+        business = blank(row.get("lab_application")) or blank(row.get("label_application"))
         site = blank(row.get("site"))
         device = device_for(host, by_lower)
         cpu_pct = pct_points(cpu.get((name, host)))
@@ -1024,8 +1042,8 @@ def elastic_rows(window, by_lower, failed):
                 "name": name,
                 "host": host,
                 "device": device,
-                "application": application or service,
-                "service": service,
+                "application": tier,
+                "service": business or None,
                 "site": site,
                 "image": blank(row.get("image")),
                 "started_epoch": epoch_of(row.get("created")),
@@ -1033,12 +1051,15 @@ def elastic_rows(window, by_lower, failed):
                 "mem_bytes": whole(mem.get((name, host))),
                 "missing": ["exit", "mem_limit", "cpu_limit", "throttle", "oom"],
                 "state": "running" if status.startswith("Up") else "down",
-                "keys": key_list(app_key(application or service), device_key(device), site_key(site)),
+                "keys": key_list(app_key(tier), device_key(device), site_key(site)),
             }
         )
+    app_hosts = {row["host"] for row in built}
     for row in hosts:
         host = blank(row.get("host.name"))
         if not host:
+            continue
+        if "C1" not in failed and host not in app_hosts:
             continue
         site = blank(row.get("site"))
         device = device_for(host, by_lower)
@@ -1128,7 +1149,7 @@ def cmd_collect(args):
     annotations = app.get("annotations") if isinstance(app.get("annotations"), list) else []
     lookup = fit_lookup(app.get("lookup"))
 
-    anchors_down = {"P1", "C1", "H1"}.issubset(failed)
+    anchors_down = {"C1", "H1"}.issubset(failed)
     coverage = "unavailable" if anchors_down else ("partial" if failed else "complete")
     restarted = set()
     rebooted = set()
